@@ -447,10 +447,25 @@ function renderStudentTaskStatusRow(task) {
   const isComplete = isStatusOn(completeStatus);
   const isVerified = isStatusOn(task.verifystatus);
 
+  // 1. Build the standalone audio player if an audio link exists
+  let fullAudioPlayerHtml = "";
+  if (task.audiolink) {
+    fullAudioPlayerHtml = `
+      <div style="margin-top: 10px; margin-bottom: 10px;">
+        <audio class="resource-audio-control" controls controlsList="nodownload" preload="none" style="width: 100%; max-width: 300px;">
+          <source src="${escapeForAttribute(task.audiolink)}" />
+          Your browser cannot play this audio file.
+        </audio>
+      </div>
+    `;
+  }
+
+  // 2. Inject the player into the layout under the task name
   return `
     <div class="student-status-row">
       <div class="student-status-name">
         <div>${escapeHtml(task.taskname)}</div>
+        ${fullAudioPlayerHtml}
         ${renderStudentTaskLinkButtons(task)}
       </div>
 
@@ -473,19 +488,11 @@ function renderStudentTaskStatusRow(task) {
   `;
 }
 
-
 function renderStudentTaskLinkButtons(task) {
   const links = [];
 
-  if (task.audiolink) {
-    links.push({
-      type: "AUDIO",
-      label: "▶",
-      title: "Play Audio",
-      link: task.audiolink,
-      inline: true
-    });
-  }
+  // Note: The audio block has been completely removed from here
+  // so it no longer generates the small inline "▶" button.
 
   if (task.graphiclink) {
     links.push({
@@ -549,6 +556,10 @@ function renderStudentTaskLinkButtons(task) {
 
   return `<div class="student-task-link-row">${buttonsHtml}</div>`;
 }
+
+
+
+
 
 function toggleStudentTaskInlinePlayer(playerId, link, type) {
   if (!link) return;
