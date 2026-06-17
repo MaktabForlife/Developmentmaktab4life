@@ -1,7 +1,2 @@
-/student       /student/index.html   200
-/student/      /student/index.html   200
-/student/*     /student/index.html   200
-
-/admin         /admin/index.html     200
-/admin/        /admin/index.html     200
-/admin/*       /admin/index.html     200
+/student/*  /student/  200
+/admin/*    /admin/    200
