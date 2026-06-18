@@ -659,8 +659,8 @@ async function toggleStudentTask(studenttaskid, complete) {
 let studentResourceSubjects = [];
 let studentResourceGroupsByType = {};
 let currentStudentResourceMode = "";
-let currentStudentResourceModuleKey = "";
-let currentStudentResourceModuleName = "";
+let currentStudentResourceSubjectKey = "";
+let currentStudentResourceSubjectName = "";
 let studentResourceViewMode = "student";
 
 const PDFJS_VIEWER_PATH = "/pdfjs-6/web/viewer.html";
@@ -714,7 +714,7 @@ function setResourceScreensForStudent() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Modules";
+  if (listTitle) listTitle.innerText = "Subjects";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   if (listBackButton) {
@@ -744,7 +744,7 @@ function setResourceScreensForAdmin() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Modules";
+  if (listTitle) listTitle.innerText = "Subjects";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   if (listBackButton) {
@@ -802,7 +802,7 @@ async function loadResourceCategories(apiPath, body = {}) {
     studentResourceSubjects = Array.isArray(result.subjects) ? result.subjects : [];
     studentResourceGroupsByType = normalizeStudentResourceGroups(result);
 
-    renderStudentResourceModules();
+    renderStudentResourceSubjects();
   } catch (err) {
     container.innerHTML = `<p class="error-message">Unable to load resources. Please try again.</p>`;
   }
@@ -916,45 +916,46 @@ function countResourcesInSubjects(subjects) {
 }
 
 
-function getResourceModuleKey(moduleGroup) {
-  const rawId = moduleGroup && (moduleGroup.moduleid || moduleGroup.ModuleId || moduleGroup.ModuleID || moduleGroup.id || "");
-  const rawName = moduleGroup && (moduleGroup.modulename || moduleGroup.ModuleName || moduleGroup.name || "General");
+
+function getResourceSubjectKey(subjectGroup) {
+  const rawId = subjectGroup && (subjectGroup.subjectid || subjectGroup.SubjectId || subjectGroup.SubjectID || subjectGroup.id || "");
+  const rawName = subjectGroup && (subjectGroup.subjectname || subjectGroup.SubjectName || subjectGroup.name || "Subject");
   const id = String(rawId || "").trim();
-  const name = String(rawName || "General").trim();
+  const name = String(rawName || "Subject").trim();
   return id ? `id:${id.toUpperCase()}` : `name:${name.toUpperCase()}`;
 }
 
-function getResourceModuleName(moduleGroup) {
-  return String(moduleGroup && (moduleGroup.modulename || moduleGroup.ModuleName || moduleGroup.name) || "General").trim() || "General";
+function getResourceSubjectName(subjectGroup) {
+  return String(subjectGroup && (subjectGroup.subjectname || subjectGroup.SubjectName || subjectGroup.name) || "Subject").trim() || "Subject";
 }
 
-function buildStudentResourceModuleSummaries() {
-  const moduleMap = new Map();
+function buildStudentResourceSubjectSummaries() {
+  const subjectMap = new Map();
 
   STUDENT_RESOURCE_CATEGORIES.forEach(category => {
     buildMediaResourceGroups(category).forEach(subjectGroup => {
-      (subjectGroup.modules || []).forEach(moduleGroup => {
-        const key = getResourceModuleKey(moduleGroup);
-        const name = getResourceModuleName(moduleGroup);
-        const count = (moduleGroup.rows || []).length;
+      const key = getResourceSubjectKey(subjectGroup);
+      const name = getResourceSubjectName(subjectGroup);
+      const count = (subjectGroup.modules || []).reduce((sum, moduleGroup) => {
+        return sum + ((moduleGroup.rows || []).length);
+      }, 0);
 
-        if (!moduleMap.has(key)) {
-          moduleMap.set(key, {
-            key,
-            name,
-            total: 0,
-            categoryCounts: {}
-          });
-        }
+      if (!subjectMap.has(key)) {
+        subjectMap.set(key, {
+          key,
+          name,
+          total: 0,
+          categoryCounts: {}
+        });
+      }
 
-        const summary = moduleMap.get(key);
-        summary.total += count;
-        summary.categoryCounts[category.key] = (summary.categoryCounts[category.key] || 0) + count;
-      });
+      const summary = subjectMap.get(key);
+      summary.total += count;
+      summary.categoryCounts[category.key] = (summary.categoryCounts[category.key] || 0) + count;
     });
   });
 
-  return Array.from(moduleMap.values()).sort((a, b) => {
+  return Array.from(subjectMap.values()).sort((a, b) => {
     return String(a.name || "").localeCompare(String(b.name || ""), undefined, {
       numeric: true,
       sensitivity: "base"
@@ -962,63 +963,58 @@ function buildStudentResourceModuleSummaries() {
   });
 }
 
-function renderStudentResourceModules() {
+function renderStudentResourceSubjects() {
   const container = document.getElementById("student-resource-subject-list");
   if (!container) return;
 
   currentStudentResourceMode = "";
-  currentStudentResourceModuleKey = "";
-  currentStudentResourceModuleName = "";
+  currentStudentResourceSubjectKey = "";
+  currentStudentResourceSubjectName = "";
 
-  const modules = buildStudentResourceModuleSummaries();
+  const subjects = buildStudentResourceSubjectSummaries();
 
-  if (modules.length === 0) {
+  if (subjects.length === 0) {
     container.innerHTML = `<p class="helper-text">No resources are available yet.</p>`;
     return;
   }
 
   container.innerHTML = `
-    <div class="resource-module-button-grid">
-      ${modules.map(module => {
-        const countLabel = module.total === 1 ? "1 item" : `${module.total} items`;
-        return `
-          <button class="resource-module-button" onclick="openStudentResourceModule('${escapeForAttribute(module.key)}')">
-            <span class="resource-module-button-title">${escapeHtml(module.name)}</span>
-            <span class="resource-count-pill">${escapeHtml(countLabel)}</span>
-          </button>
-        `;
-      }).join("")}
+    <div class="resource-subject-button-grid">
+      ${subjects.map(subject => `
+        <button class="resource-subject-drill-button" onclick="openStudentResourceSubject('${escapeForAttribute(subject.key)}')">
+          <span class="resource-subject-button-title">${escapeHtml(subject.name)}</span>
+        </button>
+      `).join("")}
     </div>
   `;
 }
 
-function openStudentResourceModule(moduleKey) {
-  const modules = buildStudentResourceModuleSummaries();
-  const selectedModule = modules.find(module => module.key === moduleKey);
+function openStudentResourceSubject(subjectKey) {
+  const subjects = buildStudentResourceSubjectSummaries();
+  const selectedSubject = subjects.find(subject => subject.key === subjectKey);
 
-  if (!selectedModule) {
-    alert("Module not found. Please reload resources.");
+  if (!selectedSubject) {
+    alert("Subject not found. Please reload resources.");
     return;
   }
 
-  currentStudentResourceModuleKey = selectedModule.key;
-  currentStudentResourceModuleName = selectedModule.name;
+  currentStudentResourceSubjectKey = selectedSubject.key;
+  currentStudentResourceSubjectName = selectedSubject.name;
 
   const title = document.getElementById("student-resource-media-title");
-  if (title) title.innerText = selectedModule.name;
+  if (title) title.innerText = selectedSubject.name;
 
   showScreen("student-resources-media");
-  renderStudentResourceCategories(selectedModule);
+  renderStudentResourceCategories(selectedSubject);
 }
 
-function renderStudentResourceCategories(selectedModule = null) {
-  const container = selectedModule ? document.getElementById("student-resource-media-list") : document.getElementById("student-resource-subject-list");
+function renderStudentResourceCategories(selectedSubject = null) {
+  const container = selectedSubject ? document.getElementById("student-resource-media-list") : document.getElementById("student-resource-subject-list");
 
   if (!container) return;
 
   const categoryButtons = STUDENT_RESOURCE_CATEGORIES.map(category => {
-    const count = selectedModule ? (selectedModule.categoryCounts[category.key] || 0) : countResourcesForCategory(category);
-    const countLabel = count === 1 ? "1 item" : `${count} items`;
+    const count = selectedSubject ? (selectedSubject.categoryCounts[category.key] || 0) : countResourcesForCategory(category);
     const disabledClass = count === 0 ? " is-empty" : "";
     const disabledAttr = count === 0 ? " disabled" : "";
 
@@ -1028,12 +1024,11 @@ function renderStudentResourceCategories(selectedModule = null) {
           <span class="resource-category-title">${escapeHtml(category.label)}</span>
           <span class="resource-category-subtitle">${escapeHtml(category.subtitle)}</span>
         </span>
-        <span class="resource-count-pill">${escapeHtml(countLabel)}</span>
       </button>
     `;
   }).join("");
 
-  const total = STUDENT_RESOURCE_CATEGORIES.reduce((sum, category) => sum + (selectedModule ? (selectedModule.categoryCounts[category.key] || 0) : countResourcesForCategory(category)), 0);
+  const total = STUDENT_RESOURCE_CATEGORIES.reduce((sum, category) => sum + (selectedSubject ? (selectedSubject.categoryCounts[category.key] || 0) : countResourcesForCategory(category)), 0);
 
   container.innerHTML = `
     <div class="resource-category-grid">
@@ -1055,34 +1050,26 @@ function openStudentResourceCategory(categoryKey) {
 
   const title = document.getElementById("student-resource-detail-title");
   if (title) {
-    title.innerText = currentStudentResourceModuleName ? `${currentStudentResourceModuleName} - ${category.label}` : category.label;
+    title.innerText = currentStudentResourceSubjectName ? `${currentStudentResourceSubjectName} - ${category.label}` : category.label;
   }
 
   showScreen("student-resources-detail");
   renderStudentResourceCategoryDetail(category);
 }
 
+function filterResourceGroupsByCurrentSubject(subjectGroups) {
+  if (!currentStudentResourceSubjectKey) return subjectGroups;
 
-function filterResourceGroupsByCurrentModule(subjectGroups) {
-  if (!currentStudentResourceModuleKey) return subjectGroups;
-
-  return (subjectGroups || []).map(subjectGroup => {
-    const modules = (subjectGroup.modules || []).filter(moduleGroup => {
-      return getResourceModuleKey(moduleGroup) === currentStudentResourceModuleKey;
-    });
-
-    return {
-      ...subjectGroup,
-      modules
-    };
-  }).filter(subjectGroup => subjectGroup.modules.length > 0);
+  return (subjectGroups || []).filter(subjectGroup => {
+    return getResourceSubjectKey(subjectGroup) === currentStudentResourceSubjectKey;
+  });
 }
 
 function renderStudentResourceCategoryDetail(category) {
   const container = document.getElementById("student-resource-detail-content");
   if (!container) return;
 
-  const subjectGroups = filterResourceGroupsByCurrentModule(buildMediaResourceGroups(category));
+  const subjectGroups = filterResourceGroupsByCurrentSubject(buildMediaResourceGroups(category));
 
   if (subjectGroups.length === 0) {
     container.innerHTML = `<p class="helper-text">No ${escapeHtml(category.label)} resources are available yet.</p>`;

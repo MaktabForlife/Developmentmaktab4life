@@ -1934,33 +1934,31 @@ button:active {
   }
 }
 
-/* Student Resources: module drill-down screen */
-.resource-module-button-grid {
+/* Student Resources: subject drill-down screen */
+.resource-subject-button-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 12px;
 }
 
-.resource-module-button {
+.resource-subject-drill-button {
   min-height: 96px;
   border-radius: 16px;
   padding: 14px 10px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 9px;
   text-align: center;
   background: var(--student-dark);
   color: var(--white);
 }
 
-.admin-theme .resource-module-button {
+.admin-theme .resource-subject-drill-button {
   background: var(--teal-dark);
 }
 
-.resource-module-button-title {
+.resource-subject-button-title {
   font-family: 'Gagalin', Arial, sans-serif;
   letter-spacing: 1px;
   font-size: 1rem;
@@ -1968,22 +1966,17 @@ button:active {
   overflow-wrap: anywhere;
 }
 
-.resource-module-button .resource-count-pill {
-  font-family: Arial, sans-serif;
-  font-size: 0.74rem;
-}
-
 @media (max-width: 360px) {
-  .resource-module-button-grid {
+  .resource-subject-button-grid {
     gap: 9px;
   }
 
-  .resource-module-button {
+  .resource-subject-drill-button {
     min-height: 86px;
     padding: 12px 8px;
   }
 
-  .resource-module-button-title {
+  .resource-subject-button-title {
     font-size: 0.9rem;
   }
 }
