@@ -659,6 +659,8 @@ async function toggleStudentTask(studenttaskid, complete) {
 let studentResourceSubjects = [];
 let studentResourceGroupsByType = {};
 let currentStudentResourceMode = "";
+let currentStudentResourceModuleKey = "";
+let currentStudentResourceModuleName = "";
 let studentResourceViewMode = "student";
 
 const PDFJS_VIEWER_PATH = "/pdfjs-6/web/viewer.html";
@@ -704,7 +706,7 @@ async function showAdminResources() {
 }
 
 function setResourceScreensForStudent() {
-  ["student-resources-subjects", "student-resources-detail"].forEach(id => {
+  ["student-resources-subjects", "student-resources-media", "student-resources-detail"].forEach(id => {
     const screen = document.getElementById(id);
     if (!screen) return;
     screen.classList.remove("admin-theme");
@@ -712,7 +714,7 @@ function setResourceScreensForStudent() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Resources";
+  if (listTitle) listTitle.innerText = "Modules";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   if (listBackButton) {
@@ -720,15 +722,21 @@ function setResourceScreensForStudent() {
     listBackButton.setAttribute("onclick", "showScreen('student-home')");
   }
 
+  const mediaBackButton = document.querySelector("#student-resources-media .small-btn");
+  if (mediaBackButton) {
+    mediaBackButton.innerText = "Back";
+    mediaBackButton.setAttribute("onclick", "showScreen('student-resources-subjects')");
+  }
+
   const detailBackButton = document.querySelector("#student-resources-detail .small-btn");
   if (detailBackButton) {
     detailBackButton.innerText = "Back";
-    detailBackButton.setAttribute("onclick", "showScreen('student-resources-subjects')");
+    detailBackButton.setAttribute("onclick", "showScreen('student-resources-media')");
   }
 }
 
 function setResourceScreensForAdmin() {
-  ["student-resources-subjects", "student-resources-detail"].forEach(id => {
+  ["student-resources-subjects", "student-resources-media", "student-resources-detail"].forEach(id => {
     const screen = document.getElementById(id);
     if (!screen) return;
     screen.classList.remove("student-theme");
@@ -736,7 +744,7 @@ function setResourceScreensForAdmin() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Resources";
+  if (listTitle) listTitle.innerText = "Modules";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   if (listBackButton) {
@@ -744,10 +752,16 @@ function setResourceScreensForAdmin() {
     listBackButton.setAttribute("onclick", "showScreen('admin-home')");
   }
 
+  const mediaBackButton = document.querySelector("#student-resources-media .small-btn");
+  if (mediaBackButton) {
+    mediaBackButton.innerText = "Back";
+    mediaBackButton.setAttribute("onclick", "showScreen('student-resources-subjects')");
+  }
+
   const detailBackButton = document.querySelector("#student-resources-detail .small-btn");
   if (detailBackButton) {
     detailBackButton.innerText = "Back";
-    detailBackButton.setAttribute("onclick", "showScreen('student-resources-subjects')");
+    detailBackButton.setAttribute("onclick", "showScreen('student-resources-media')");
   }
 }
 
@@ -788,7 +802,7 @@ async function loadResourceCategories(apiPath, body = {}) {
     studentResourceSubjects = Array.isArray(result.subjects) ? result.subjects : [];
     studentResourceGroupsByType = normalizeStudentResourceGroups(result);
 
-    renderStudentResourceCategories();
+    renderStudentResourceModules();
   } catch (err) {
     container.innerHTML = `<p class="error-message">Unable to load resources. Please try again.</p>`;
   }
@@ -901,13 +915,109 @@ function countResourcesInSubjects(subjects) {
   }, 0);
 }
 
-function renderStudentResourceCategories() {
+
+function getResourceModuleKey(moduleGroup) {
+  const rawId = moduleGroup && (moduleGroup.moduleid || moduleGroup.ModuleId || moduleGroup.ModuleID || moduleGroup.id || "");
+  const rawName = moduleGroup && (moduleGroup.modulename || moduleGroup.ModuleName || moduleGroup.name || "General");
+  const id = String(rawId || "").trim();
+  const name = String(rawName || "General").trim();
+  return id ? `id:${id.toUpperCase()}` : `name:${name.toUpperCase()}`;
+}
+
+function getResourceModuleName(moduleGroup) {
+  return String(moduleGroup && (moduleGroup.modulename || moduleGroup.ModuleName || moduleGroup.name) || "General").trim() || "General";
+}
+
+function buildStudentResourceModuleSummaries() {
+  const moduleMap = new Map();
+
+  STUDENT_RESOURCE_CATEGORIES.forEach(category => {
+    buildMediaResourceGroups(category).forEach(subjectGroup => {
+      (subjectGroup.modules || []).forEach(moduleGroup => {
+        const key = getResourceModuleKey(moduleGroup);
+        const name = getResourceModuleName(moduleGroup);
+        const count = (moduleGroup.rows || []).length;
+
+        if (!moduleMap.has(key)) {
+          moduleMap.set(key, {
+            key,
+            name,
+            total: 0,
+            categoryCounts: {}
+          });
+        }
+
+        const summary = moduleMap.get(key);
+        summary.total += count;
+        summary.categoryCounts[category.key] = (summary.categoryCounts[category.key] || 0) + count;
+      });
+    });
+  });
+
+  return Array.from(moduleMap.values()).sort((a, b) => {
+    return String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+      numeric: true,
+      sensitivity: "base"
+    });
+  });
+}
+
+function renderStudentResourceModules() {
   const container = document.getElementById("student-resource-subject-list");
+  if (!container) return;
+
+  currentStudentResourceMode = "";
+  currentStudentResourceModuleKey = "";
+  currentStudentResourceModuleName = "";
+
+  const modules = buildStudentResourceModuleSummaries();
+
+  if (modules.length === 0) {
+    container.innerHTML = `<p class="helper-text">No resources are available yet.</p>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="resource-module-button-grid">
+      ${modules.map(module => {
+        const countLabel = module.total === 1 ? "1 item" : `${module.total} items`;
+        return `
+          <button class="resource-module-button" onclick="openStudentResourceModule('${escapeForAttribute(module.key)}')">
+            <span class="resource-module-button-title">${escapeHtml(module.name)}</span>
+            <span class="resource-count-pill">${escapeHtml(countLabel)}</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function openStudentResourceModule(moduleKey) {
+  const modules = buildStudentResourceModuleSummaries();
+  const selectedModule = modules.find(module => module.key === moduleKey);
+
+  if (!selectedModule) {
+    alert("Module not found. Please reload resources.");
+    return;
+  }
+
+  currentStudentResourceModuleKey = selectedModule.key;
+  currentStudentResourceModuleName = selectedModule.name;
+
+  const title = document.getElementById("student-resource-media-title");
+  if (title) title.innerText = selectedModule.name;
+
+  showScreen("student-resources-media");
+  renderStudentResourceCategories(selectedModule);
+}
+
+function renderStudentResourceCategories(selectedModule = null) {
+  const container = selectedModule ? document.getElementById("student-resource-media-list") : document.getElementById("student-resource-subject-list");
 
   if (!container) return;
 
   const categoryButtons = STUDENT_RESOURCE_CATEGORIES.map(category => {
-    const count = countResourcesForCategory(category);
+    const count = selectedModule ? (selectedModule.categoryCounts[category.key] || 0) : countResourcesForCategory(category);
     const countLabel = count === 1 ? "1 item" : `${count} items`;
     const disabledClass = count === 0 ? " is-empty" : "";
     const disabledAttr = count === 0 ? " disabled" : "";
@@ -923,7 +1033,7 @@ function renderStudentResourceCategories() {
     `;
   }).join("");
 
-  const total = STUDENT_RESOURCE_CATEGORIES.reduce((sum, category) => sum + countResourcesForCategory(category), 0);
+  const total = STUDENT_RESOURCE_CATEGORIES.reduce((sum, category) => sum + (selectedModule ? (selectedModule.categoryCounts[category.key] || 0) : countResourcesForCategory(category)), 0);
 
   container.innerHTML = `
     <div class="resource-category-grid">
@@ -945,18 +1055,34 @@ function openStudentResourceCategory(categoryKey) {
 
   const title = document.getElementById("student-resource-detail-title");
   if (title) {
-    title.innerText = category.label;
+    title.innerText = currentStudentResourceModuleName ? `${currentStudentResourceModuleName} - ${category.label}` : category.label;
   }
 
   showScreen("student-resources-detail");
   renderStudentResourceCategoryDetail(category);
 }
 
+
+function filterResourceGroupsByCurrentModule(subjectGroups) {
+  if (!currentStudentResourceModuleKey) return subjectGroups;
+
+  return (subjectGroups || []).map(subjectGroup => {
+    const modules = (subjectGroup.modules || []).filter(moduleGroup => {
+      return getResourceModuleKey(moduleGroup) === currentStudentResourceModuleKey;
+    });
+
+    return {
+      ...subjectGroup,
+      modules
+    };
+  }).filter(subjectGroup => subjectGroup.modules.length > 0);
+}
+
 function renderStudentResourceCategoryDetail(category) {
   const container = document.getElementById("student-resource-detail-content");
   if (!container) return;
 
-  const subjectGroups = buildMediaResourceGroups(category);
+  const subjectGroups = filterResourceGroupsByCurrentModule(buildMediaResourceGroups(category));
 
   if (subjectGroups.length === 0) {
     container.innerHTML = `<p class="helper-text">No ${escapeHtml(category.label)} resources are available yet.</p>`;
