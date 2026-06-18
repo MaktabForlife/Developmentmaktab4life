@@ -2072,3 +2072,18 @@ button:active {
 .resource-subject-group .resource-module-block {
   margin-top: 6px;
 }
+
+
+
+/* Hide subject heading inside resource result pages */
+.resource-subject-group > h3 {
+  display: none;
+}
+
+.resource-subject-group {
+  margin-top: 0;
+}
+
+.resource-subject-group .resource-module-block {
+  margin-top: 0;
+}
