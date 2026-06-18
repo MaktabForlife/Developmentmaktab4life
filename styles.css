@@ -1986,3 +1986,35 @@ button:active {
 #student-resources-modules .resource-subject-button-grid {
   margin-top: 12px;
 }
+
+/* Shared Resources: admin view uses teal instead of student blue */
+.admin-theme .resource-category-button,
+.admin-theme .resource-subject-drill-button,
+.admin-theme .resource-arrow-btn,
+.admin-theme .resource-type-badge {
+  background: var(--teal-dark);
+}
+
+.admin-theme .student-resource-row,
+.admin-theme .resource-card {
+  border-left-color: var(--teal-dark);
+}
+
+.admin-theme .student-resource-title {
+  color: var(--teal-dark);
+}
+
+.admin-theme .resource-subject-group h3 {
+  border-bottom-color: var(--teal-dark);
+}
+
+.admin-theme .resource-module-heading {
+  background: rgba(0, 128, 128, 0.12);
+  color: var(--teal-dark);
+  border-left-color: var(--teal-dark);
+}
+
+.admin-theme .resource-count-pill {
+  color: var(--teal-dark);
+}
+
