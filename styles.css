@@ -561,6 +561,7 @@ button:active {
 
 .status-action {
   text-align: center;
+  color: #d0d0d0;
   cursor: pointer;
   font-size: 0.85rem;
 }
