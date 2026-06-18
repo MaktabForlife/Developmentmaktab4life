@@ -3497,3 +3497,14 @@ function escapeJs(value) {
     .replaceAll("\\", "\\\\")
     .replaceAll("'", "\\'");
 }
+
+function hideSplashScreen() {
+  const splash = document.getElementById("splashScreen");
+  if (!splash) return;
+
+  splash.classList.add("splash-hidden");
+
+  setTimeout(() => {
+    splash.remove();
+  }, 400);
+}
