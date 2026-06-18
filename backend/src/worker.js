@@ -415,7 +415,8 @@ async function submitAbsentAttendance(request, env) {
     action: "submitAbsentStudents",
     data: {
       date,
-      absentStudents
+    absentStudents,
+    adminid: authUser.adminid
     }
   });
 
