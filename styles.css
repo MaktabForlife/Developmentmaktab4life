@@ -2060,3 +2060,15 @@ button:active {
   font-weight: 600;
   letter-spacing: 0.04em;
 }
+
+
+/* Hide module headings only in resource screens */
+.resource-section .resource-module-heading,
+.resource-subject-group .resource-module-heading {
+  display: none;
+}
+
+.resource-section .resource-module-block,
+.resource-subject-group .resource-module-block {
+  margin-top: 6px;
+}
