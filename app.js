@@ -2073,7 +2073,8 @@ const manageStudentsState = {
   studentListLoading: false,
   selectedStudent: null,
   lastRegisteredStudent: null,
-  selectedStudentActiveDraft: true
+  selectedStudentActiveDraft: true,
+  studentDropdownOpen: false
 };
 
 function showManageStudents() {
@@ -2083,6 +2084,7 @@ function showManageStudents() {
   manageStudentsState.selectedStudent = null;
   manageStudentsState.lastRegisteredStudent = null;
   manageStudentsState.selectedStudentActiveDraft = true;
+  manageStudentsState.studentDropdownOpen = false;
   showScreen("manage-students-screen");
   renderManageStudentsScreen();
   loadStudentAssignmentOptions();
@@ -2110,11 +2112,14 @@ function setManageStudentsMode(mode) {
   manageStudentsState.lastRegisteredStudent = null;
 
   if (manageStudentsState.mode === "modify") {
+    manageStudentsState.selectedStudent = null;
+    manageStudentsState.studentDropdownOpen = false;
     renderManageStudentsScreen();
     loadManagedStudentList(false);
     return;
   }
 
+  manageStudentsState.studentDropdownOpen = false;
   renderManageStudentsScreen();
 }
 
@@ -2147,10 +2152,6 @@ function renderManageStudentsScreen() {
 }
 
 function renderRegisterStudentPanel() {
-  const resultHtml = manageStudentsState.lastRegisteredStudent
-    ? renderStudentMessageResult(manageStudentsState.lastRegisteredStudent, "registered")
-    : "";
-
   return `
     <div class="student-admin-card">
       <div class="student-admin-card-title">Register Student</div>
@@ -2190,7 +2191,6 @@ function renderRegisterStudentPanel() {
     </div>
 
     <div id="student-register-feedback" class="student-admin-feedback"></div>
-    ${resultHtml}
   `;
 }
 
@@ -2349,49 +2349,101 @@ async function submitRegisterStudent(confirmDuplicate) {
   }
 
   manageStudentsState.lastRegisteredStudent = normalizeManagedStudent(result);
+  showScreen("manage-students-result-screen");
+  renderManageStudentResultScreen("registered");
+}
+
+function renderManageStudentResultScreen(context) {
+  const container = document.getElementById("manage-students-result-content");
+  if (!container) return;
+
+  const student = manageStudentsState.lastRegisteredStudent || manageStudentsState.selectedStudent;
+
+  if (!student) {
+    container.innerHTML = `<p class="helper-text">No student selected.</p>`;
+    return;
+  }
+
+  const actionButtons = context === "registered"
+    ? `
+      <div class="student-admin-action-grid two-col">
+        <button type="button" onclick="registerAnotherManagedStudent()">Register Another Student</button>
+        <button type="button" onclick="showScreen('admin-home')">Exit to Dashboard</button>
+      </div>
+    `
+    : `
+      <div class="student-admin-action-grid two-col">
+        <button type="button" onclick="backToManagedStudentList()">Back to Student List</button>
+        <button type="button" onclick="showScreen('admin-home')">Exit to Dashboard</button>
+      </div>
+    `;
+
+  container.innerHTML = `
+    ${renderStudentMessageResult(student, context || "registered")}
+    ${actionButtons}
+  `;
+}
+
+function registerAnotherManagedStudent() {
+  manageStudentsState.mode = "register";
+  manageStudentsState.lastRegisteredStudent = null;
+  manageStudentsState.selectedStudent = null;
+  showScreen("manage-students-screen");
   renderManageStudentsScreen();
 }
 
-function renderModifyStudentPanel() {
-  const selectedHtml = manageStudentsState.selectedStudent
-    ? renderSelectedStudentEditor()
-    : "";
+function backToManagedStudentList() {
+  manageStudentsState.mode = "modify";
+  manageStudentsState.selectedStudent = null;
+  showScreen("manage-students-screen");
+  renderManageStudentsScreen();
+  if (!manageStudentsState.studentListLoaded) {
+    loadManagedStudentList(false);
+  }
+}
 
+function renderModifyStudentPanel() {
   const listHtml = renderManagedStudentList();
   const loadingText = manageStudentsState.studentListLoading
     ? `<p class="student-admin-help">Loading student list...</p>`
     : "";
+  const shownCount = manageStudentsState.searchResults.length;
+  const totalCount = manageStudentsState.allStudents.length;
+  const dropdownLabel = manageStudentsState.studentDropdownOpen ? "▲" : "▼";
 
   return `
-    <div class="student-admin-card">
+    <div class="student-admin-card student-search-panel">
       <div class="student-admin-card-title">Find Student</div>
       <label class="student-admin-label" for="student-search-query">Search by name or WhatsApp last 6</label>
-      <input
-        id="student-search-query"
-        type="text"
-        placeholder="Type a name or last 6 digits"
-        autocomplete="off"
-        value="${escapeAttribute(manageStudentsState.searchQuery || "")}"
-        oninput="filterManagedStudentsFromInput()"
-        onkeydown="handleStudentSearchKey(event)"
-      />
-      <div class="student-admin-action-grid two-col compact-actions">
-        <button type="button" onclick="searchManagedStudents()">Search</button>
-        <button type="button" onclick="loadManagedStudentList(true)">Refresh List</button>
-      </div>
-      <div id="student-search-feedback" class="student-admin-feedback"></div>
-      ${loadingText}
-    </div>
 
-    <div class="student-admin-card student-list-card">
-      <div class="student-admin-card-title">Student List</div>
-      <p class="student-admin-help">Scroll the list or use search. Students are grouped by group and sorted alphabetically.</p>
-      <div class="managed-student-list">
+      <div class="student-search-dropdown-row">
+        <input
+          id="student-search-query"
+          type="text"
+          placeholder="Type a name or last 6 digits"
+          autocomplete="off"
+          value="${escapeAttribute(manageStudentsState.searchQuery || "")}"
+          oninput="filterManagedStudentsFromInput()"
+          onkeydown="handleStudentSearchKey(event)"
+        />
+        <button
+          type="button"
+          class="student-search-arrow-btn"
+          onclick="toggleManagedStudentDropdown()"
+          aria-label="Show student list"
+        >${dropdownLabel}</button>
+      </div>
+
+      <p class="student-admin-help">Tap the arrow to open the student list, or type to filter.</p>
+      <div id="student-search-feedback" class="student-admin-feedback">
+        ${manageStudentsState.studentListLoaded ? `${shownCount} of ${totalCount} student${totalCount === 1 ? "" : "s"} shown.` : ""}
+      </div>
+      ${loadingText}
+
+      <div class="student-search-dropdown ${manageStudentsState.studentDropdownOpen ? "is-open" : ""}">
         ${listHtml}
       </div>
     </div>
-
-    ${selectedHtml}
   `;
 }
 
@@ -2478,13 +2530,9 @@ function renderManagedStudentList() {
     }
 
     html += `
-      <button type="button" class="student-search-card" onclick="selectManagedStudentByUniqueId('${escapeJsString(student.uniqueid)}')">
-        <span class="attendance-student-avatar">${escapeHtml(getInitials(student.username))}</span>
-        <span class="student-search-main">
-          <strong>${escapeHtml(student.username || "Student")}</strong>
-          <small>WhatsApp ${escapeHtml(student.whatsapp6 || "-")}</small>
-        </span>
-        <span class="student-status-badge ${student.active ? "is-active" : "is-inactive"}">${student.active ? "Active" : "Inactive"}</span>
+      <button type="button" class="student-search-row" onclick="selectManagedStudentByUniqueId('${escapeJsString(student.uniqueid)}')">
+        <span class="student-search-row-name">${escapeHtml(student.username || "Student")}</span>
+        <span class="student-search-row-number">${escapeHtml(student.whatsapp6 || "------")}</span>
       </button>
     `;
   });
@@ -2492,10 +2540,22 @@ function renderManagedStudentList() {
   return html;
 }
 
+function toggleManagedStudentDropdown() {
+  manageStudentsState.studentDropdownOpen = !manageStudentsState.studentDropdownOpen;
+
+  if (!manageStudentsState.studentListLoaded && !manageStudentsState.studentListLoading) {
+    loadManagedStudentList(false);
+    return;
+  }
+
+  renderManageStudentsScreen();
+}
+
 function filterManagedStudentsFromInput() {
   const input = document.getElementById("student-search-query");
   const query = input ? input.value : "";
   manageStudentsState.searchQuery = query;
+  manageStudentsState.studentDropdownOpen = true;
   applyManagedStudentFilter(query);
   updateManagedStudentListOnly();
 }
@@ -2579,9 +2639,11 @@ function selectManagedStudentByUniqueId(uniqueid) {
 
   if (!student) return;
 
-  manageStudentsState.selectedStudent = student;
-  manageStudentsState.selectedStudentActiveDraft = student.active === true;
-  renderManageStudentsScreen();
+  manageStudentsState.selectedStudent = normalizeManagedStudent(student);
+  manageStudentsState.selectedStudentActiveDraft = manageStudentsState.selectedStudent.active === true;
+  manageStudentsState.studentDropdownOpen = false;
+  showScreen("manage-student-edit-screen");
+  renderManagedStudentEditScreen();
 }
 
 function selectManagedStudent(index) {
@@ -2589,9 +2651,23 @@ function selectManagedStudent(index) {
 
   if (!student) return;
 
-  manageStudentsState.selectedStudent = student;
-  manageStudentsState.selectedStudentActiveDraft = student.active === true;
-  renderManageStudentsScreen();
+  manageStudentsState.selectedStudent = normalizeManagedStudent(student);
+  manageStudentsState.selectedStudentActiveDraft = manageStudentsState.selectedStudent.active === true;
+  manageStudentsState.studentDropdownOpen = false;
+  showScreen("manage-student-edit-screen");
+  renderManagedStudentEditScreen();
+}
+
+function renderManagedStudentEditScreen() {
+  const container = document.getElementById("manage-student-edit-content");
+  if (!container) return;
+
+  if (!manageStudentsState.selectedStudent) {
+    container.innerHTML = `<p class="helper-text">No student selected.</p>`;
+    return;
+  }
+
+  container.innerHTML = renderSelectedStudentEditor();
 }
 
 function renderSelectedStudentEditor() {
@@ -2599,12 +2675,11 @@ function renderSelectedStudentEditor() {
 
   return `
     <div class="student-admin-card selected-student-card">
-      <div class="student-admin-card-title">Modify Student</div>
-      <div class="selected-student-heading">
-        <span class="attendance-student-avatar">${escapeHtml(getInitials(student.username))}</span>
+      <div class="student-admin-card-title">Selected Student</div>
+      <div class="selected-student-heading compact-selected-student-heading">
         <div>
           <strong>${escapeHtml(student.username || "Student")}</strong>
-          <small>Current WhatsApp last 6: ${escapeHtml(student.whatsapp6 || "-")}</small>
+          <small>${escapeHtml(student.whatsapp6 || "------")}</small>
         </div>
       </div>
 
@@ -2618,17 +2693,15 @@ function renderSelectedStudentEditor() {
       <label class="student-admin-label" for="student-edit-group">Group</label>
       <input id="student-edit-group" class="student-prefilled-input" type="number" inputmode="numeric" min="1" value="${escapeAttribute(student.classgroup || DEFAULT_STUDENT_GROUP)}" />
 
-      <button
-        type="button"
-        class="student-active-toggle ${manageStudentsState.selectedStudentActiveDraft ? "is-active" : "is-inactive"}"
-        onclick="toggleSelectedStudentActive()"
-      >
-        ${manageStudentsState.selectedStudentActiveDraft ? "Active — tap to make inactive" : "Inactive — tap to make active"}
-      </button>
+      <label class="student-admin-label" for="student-edit-active">Active Status</label>
+      <select id="student-edit-active" class="student-prefilled-input">
+        <option value="true" ${student.active ? "selected" : ""}>Active</option>
+        <option value="false" ${!student.active ? "selected" : ""}>Inactive</option>
+      </select>
     </div>
 
     <div class="student-admin-action-grid two-col">
-      <button type="button" onclick="saveManagedStudentChanges()">Save Changes</button>
+      <button type="button" onclick="saveManagedStudentChanges()">Confirm Changes</button>
       <button type="button" onclick="resetManagedStudentPin()">Reset PIN</button>
     </div>
 
@@ -2660,6 +2733,8 @@ async function saveManagedStudentChanges() {
   const username = document.getElementById("student-edit-name").value.trim();
   const whatsappRaw = document.getElementById("student-edit-whatsapp").value.trim();
   const classgroup = document.getElementById("student-edit-group").value.trim() || String(DEFAULT_STUDENT_GROUP);
+  const activeSelect = document.getElementById("student-edit-active");
+  const active = activeSelect ? activeSelect.value === "true" : student.active === true;
 
   if (!username) {
     alert("Name cannot be empty.");
@@ -2670,7 +2745,7 @@ async function saveManagedStudentChanges() {
     uniqueid: student.uniqueid,
     username,
     classgroup,
-    active: manageStudentsState.selectedStudentActiveDraft === true
+    active
   };
 
   if (whatsappRaw) {
@@ -2712,7 +2787,7 @@ async function saveManagedStudentChanges() {
   });
 
   applyManagedStudentFilter(manageStudentsState.searchQuery || "");
-  renderManageStudentsScreen();
+  renderManagedStudentEditScreen();
 
   const newFeedback = document.getElementById("student-edit-feedback");
   if (newFeedback) newFeedback.textContent = "Student changes saved.";
