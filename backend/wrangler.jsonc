@@ -1,6 +1,6 @@
 
 {
-  "name": "developmentm4lworker",
+  "name": "rebootworker",
   "main": "src/worker.js",
   "compatibility_date": "2026-06-01",
   "vars": {
