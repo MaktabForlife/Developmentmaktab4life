@@ -2519,3 +2519,347 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   }
 }
 
+
+/* =========================
+   Manage Students - modern mobile UI
+========================= */
+
+.student-admin-screen {
+  background: #f7fafa;
+  padding: 18px 14px;
+}
+
+.student-admin-modern-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.student-admin-modern-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.student-admin-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 128, 128, 0.12);
+  border-radius: 18px;
+  padding: 8px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.07);
+  margin-bottom: 14px;
+}
+
+.student-admin-mode-btn {
+  min-height: 46px;
+  border-radius: 14px;
+  box-shadow: none;
+  background: #e5e4e2;
+  color: #305050;
+}
+
+.student-admin-mode-btn.is-active {
+  background: var(--teal-dark);
+  color: var(--white);
+}
+
+.student-admin-card,
+.student-admin-result-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 128, 128, 0.12);
+  border-radius: 18px;
+  padding: 15px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.student-admin-card-title {
+  color: var(--teal-dark);
+  font-weight: 900;
+  font-size: 1.08rem;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.student-admin-label {
+  display: block;
+  color: #4f6666;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.student-admin-help,
+.student-admin-feedback {
+  color: #666;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  margin: 4px 0 0;
+  text-align: left;
+}
+
+.student-admin-feedback {
+  color: var(--teal-dark);
+  font-weight: 800;
+  min-height: 20px;
+  margin: 10px 0;
+}
+
+.student-admin-radio-row,
+.student-subject-check-row,
+.student-module-check-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  color: #14313a;
+  font-weight: 750;
+  margin: 8px 0;
+}
+
+.student-admin-radio-row input,
+.student-subject-check-row input,
+.student-module-check-row input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--teal-dark);
+}
+
+.student-assignment-options {
+  margin-top: 12px;
+}
+
+.student-assignment-subject-card {
+  background: #f7fafa;
+  border: 1px solid rgba(0, 128, 128, 0.12);
+  border-left: 6px solid var(--teal-dark);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.student-subject-check-row {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.student-module-check-list {
+  display: grid;
+  gap: 7px;
+  margin-left: 8px;
+}
+
+.student-module-check-row {
+  grid-template-columns: auto 1fr auto;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 9px;
+  margin: 0;
+  font-size: 0.94rem;
+  border: 1px solid rgba(0, 128, 128, 0.08);
+}
+
+.student-module-check-row small {
+  color: #667;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.student-admin-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  margin: 12px 0 14px;
+}
+
+.student-admin-action-grid.two-col,
+.student-admin-action-grid.three-col {
+  grid-template-columns: 1fr 1fr;
+}
+
+.student-admin-action-grid.three-col button:last-child {
+  grid-column: 1 / -1;
+}
+
+.student-link-box {
+  background: #e5e4e2;
+  color: #14313a;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  border-left: 5px solid var(--teal-dark);
+}
+
+.student-message-preview {
+  margin-top: 12px;
+  background: #f7fafa;
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(0, 128, 128, 0.10);
+}
+
+.student-message-preview summary {
+  color: var(--teal-dark);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.student-message-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-main);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: #333;
+  margin: 10px 0 0;
+}
+
+.student-search-results {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.student-search-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  background: #ffffff;
+  color: #14313a;
+  text-align: left;
+  border: 1px solid rgba(0, 128, 128, 0.12);
+  border-radius: 17px;
+  padding: 12px;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.06);
+}
+
+.student-search-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.student-search-main strong {
+  overflow-wrap: anywhere;
+}
+
+.student-search-main small {
+  color: #666;
+  font-weight: 700;
+}
+
+.student-status-badge {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.student-status-badge.is-active {
+  background: #eaf8ed;
+  color: #16821f;
+}
+
+.student-status-badge.is-inactive {
+  background: #fff0f1;
+  color: #c01832;
+}
+
+.selected-student-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f7fafa;
+  border-radius: 15px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.selected-student-heading div {
+  display: grid;
+  gap: 3px;
+}
+
+.selected-student-heading small {
+  color: #666;
+  font-weight: 700;
+}
+
+.student-active-toggle {
+  margin-top: 10px;
+  box-shadow: none;
+}
+
+.student-active-toggle.is-active {
+  background: #eaf8ed;
+  color: #16821f;
+}
+
+.student-active-toggle.is-inactive {
+  background: #fff0f1;
+  color: #c01832;
+}
+
+@media (max-width: 520px) {
+  .student-admin-screen {
+    padding: 16px 12px;
+  }
+
+  .student-admin-modern-header h2 {
+    font-size: clamp(1.75rem, 8vw, 2.35rem);
+  }
+
+  .student-admin-modern-header .small-btn {
+    min-width: 82px;
+  }
+
+  .student-admin-card,
+  .student-admin-result-card {
+    padding: 13px;
+    border-radius: 17px;
+  }
+
+  .student-admin-action-grid.two-col,
+  .student-admin-action-grid.three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .student-admin-action-grid.three-col button:last-child {
+    grid-column: auto;
+  }
+
+  .student-search-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .student-status-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .student-module-check-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .student-module-check-row small {
+    grid-column: 2;
+  }
+}

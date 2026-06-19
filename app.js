@@ -1,4 +1,6 @@
 const API_BASE = "https://rebootworker.maktab4life.workers.dev";
+const STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktab4life.org/student/";
+const DEFAULT_STUDENT_GROUP = 1;
 
 const state = {
   portalType: null,
@@ -2054,6 +2056,645 @@ function countResourcesForSubject(subject) {
     : 0;
 
   return subjectResources + taskResources;
+}
+
+
+/* =========================
+   MANAGE STUDENTS UI
+========================= */
+
+const manageStudentsState = {
+  mode: "register",
+  assignmentOptions: null,
+  searchResults: [],
+  selectedStudent: null,
+  lastRegisteredStudent: null,
+  selectedStudentActiveDraft: true
+};
+
+function showManageStudents() {
+  manageStudentsState.mode = "register";
+  manageStudentsState.searchResults = [];
+  manageStudentsState.selectedStudent = null;
+  manageStudentsState.lastRegisteredStudent = null;
+  manageStudentsState.selectedStudentActiveDraft = true;
+  showScreen("manage-students-screen");
+  renderManageStudentsScreen();
+  loadStudentAssignmentOptions();
+}
+
+async function loadStudentAssignmentOptions() {
+  if (manageStudentsState.assignmentOptions) {
+    renderManageStudentsScreen();
+    return;
+  }
+
+  const result = await apiPost("/api/admin/students/assignment-options", {}, state.token);
+
+  if (result.success) {
+    manageStudentsState.assignmentOptions = result.subjects || [];
+  } else {
+    manageStudentsState.assignmentOptions = [];
+  }
+
+  renderManageStudentsScreen();
+}
+
+function setManageStudentsMode(mode) {
+  manageStudentsState.mode = mode === "modify" ? "modify" : "register";
+  manageStudentsState.lastRegisteredStudent = null;
+  renderManageStudentsScreen();
+}
+
+function renderManageStudentsScreen() {
+  const container = document.getElementById("manage-students-content");
+  if (!container) return;
+
+  const isRegister = manageStudentsState.mode === "register";
+
+  container.innerHTML = `
+    <div class="student-admin-mode-toggle" role="tablist" aria-label="Student management mode">
+      <button
+        type="button"
+        class="student-admin-mode-btn ${isRegister ? "is-active" : ""}"
+        onclick="setManageStudentsMode('register')"
+      >
+        Register
+      </button>
+      <button
+        type="button"
+        class="student-admin-mode-btn ${!isRegister ? "is-active" : ""}"
+        onclick="setManageStudentsMode('modify')"
+      >
+        Modify
+      </button>
+    </div>
+
+    ${isRegister ? renderRegisterStudentPanel() : renderModifyStudentPanel()}
+  `;
+}
+
+function renderRegisterStudentPanel() {
+  const resultHtml = manageStudentsState.lastRegisteredStudent
+    ? renderStudentMessageResult(manageStudentsState.lastRegisteredStudent, "registered")
+    : "";
+
+  return `
+    <div class="student-admin-card">
+      <div class="student-admin-card-title">Register Student</div>
+      <label class="student-admin-label" for="student-register-name">Name</label>
+      <input id="student-register-name" type="text" placeholder="Student name" autocomplete="off" />
+
+      <label class="student-admin-label" for="student-register-whatsapp">WhatsApp Number</label>
+      <input id="student-register-whatsapp" type="tel" inputmode="tel" placeholder="Full WhatsApp number" autocomplete="off" />
+      <p class="student-admin-help">Only the last 6 digits will be stored.</p>
+
+      <label class="student-admin-label" for="student-register-group">Group</label>
+      <input id="student-register-group" type="number" inputmode="numeric" min="1" value="${DEFAULT_STUDENT_GROUP}" />
+    </div>
+
+    <div class="student-admin-card">
+      <div class="student-admin-card-title">Task Assignment</div>
+
+      <label class="student-admin-radio-row">
+        <input type="radio" name="student-assignment-mode" value="all" checked onchange="toggleStudentAssignmentMode()" />
+        <span>Assign all active subjects and modules</span>
+      </label>
+
+      <label class="student-admin-radio-row">
+        <input type="radio" name="student-assignment-mode" value="selected" onchange="toggleStudentAssignmentMode()" />
+        <span>Select subjects/modules manually</span>
+      </label>
+
+      <div id="student-assignment-options" class="student-assignment-options hidden">
+        ${renderStudentAssignmentOptions()}
+      </div>
+    </div>
+
+    <div class="student-admin-action-grid">
+      <button type="button" onclick="submitRegisterStudent(false)">Register Student</button>
+    </div>
+
+    <div id="student-register-feedback" class="student-admin-feedback"></div>
+    ${resultHtml}
+  `;
+}
+
+function renderStudentAssignmentOptions() {
+  const subjects = manageStudentsState.assignmentOptions;
+
+  if (!subjects) {
+    return `<p class="helper-text">Loading subjects and modules...</p>`;
+  }
+
+  if (subjects.length === 0) {
+    return `<p class="helper-text">No active subject/module tasks found.</p>`;
+  }
+
+  return subjects.map(subject => {
+    const subjectId = String(subject.subjectid || "");
+    const subjectName = subject.subjectname || subjectId;
+    const modules = Array.isArray(subject.modules) ? subject.modules : [];
+
+    const moduleRows = modules.map(module => {
+      const moduleId = String(module.moduleid || "");
+      const moduleName = module.modulename || moduleId || "General";
+      const taskCount = Number(module.taskCount || 0);
+
+      return `
+        <label class="student-module-check-row">
+          <input
+            type="checkbox"
+            class="student-module-checkbox"
+            data-subjectid="${escapeHtml(subjectId)}"
+            data-moduleid="${escapeHtml(moduleId)}"
+          />
+          <span>${escapeHtml(moduleName)}</span>
+          <small>${taskCount} task${taskCount === 1 ? "" : "s"}</small>
+        </label>
+      `;
+    }).join("");
+
+    return `
+      <div class="student-assignment-subject-card">
+        <label class="student-subject-check-row">
+          <input type="checkbox" onchange="toggleStudentSubjectModules('${escapeJsString(subjectId)}', this.checked)" />
+          <span>${escapeHtml(subjectName)}</span>
+        </label>
+        <div class="student-module-check-list">
+          ${moduleRows}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleStudentAssignmentMode() {
+  const selectedMode = getSelectedStudentAssignmentMode();
+  const optionsBox = document.getElementById("student-assignment-options");
+
+  if (!optionsBox) return;
+
+  if (selectedMode === "selected") {
+    optionsBox.classList.remove("hidden");
+  } else {
+    optionsBox.classList.add("hidden");
+  }
+}
+
+function getSelectedStudentAssignmentMode() {
+  const selected = document.querySelector('input[name="student-assignment-mode"]:checked');
+  return selected ? selected.value : "all";
+}
+
+function toggleStudentSubjectModules(subjectId, checked) {
+  document.querySelectorAll(`.student-module-checkbox[data-subjectid="${cssEscapeValue(subjectId)}"]`).forEach(input => {
+    input.checked = checked;
+  });
+}
+
+function collectSelectedStudentModules() {
+  return Array.from(document.querySelectorAll(".student-module-checkbox:checked")).map(input => ({
+    subjectid: input.dataset.subjectid || "",
+    moduleid: input.dataset.moduleid || ""
+  })).filter(item => item.subjectid && item.moduleid);
+}
+
+async function submitRegisterStudent(confirmDuplicate) {
+  const nameInput = document.getElementById("student-register-name");
+  const whatsappInput = document.getElementById("student-register-whatsapp");
+  const groupInput = document.getElementById("student-register-group");
+  const feedback = document.getElementById("student-register-feedback");
+
+  const username = nameInput ? nameInput.value.trim() : "";
+  const whatsapp6 = getLastSixDigits(whatsappInput ? whatsappInput.value : "");
+  const classgroup = groupInput && groupInput.value.trim() ? groupInput.value.trim() : String(DEFAULT_STUDENT_GROUP);
+  const assignmentMode = getSelectedStudentAssignmentMode();
+  const selectedModules = assignmentMode === "selected" ? collectSelectedStudentModules() : [];
+
+  if (!username) {
+    alert("Enter the student's name.");
+    return;
+  }
+
+  if (!/^\d{6}$/.test(whatsapp6)) {
+    alert("Enter a WhatsApp number with at least 6 digits.");
+    return;
+  }
+
+  if (assignmentMode === "selected" && selectedModules.length === 0) {
+    alert("Select at least one subject/module, or choose Assign all active subjects and modules.");
+    return;
+  }
+
+  if (feedback) {
+    feedback.textContent = "Registering student...";
+  }
+
+  const result = await apiPost("/api/admin/register-student", {
+    username,
+    whatsapp6,
+    classgroup,
+    confirmDuplicate: confirmDuplicate === true,
+    assignmentMode,
+    selectedModules
+  }, state.token);
+
+  if (result.duplicate) {
+    if (feedback) {
+      feedback.textContent = "Possible duplicate found.";
+    }
+
+    const duplicateText = (result.matches || [])
+      .map(match => `${match.username || "Student"} · Group ${match.classgroup || "-"} · WhatsApp ${match.whatsapp6 || "-"}`)
+      .join("\n");
+
+    const proceed = confirm(
+      "Possible duplicate student found:\n\n" +
+      duplicateText +
+      "\n\nRegister anyway?"
+    );
+
+    if (proceed) {
+      await submitRegisterStudent(true);
+    }
+
+    return;
+  }
+
+  if (!result.success) {
+    if (feedback) {
+      feedback.textContent = result.error || "Registration failed.";
+    }
+    return;
+  }
+
+  manageStudentsState.lastRegisteredStudent = normalizeManagedStudent(result);
+  renderManageStudentsScreen();
+}
+
+function renderModifyStudentPanel() {
+  const selectedHtml = manageStudentsState.selectedStudent
+    ? renderSelectedStudentEditor()
+    : "";
+
+  const resultRows = manageStudentsState.searchResults.map((student, index) => `
+    <button type="button" class="student-search-card" onclick="selectManagedStudent(${index})">
+      <span class="attendance-student-avatar">${escapeHtml(getInitials(student.username))}</span>
+      <span class="student-search-main">
+        <strong>${escapeHtml(student.username || "Student")}</strong>
+        <small>Group ${escapeHtml(student.classgroup || "-")} · WhatsApp ${escapeHtml(student.whatsapp6 || "-")}</small>
+      </span>
+      <span class="student-status-badge ${student.active ? "is-active" : "is-inactive"}">${student.active ? "Active" : "Inactive"}</span>
+    </button>
+  `).join("");
+
+  return `
+    <div class="student-admin-card">
+      <div class="student-admin-card-title">Search Student</div>
+      <label class="student-admin-label" for="student-search-query">Name or WhatsApp last 6</label>
+      <input id="student-search-query" type="text" placeholder="Search by name or last 6 digits" autocomplete="off" onkeydown="handleStudentSearchKey(event)" />
+      <button type="button" onclick="searchManagedStudents()">Search</button>
+      <div id="student-search-feedback" class="student-admin-feedback"></div>
+    </div>
+
+    <div class="student-search-results">
+      ${resultRows || ""}
+    </div>
+
+    ${selectedHtml}
+  `;
+}
+
+function handleStudentSearchKey(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    searchManagedStudents();
+  }
+}
+
+async function searchManagedStudents() {
+  const input = document.getElementById("student-search-query");
+  const feedback = document.getElementById("student-search-feedback");
+  const rawQuery = input ? input.value.trim() : "";
+  const whatsapp6 = getLastSixDigits(rawQuery);
+
+  if (!rawQuery) {
+    alert("Enter a name or WhatsApp last 6 digits.");
+    return;
+  }
+
+  if (feedback) {
+    feedback.textContent = "Searching...";
+  }
+
+  const result = await apiPost("/api/admin/students/search", {
+    query: rawQuery,
+    whatsapp6: whatsapp6.length === 6 ? whatsapp6 : ""
+  }, state.token);
+
+  if (!result.success) {
+    if (feedback) feedback.textContent = result.error || "Search failed.";
+    return;
+  }
+
+  manageStudentsState.searchResults = (result.students || []).map(normalizeManagedStudent);
+  manageStudentsState.selectedStudent = null;
+  manageStudentsState.selectedStudentActiveDraft = true;
+  renderManageStudentsScreen();
+
+  const newFeedback = document.getElementById("student-search-feedback");
+  if (newFeedback) {
+    newFeedback.textContent = `${manageStudentsState.searchResults.length} result${manageStudentsState.searchResults.length === 1 ? "" : "s"} found.`;
+  }
+}
+
+function selectManagedStudent(index) {
+  const student = manageStudentsState.searchResults[index];
+
+  if (!student) return;
+
+  manageStudentsState.selectedStudent = student;
+  manageStudentsState.selectedStudentActiveDraft = student.active === true;
+  renderManageStudentsScreen();
+}
+
+function renderSelectedStudentEditor() {
+  const student = manageStudentsState.selectedStudent;
+  const loginLink = buildStudentLoginLink(student.uniqueid);
+
+  return `
+    <div class="student-admin-card selected-student-card">
+      <div class="student-admin-card-title">Modify Student</div>
+      <div class="selected-student-heading">
+        <span class="attendance-student-avatar">${escapeHtml(getInitials(student.username))}</span>
+        <div>
+          <strong>${escapeHtml(student.username || "Student")}</strong>
+          <small>Current WhatsApp last 6: ${escapeHtml(student.whatsapp6 || "-")}</small>
+        </div>
+      </div>
+
+      <label class="student-admin-label" for="student-edit-name">Name</label>
+      <input id="student-edit-name" type="text" value="${escapeAttribute(student.username || "")}" />
+
+      <label class="student-admin-label" for="student-edit-whatsapp">New WhatsApp Number</label>
+      <input id="student-edit-whatsapp" type="tel" inputmode="tel" placeholder="Leave blank to keep current last 6" />
+      <p class="student-admin-help">Only enter this if the number has changed.</p>
+
+      <label class="student-admin-label" for="student-edit-group">Group</label>
+      <input id="student-edit-group" type="number" inputmode="numeric" min="1" value="${escapeAttribute(student.classgroup || DEFAULT_STUDENT_GROUP)}" />
+
+      <button
+        type="button"
+        class="student-active-toggle ${manageStudentsState.selectedStudentActiveDraft ? "is-active" : "is-inactive"}"
+        onclick="toggleSelectedStudentActive()"
+      >
+        ${manageStudentsState.selectedStudentActiveDraft ? "Active — tap to make inactive" : "Inactive — tap to make active"}
+      </button>
+    </div>
+
+    <div class="student-admin-action-grid two-col">
+      <button type="button" onclick="saveManagedStudentChanges()">Save Changes</button>
+      <button type="button" onclick="resetManagedStudentPin()">Reset PIN</button>
+    </div>
+
+    ${renderStudentMessageResult(student, "selected")}
+
+    <div id="student-edit-feedback" class="student-admin-feedback"></div>
+  `;
+}
+
+function toggleSelectedStudentActive() {
+  manageStudentsState.selectedStudentActiveDraft = !manageStudentsState.selectedStudentActiveDraft;
+
+  const button = document.querySelector(".student-active-toggle");
+  if (!button) return;
+
+  button.classList.toggle("is-active", manageStudentsState.selectedStudentActiveDraft);
+  button.classList.toggle("is-inactive", !manageStudentsState.selectedStudentActiveDraft);
+  button.textContent = manageStudentsState.selectedStudentActiveDraft
+    ? "Active — tap to make inactive"
+    : "Inactive — tap to make active";
+}
+
+async function saveManagedStudentChanges() {
+  const student = manageStudentsState.selectedStudent;
+  const feedback = document.getElementById("student-edit-feedback");
+
+  if (!student) return;
+
+  const username = document.getElementById("student-edit-name").value.trim();
+  const newWhatsappRaw = document.getElementById("student-edit-whatsapp").value.trim();
+  const classgroup = document.getElementById("student-edit-group").value.trim() || String(DEFAULT_STUDENT_GROUP);
+
+  if (!username) {
+    alert("Name cannot be empty.");
+    return;
+  }
+
+  const payload = {
+    uniqueid: student.uniqueid,
+    username,
+    classgroup,
+    active: manageStudentsState.selectedStudentActiveDraft === true
+  };
+
+  if (newWhatsappRaw) {
+    const whatsapp6 = getLastSixDigits(newWhatsappRaw);
+
+    if (!/^\d{6}$/.test(whatsapp6)) {
+      alert("Enter a WhatsApp number with at least 6 digits, or leave it blank.");
+      return;
+    }
+
+    payload.whatsapp6 = whatsapp6;
+  }
+
+  if (feedback) feedback.textContent = "Saving changes...";
+
+  const result = await apiPost("/api/admin/update-student", payload, state.token);
+
+  if (!result.success) {
+    if (feedback) feedback.textContent = result.error || "Could not save changes.";
+    return;
+  }
+
+  manageStudentsState.selectedStudent = normalizeManagedStudent({
+    ...student,
+    ...result,
+    active: payload.active,
+    whatsapp6: payload.whatsapp6 || student.whatsapp6
+  });
+
+  manageStudentsState.searchResults = manageStudentsState.searchResults.map(row => {
+    if (row.uniqueid === student.uniqueid) {
+      return manageStudentsState.selectedStudent;
+    }
+    return row;
+  });
+
+  renderManageStudentsScreen();
+
+  const newFeedback = document.getElementById("student-edit-feedback");
+  if (newFeedback) newFeedback.textContent = "Student changes saved.";
+}
+
+async function resetManagedStudentPin() {
+  const student = manageStudentsState.selectedStudent;
+
+  if (!student) return;
+
+  const proceed = confirm("Reset this student's PIN? They will create a new 4-digit PIN on next login.");
+  if (!proceed) return;
+
+  const result = await apiPost("/api/admin/reset-pin", {
+    uniqueid: student.uniqueid
+  }, state.token);
+
+  const feedback = document.getElementById("student-edit-feedback");
+
+  if (!result.success) {
+    if (feedback) feedback.textContent = result.error || "PIN reset failed.";
+    return;
+  }
+
+  if (feedback) {
+    feedback.textContent = "PIN reset successfully. The student can use the same link and create a new PIN.";
+  }
+}
+
+function renderStudentMessageResult(student, context) {
+  const normalized = normalizeManagedStudent(student);
+  const loginLink = buildStudentLoginLink(normalized.uniqueid);
+  const message = buildStudentWelcomeMessage(loginLink);
+  const assignment = normalized.assignment || {};
+  const assignmentLine = context === "registered"
+    ? `<p class="student-admin-help">Assigned ${Number(assignment.assignedCount || 0)} task${Number(assignment.assignedCount || 0) === 1 ? "" : "s"}.</p>`
+    : "";
+
+  return `
+    <div class="student-admin-result-card">
+      <div class="student-admin-card-title">${context === "registered" ? "Student Registered" : "Student Link"}</div>
+      <div class="student-link-box">${escapeHtml(loginLink)}</div>
+      ${assignmentLine}
+      <div class="student-admin-action-grid three-col">
+        <button type="button" onclick="copyStudentLoginLink('${escapeJsString(loginLink)}')">Copy Link</button>
+        <button type="button" onclick="copyStudentWelcomeMessage('${escapeJsString(loginLink)}')">Copy Message</button>
+        <button type="button" onclick="openStudentWhatsAppMessage('${escapeJsString(loginLink)}')">Open WhatsApp</button>
+      </div>
+      <details class="student-message-preview">
+        <summary>Message preview</summary>
+        <pre>${escapeHtml(message)}</pre>
+      </details>
+    </div>
+  `;
+}
+
+function normalizeManagedStudent(student) {
+  student = student || {};
+
+  return {
+    ...student,
+    studentid: student.studentid || student.StudentID || student.studentId || "",
+    username: student.username || student.Username || student.name || student.Name || "",
+    whatsapp6: String(student.whatsapp6 || student.WhatsAppLast6 || student.whatsappLast6 || "").trim(),
+    uniqueid: student.uniqueid || student.UniqueID || student.uniqueId || "",
+    classgroup: String(student.classgroup || student.ClassGroup || student.group || student.Group || DEFAULT_STUDENT_GROUP).trim(),
+    active: student.active === true || String(student.active).toLowerCase() === "true",
+    assignment: student.assignment || null
+  };
+}
+
+function buildStudentLoginLink(uniqueid) {
+  return STUDENT_LOGIN_BASE + String(uniqueid || "").trim();
+}
+
+function buildStudentWelcomeMessage(loginLink) {
+  return [
+    "Assalamu alaykum",
+    "",
+    "This is your link to your personal Maktab Resources access.",
+    "",
+    "1. The first time you log in, you will be asked to create your own 4-digit PIN.",
+    "",
+    "2. Use the PIN you created to log in immediately. Please remember this PIN for future access.",
+    "",
+    "3. Once you have logged in, you should add the app to your homescreen for easier access.",
+    "",
+    loginLink,
+    "",
+    "JazakAllah khayr"
+  ].join("\n");
+}
+
+async function copyStudentLoginLink(loginLink) {
+  await copyTextToClipboard(loginLink);
+  alert("Login link copied.");
+}
+
+async function copyStudentWelcomeMessage(loginLink) {
+  await copyTextToClipboard(buildStudentWelcomeMessage(loginLink));
+  alert("Message copied.");
+}
+
+function openStudentWhatsAppMessage(loginLink) {
+  const message = buildStudentWelcomeMessage(loginLink);
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+  window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+function getLastSixDigits(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.slice(-6);
+}
+
+function getInitials(value) {
+  const words = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
+}
+
+function escapeJsString(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "");
+}
+
+function cssEscapeValue(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(String(value || ""));
+  }
+
+  return String(value || "").replace(/"/g, "\\\"");
 }
 
 /* =========================

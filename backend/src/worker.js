@@ -63,6 +63,14 @@ if (url.pathname === "/api/attendance/students") {
   return updateStudentAdmin(request, env);
 }
 
+    if (url.pathname === "/api/admin/students/search") {
+      return searchStudentsAdmin(request, env);
+    }
+
+    if (url.pathname === "/api/admin/students/assignment-options") {
+      return getStudentAssignmentOptionsAdmin(request, env);
+    }
+
     
     if (url.pathname === "/api/admin/reset-pin") {
       return resetPin(request, env);
@@ -558,10 +566,12 @@ async function registerStudentAdmin(request, env) {
 
   const body = await request.json();
 
-  const username = body.username;
-  const whatsapp6 = body.whatsapp6;
-  const classgroup = body.classgroup;
+  const username = String(body.username || "").trim();
+  const whatsapp6 = String(body.whatsapp6 || "").replace(/\D/g, "").slice(-6);
+  const classgroup = String(body.classgroup || "1").trim();
   const confirmDuplicate = body.confirmDuplicate === true;
+  const assignmentMode = body.assignmentMode === "selected" ? "selected" : "all";
+  const selectedModules = Array.isArray(body.selectedModules) ? body.selectedModules : [];
 
   if (!username) {
     return json({ success: false, error: "Missing username" }, 400);
@@ -575,13 +585,22 @@ async function registerStudentAdmin(request, env) {
     return json({ success: false, error: "Missing classgroup" }, 400);
   }
 
+  if (assignmentMode === "selected" && selectedModules.length === 0) {
+    return json({ success: false, error: "Select at least one subject/module or choose Assign all" }, 400);
+  }
+
+  const registeredby = permission.user.username || permission.user.adminid || "";
+
   const result = await callAppsScript(env, {
     action: "registerStudent",
     data: {
       username,
       whatsapp6,
       classgroup,
-      confirmDuplicate
+      confirmDuplicate,
+      registeredby,
+      assignmentMode,
+      selectedModules
     }
   });
 
@@ -645,6 +664,46 @@ async function updateStudentAdmin(request, env) {
   const result = await callAppsScript(env, {
     action: "updateStudent",
     data: updateData
+  });
+
+  return json(result);
+}
+
+async function searchStudentsAdmin(request, env) {
+  const permission = await requireAdminOrSenior(request, env);
+
+  if (!permission.ok) {
+    return permission.response;
+  }
+
+  const body = await request.json();
+  const query = String(body.query || "").trim();
+  const whatsapp6 = String(body.whatsapp6 || "").replace(/\D/g, "").slice(-6);
+
+  if (!query && !whatsapp6) {
+    return json({ success: false, error: "Enter a name or WhatsApp last 6 digits" }, 400);
+  }
+
+  const result = await callAppsScript(env, {
+    action: "searchStudents",
+    data: {
+      query,
+      whatsapp6
+    }
+  });
+
+  return json(result);
+}
+
+async function getStudentAssignmentOptionsAdmin(request, env) {
+  const permission = await requireAdminOrSenior(request, env);
+
+  if (!permission.ok) {
+    return permission.response;
+  }
+
+  const result = await callAppsScript(env, {
+    action: "getStudentAssignmentOptions"
   });
 
   return json(result);

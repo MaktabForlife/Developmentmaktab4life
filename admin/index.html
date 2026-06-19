@@ -124,6 +124,7 @@
       </div>
 
       <div class="list-stack">
+        <button class="list-btn" onclick="showManageStudents()">Manage Students</button>
         <button class="list-btn" onclick="showProgressReport()">Progress Tracker</button>
         <button class="list-btn" onclick="showSubjectsScreen()">Subjects</button>
          <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
@@ -258,6 +259,19 @@
     
 
 
+
+
+    <!-- MANAGE STUDENTS -->
+    <section id="manage-students-screen" class="screen admin-theme student-admin-screen">
+      <div class="student-admin-modern-header">
+        <h2>Manage Students</h2>
+        <button class="small-btn" onclick="showScreen('admin-academics')">Back</button>
+      </div>
+
+      <div id="manage-students-content">
+        <p class="helper-text">Loading student management...</p>
+      </div>
+    </section>
     
     <section id="subjects-screen" class="screen admin-theme">
          <div class="nav-header">
