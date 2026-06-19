@@ -667,7 +667,8 @@ let currentStudentResourceModuleName = "";
 let studentResourceViewMode = "student";
 const RESOURCE_MODULE_DRILLDOWN_THRESHOLD = 8;
 
-const PDFJS_VIEWER_PATH = "/pdfjs/web/viewer.html";
+const PDFJS_VIEWER_PATH = "/pdf-viewer/web/viewer.html";
+
 let previousPdfScreenId = "";
 let currentPdfDirectLink = "";
 
