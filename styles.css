@@ -3251,52 +3251,94 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   }
 }
 
-/* Manage Students: compact icon buttons on WhatsApp message result pages */
-.student-result-icon-actions {
+/* Manage Students: inline icon buttons on WhatsApp message result pages */
+.student-link-copy-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.student-link-box-with-copy {
+  padding-right: 48px;
+}
+
+.student-message-label-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 18px;
-  margin: 14px 0 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 5px;
 }
 
-.student-result-icon-action {
-  display: grid;
-  justify-items: center;
-  gap: 5px;
-  min-width: 66px;
+.student-message-label-row .student-admin-label {
+  margin: 0;
 }
 
-.student-icon-action-btn {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
+.student-inline-icon-btn,
+.student-whatsapp-logo-btn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
   padding: 0;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 128, 128, 0.22);
-  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--teal-dark);
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.10);
+  box-shadow: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.student-icon-action-btn:active {
+.student-inline-icon-btn:hover,
+.student-whatsapp-logo-btn:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-theme .student-inline-icon-btn,
+.admin-theme .student-whatsapp-logo-btn {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--teal-dark);
+}
+
+.admin-theme .student-inline-icon-btn:hover,
+.admin-theme .student-whatsapp-logo-btn:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.student-inline-icon-btn:active,
+.student-whatsapp-logo-btn:active {
   transform: scale(0.94);
 }
 
-.student-icon-action-btn .student-action-icon {
+.student-link-copy-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.student-link-copy-btn:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.student-inline-icon-btn .student-action-icon {
   width: 24px;
   height: 24px;
   object-fit: contain;
   display: block;
 }
 
-.student-icon-action-btn.whatsapp-icon-btn .whatsapp-action-icon {
-  width: 32px;
-  height: 32px;
+.student-whatsapp-logo-btn .whatsapp-action-icon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  display: block;
 }
 
 .student-action-icon-fallback:not(.hidden) {
@@ -3306,33 +3348,44 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   line-height: 1;
   font-size: 1.35rem;
   font-weight: 900;
+  color: var(--teal-dark);
 }
 
 .student-action-icon-fallback.whatsapp-fallback:not(.hidden) {
   color: #16821f;
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
+  font-size: 1.55rem;
 }
 
-.student-icon-caption {
-  color: #444;
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1.05;
-  text-align: center;
+.student-whatsapp-open-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 12px 0 4px;
+}
+
+.student-whatsapp-logo-btn {
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  min-height: 52px;
 }
 
 @media (max-width: 360px) {
-  .student-result-icon-actions {
-    gap: 10px;
+  .student-link-box-with-copy {
+    padding-right: 44px;
   }
 
-  .student-result-icon-action {
-    min-width: 58px;
+  .student-inline-icon-btn {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
   }
 
-  .student-icon-caption {
-    font-size: 0.68rem;
+  .student-whatsapp-logo-btn {
+    width: 50px;
+    min-width: 50px;
+    height: 50px;
+    min-height: 50px;
   }
 }
-
