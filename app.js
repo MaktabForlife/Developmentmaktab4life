@@ -227,9 +227,24 @@ async function checkStudent() {
 
     state.user = result.student;
 
-    document.getElementById("portal-title").innerText = "Reboot Your Maktab-mE Student Login";
-    document.getElementById("portal-subtitle").innerText =
-      `Welcome ${result.student.username}`;
+
+
+document.getElementById("portal-title").innerHTML = `
+  Student Login 
+`;
+
+document.getElementById("portal-subtitle").innerHTML = `
+  <span class="login-heading">Reboot Your Maktab-mE</span>
+  <span class="login-welcome">
+    Ahlan Wa Sahlan <br>
+    ${result.student.username}
+  </span>
+`;
+
+
+
+
+
 
     if (result.student.pinsetup === true) {
       document.getElementById("login-pin-box").classList.remove("hidden");
