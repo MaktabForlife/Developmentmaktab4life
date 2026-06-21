@@ -2630,6 +2630,13 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   accent-color: var(--primary);
 }
 
+.student-admin-radio-row input[type="radio"] {
+  display: inline-block;
+  appearance: auto;
+  accent-color: var(--primary);
+}
+
+
 .student-admin-radio-row:has(input:checked),
 .student-admin-radio-row.is-selected,
 .student-subject-check-row:has(input:checked),
