@@ -2887,8 +2887,8 @@ function renderSelectedStudentEditor() {
 
         <div class="student-edit-field-half">
           <label class="student-admin-label">Active Status</label>
-          <div class="student-status-radio-group" role="radiogroup" aria-label="Active Status">
-            <label class="student-status-radio-option ${manageStudentsState.selectedStudentActiveDraft === true ? "is-selected" : ""}">
+          <div class="student-admin-radio-group student-edit-status-radio-group" role="radiogroup" aria-label="Active Status">
+            <label class="student-admin-radio-row student-edit-status-radio ${manageStudentsState.selectedStudentActiveDraft === true ? "is-selected" : ""}">
               <input
                 type="radio"
                 name="student-edit-active"
@@ -2899,7 +2899,7 @@ function renderSelectedStudentEditor() {
               <span>Active</span>
             </label>
 
-            <label class="student-status-radio-option ${manageStudentsState.selectedStudentActiveDraft === true ? "" : "is-selected"}">
+            <label class="student-admin-radio-row student-edit-status-radio ${manageStudentsState.selectedStudentActiveDraft === true ? "" : "is-selected"}">
               <input
                 type="radio"
                 name="student-edit-active"
@@ -2927,7 +2927,7 @@ function renderSelectedStudentEditor() {
 function setStudentEditActiveStatus(isActive) {
   manageStudentsState.selectedStudentActiveDraft = isActive === true;
 
-  document.querySelectorAll(".student-status-radio-option").forEach(option => {
+  document.querySelectorAll(".student-edit-status-radio").forEach(option => {
     const input = option.querySelector("input");
     option.classList.toggle("is-selected", !!input && input.checked);
   });

@@ -2597,6 +2597,11 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   margin: 10px 0;
 }
 
+.student-admin-radio-group {
+  display: grid;
+  gap: 8px;
+}
+
 .student-admin-radio-row,
 .student-subject-check-row,
 .student-module-check-row {
@@ -2608,6 +2613,11 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   color: var(--text);
   font-weight: 750;
   margin: 8px 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
 }
 
 .student-admin-radio-row input,
@@ -2616,7 +2626,16 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   width: 20px;
   height: 20px;
   margin: 0;
+  padding: 0;
   accent-color: var(--primary);
+}
+
+.student-admin-radio-row:has(input:checked),
+.student-admin-radio-row.is-selected,
+.student-subject-check-row:has(input:checked),
+.student-module-check-row:has(input:checked) {
+  color: var(--primary);
+  font-weight: 900;
 }
 
 .student-assignment-options {
@@ -3296,59 +3315,29 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
 }
 
 
-/* Manage Students: active/inactive radio selector */
-.student-status-radio-group {
-  display: grid;
+/* Manage Students: active/inactive uses the shared text-only radio styling */
+.student-edit-status-radio-group {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   width: 100%;
   margin: 0;
 }
 
-.student-status-radio-option {
-  min-height: 52px;
-  padding: 10px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--primary-rgb), 0.22);
-  background: var(--surface-chip);
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  font-weight: 900;
-  line-height: 1.1;
-  cursor: pointer;
-  text-align: center;
-}
-
-.student-status-radio-option input {
-  width: 18px;
-  height: 18px;
+.student-edit-status-radio {
   margin: 0;
-  padding: 0;
-  accent-color: var(--primary);
-  flex: 0 0 auto;
-}
-
-.student-status-radio-option.is-selected {
-  background: var(--primary);
-  color: var(--text-inverse);
-  border-color: var(--primary);
-}
-
-.student-status-radio-option.is-selected input {
-  accent-color: var(--primary);
+  min-height: 44px;
+  align-content: center;
 }
 
 @media (max-width: 360px) {
-  .student-status-radio-group {
-    gap: 6px;
+  .student-edit-status-radio-group {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
-  .student-status-radio-option {
-    font-size: 0.78rem;
-    padding: 9px 6px;
+  .student-edit-status-radio {
+    min-height: 36px;
+    font-size: 0.82rem;
   }
 }
 
