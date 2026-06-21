@@ -53,6 +53,8 @@ function showScreen(id) {
   if (target) {
     target.classList.add("active");
   }
+
+  updateBottomNavigation(id);
 }
 
 function setError(message) {
@@ -374,8 +376,240 @@ function goHome() {
   }
 }
 
+
+/* =========================
+   REUSABLE BOTTOM NAVIGATION
+========================= */
+
+const BOTTOM_NAV_ITEMS = {
+  student: [
+    {
+      key: "home",
+      label: "Home",
+      icon: "/icons/home.svg",
+      action: "showScreen('student-home')"
+    },
+    {
+      key: "progress",
+      label: "Progress",
+      icon: "/icons/progress.svg",
+      action: "showStudentTasks()"
+    },
+    {
+      key: "resources",
+      label: "Resources",
+      icon: "/icons/resources.svg",
+      action: "showStudentResources()"
+    },
+    {
+      key: "video",
+      label: "Videos",
+      icon: "/icons/video.svg",
+      action: "openStudentResourceDirect('VIDEO')"
+    },
+    {
+      key: "ebooks",
+      label: "Ebooks",
+      icon: "/icons/ebook.svg",
+      action: "openStudentResourceDirect('EBOOKS')"
+    },
+    {
+      key: "audio",
+      label: "Audio",
+      icon: "/icons/audio.svg",
+      action: "openStudentResourceDirect('AUDIO')"
+    },
+    {
+      key: "other",
+      label: "Other",
+      icon: "/icons/other.svg",
+      action: "openStudentResourceDirect('OTHER')"
+    }
+  ],
+  admin: [
+    {
+      key: "home",
+      label: "Home",
+      icon: "/icons/home.svg",
+      action: "showScreen('admin-home')"
+    },
+    {
+      key: "progress",
+      label: "Progress",
+      icon: "/icons/progress.svg",
+      action: "showProgressReport()"
+    },
+    {
+      key: "resources",
+      label: "Resources",
+      icon: "/icons/resources.svg",
+      action: "showAdminResources()"
+    },
+    {
+      key: "attendance",
+      label: "Attendance",
+      icon: "/icons/attendance.svg",
+      action: "showAttendanceDashboard()"
+    },
+    {
+      key: "timetable",
+      label: "Timetable",
+      icon: "/icons/timetable.svg",
+      action: "showPlaceholder('Timetable')"
+    },
+    {
+      key: "admin",
+      label: "Admin",
+      icon: "/icons/admin.svg",
+      action: "showAdminAcademics()"
+    }
+  ]
+};
+
+function getBottomNavRole() {
+  const role = state.userType || state.portalType || "";
+  return role === "admin" ? "admin" : role === "student" ? "student" : "";
+}
+
+function getBottomNavElement() {
+  let nav = document.getElementById("bottom-nav");
+
+  if (!nav) {
+    nav = document.createElement("nav");
+    nav.id = "bottom-nav";
+    nav.className = "bottom-nav hidden";
+    nav.setAttribute("aria-label", "Primary navigation");
+    document.body.appendChild(nav);
+  }
+
+  return nav;
+}
+
+function renderBottomNavigation(role) {
+  const nav = getBottomNavElement();
+  const items = BOTTOM_NAV_ITEMS[role] || [];
+
+  if (nav.dataset.role === role && nav.children.length === items.length) {
+    return nav;
+  }
+
+  nav.dataset.role = role;
+  nav.innerHTML = items.map(item => `
+    <button
+      type="button"
+      class="bottom-nav__item"
+      data-bottom-nav-key="${item.key}"
+      onclick="${item.action}"
+      aria-label="${item.label}"
+    >
+      <span class="bottom-nav__icon" style="--bottom-nav-icon: url('${item.icon}')" aria-hidden="true"></span>
+      <span class="bottom-nav__label">${item.label}</span>
+    </button>
+  `).join("");
+
+  return nav;
+}
+
+function shouldShowBottomNavigation(screenId, role) {
+  if (!role || !state.token) return false;
+
+  const hiddenScreens = new Set([
+    "auth-screen",
+    "pdf-viewer-screen"
+  ]);
+
+  return !hiddenScreens.has(screenId);
+}
+
+function getBottomNavActiveKey(screenId, role) {
+  if (role === "student") {
+    if (screenId === "student-home") return "home";
+
+    if (["progress-subjects-screen", "progress-tasks-screen"].includes(screenId)) {
+      return "progress";
+    }
+
+    if (String(screenId || "").startsWith("student-resources")) {
+      const mode = String(currentStudentResourceMode || "").toUpperCase();
+
+      if (mode === "VIDEO") return "video";
+      if (mode === "EBOOKS") return "ebooks";
+      if (mode === "AUDIO") return "audio";
+      if (mode === "OTHER") return "other";
+
+      return "resources";
+    }
+
+    return "home";
+  }
+
+  if (role === "admin") {
+    if (screenId === "admin-home") return "home";
+
+    if (String(screenId || "").startsWith("attendance")) return "attendance";
+
+    if (String(screenId || "").startsWith("student-resources")) return "resources";
+
+    if ([
+      "progress-report",
+      "progress-subjects-screen",
+      "progress-tasks-screen",
+      "progress-task-students-screen",
+      "teacher-student-tasks"
+    ].includes(screenId)) {
+      return "progress";
+    }
+
+    if (String(screenId || "").startsWith("manage-student")) return "admin";
+
+    if (screenId === "placeholder-screen") {
+      return String(currentPlaceholderTitle || "").toLowerCase() === "timetable" ? "timetable" : "admin";
+    }
+
+    if (["admin-academics", "subjects-screen"].includes(screenId)) {
+      return "admin";
+    }
+
+    return "home";
+  }
+
+  return "";
+}
+
+function updateBottomNavigation(screenId) {
+  const role = getBottomNavRole();
+  const nav = renderBottomNavigation(role);
+  const isVisible = shouldShowBottomNavigation(screenId, role);
+
+  nav.classList.toggle("hidden", !isVisible);
+  document.body.classList.toggle("has-bottom-nav", isVisible);
+
+  const appShell = document.querySelector(".app-shell");
+  if (appShell) {
+    appShell.classList.toggle("has-bottom-nav", isVisible);
+  }
+
+  if (!isVisible) return;
+
+  const activeKey = getBottomNavActiveKey(screenId, role);
+
+  nav.querySelectorAll(".bottom-nav__item").forEach(item => {
+    const isActive = item.dataset.bottomNavKey === activeKey;
+    item.classList.toggle("is-active", isActive);
+    item.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+
+  const activeItem = nav.querySelector(".bottom-nav__item.is-active");
+  if (activeItem) {
+    activeItem.scrollIntoView({ inline: "center", block: "nearest" });
+  }
+}
+
+let currentPlaceholderTitle = "";
+
 function showPlaceholder(title) {
-  document.getElementById("placeholder-title").innerText = title;
+  currentPlaceholderTitle = String(title || "").trim();
+  document.getElementById("placeholder-title").innerText = currentPlaceholderTitle || "Screen";
   showScreen("placeholder-screen");
 }
 
@@ -855,14 +1089,25 @@ const STUDENT_RESOURCE_CATEGORIES = [
   }
 ];
 
+function resetStudentResourceSelection() {
+  currentStudentResourceMode = "";
+  currentStudentResourceSubjectKey = "";
+  currentStudentResourceSubjectName = "";
+  currentStudentResourceSubjectCategoryCounts = {};
+  currentStudentResourceModuleKey = "";
+  currentStudentResourceModuleName = "";
+}
+
 async function showStudentResources() {
   studentResourceViewMode = "student";
+  resetStudentResourceSelection();
   setResourceScreensForStudent();
   await loadResourceCategories("/api/resources/list", {});
 }
 
 async function showAdminResources() {
   studentResourceViewMode = "admin";
+  resetStudentResourceSelection();
   setResourceScreensForAdmin();
   await loadResourceCategories("/api/resources/list", {});
 }
@@ -939,6 +1184,39 @@ function setResourceScreensForAdmin() {
   }
 }
 
+async function fetchResourceCategories(apiPath, body = {}) {
+  let result = await apiPost(apiPath, body, state.token);
+
+  // Temporary compatibility fallback while the Worker routes are being stabilised.
+  // Resources are now common to students and staff, so all resource routes should return the same library.
+  if (!result.success && String(result.error || "").toLowerCase() === "not found") {
+    const fallbackPaths = [
+      "/api/resources/list",
+      "/api/student/resources/list",
+      "/api/admin/resources/list"
+    ].filter(path => path !== apiPath);
+
+    for (const fallbackPath of fallbackPaths) {
+      const fallbackResult = await apiPost(fallbackPath, body, state.token);
+      if (fallbackResult && fallbackResult.success) {
+        result = fallbackResult;
+        break;
+      }
+    }
+  }
+
+  if (!result.success) {
+    throw new Error(result.error || "Failed to load resources");
+  }
+
+  // New backend response is grouped by media type: result.groups.
+  // Older response shape used result.subjects. Keep both supported for safety.
+  studentResourceSubjects = Array.isArray(result.subjects) ? result.subjects : [];
+  studentResourceGroupsByType = normalizeStudentResourceGroups(result);
+
+  return result;
+}
+
 async function loadResourceCategories(apiPath, body = {}) {
   showScreen("student-resources-subjects");
 
@@ -946,39 +1224,45 @@ async function loadResourceCategories(apiPath, body = {}) {
   container.innerHTML = `<p class="helper-text">Loading resources...</p>`;
 
   try {
-    let result = await apiPost(apiPath, body, state.token);
-
-    // Temporary compatibility fallback while the Worker routes are being stabilised.
-    // Resources are now common to students and staff, so all resource routes should return the same library.
-    if (!result.success && String(result.error || "").toLowerCase() === "not found") {
-      const fallbackPaths = [
-        "/api/resources/list",
-        "/api/student/resources/list",
-        "/api/admin/resources/list"
-      ].filter(path => path !== apiPath);
-
-      for (const fallbackPath of fallbackPaths) {
-        const fallbackResult = await apiPost(fallbackPath, body, state.token);
-        if (fallbackResult && fallbackResult.success) {
-          result = fallbackResult;
-          break;
-        }
-      }
-    }
-
-    if (!result.success) {
-      container.innerHTML = `<p class="error-message">${escapeHtml(result.error || "Failed to load resources")}</p>`;
-      return;
-    }
-
-    // New backend response is grouped by media type: result.groups.
-    // Older response shape used result.subjects. Keep both supported for safety.
-    studentResourceSubjects = Array.isArray(result.subjects) ? result.subjects : [];
-    studentResourceGroupsByType = normalizeStudentResourceGroups(result);
-
+    await fetchResourceCategories(apiPath, body);
     renderStudentResourceSubjects();
   } catch (err) {
-    container.innerHTML = `<p class="error-message">Unable to load resources. Please try again.</p>`;
+    container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`;
+  }
+}
+
+async function openStudentResourceDirect(categoryKey) {
+  const category = STUDENT_RESOURCE_CATEGORIES.find(item => item.key === String(categoryKey || "").toUpperCase());
+
+  if (!category) {
+    alert("Resource category not found. Please reload resources.");
+    return;
+  }
+
+  studentResourceViewMode = "student";
+  setResourceScreensForStudent();
+  currentStudentResourceMode = category.key;
+  currentStudentResourceSubjectKey = "";
+  currentStudentResourceSubjectName = "";
+  currentStudentResourceSubjectCategoryCounts = {};
+  currentStudentResourceModuleKey = "";
+  currentStudentResourceModuleName = "";
+
+  const title = document.getElementById("student-resource-detail-title");
+  const container = document.getElementById("student-resource-detail-content");
+
+  if (title) title.innerText = category.label;
+  if (container) container.innerHTML = `<p class="helper-text">Loading ${escapeHtml(category.label)} resources...</p>`;
+
+  showScreen("student-resources-detail");
+
+  try {
+    await fetchResourceCategories("/api/resources/list", {});
+    renderStudentResourceCategoryDetail(category);
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`;
+    }
   }
 }
 
@@ -1541,6 +1825,15 @@ function openStudentResourceModule(moduleKey) {
 function goBackFromStudentResourceDetail() {
   if (currentStudentResourceModuleKey) {
     showScreen("student-resources-modules");
+    return;
+  }
+
+  if (!currentStudentResourceSubjectKey) {
+    if (studentResourceViewMode === "admin") {
+      showAdminResources();
+    } else {
+      showStudentResources();
+    }
     return;
   }
 

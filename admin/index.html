@@ -11,8 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/admin-favicon-16x16.png" />
 
-  <!-- Fonts and styles -->
-  <link href="https://fonts.cdnfonts.com/css/gagalin" rel="stylesheet">
+  <!-- Styles -->
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
@@ -68,16 +67,16 @@
         <button class="small-btn" onclick="logout()">Logout</button>
       </div>
 
-      <div class="student-main-button-grid">
-        <button class="student-main-button" onclick="showStudentTasks()">
-          <span class="student-main-icon">▣</span>
-          <span>Progress</span>
-        </button>
+      <div class="student-home-panel">
+        <div class="student-home-card">
+          <span class="student-home-card-title">Timetable</span>
+          <span class="student-home-card-text">Your timetable will appear here when it is connected.</span>
+        </div>
 
-        <button class="student-main-button" onclick="showStudentResources()">
-          <span class="student-main-icon">▤</span>
-          <span>Resources</span>
-        </button>
+        <div class="student-home-card">
+          <span class="student-home-card-title">Zoom Link</span>
+          <span class="student-home-card-text">Your live class link will appear here when it is connected.</span>
+        </div>
       </div>
     </section>
 
@@ -85,31 +84,21 @@
     <section id="admin-home" class="screen admin-theme">
       <div class="top-bar">
         <div>
-          <h2>Admin Dashboard</h2>
+          <h2>Admin Home</h2>
           <p id="admin-welcome" class="mini-text"></p>
         </div>
         <button class="small-btn" onclick="logout()">Logout</button>
       </div>
 
       <div class="card-grid staff-dashboard-grid">
-        <button class="home-card" onclick="showAttendanceDashboard()">
+        <button class="home-card" onclick="openMarkRegister()">
           <span class="card-icon">✓</span>
-          <span>Attendance</span>
+          <span>Mark Register</span>
         </button>
 
-        <button class="home-card" onclick="showAdminResources()">
-          <span class="card-icon">▤</span>
-          <span>Learning Resources</span>
-        </button>
-
-        <button class="home-card" onclick="showProgressReport()">
-          <span class="card-icon">▧</span>
-          <span>Progress Monitor</span>
-        </button>
-
-        <button class="home-card" onclick="showAdminAcademics()">
-          <span class="card-icon">▦</span>
-          <span>Admin</span>
+        <button class="home-card" onclick="showManageStudents()">
+          <span class="card-icon">＋</span>
+          <span>Add / Modify Students</span>
         </button>
       </div>
     </section>
@@ -122,16 +111,10 @@
       </div>
 
       <div class="list-stack">
-        <button class="list-btn" onclick="showManageStudents()">Manage Students</button>
-        <button class="list-btn" onclick="showProgressReport()">Progress Tracker</button>
-        <button class="list-btn" onclick="showSubjectsScreen()">Subjects</button>
-         <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
+        <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
+        <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
         <button class="list-btn" onclick="showAdminResources()">Resources</button>
-       
-        <button class="list-btn" onclick="showPlaceholder('Assign Tasks')">Assign Tasks</button>
-      
-        <button class="list-btn" onclick="showPlaceholder('Timetable')">Timetable</button>
-        <button class="list-btn" onclick="showPlaceholder('Assignments')">Assignments</button>
+        <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
       </div>
     </section>
 
@@ -420,6 +403,8 @@
         <p class="helper-text">This screen will be connected next.</p>
       </div>
     </section>
+
+    <nav id="bottom-nav" class="bottom-nav hidden" aria-label="Primary navigation"></nav>
 
   </main>
 
