@@ -2,6 +2,7 @@
   /* Brand */
   --primary: #234569;
   --primary-rgb: 35, 69, 105;
+  --banner-color: #F88379;
 
   /* Surfaces */
   --surface-app: #eeeeee;
@@ -349,7 +350,7 @@ button:active {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  background: var(--surface-dark);
+  background: var(--banner-color);
   color: var(--text-inverse);
   box-shadow: 0 5px 16px rgba(var(--black-rgb), 0.18);
 }
@@ -380,7 +381,24 @@ button:active {
 }
 
 .app-user-band__logout {
+  width: 58px;
+  min-width: 58px;
+  height: auto;
+  min-height: 54px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   color: var(--text-inverse);
+}
+
+.app-user-band__logout-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 body.has-user-band .app-shell {
@@ -394,6 +412,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 .top-bar,
 .nav-header {
   display: flex;
+  flex-wrap: nowrap;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -401,6 +420,15 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   border-bottom: 2px solid rgba(var(--black-rgb), 0.18);
   padding-bottom: 12px;
   margin-bottom: 18px;
+}
+
+.top-bar h1,
+.top-bar h2,
+.nav-header h1,
+.nav-header h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .card-grid {
@@ -416,6 +444,11 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   gap: 14px;
   text-align: left;
   padding: 18px;
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .card-icon {
@@ -426,7 +459,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   border-radius: 0;
   width: 36px;
   height: 36px;
-  color: var(--text-inverse);
+  color: var(--primary);
   font-family: var(--font-main);
   font-weight: bold;
 }
@@ -441,12 +474,17 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   text-align: left;
   display: flex;
   flex-direction: row;
-  flex-wrap: nowrap; 
+  flex-wrap: nowrap;
   overflow-x: auto;
-   flex-shrink: 0; 
-  gap: 10px;     
+  flex-shrink: 0;
+  gap: 10px;
   justify-content: space-between;
   align-items: center;
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .dashboard-section {
@@ -695,25 +733,28 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .student-status-row {
-  background: var(--surface-dark);
-  color: var(--text-inverse);
-  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
   padding: 12px;
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr;
   gap: 8px;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   text-align: left;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .student-status-name {
+  color: var(--primary);
   font-weight: bold;
 }
 
 .status-action {
   text-align: center;
-  color: var(--disabled) ;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 0.85rem;
 }
@@ -759,7 +800,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   background: var(--surface-card);
   color: var(--primary);
   border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-left: 5px solid var(--primary);
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 10px;
@@ -820,19 +860,22 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .student-status-row {
-  background: var(--surface-dark);
-  color: var(--text-inverse);
-  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
   padding: 12px;
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr;
   gap: 8px;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   text-align: left;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .student-status-name {
+  color: var(--primary);
   font-weight: bold;
 }
 
@@ -934,19 +977,19 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .progress-drill-button {
   width: 100%;
-  border: 1px solid rgba(var(--black-rgb), 0.45);
-  background: rgba(var(--white-rgb), 0.06);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  background: var(--surface-card);
   border-radius: 18px;
   padding: 16px;
   text-align: left;
   cursor: pointer;
-  color: inherit;
-  box-shadow: 0 8px 22px rgba(var(--black-rgb), 0.12);
+  color: var(--primary);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .progress-drill-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--white-rgb), 0.45);
+  border-color: rgba(var(--primary-rgb), 0.26);
 }
 
 .progress-button-title {
@@ -1023,9 +1066,11 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(var(--black-rgb), 0.35);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 16px;
-  background: rgba(var(--white-rgb), 0.045);
+  background: var(--surface-card);
+  color: var(--primary);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .progress-student-name {
@@ -1033,13 +1078,14 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .status-toggle {
-  border: 1px solid transparent;
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
   border-radius: 999px;
   padding: 7px 11px;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  background: rgba(var(--white-rgb), 0.06);
+  background: var(--surface-card);
+  color: var(--primary);
 }
 
 .status-toggle.is-complete {
@@ -1117,6 +1163,29 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   cursor: wait;
 }
 
+
+#progress-tasks-screen .nav-header,
+#progress-task-students-screen .nav-header {
+  flex-wrap: wrap;
+}
+
+#progress-tasks-screen .nav-header h2,
+#progress-task-students-screen .nav-header h2 {
+  flex: 1 1 0;
+}
+
+#progress-tasks-screen .nav-header .manual-refresh-btn,
+#progress-task-students-screen .nav-header .manual-refresh-btn {
+  margin-left: auto;
+}
+
+#progress-tasks-screen .nav-header .save-return-btn,
+#progress-task-students-screen .nav-header .save-return-btn {
+  order: 4;
+  flex: 0 1 240px;
+  margin: 8px auto 0;
+}
+
 /* Progress headers: stronger primary divider under the header */
 #progress-subjects-screen .nav-header,
 #progress-tasks-screen .nav-header,
@@ -1149,8 +1218,9 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 /* Resources */
 .resource-subject-button {
-  background: var(--primary);
-  color: var(--text-inverse);
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 16px;
   padding: 16px;
   display: grid;
@@ -1211,7 +1281,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   background: var(--surface-chip);
   border-radius: 14px;
   padding: 12px;
-  border-left: 5px solid var(--primary);
 }
 
 .resource-card-main {
@@ -1274,8 +1343,9 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .resource-category-button {
-  background: var(--primary);
-  color: var(--text-inverse);
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 16px;
   padding: 16px;
   display: grid;
@@ -1503,6 +1573,17 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 
 
+
+.admin-home-panel {
+  margin-bottom: 18px;
+}
+
+.admin-home-panel + .card-grid,
+.admin-home-panel + .list-stack,
+#admin-home .staff-dashboard-grid {
+  margin-top: 18px;
+}
+
 /* Timetable and Zoom components */
 .timetable-card {
   width: 100%;
@@ -1620,6 +1701,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   justify-content: center;
   gap: 10px;
   min-height: 56px;
+  margin-top: 12px;
   border-radius: 16px;
   background: var(--surface-card);
   color: var(--primary);
@@ -1642,34 +1724,25 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   cursor: not-allowed;
 }
 
-.timetable-content-strip {
-  display: flex;
-  gap: 12px;
+.timetable-content-strip,
+.timetable-content-panel {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-inline: contain;
 }
 
-.timetable-content-panel {
-  flex: 0 0 100%;
-  width: 100%;
-  min-width: 0;
-  scroll-snap-align: start;
-}
-
-.timetable-content-panel-image {
+.timetable-content-panel-image,
+.timetable-start-image-card {
   display: flex;
   align-items: stretch;
   justify-content: center;
+  width: 100%;
+  margin-top: 12px;
   background: var(--surface-card);
   border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .timetable-start-image {
@@ -1681,33 +1754,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .timetable-swipe-hint {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 8px auto 0;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-@media (min-width: 768px) {
-  .timetable-content-strip {
-    display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
-    align-items: stretch;
-    overflow: visible;
-    scroll-snap-type: none;
-  }
-
-  .timetable-content-panel {
-    flex-basis: auto;
-    width: auto;
-  }
-
-  .timetable-swipe-hint {
-    display: none;
-  }
+  display: none;
 }
 
 .timetable-admin-form input {
@@ -1783,6 +1830,7 @@ body.has-bottom-nav .app-shell {
   overflow-y: hidden;
   overscroll-behavior: contain;
   overscroll-behavior-x: contain;
+  overscroll-behavior-y: contain;
   touch-action: pan-x;
   pointer-events: auto;
   isolation: isolate;
@@ -1823,6 +1871,7 @@ body.has-bottom-nav .app-shell {
   font-family: var(--font-main);
   letter-spacing: 0;
   white-space: nowrap;
+  text-align: center;
   touch-action: pan-x;
 }
 
@@ -1841,6 +1890,8 @@ body.has-bottom-nav .app-shell {
   width: var(--icon-size);
   height: var(--icon-size);
   display: block;
+  margin-inline: auto;
+  align-self: center;
   background: currentColor;
   -webkit-mask: var(--bottom-nav-icon) center / contain no-repeat;
   mask: var(--bottom-nav-icon) center / contain no-repeat;
@@ -2202,12 +2253,10 @@ body.has-bottom-nav .app-shell {
   justify-content: flex-start;
 }
 
-.staff-dashboard-grid .home-card:nth-child(odd) {
-  background: var(--primary);
-}
-
+.staff-dashboard-grid .home-card:nth-child(odd),
 .staff-dashboard-grid .home-card:nth-child(even) {
-  background: rgba(var(--primary-rgb), 0.75);
+  background: var(--surface-card);
+  color: var(--primary);
 }
 
 /* Home title */
@@ -2377,6 +2426,32 @@ body.has-bottom-nav .app-shell {
 }
 
 
+
+.progress-selector-screen .selector-card-button,
+#progress-report .list-btn,
+#attendance-dashboard .list-btn,
+#admin-academics .list-btn,
+#admin-home .list-btn,
+#admin-home .home-card {
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.progress-selector-screen select {
+  background: var(--surface-card);
+  color: var(--primary);
+  border-color: rgba(var(--primary-rgb), 0.24);
+}
+
+.progress-selector-screen .selector-card-button {
+  min-height: 64px;
+  justify-content: flex-start;
+  text-align: left;
+}
+
 /* Attendance dashboard: larger mobile-friendly menu buttons */
 #attendance-dashboard .list-stack {
   gap: 22px;
@@ -2516,22 +2591,35 @@ body.has-bottom-nav .app-shell {
 
 @media (max-width: 520px) {
   .nav-header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
   }
 
   .nav-header h2 {
-    flex: 1 1 100%;
-    margin-bottom: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0;
+    overflow-wrap: anywhere;
   }
 
   .nav-header .manual-refresh-btn {
-    order: 2;
     margin-left: auto;
   }
 
-  .nav-header .small-btn:not(.manual-refresh-btn) {
+  .nav-header .small-btn:not(.manual-refresh-btn):not(.save-return-btn) {
     flex: 0 0 auto;
-    order: 3;
+  }
+
+  #progress-tasks-screen .nav-header,
+  #progress-task-students-screen .nav-header {
+    flex-wrap: wrap;
+  }
+
+  #progress-tasks-screen .nav-header .save-return-btn,
+  #progress-task-students-screen .nav-header .save-return-btn {
+    flex-basis: min(240px, 100%);
+    margin-top: 8px;
   }
 }
 
@@ -2850,9 +2938,14 @@ body.resource-module-picker-open {
 
 /* Shared resource colours */
 .resource-category-button,
-.resource-subject-drill-button,
+.resource-subject-drill-button {
+  background: var(--surface-card);
+  color: var(--primary);
+}
+
 .resource-type-badge {
-  background: var(--primary);
+  background: transparent;
+  color: var(--primary);
 }
 
 .student-resource-row,
@@ -2987,7 +3080,10 @@ body.resource-module-picker-open {
   padding: 10px 14px;
   border-radius: 14px;
   font-size: 0.9rem;
-  box-shadow: 0 8px 16px rgba(var(--primary-rgb), 0.22);
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.18);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .attendance-register-sticky {
@@ -3274,8 +3370,12 @@ body.resource-module-picker-open {
     flex-wrap: wrap;
   }
 
+  .attendance-modern-header h2 {
+    flex: 1 1 100%;
+  }
+
   .attendance-modern-header .attendance-save-btn {
-    width: 100%;
+    flex: 1 1 auto;
   }
 
   .attendance-summary-card {

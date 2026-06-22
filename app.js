@@ -65,6 +65,10 @@ function showScreen(id) {
   if (id === "student-home") {
     scheduleStudentHomeTimetableLoad();
   }
+
+  if (id === "admin-home") {
+    scheduleAdminHomeTimetableLoad();
+  }
 }
 
 function setError(message) {
@@ -421,6 +425,34 @@ function setBackIconButton(button, onclickValue = "goHome()") {
   `;
 }
 
+function getHeaderIconButtonMarkup(type, onclickValue, label) {
+  const safeType = type === "back" ? "back" : "home";
+  const iconPath = safeType === "back" ? "/icons/back.svg" : "/icons/home.svg";
+  const className = safeType === "back" ? "back-icon-btn" : "home-icon-btn";
+  const safeLabel = escapeHtml(label || (safeType === "back" ? "Back" : "Home"));
+
+  return `
+    <button
+      type="button"
+      class="small-btn ${className} icon-action-btn icon-action-btn-large"
+      onclick="${onclickValue}"
+      aria-label="${safeLabel}"
+      title="${safeLabel}"
+    >
+      <span class="app-icon app-icon-large" style="--app-icon-url: url('${iconPath}')" aria-hidden="true"></span>
+      <span class="visually-hidden">${safeLabel}</span>
+    </button>
+  `;
+}
+
+function getHomeIconButtonMarkup(onclickValue = "goHome()") {
+  return getHeaderIconButtonMarkup("home", onclickValue, "Home");
+}
+
+function getBackIconButtonMarkup(onclickValue = "goHome()") {
+  return getHeaderIconButtonMarkup("back", onclickValue, "Back");
+}
+
 function getCurrentUserName() {
   const user = state.user || {};
   return String(
@@ -490,7 +522,7 @@ function updateUserBand(screenId) {
     </div>
     <button type="button" class="app-user-band__logout icon-action-btn icon-action-btn-large" onclick="logout()" aria-label="Logout" title="Logout">
       <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/logout.svg')" aria-hidden="true"></span>
-      <span class="visually-hidden">Logout</span>
+      <span class="app-user-band__logout-label">Logout</span>
     </button>
   `;
 }
@@ -609,6 +641,10 @@ function installBottomNavigationGestureGuard(nav) {
 
   const stopInsideBottomNav = event => {
     event.stopPropagation();
+
+    if (typeof event.stopImmediatePropagation === "function") {
+      event.stopImmediatePropagation();
+    }
   };
 
   [
@@ -622,7 +658,7 @@ function installBottomNavigationGestureGuard(nav) {
     "click",
     "wheel"
   ].forEach(eventName => {
-    nav.addEventListener(eventName, stopInsideBottomNav, { passive: true });
+    nav.addEventListener(eventName, stopInsideBottomNav, { capture: true, passive: true });
   });
 
   nav.addEventListener("touchstart", event => {
@@ -631,13 +667,13 @@ function installBottomNavigationGestureGuard(nav) {
     touchStartX = touch ? touch.clientX : 0;
     touchStartY = touch ? touch.clientY : 0;
 
-    event.stopPropagation();
-  }, { passive: true });
+    stopInsideBottomNav(event);
+  }, { capture: true, passive: true });
 
   nav.addEventListener("touchmove", event => {
     const touch = event.touches && event.touches[0];
 
-    event.stopPropagation();
+    stopInsideBottomNav(event);
 
     if (!touch) return;
 
@@ -645,7 +681,10 @@ function installBottomNavigationGestureGuard(nav) {
     const deltaY = touch.clientY - touchStartY;
     const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
 
-    if (!isHorizontalSwipe) return;
+    if (!isHorizontalSwipe) {
+      event.preventDefault();
+      return;
+    }
 
     const maxScrollLeft = Math.max(0, nav.scrollWidth - nav.clientWidth);
     const isAtLeftEdge = nav.scrollLeft <= 0;
@@ -656,10 +695,10 @@ function installBottomNavigationGestureGuard(nav) {
     if (maxScrollLeft === 0 || (isAtLeftEdge && isSwipingRight) || (isAtRightEdge && isSwipingLeft)) {
       event.preventDefault();
     }
-  }, { passive: false });
+  }, { capture: true, passive: false });
 
   ["touchend", "touchcancel"].forEach(eventName => {
-    nav.addEventListener(eventName, stopInsideBottomNav, { passive: true });
+    nav.addEventListener(eventName, stopInsideBottomNav, { capture: true, passive: true });
   });
 }
 
@@ -1108,24 +1147,6 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     </div>
   `;
 
-  if (options.showContentPanel === true) {
-    container.innerHTML = `
-      <div class="timetable-content-strip" aria-label="Timetable and class starter image">
-        <div class="timetable-content-panel timetable-content-panel-table">
-          ${tableHtml}
-        </div>
-        <div class="timetable-content-panel timetable-content-panel-image">
-          <img src="/images/startclass.png" alt="Class start guide" class="timetable-start-image" loading="lazy" />
-        </div>
-      </div>
-      <div class="timetable-swipe-hint" aria-hidden="true">
-        <span class="app-icon app-icon-small" style="--app-icon-url: url('/icons/swipe-right.svg')"></span>
-        <span>Swipe</span>
-      </div>
-    `;
-    return;
-  }
-
   container.innerHTML = tableHtml;
 }
 
@@ -1200,6 +1221,139 @@ function setTimetableZoomButtonState(buttonId, zoomLink) {
   button.title = hasLink ? "Open Zoom link" : "Zoom link has not been added yet";
 }
 
+function ensureTimetableStartImageAfterZoom(contentId, zoomButtonId, imageCardId) {
+  const content = document.getElementById(contentId);
+  const zoomButton = document.getElementById(zoomButtonId);
+
+  if (!content && !zoomButton) {
+    return;
+  }
+
+  let imageCard = document.getElementById(imageCardId);
+
+  if (!imageCard) {
+    imageCard = document.createElement("div");
+    imageCard.id = imageCardId;
+    imageCard.className = "timetable-start-image-card";
+    imageCard.innerHTML = `
+      <img src="/images/startclass.png" alt="Class start guide" class="timetable-start-image" loading="lazy" />
+    `;
+  }
+
+  if (zoomButton && zoomButton.parentNode) {
+    zoomButton.insertAdjacentElement("afterend", imageCard);
+    return;
+  }
+
+  if (content && content.parentNode) {
+    content.insertAdjacentElement("afterend", imageCard);
+  }
+}
+
+function scheduleAdminHomeTimetableLoad() {
+  if (!state.token || getBottomNavRole() !== "admin") {
+    return;
+  }
+
+  setTimeout(() => {
+    loadAdminHomeTimetable();
+  }, 0);
+}
+
+function ensureAdminHomePanel() {
+  const screen = document.getElementById("admin-home");
+
+  if (!screen) {
+    return null;
+  }
+
+  const title = screen.querySelector(".top-bar h2, .nav-header h2, h2");
+  if (title) {
+    title.innerText = "Home";
+  }
+
+  const adminWelcome = document.getElementById("admin-welcome");
+  if (adminWelcome) {
+    adminWelcome.innerText = "";
+  }
+
+  let panel = document.getElementById("admin-home-panel");
+
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "admin-home-panel";
+    panel.className = "student-home-panel admin-home-panel";
+    panel.innerHTML = `
+      <div class="timetable-card">
+        <div class="timetable-card-header">
+          <h3>Timetable</h3>
+          <button
+            type="button"
+            class="small-btn manual-refresh-btn icon-action-btn icon-action-btn-large"
+            aria-label="Refresh timetable"
+            title="Refresh timetable"
+            onclick="refreshAdminHomeTimetable(this)"
+          >
+            ${getRefreshIconMarkup()}
+          </button>
+        </div>
+        <div id="admin-home-timetable-content">
+          <p class="helper-text">Loading timetable...</p>
+        </div>
+      </div>
+      <button
+        id="admin-home-zoom-link-btn"
+        type="button"
+        class="zoom-link-button"
+        onclick="openTimetableZoomLink()"
+      >
+        Join Zoom Class
+      </button>
+    `;
+  }
+
+  const header = screen.querySelector(".top-bar, .nav-header");
+  const insertAfter = adminWelcome || header;
+
+  if (insertAfter && insertAfter.parentNode === screen) {
+    insertAfter.insertAdjacentElement("afterend", panel);
+  } else if (!panel.parentNode) {
+    screen.prepend(panel);
+  }
+
+  return panel;
+}
+
+async function loadAdminHomeTimetable(force = false) {
+  const panel = ensureAdminHomePanel();
+  const container = document.getElementById("admin-home-timetable-content");
+
+  if (!panel || !container || !state.token || getBottomNavRole() !== "admin") {
+    return;
+  }
+
+  if (!timetableCache || force) {
+    container.innerHTML = `<p class="helper-text">Loading timetable...</p>`;
+  }
+
+  try {
+    const result = await fetchTimetable({ force });
+    renderTimetable(container, result, { showContentPanel: true });
+    setTimetableZoomButtonState("admin-home-zoom-link-btn", globalTimetableZoomLink);
+    ensureTimetableStartImageAfterZoom("admin-home-timetable-content", "admin-home-zoom-link-btn", "admin-home-timetable-start-image-card");
+  } catch (err) {
+    container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
+    setTimetableZoomButtonState("admin-home-zoom-link-btn", "");
+  }
+}
+
+async function refreshAdminHomeTimetable(button) {
+  await runManualRefresh(button, async () => {
+    await loadAdminHomeTimetable(true);
+  });
+}
+
+
 async function loadStudentHomeTimetable(force = false) {
   const container = document.getElementById("student-timetable-content");
 
@@ -1215,6 +1369,7 @@ async function loadStudentHomeTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
+    ensureTimetableStartImageAfterZoom("student-timetable-content", "student-zoom-link-btn", "student-timetable-start-image-card");
   } catch (err) {
     container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
     setTimetableZoomButtonState("student-zoom-link-btn", "");
@@ -1260,6 +1415,8 @@ async function showAdminTimetable(force = false) {
   try {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
+    setTimetableZoomButtonState("admin-timetable-zoom-link-btn", globalTimetableZoomLink);
+    ensureTimetableStartImageAfterZoom("admin-timetable-content", "admin-timetable-zoom-link-btn", "admin-timetable-start-image-card");
   } catch (err) {
     if (container) {
       container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
@@ -1389,7 +1546,7 @@ async function showStudentTasks() {
   const title = document.getElementById("progress-subjects-title");
   const container = document.getElementById("progress-subjects-list");
 
-  title.innerText = "My Task Progress";
+  title.innerText = "My Tasks";
   container.innerHTML = `<p class="helper-text">Loading tasks...</p>`;
 
   const result = await apiPost("/api/tasks/student", {
@@ -1424,7 +1581,7 @@ function setProgressScreensForStudent() {
 
   const taskBackButton = document.querySelector("#progress-tasks-screen .small-btn");
   if (taskBackButton) {
-    setTextActionButton(taskBackButton, "Save Changes →", "saveStudentTaskChangesAndReturn()");
+    setTextActionButton(taskBackButton, "Save and Exit", "saveStudentTaskChangesAndReturn()");
     taskBackButton.classList.add("save-return-btn");
   }
 }
@@ -1438,17 +1595,17 @@ function setProgressScreensForAdmin() {
   });
 
   const subjectBackButton = document.querySelector("#progress-subjects-screen .small-btn");
-  setTextActionButton(subjectBackButton, "Back", "showScreen('progress-report')");
+  setBackIconButton(subjectBackButton, "showScreen('progress-report')");
 
   const taskBackButton = document.querySelector("#progress-tasks-screen .small-btn");
   if (taskBackButton) {
     taskBackButton.classList.remove("save-return-btn");
-    setTextActionButton(taskBackButton, "Back", "showScreen('progress-subjects-screen')");
+    setBackIconButton(taskBackButton, "showScreen('progress-subjects-screen')");
   }
 
   const taskStudentsBackButton = document.querySelector("#progress-task-students-screen .small-btn");
   if (taskStudentsBackButton) {
-    taskStudentsBackButton.innerText = "Save Changes →";
+    taskStudentsBackButton.innerText = "Save and Exit";
     taskStudentsBackButton.classList.add("save-return-btn");
     taskStudentsBackButton.setAttribute("onclick", "saveProgressPendingChangesAndReturn()");
   }
@@ -1899,7 +2056,7 @@ function setResourceScreensForAdmin() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Library";
+  if (listTitle) listTitle.innerText = "Resources";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   setHomeIconButton(listBackButton, "showScreen('admin-home')");
@@ -4746,8 +4903,38 @@ let currentProgressRows = [];
 
 async function showProgressReport() {
   setProgressScreensForAdmin();
+  prepareAdminProgressMonitor();
   showScreen("progress-report");
   await loadProgressSelectors();
+}
+
+function prepareAdminProgressMonitor() {
+  const screen = document.getElementById("progress-report");
+  if (!screen) return;
+
+  screen.classList.add("progress-selector-screen");
+
+  const homeButton = screen.querySelector(".small-btn");
+  if (homeButton) {
+    setHomeIconButton(homeButton, "showScreen('admin-home')");
+  }
+
+  const title = screen.querySelector("h2");
+  if (title) {
+    title.innerText = "Progress";
+  }
+
+  screen.querySelectorAll("button").forEach(button => {
+    if (
+      button.classList.contains("bottom-nav__item") ||
+      button.classList.contains("icon-action-btn") ||
+      button.closest(".bottom-nav")
+    ) {
+      return;
+    }
+
+    button.classList.add("selector-card-button");
+  });
 }
 
 async function loadProgressSelectors() {
@@ -5270,7 +5457,7 @@ async function saveProgressPendingChanges(options = {}) {
 
 async function saveProgressPendingChangesAndReturn() {
   const button = document.querySelector("#progress-task-students-screen .small-btn");
-  const originalText = button ? button.innerText : "Save Changes →";
+  const originalText = button ? button.innerText : "Save and Exit";
 
   if (button) {
     button.disabled = true;
@@ -5297,7 +5484,7 @@ async function saveProgressPendingChangesAndReturn() {
 
 async function saveStudentTaskChangesAndReturn() {
   const button = document.querySelector("#progress-tasks-screen .small-btn");
-  const originalText = button ? button.innerText : "Save Changes →";
+  const originalText = button ? button.innerText : "Save and Exit";
 
   if (button) {
     button.disabled = true;
@@ -5531,7 +5718,7 @@ function getManualRefreshButtonMarkup(onclickValue) {
   return `
     <button
       type="button"
-      class="small-btn manual-refresh-btn"
+      class="small-btn manual-refresh-btn icon-action-btn icon-action-btn-large"
       title="Refresh"
       aria-label="Refresh"
       onclick="${onclickValue}"
@@ -5690,6 +5877,11 @@ let attendanceStudentsCache = [];
 let attendanceState = {};
 
 function showAttendanceDashboard() {
+  const homeButton = document.querySelector("#attendance-dashboard .small-btn");
+  if (homeButton) {
+    setHomeIconButton(homeButton, "showScreen('admin-home')");
+  }
+
   showScreen("attendance-dashboard");
 }
 
@@ -5778,6 +5970,7 @@ function renderAttendanceRegister(dateValue) {
     <div class="attendance-register-sticky">
     <div class="attendance-modern-header">
       <h2>Attendance</h2>
+      ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
       <button class="small-btn save-return-btn attendance-save-btn" onclick="submitAttendanceRegister()">Save Attendance →</button>
     </div>
 
@@ -5922,7 +6115,7 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     <div class="nav-header">
       <h2>View Attendance Records</h2>
       ${getManualRefreshButtonMarkup("refreshViewAttendance(this)")}
-      <button class="small-btn" onclick="showScreen('attendance-dashboard')">Back</button>
+      ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
     </div>
 
     <div class="attendance-filter-box">
@@ -6004,7 +6197,7 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
     <div class="nav-header">
       <h2>Statistics</h2>
       ${getManualRefreshButtonMarkup("refreshAttendanceStats(this)")}
-      <button class="small-btn" onclick="showScreen('attendance-dashboard')">Back</button>
+      ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
     </div>
 
     <div class="attendance-filter-box">
