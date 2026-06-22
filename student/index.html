@@ -20,13 +20,25 @@
 
     <!-- LOGIN / PIN SCREEN -->
     <section id="auth-screen" class="screen active">
-      <img src="/logo.png" alt="  Logo" class="app-logo" />
-      <h1 id="portal-title">Maktab4Life</h1>
-      <p id="portal-subtitle" class="subtitle">Loading  ...</p>
+      <div id="auth-welcome-banner" class="auth-welcome-banner hidden">
+        Ahlan wa Sahlan
+      </div>
+
+      <div class="auth-brand-block">
+        <h2 class="auth-brand-title">mE-Maktab</h2>
+        <img src="/logo.png" alt="Maktab4Life Logo" class="app-logo auth-logo" />
+        <h2 class="auth-brand-title">Reboot Your Maktab</h2>
+        <p id="portal-title" class="auth-login-label">Student Login</p>
+        <p id="portal-subtitle" class="subtitle auth-user-subtitle">Checking your link...</p>
+      </div>
 
       <div id="setup-pin-box" class="auth-box hidden">
         <h2>Create PIN</h2>
-        <p class="helper-text">Create a 4-digit PIN for future access.</p>
+        <ol class="pin-instruction-list">
+          <li>Create a memorable PIN.</li>
+          <li>Login with your PIN.</li>
+          <li>Add the page to your Homescreen.</li>
+        </ol>
 
         <div class="pin-digit-row" data-pin-group="setup-pin" aria-label="Create 4-digit PIN">
           <input id="setup-pin-1" class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
