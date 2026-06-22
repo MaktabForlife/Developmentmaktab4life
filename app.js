@@ -407,7 +407,7 @@ function setHomeIconButton(button, onclickValue = "goHome()") {
   button.setAttribute("title", "Home");
   button.innerHTML = `
     <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/home.svg')" aria-hidden="true"></span>
-    <span class="visually-hidden">Home</span>
+    <span class="header-icon-label">Home</span>
   `;
 }
 
@@ -421,7 +421,7 @@ function setBackIconButton(button, onclickValue = "goHome()") {
   button.setAttribute("title", "Back");
   button.innerHTML = `
     <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span>
-    <span class="visually-hidden">Back</span>
+    <span class="header-icon-label">Back</span>
   `;
 }
 
@@ -440,7 +440,7 @@ function getHeaderIconButtonMarkup(type, onclickValue, label) {
       title="${safeLabel}"
     >
       <span class="app-icon app-icon-large" style="--app-icon-url: url('${iconPath}')" aria-hidden="true"></span>
-      <span class="visually-hidden">${safeLabel}</span>
+      <span class="header-icon-label">${safeLabel}</span>
     </button>
   `;
 }
@@ -581,7 +581,7 @@ const BOTTOM_NAV_ITEMS = {
     },
     {
       key: "resources",
-      label: "Resources",
+      label: "Library",
       icon: "/icons/resources.svg",
       action: "showAdminResources()"
     },
@@ -590,12 +590,6 @@ const BOTTOM_NAV_ITEMS = {
       label: "Attendance",
       icon: "/icons/attendance.svg",
       action: "showAttendanceDashboard()"
-    },
-    {
-      key: "timetable",
-      label: "Timetable",
-      icon: "/icons/timetable.svg",
-      action: "showAdminTimetable()"
     },
     {
       key: "admin",
@@ -753,7 +747,7 @@ function getBottomNavActiveKey(screenId, role) {
 
     if (String(screenId || "").startsWith("attendance")) return "attendance";
 
-    if (String(screenId || "").startsWith("admin-timetable")) return "timetable";
+    if (String(screenId || "").startsWith("admin-timetable")) return "admin";
 
     if (String(screenId || "").startsWith("student-resources")) return "resources";
 
@@ -770,7 +764,7 @@ function getBottomNavActiveKey(screenId, role) {
     if (String(screenId || "").startsWith("manage-student")) return "admin";
 
     if (screenId === "placeholder-screen") {
-      return String(currentPlaceholderTitle || "").toLowerCase() === "timetable" ? "timetable" : "admin";
+      return "admin";
     }
 
     if (["admin-academics", "subjects-screen"].includes(screenId)) {
@@ -821,7 +815,25 @@ function showPlaceholder(title) {
 }
 
 function showAdminAcademics() {
+  prepareAdminAcademicsScreen();
   showScreen("admin-academics");
+}
+
+function prepareAdminAcademicsScreen() {
+  const screen = document.getElementById("admin-academics");
+  if (!screen) return;
+
+  const title = screen.querySelector("h2");
+  if (title) {
+    title.innerText = "Add or Modify";
+  }
+
+  screen.querySelectorAll("button").forEach(button => {
+    const text = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (text === "add / modify students" || text === "add/modify students") {
+      button.textContent = "Students";
+    }
+  });
 }
 
 
@@ -1203,7 +1215,7 @@ function setTimetableZoomButtonState(buttonId, zoomLink) {
   if (button.dataset.zoomDecorated !== "true") {
     button.dataset.zoomDecorated = "true";
     button.innerHTML = `
-      <span class="zoom-link-button__icon" aria-hidden="true"></span>
+      <img src="/icons/zoom.svg" alt="" class="zoom-link-button__icon" aria-hidden="true" />
       <span>Join Zoom Class</span>
     `;
   }
@@ -1262,15 +1274,21 @@ function ensureAdminHomePanel() {
     return null;
   }
 
-  const title = screen.querySelector(".top-bar h2, .nav-header h2, h2");
-  if (title) {
-    title.innerText = "Home";
+  const header = screen.querySelector(".top-bar, .nav-header");
+  if (header) {
+    header.remove();
   }
 
   const adminWelcome = document.getElementById("admin-welcome");
   if (adminWelcome) {
-    adminWelcome.innerText = "";
+    adminWelcome.remove();
   }
+
+  screen.querySelectorAll(".staff-dashboard-grid, .card-grid, .list-stack").forEach(section => {
+    if (section.id !== "admin-home-panel") {
+      section.remove();
+    }
+  });
 
   let panel = document.getElementById("admin-home-panel");
 
@@ -1307,12 +1325,7 @@ function ensureAdminHomePanel() {
     `;
   }
 
-  const header = screen.querySelector(".top-bar, .nav-header");
-  const insertAfter = adminWelcome || header;
-
-  if (insertAfter && insertAfter.parentNode === screen) {
-    insertAfter.insertAdjacentElement("afterend", panel);
-  } else if (!panel.parentNode) {
+  if (!panel.parentNode) {
     screen.prepend(panel);
   }
 
@@ -3157,15 +3170,18 @@ function renderStudentResourceRow(row) {
   const isAudio = type === "AUDIO";
   const isVideo = type === "VIDEO";
 
+  const actionIconPath = getResourceCategoryIconPath(type);
+  const actionIconMarkup = `<span class="resource-type-icon resource-action-icon" style="--app-icon-url: url('${actionIconPath}')" aria-hidden="true"></span>`;
+
   const actionHtml = (isAudio || isVideo)
     ? `
       <button class="resource-arrow-btn" onclick="toggleInlineResourcePreview('${escapeForAttribute(rowId)}', '${escapeForAttribute(link)}', '${escapeForAttribute(type)}')"${disabled} aria-label="${escapeForAttribute(buttonLabel)}">
-        ›
+        ${actionIconMarkup}
       </button>
     `
     : `
       <button class="resource-arrow-btn" onclick="openStudentResourceLink('${escapeForAttribute(link)}', '${escapeForAttribute(type)}', '${escapeForAttribute(title)}')"${disabled} aria-label="${escapeForAttribute(buttonLabel)}">
-        ›
+        ${actionIconMarkup}
       </button>
     `;
 
@@ -3177,10 +3193,7 @@ function renderStudentResourceRow(row) {
     <div class="student-resource-row">
       <div class="student-resource-row-main">
         <div class="student-resource-title">${escapeHtml(title)}</div>
-        <div class="student-resource-meta">
-          <span class="resource-type-icon" style="--app-icon-url: url('${getResourceCategoryIconPath(type)}')" aria-label="${escapeForAttribute(getDisplayResourceType(type))}" title="${escapeForAttribute(getDisplayResourceType(type))}"></span>
-          ${format ? `<span class="resource-format-text">${escapeHtml(format)}</span>` : ""}
-        </div>
+        ${format ? `<div class="student-resource-meta"><span class="resource-format-text">${escapeHtml(format)}</span></div>` : ""}
         ${previewHtml}
       </div>
       ${actionHtml}
@@ -3870,7 +3883,7 @@ function renderManageStudentResultScreen(context) {
     `
     : `
       <div class="student-admin-action-grid two-col">
-        <button type="button" onclick="backToManagedStudentList()">Back to Student List</button>
+        <button type="button" class="back-icon-btn icon-action-btn icon-action-btn-large" onclick="backToManagedStudentList()" aria-label="Back to student list" title="Back to student list"><span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span><span class="header-icon-label">Back</span></button>
         <button type="button" class="home-text-action-btn" onclick="showScreen('admin-home')"><span class="home-text-action-btn__icon" aria-hidden="true"></span><span>Exit to Dashboard</span></button>
       </div>
     `;
@@ -4918,6 +4931,24 @@ function prepareAdminProgressMonitor() {
   if (title) {
     title.innerText = "Progress";
   }
+
+  screen.querySelectorAll("h3, h4").forEach(heading => {
+    const text = String(heading.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (text === "progress for class" || text === "progress for group" || text === "progress for student") {
+      heading.remove();
+    }
+  });
+
+  screen.querySelectorAll("button").forEach(button => {
+    const text = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (text === "view full class") {
+      button.textContent = "Class Progress";
+    } else if (text === "view group") {
+      button.textContent = "Group Progress";
+    } else if (text === "view student") {
+      button.textContent = "Individual Progress";
+    }
+  });
 
   screen.querySelectorAll("button").forEach(button => {
     if (

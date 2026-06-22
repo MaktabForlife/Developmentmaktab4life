@@ -308,6 +308,23 @@ button:active {
   min-height: 52px;
 }
 
+.home-icon-btn,
+.back-icon-btn {
+  width: 58px;
+  min-width: 58px;
+  min-height: 58px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.header-icon-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .home-icon-btn__icon,
 .home-text-action-btn__icon {
   width: var(--icon-size-large);
@@ -1387,7 +1404,8 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 .resource-task-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  column-gap: 20px;
+  row-gap: 14px;
 }
 
 @media (max-width: 360px) {
@@ -1406,7 +1424,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   padding: 12px;
   text-align: left;
   border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-left: 5px solid var(--primary);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
 .student-resource-row-main {
@@ -1447,7 +1465,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   color: var(--primary);
   box-shadow: none;
   font-family: var(--font-main);
-  font-size: 2.4rem;
+  font-size: 1rem;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -1491,6 +1509,11 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   background: currentColor;
   -webkit-mask: var(--app-icon-url) center / contain no-repeat;
   mask: var(--app-icon-url) center / contain no-repeat;
+}
+
+.resource-action-icon {
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
 }
 
 .student-resource-meta .resource-type-badge {
@@ -1713,9 +1736,9 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   width: var(--icon-size-large);
   height: var(--icon-size-large);
   display: inline-block;
-  background: currentColor;
-  -webkit-mask: url('/icons/zoom.svg') center / contain no-repeat;
-  mask: url('/icons/zoom.svg') center / contain no-repeat;
+  flex: 0 0 auto;
+  background: transparent;
+  object-fit: contain;
 }
 
 .zoom-link-button:disabled,
@@ -2452,6 +2475,22 @@ body.has-bottom-nav .app-shell {
   text-align: left;
 }
 
+.progress-selector-screen .dashboard-section,
+.progress-selector-screen .resource-section {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.progress-selector-screen .dashboard-section h3,
+.progress-selector-screen .dashboard-section h4,
+.progress-selector-screen .resource-section h3,
+.progress-selector-screen .resource-section h4 {
+  display: none;
+}
+
 /* Attendance dashboard: larger mobile-friendly menu buttons */
 #attendance-dashboard .list-stack {
   gap: 22px;
@@ -2948,7 +2987,6 @@ body.resource-module-picker-open {
   color: var(--primary);
 }
 
-.student-resource-row,
 .resource-card {
   border-left-color: var(--primary);
 }
