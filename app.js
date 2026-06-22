@@ -59,6 +59,7 @@ function showScreen(id) {
     target.classList.add("active");
   }
 
+  updateUserBand(id);
   updateBottomNavigation(id);
 
   if (id === "student-home") {
@@ -358,15 +359,22 @@ async function submitLogin() {
   localStorage.setItem("maktab_user_type", state.userType);
 
   if (state.portalType === "admin") {
-    document.getElementById("admin-welcome").innerText =
-      `${result.admin.username} · ${result.admin.role}`;
+    const adminWelcome = document.getElementById("admin-welcome");
+    if (adminWelcome) {
+      adminWelcome.innerText = "";
+    }
     showScreen("admin-home");
   } else {
     const studentHomeTitle = document.getElementById("student-home-title");
     if (studentHomeTitle) {
-      studentHomeTitle.innerText = result.student.username || "Student";
+      studentHomeTitle.innerText = "Home";
     }
-    document.getElementById("student-welcome");
+
+    const studentWelcome = document.getElementById("student-welcome");
+    if (studentWelcome) {
+      studentWelcome.innerText = "";
+    }
+
     showScreen("student-home");
   }
 }
@@ -388,20 +396,109 @@ function goHome() {
 function setHomeIconButton(button, onclickValue = "goHome()") {
   if (!button) return;
 
-  button.classList.add("home-icon-btn");
+  button.classList.remove("back-icon-btn", "save-return-btn");
+  button.classList.add("home-icon-btn", "icon-action-btn", "icon-action-btn-large");
   button.setAttribute("onclick", onclickValue);
   button.setAttribute("aria-label", "Home");
   button.setAttribute("title", "Home");
   button.innerHTML = `
-    <span class="home-icon-btn__icon" aria-hidden="true"></span>
+    <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/home.svg')" aria-hidden="true"></span>
     <span class="visually-hidden">Home</span>
+  `;
+}
+
+function setBackIconButton(button, onclickValue = "goHome()") {
+  if (!button) return;
+
+  button.classList.remove("home-icon-btn", "save-return-btn");
+  button.classList.add("back-icon-btn", "icon-action-btn", "icon-action-btn-large");
+  button.setAttribute("onclick", onclickValue);
+  button.setAttribute("aria-label", "Back");
+  button.setAttribute("title", "Back");
+  button.innerHTML = `
+    <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span>
+    <span class="visually-hidden">Back</span>
+  `;
+}
+
+function getCurrentUserName() {
+  const user = state.user || {};
+  return String(
+    user.username ||
+    user.Username ||
+    user.name ||
+    user.Name ||
+    user.AdminName ||
+    user.StudentName ||
+    ""
+  ).trim();
+}
+
+function getCurrentUserLevelText() {
+  const user = state.user || {};
+  const role = String(user.role || user.Role || "").trim();
+
+  if (getBottomNavRole() === "admin") {
+    return role || "Admin";
+  }
+
+  const group = String(
+    user.classgroup ||
+    user.ClassGroup ||
+    user.group ||
+    user.Group ||
+    ""
+  ).trim();
+
+  return group ? `Student · Group ${group}` : "Student";
+}
+
+function getUserBandElement() {
+  let band = document.getElementById("app-user-band");
+
+  if (!band) {
+    band = document.createElement("header");
+    band.id = "app-user-band";
+    band.className = "app-user-band hidden";
+    band.setAttribute("aria-label", "Logged-in user");
+    document.body.prepend(band);
+  }
+
+  return band;
+}
+
+function updateUserBand(screenId) {
+  const band = getUserBandElement();
+  const role = getBottomNavRole();
+  const shouldShow = !!state.token && !!role && screenId !== "auth-screen";
+
+  band.classList.toggle("hidden", !shouldShow);
+  document.body.classList.toggle("has-user-band", shouldShow);
+
+  if (!shouldShow) {
+    band.innerHTML = "";
+    return;
+  }
+
+  const username = getCurrentUserName() || (role === "admin" ? "Admin" : "Student");
+  const levelText = getCurrentUserLevelText();
+
+  band.innerHTML = `
+    <div class="app-user-band__identity">
+      <h2 class="app-user-band__name">${escapeHtml(username)}</h2>
+      <p class="app-user-band__level">${escapeHtml(levelText)}</p>
+    </div>
+    <button type="button" class="app-user-band__logout icon-action-btn icon-action-btn-large" onclick="logout()" aria-label="Logout" title="Logout">
+      <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/logout.svg')" aria-hidden="true"></span>
+      <span class="visually-hidden">Logout</span>
+    </button>
   `;
 }
 
 function setTextActionButton(button, text, onclickValue) {
   if (!button) return;
 
-  button.classList.remove("home-icon-btn");
+  button.classList.remove("home-icon-btn", "back-icon-btn", "icon-action-btn", "icon-action-btn-large");
   button.removeAttribute("aria-label");
   button.removeAttribute("title");
   button.textContent = text;
@@ -425,40 +522,16 @@ const BOTTOM_NAV_ITEMS = {
       action: "showScreen('student-home')"
     },
     {
-      key: "progress",
-      label: "Progress",
-      icon: "/icons/progress.svg",
-      action: "showStudentTasks()"
-    },
-    {
-      key: "resources",
-      label: "Resources",
+      key: "library",
+      label: "Library",
       icon: "/icons/resources.svg",
       action: "showStudentResources()"
     },
     {
-      key: "video",
-      label: "Videos",
-      icon: "/icons/video.svg",
-      action: "openStudentResourceDirect('VIDEO')"
-    },
-    {
-      key: "ebooks",
-      label: "Ebooks",
-      icon: "/icons/ebook.svg",
-      action: "openStudentResourceDirect('EBOOKS')"
-    },
-    {
-      key: "audio",
-      label: "Audio",
-      icon: "/icons/audio.svg",
-      action: "openStudentResourceDirect('AUDIO')"
-    },
-    {
-      key: "other",
-      label: "Other",
-      icon: "/icons/other.svg",
-      action: "openStudentResourceDirect('OTHER')"
+      key: "progress",
+      label: "Progress",
+      icon: "/icons/progress.svg",
+      action: "showStudentTasks()"
     }
   ],
   admin: [
@@ -635,14 +708,7 @@ function getBottomNavActiveKey(screenId, role) {
     }
 
     if (String(screenId || "").startsWith("student-resources")) {
-      const mode = String(currentStudentResourceMode || "").toUpperCase();
-
-      if (mode === "VIDEO") return "video";
-      if (mode === "EBOOKS") return "ebooks";
-      if (mode === "AUDIO") return "audio";
-      if (mode === "OTHER") return "other";
-
-      return "resources";
+      return "library";
     }
 
     return "home";
@@ -1026,7 +1092,7 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
 
   const dayCount = Math.max(model.days.length, 1);
 
-  container.innerHTML = `
+  const tableHtml = `
     <div class="timetable-scroll" role="region" aria-label="Timetable" tabindex="0" style="--timetable-day-count: ${dayCount};">
       <table class="timetable-table">
         <thead>
@@ -1041,6 +1107,26 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
       </table>
     </div>
   `;
+
+  if (options.showContentPanel === true) {
+    container.innerHTML = `
+      <div class="timetable-content-strip" aria-label="Timetable and class starter image">
+        <div class="timetable-content-panel timetable-content-panel-table">
+          ${tableHtml}
+        </div>
+        <div class="timetable-content-panel timetable-content-panel-image">
+          <img src="/images/startclass.png" alt="Class start guide" class="timetable-start-image" loading="lazy" />
+        </div>
+      </div>
+      <div class="timetable-swipe-hint" aria-hidden="true">
+        <span class="app-icon app-icon-small" style="--app-icon-url: url('/icons/swipe-right.svg')"></span>
+        <span>Swipe</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = tableHtml;
 }
 
 async function fetchTimetable(options = {}) {
@@ -1098,6 +1184,14 @@ function setTimetableZoomButtonState(buttonId, zoomLink) {
     return;
   }
 
+  if (button.dataset.zoomDecorated !== "true") {
+    button.dataset.zoomDecorated = "true";
+    button.innerHTML = `
+      <span class="zoom-link-button__icon" aria-hidden="true"></span>
+      <span>Join Zoom Class</span>
+    `;
+  }
+
   const hasLink = !!normalizeTimetableText(zoomLink);
 
   button.disabled = !hasLink;
@@ -1119,7 +1213,7 @@ async function loadStudentHomeTimetable(force = false) {
 
   try {
     const result = await fetchTimetable({ force });
-    renderTimetable(container, result);
+    renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
   } catch (err) {
     container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
@@ -1165,7 +1259,7 @@ async function showAdminTimetable(force = false) {
 
   try {
     const result = await fetchTimetable({ force });
-    renderTimetable(container, result);
+    renderTimetable(container, result, { showContentPanel: true });
   } catch (err) {
     if (container) {
       container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
@@ -1721,6 +1815,16 @@ let currentPdfDirectLink = "";
 
 const STUDENT_RESOURCE_CATEGORIES = [
   {
+    key: "VIDEO",
+    label: "Video",
+    subtitle: "Movie and video resources"
+  },
+  {
+    key: "AUDIO",
+    label: "Audio",
+    subtitle: "Listening resources"
+  },
+  {
     key: "EBOOKS",
     label: "eBooks",
     subtitle: "Books and reading resources"
@@ -1729,16 +1833,6 @@ const STUDENT_RESOURCE_CATEGORIES = [
     key: "PRINTABLES",
     label: "Printables",
     subtitle: "Worksheets and printable files"
-  },
-  {
-    key: "AUDIO",
-    label: "Audio",
-    subtitle: "Listening resources"
-  },
-  {
-    key: "VIDEO",
-    label: "Video",
-    subtitle: "Movie and video resources"
   },
   {
     key: "OTHER",
@@ -1781,19 +1875,19 @@ function setResourceScreensForStudent() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Subjects";
+  if (listTitle) listTitle.innerText = "Library";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   setHomeIconButton(listBackButton, "showScreen('student-home')");
 
   const mediaBackButton = document.querySelector("#student-resources-media .small-btn");
-  setTextActionButton(mediaBackButton, "Back", "showScreen('student-resources-subjects')");
+  setBackIconButton(mediaBackButton, "showScreen('student-resources-subjects')");
 
   const moduleBackButton = document.querySelector("#student-resources-modules .small-btn");
-  setTextActionButton(moduleBackButton, "Back", "showScreen('student-resources-media')");
+  setBackIconButton(moduleBackButton, "showScreen('student-resources-media')");
 
   const detailBackButton = document.querySelector("#student-resources-detail .small-btn");
-  setTextActionButton(detailBackButton, "Back", "goBackFromStudentResourceDetail()");
+  setBackIconButton(detailBackButton, "goBackFromStudentResourceDetail()");
 }
 
 function setResourceScreensForAdmin() {
@@ -1805,19 +1899,19 @@ function setResourceScreensForAdmin() {
   });
 
   const listTitle = document.querySelector("#student-resources-subjects h2");
-  if (listTitle) listTitle.innerText = "Subjects";
+  if (listTitle) listTitle.innerText = "Library";
 
   const listBackButton = document.querySelector("#student-resources-subjects .small-btn");
   setHomeIconButton(listBackButton, "showScreen('admin-home')");
 
   const mediaBackButton = document.querySelector("#student-resources-media .small-btn");
-  setTextActionButton(mediaBackButton, "Back", "showScreen('student-resources-subjects')");
+  setBackIconButton(mediaBackButton, "showScreen('student-resources-subjects')");
 
   const moduleBackButton = document.querySelector("#student-resources-modules .small-btn");
-  setTextActionButton(moduleBackButton, "Back", "showScreen('student-resources-media')");
+  setBackIconButton(moduleBackButton, "showScreen('student-resources-media')");
 
   const detailBackButton = document.querySelector("#student-resources-detail .small-btn");
-  setTextActionButton(detailBackButton, "Back", "goBackFromStudentResourceDetail()");
+  setBackIconButton(detailBackButton, "goBackFromStudentResourceDetail()");
 }
 
 async function fetchResourceCategories(apiPath, body = {}) {
@@ -2271,13 +2365,8 @@ function renderStudentResourceSubjects() {
         <div class="resource-media-row resource-media-header" role="row">
           <div class="resource-media-subject-cell" role="columnheader">Subject</div>
           ${visibleCategories.map(category => `
-            <div class="resource-media-cell" role="columnheader">
-              <span
-                class="resource-media-icon"
-                style="--resource-media-icon: url('${getResourceCategoryIconPath(category.key)}')"
-                title="${escapeForAttribute(category.label)}"
-                aria-label="${escapeForAttribute(category.label)}"
-              ></span>
+            <div class="resource-media-cell resource-media-heading-cell" role="columnheader">
+              ${escapeHtml(category.label)}
             </div>
           `).join("")}
         </div>
@@ -2937,7 +3026,7 @@ function renderStudentResourceRow(row) {
       <div class="student-resource-row-main">
         <div class="student-resource-title">${escapeHtml(title)}</div>
         <div class="student-resource-meta">
-          <span class="resource-type-badge small-badge">${escapeHtml(getDisplayResourceType(type))}</span>
+          <span class="resource-type-icon" style="--app-icon-url: url('${getResourceCategoryIconPath(type)}')" aria-label="${escapeForAttribute(getDisplayResourceType(type))}" title="${escapeForAttribute(getDisplayResourceType(type))}"></span>
           ${format ? `<span class="resource-format-text">${escapeHtml(format)}</span>` : ""}
         </div>
         ${previewHtml}
@@ -5433,7 +5522,7 @@ function escapeHtml(value) {
 
 function getRefreshIconMarkup() {
   return `
-    <span class="manual-refresh-btn__icon" aria-hidden="true"></span>
+    <span class="app-icon app-icon-large manual-refresh-btn__icon" style="--app-icon-url: url('/icons/refresh.svg')" aria-hidden="true"></span>
     <span class="visually-hidden">Refresh</span>
   `;
 }
@@ -5466,7 +5555,7 @@ function setManualRefreshButton(screenId, handlerName) {
 
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "small-btn manual-refresh-btn";
+  button.className = "small-btn manual-refresh-btn icon-action-btn icon-action-btn-large";
   button.innerHTML = getRefreshIconMarkup();
   button.setAttribute("aria-label", "Refresh");
   button.setAttribute("title", "Refresh");
