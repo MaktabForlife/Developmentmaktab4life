@@ -729,8 +729,13 @@ function showAdminAcademics() {
    TIMETABLE
 ========================= */
 
+const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v1";
+
 let timetableCache = null;
+let timetableCacheKey = "";
 let timetableLoadPromise = null;
+let timetableLoadPromiseKey = "";
 let globalTimetableZoomLink = "";
 
 function scheduleStudentHomeTimetableLoad() {
@@ -767,6 +772,63 @@ function normalizeTimetableText(value) {
 
 function normalizeTimetableKey(value) {
   return normalizeTimetableText(value).toLowerCase().replace(/\s+/g, "");
+}
+
+function normalizeTimetableCachePart(value) {
+  return normalizeTimetableKey(value || "ALL") || "all";
+}
+
+function getTimetableRequestOptions(options = {}) {
+  return {
+    groupNo: normalizeTimetableText(options.groupNo || "ALL") || "ALL",
+    assignedTeacher: normalizeTimetableText(options.assignedTeacher || "ALL") || "ALL"
+  };
+}
+
+function getTimetableCacheKey(options = {}) {
+  const requestOptions = getTimetableRequestOptions(options);
+  const groupKey = normalizeTimetableCachePart(requestOptions.groupNo);
+  const teacherKey = normalizeTimetableCachePart(requestOptions.assignedTeacher);
+  return `${TIMETABLE_CACHE_PREFIX}_${groupKey}_${teacherKey}`;
+}
+
+function readTimetableCache(cacheKey, options = {}) {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed.savedAt || 0);
+    const data = parsed.data || null;
+
+    if (!savedAt || !data) return null;
+
+    const isExpired = Date.now() - savedAt > TIMETABLE_CACHE_TTL_MS;
+    if (isExpired && options.allowExpired !== true) return null;
+
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeTimetableCache(cacheKey, data) {
+  try {
+    if (!cacheKey || !data) return;
+
+    localStorage.setItem(cacheKey, JSON.stringify({
+      savedAt: Date.now(),
+      data
+    }));
+  } catch (err) {
+    // Local cache is an enhancement only. The app should continue if storage is full or unavailable.
+  }
+}
+
+function setActiveTimetableCache(cacheKey, data) {
+  timetableCacheKey = cacheKey || "";
+  timetableCache = data || null;
+  globalTimetableZoomLink = normalizeTimetableText(data?.zoomlink || data?.zoomLink || "");
 }
 
 function getTimetableSortMinutes(timeValue) {
@@ -962,8 +1024,10 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     `;
   }).join("");
 
+  const dayCount = Math.max(model.days.length, 1);
+
   container.innerHTML = `
-    <div class="timetable-scroll" role="region" aria-label="Timetable" tabindex="0">
+    <div class="timetable-scroll" role="region" aria-label="Timetable" tabindex="0" style="--timetable-day-count: ${dayCount};">
       <table class="timetable-table">
         <thead>
           <tr>
@@ -980,23 +1044,48 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
 }
 
 async function fetchTimetable(options = {}) {
-  if (timetableLoadPromise && options.force !== true) {
+  const requestOptions = getTimetableRequestOptions(options);
+  const cacheKey = getTimetableCacheKey(requestOptions);
+  const force = options.force === true;
+
+  if (!force) {
+    if (timetableCache && timetableCacheKey === cacheKey) {
+      return timetableCache;
+    }
+
+    const cached = readTimetableCache(cacheKey);
+    if (cached) {
+      setActiveTimetableCache(cacheKey, cached);
+      return cached;
+    }
+  }
+
+  if (timetableLoadPromise && !force && timetableLoadPromiseKey === cacheKey) {
     return timetableLoadPromise;
   }
 
-  timetableLoadPromise = apiPost("/api/timetable/get", {
-    groupNo: options.groupNo || "ALL",
-    assignedTeacher: options.assignedTeacher || "ALL"
-  }, state.token).then(result => {
+  timetableLoadPromiseKey = cacheKey;
+  timetableLoadPromise = apiPost("/api/timetable/get", requestOptions, state.token).then(result => {
     if (!result.success) {
       throw new Error(result.error || "Failed to load timetable");
     }
 
-    timetableCache = result;
-    globalTimetableZoomLink = normalizeTimetableText(result.zoomlink || result.zoomLink || "");
+    setActiveTimetableCache(cacheKey, result);
+    writeTimetableCache(cacheKey, result);
     return result;
+  }).catch(err => {
+    if (!force) {
+      const staleCache = readTimetableCache(cacheKey, { allowExpired: true });
+      if (staleCache) {
+        setActiveTimetableCache(cacheKey, staleCache);
+        return staleCache;
+      }
+    }
+
+    throw err;
   }).finally(() => {
     timetableLoadPromise = null;
+    timetableLoadPromiseKey = "";
   });
 
   return timetableLoadPromise;
@@ -1040,7 +1129,6 @@ async function loadStudentHomeTimetable(force = false) {
 
 async function refreshStudentHomeTimetable(button) {
   await runManualRefresh(button, async () => {
-    timetableCache = null;
     await loadStudentHomeTimetable(true);
   });
 }
@@ -1087,7 +1175,6 @@ async function showAdminTimetable(force = false) {
 
 async function refreshAdminTimetable(button) {
   await runManualRefresh(button, async () => {
-    timetableCache = null;
     await showAdminTimetable(true);
   });
 }
@@ -1163,8 +1250,9 @@ async function saveAdminTimetableZoomLink(button) {
       throw new Error(result.error || "Could not save Zoom link.");
     }
 
-    timetableCache = result;
-    globalTimetableZoomLink = normalizeTimetableText(result.zoomlink || "");
+    const cacheKey = getTimetableCacheKey({ groupNo: "ALL", assignedTeacher: "ALL" });
+    setActiveTimetableCache(cacheKey, result);
+    writeTimetableCache(cacheKey, result);
 
     if (message) {
       message.textContent = result.message || "Zoom link saved.";

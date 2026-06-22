@@ -260,7 +260,11 @@ button:active {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border-radius: 50%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
 }
 
 .home-icon-btn__icon,
@@ -283,8 +287,9 @@ button:active {
 
 @media (hover: hover) and (pointer: fine) {
   .home-icon-btn:hover {
+    opacity: 0.78;
     transform: translateY(-1px);
-    box-shadow: 0 6px 12px rgba(var(--black-rgb), 0.18);
+    box-shadow: none;
   }
 }
 
@@ -319,8 +324,8 @@ button:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(var(--white-rgb), 0.2);
-  border-radius: 50%;
+  background: transparent;
+  border-radius: 0;
   width: 36px;
   height: 36px;
   color: var(--text-inverse);
@@ -1340,6 +1345,13 @@ button:active {
   gap: 12px;
   margin-top: 18px;
   text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.student-home-panel > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .student-home-card {
@@ -1370,6 +1382,10 @@ button:active {
 
 /* Timetable and Zoom components */
 .timetable-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   background: var(--surface-card);
   border-left: 5px solid var(--primary);
   border-radius: 14px;
@@ -1383,6 +1399,7 @@ button:active {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   margin-bottom: 10px;
 }
 
@@ -1393,18 +1410,23 @@ button:active {
 
 .timetable-scroll {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 12px;
   border: 1px solid rgba(var(--primary-rgb), 0.18);
   background: var(--surface-card);
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
 }
 
 .timetable-table {
   width: 100%;
-  min-width: 430px;
+  min-width: max(100%, calc(60px + (var(--timetable-day-count, 4) * 68px)));
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
   font-size: 0.92rem;
 }
 
@@ -1428,7 +1450,8 @@ button:active {
 
 .timetable-table thead th:first-child,
 .timetable-time-cell {
-  text-align: left;
+  width: 60px;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -1443,9 +1466,12 @@ button:active {
   align-items: center;
   justify-content: center;
   width: 100%;
+  min-width: 0;
   color: var(--text-strong);
   font-weight: 750;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .timetable-subject-link {
@@ -1463,6 +1489,9 @@ button:active {
 }
 
 .zoom-link-button {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1499,21 +1528,31 @@ button:active {
 
 @media (max-width: 520px) {
   .timetable-card {
-    padding: 12px;
+    padding: 11px;
+  }
+
+  .timetable-card-header {
+    gap: 8px;
   }
 
   .timetable-table {
-    min-width: 390px;
-    font-size: 0.84rem;
+    min-width: max(100%, calc(54px + (var(--timetable-day-count, 4) * 58px)));
+    font-size: clamp(0.72rem, 3.15vw, 0.84rem);
   }
 
   .timetable-table th,
   .timetable-table td {
-    padding: 9px 7px;
+    padding: 8px 4px;
+  }
+
+  .timetable-table thead th:first-child,
+  .timetable-time-cell {
+    width: 54px;
   }
 
   .zoom-link-button {
     min-height: 52px;
+    padding-inline: 12px;
   }
 }
 
@@ -1600,8 +1639,9 @@ body.has-bottom-nav .app-shell {
 
 .bottom-nav__item.is-active {
   color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.11);
-  border-color: rgba(var(--primary-rgb), 0.18);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: inset 0 -3px 0 var(--primary);
 }
 
 .bottom-nav__icon {
@@ -1673,6 +1713,10 @@ body.has-bottom-nav .app-shell {
       transform 160ms ease;
   }
 
+  .bottom-nav__item.is-active {
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+
   .bottom-nav__icon {
     width: 24px;
     height: 24px;
@@ -1689,8 +1733,8 @@ body.has-bottom-nav .app-shell {
 @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
   .bottom-nav__item:hover {
     color: var(--primary);
-    background: rgba(var(--primary-rgb), 0.08);
-    border-color: rgba(var(--primary-rgb), 0.18);
+    background: transparent;
+    border-color: transparent;
     transform: translateX(2px);
   }
 
@@ -1699,7 +1743,7 @@ body.has-bottom-nav .app-shell {
   }
 
   .bottom-nav__item.is-active:hover {
-    background: rgba(var(--primary-rgb), 0.14);
+    background: transparent;
   }
 }
 
@@ -2229,10 +2273,11 @@ body.has-bottom-nav .app-shell {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--text-inverse);
-  box-shadow: 0 4px 8px rgba(var(--black-rgb), 0.16);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
 }
 
 .manual-refresh-btn__icon {
@@ -2265,8 +2310,9 @@ body.has-bottom-nav .app-shell {
 
 @media (hover: hover) and (pointer: fine) {
   .manual-refresh-btn:hover:not(:disabled) {
+    opacity: 0.78;
     transform: translateY(-1px);
-    box-shadow: 0 6px 12px rgba(var(--black-rgb), 0.18);
+    box-shadow: none;
   }
 }
 
@@ -2381,9 +2427,9 @@ body.has-bottom-nav .app-shell {
   align-items: center;
   justify-content: center;
   color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.10);
-  border: 1px solid rgba(var(--primary-rgb), 0.18);
-  border-radius: 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -2405,14 +2451,12 @@ body.has-bottom-nav .app-shell {
 @media (hover: hover) and (pointer: fine) {
   .resource-media-icon-button {
     transition:
-      background-color 160ms ease,
-      border-color 160ms ease,
+      opacity 160ms ease,
       transform 160ms ease;
   }
 
   .resource-media-icon-button:hover {
-    background: rgba(var(--primary-rgb), 0.16);
-    border-color: rgba(var(--primary-rgb), 0.30);
+    opacity: 0.78;
     transform: translateY(-1px);
   }
 }
@@ -2433,7 +2477,7 @@ body.has-bottom-nav .app-shell {
     min-width: 40px;
     height: 40px;
     min-height: 40px;
-    border-radius: 13px;
+    border-radius: 0;
   }
 
   .resource-media-icon {
@@ -2778,8 +2822,8 @@ body.resource-module-picker-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(var(--primary-rgb), 0.10);
+  border-radius: 0;
+  background: transparent;
   color: var(--primary);
   font-size: 1.25rem;
 }
@@ -2852,8 +2896,8 @@ body.resource-module-picker-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(var(--primary-rgb), 0.13);
+  border-radius: 0;
+  background: transparent;
   font-size: 1rem;
 }
 
@@ -3596,9 +3640,9 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
 
 .student-copy-icon-btn,
 .student-whatsapp-icon-btn {
-  background: transparent !important;
+  background: transparent;
   border: 0;
-  box-shadow: none !important;
+  box-shadow: none;
   color: inherit;
   min-height: 0;
   padding: 0;
