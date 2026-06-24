@@ -92,32 +92,90 @@ window.addEventListener("keydown", event => {
 });
 
 function initApp() {
+  try {
     checkForAppUpdate();
+    setupPinDigitBoxes();
 
-  setupPinDigitBoxes();
+    const route = getPortalRouteFromLocation();
 
-  const path = window.location.pathname;
-  const parts = path.split("/").filter(Boolean);
-
-  if (parts[0] === "admin" && parts[1]) {
-    state.portalType = "admin";
-    state.uniqueid = parts[1];
+    if (route.portalType === "admin") {
+      state.portalType = "admin";
+      state.uniqueid = route.uniqueid;
       setAuthTheme("admin");
-    checkAdmin();
-    return;
+      checkAdmin();
+      return;
+    }
+
+    if (route.portalType === "student") {
+      state.portalType = "student";
+      state.uniqueid = route.uniqueid;
+      setAuthTheme("student");
+      checkStudent();
+      return;
+    }
+
+    showInvalidLoginLinkMessage();
+  } catch (error) {
+    console.error("App startup failed:", error);
+    showStartupErrorMessage();
+  }
+}
+
+function getSafePathSegment(segment) {
+  const value = String(segment || "").trim();
+
+  if (!value) return "";
+
+  try {
+    return decodeURIComponent(value).trim();
+  } catch (error) {
+    console.warn("Could not decode route segment:", value, error);
+    return value;
+  }
+}
+
+function getPortalRouteFromLocation() {
+  const pathname = String(window.location && window.location.pathname ? window.location.pathname : "");
+  const parts = pathname.split("/").filter(Boolean);
+  const portalType = getSafePathSegment(parts[0]).toLowerCase();
+  const uniqueid = getSafePathSegment(parts[1]);
+
+  if ((portalType === "admin" || portalType === "student") && uniqueid) {
+    return { portalType, uniqueid };
   }
 
-  if (parts[0] === "student" && parts[1]) {
-    state.portalType = "student";
-    state.uniqueid = parts[1];
-  setAuthTheme("student");
-    checkStudent();
-    return;
-  }
+  return { portalType: "", uniqueid: "" };
+}
 
-  document.getElementById("portal-title").innerText = "Reboot Your Maktab-mE";
-  document.getElementById("portal-subtitle").innerText =
-    "You require a personal URL to access the Maktab4Life Dashboard";
+function showInvalidLoginLinkMessage() {
+  state.portalType = null;
+  state.uniqueid = null;
+
+  setAuthTheme("");
+  setError("");
+  setDomText("portal-title", "Invalid Login Link");
+  setDomText(
+    "portal-subtitle",
+    "Please use your personal Maktab4Life student or admin link."
+  );
+  hideDomElement("auth-welcome-banner");
+  hideDomElement("login-pin-box");
+  hideDomElement("setup-pin-box");
+  showScreen("auth-screen");
+}
+
+function showStartupErrorMessage() {
+  setAuthTheme("");
+  setDomText("portal-title", "Unable to Start App");
+  setDomText(
+    "portal-subtitle",
+    "Please refresh the page. If the problem continues, contact the Maktab4Life administrator."
+  );
+  setError("Unable to start the app. Please refresh and try again.");
+  hideDomElement("auth-welcome-banner");
+  hideDomElement("login-pin-box");
+  hideDomElement("setup-pin-box");
+  showScreen("auth-screen");
 }
 
 function showScreen(screenId) {
@@ -667,6 +725,11 @@ function getCurrentUserLevelText() {
 }
 
 function getUserBandElement() {
+  if (!document.body) {
+    console.warn("User band could not be created because document.body is missing.");
+    return null;
+  }
+
   let band = document.getElementById("app-user-band");
 
   if (!band) {
@@ -680,17 +743,51 @@ function getUserBandElement() {
   return band;
 }
 
+function clearUserBand(band) {
+  if (!band) return false;
+  band.innerHTML = "";
+  return true;
+}
+
+function setBodyUserBandState(shouldShow) {
+  if (!document.body) return false;
+  document.body.classList.toggle("has-user-band", !!shouldShow);
+  return true;
+}
+
+function attachUserBandLogoutHandler(band) {
+  if (!band) return false;
+
+  const logoutButton = band.querySelector("[data-user-band-logout]");
+  if (!logoutButton) return false;
+
+  logoutButton.addEventListener("click", (event) => {
+    event.preventDefault();
+
+    if (typeof logout === "function") {
+      logout();
+      return;
+    }
+
+    console.warn("Logout function is missing.");
+  });
+
+  return true;
+}
+
 function updateUserBand(screenId) {
   const band = getUserBandElement();
+  if (!band) return false;
+
   const role = getBottomNavRole();
   const shouldShow = !!state.token && !!role && screenId !== "auth-screen";
 
   band.classList.toggle("hidden", !shouldShow);
-  document.body.classList.toggle("has-user-band", shouldShow);
+  setBodyUserBandState(shouldShow);
 
   if (!shouldShow) {
-    band.innerHTML = "";
-    return;
+    clearUserBand(band);
+    return false;
   }
 
   const username = getCurrentUserName() || (role === "admin" ? "Admin" : "Student");
@@ -701,11 +798,14 @@ function updateUserBand(screenId) {
       <h2 class="app-user-band__name">${escapeHtml(username)}</h2>
       <p class="app-user-band__level">${escapeHtml(levelText)}</p>
     </div>
-    <button type="button" class="app-user-band__logout icon-action-btn icon-action-btn-large" onclick="logout()" aria-label="Logout" title="Logout">
+    <button type="button" class="app-user-band__logout icon-action-btn icon-action-btn-large" data-user-band-logout aria-label="Logout" title="Logout">
       <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/logout.svg')" aria-hidden="true"></span>
       <span class="app-user-band__logout-label">Logout</span>
     </button>
   `;
+
+  attachUserBandLogoutHandler(band);
+  return true;
 }
 
 function setTextActionButton(button, text, onclickValue) {
@@ -5936,19 +6036,30 @@ async function saveStudentTaskChangesAndReturn() {
 ========================= */
 function setAuthTheme(type) {
   const authScreen = document.getElementById("auth-screen");
-  if (!authScreen) return;
+  const body = document.body;
 
-  authScreen.classList.remove("student-theme", "admin-theme");
-  document.body.classList.remove("student-body", "admin-body");
+  if (authScreen) {
+    authScreen.classList.remove("student-theme", "admin-theme");
 
-  if (type === "student") {
-    authScreen.classList.add("student-theme");
-    document.body.classList.add("student-body");
+    if (type === "student") {
+      authScreen.classList.add("student-theme");
+    }
+
+    if (type === "admin") {
+      authScreen.classList.add("admin-theme");
+    }
   }
 
-  if (type === "admin") {
-    authScreen.classList.add("admin-theme");
-    document.body.classList.add("admin-body");
+  if (body) {
+    body.classList.remove("student-body", "admin-body");
+
+    if (type === "student") {
+      body.classList.add("student-body");
+    }
+
+    if (type === "admin") {
+      body.classList.add("admin-body");
+    }
   }
 }
 
