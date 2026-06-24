@@ -1316,7 +1316,7 @@ function setTimetableZoomButtonState(buttonId, zoomLink) {
   button.title = hasLink ? "Open Zoom link" : "Zoom link has not been added yet";
 }
 
-function ensureTimetableStartImageAfterZoom(contentId, zoomButtonId, imageCardId) {
+function ensureTimetableStartImageAfterZoom(contentId, zoomButtonId, imageCardId, placement = "afterZoom") {
   const content = document.getElementById(contentId);
   const zoomButton = document.getElementById(zoomButtonId);
 
@@ -1333,6 +1333,20 @@ function ensureTimetableStartImageAfterZoom(contentId, zoomButtonId, imageCardId
     imageCard.innerHTML = `
       <img src="/images/startclass.png" alt="Class start guide" class="timetable-start-image" loading="lazy" />
     `;
+  }
+
+  if (placement === "afterTimetable" && content) {
+    const timetableCard = content.closest(".timetable-card");
+
+    if (timetableCard && timetableCard.parentNode) {
+      timetableCard.insertAdjacentElement("afterend", imageCard);
+      return;
+    }
+
+    if (content.parentNode) {
+      content.insertAdjacentElement("afterend", imageCard);
+      return;
+    }
   }
 
   if (zoomButton && zoomButton.parentNode) {
@@ -1465,7 +1479,7 @@ async function loadStudentHomeTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
-    ensureTimetableStartImageAfterZoom("student-timetable-content", "student-zoom-link-btn", "student-timetable-start-image-card");
+    ensureTimetableStartImageAfterZoom("student-timetable-content", "student-zoom-link-btn", "student-timetable-start-image-card", "afterTimetable");
   } catch (err) {
     container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
     setTimetableZoomButtonState("student-zoom-link-btn", "");
