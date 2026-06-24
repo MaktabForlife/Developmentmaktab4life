@@ -67,51 +67,6 @@
       <p id="auth-error" class="error-message"></p>
     </section>
 
-    <!-- STUDENT HOME -->
-    <section id="student-home" class="screen student-theme">
-      <div class="top-bar">
-        <div>
-          <h2 id="student-home-title">Student</h2>
-          <p id="student-welcome" class="mini-text">Student Home page</p>
-        </div>
-        <button class="small-btn" onclick="logout()">Logout</button>
-      </div>
-
-      <div class="student-home-panel">
-
-        <button
-          id="student-zoom-link-btn"
-          type="button"
-          class="zoom-link-button"
-          onclick="openStudentTimetableZoom()"
-          disabled
-        >
-          <span class="zoom-link-button__icon" aria-hidden="true"></span>
-          <span class="zoom-link-button__text">Join Zoom Class</span>
-        </button>
-
-        <section class="timetable-card">
-          <div class="timetable-card-header">
-            <h3>Timetable</h3>
-            <button
-              type="button"
-              class="small-btn manual-refresh-btn"
-              title="Refresh timetable"
-              aria-label="Refresh timetable"
-              onclick="refreshStudentHomeTimetable(this)"
-            >
-              <span class="manual-refresh-btn__icon" aria-hidden="true"></span>
-              <span class="visually-hidden">Refresh timetable</span>
-            </button>
-          </div>
-
-          <div id="student-timetable-content">
-            <p class="helper-text">Loading timetable...</p>
-          </div>
-        </section>
-      </div>
-    </section>
-
     <!-- ADMIN HOME -->
     <section id="admin-home" class="screen admin-theme">
       <div class="top-bar">
@@ -152,23 +107,11 @@
       </div>
     </section>
 
-    <!-- STUDENT TASKS -->
-    <section id="student-tasks" class="screen student-theme">
-      <div class="nav-header">
-        <h2>My Tasks</h2>
-        <button class="small-btn home-icon-btn" onclick="showScreen('student-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-      </div>
-
-      <div id="student-task-list" class="list-stack">
-        <p class="helper-text">Loading tasks...</p>
-      </div>
-    </section>
-
-    <!-- STUDENT RESOURCES -->
-    <section id="student-resources-subjects" class="screen student-theme">
+    <!-- SHARED RESOURCE SCREENS (used by Admin Resources) -->
+    <section id="student-resources-subjects" class="screen admin-theme">
       <div class="nav-header">
         <h2 class="visually-hidden">Resources</h2>
-        <button class="small-btn home-icon-btn" onclick="showScreen('student-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
+        <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
       </div>
 
       <div id="student-resource-subject-list" class="list-stack">
@@ -176,7 +119,7 @@
       </div>
     </section>
 
-    <section id="student-resources-media" class="screen student-theme">
+    <section id="student-resources-media" class="screen admin-theme">
       <div class="nav-header">
         <h2 id="student-resource-media-title">Resources</h2>
         <button class="small-btn" onclick="showScreen('student-resources-subjects')">Back</button>
@@ -187,7 +130,7 @@
       </div>
     </section>
 
-    <section id="student-resources-modules" class="screen student-theme">
+    <section id="student-resources-modules" class="screen admin-theme">
       <div class="nav-header">
         <h2 id="student-resource-module-title">Modules</h2>
         <button class="small-btn" onclick="showScreen('student-resources-media')">Back</button>
@@ -198,7 +141,7 @@
       </div>
     </section>
 
-    <section id="student-resources-detail" class="screen student-theme">
+    <section id="student-resources-detail" class="screen admin-theme">
       <div class="nav-header">
         <h2 id="student-resource-detail-title">Resources</h2>
         <button class="small-btn" onclick="showScreen('student-resources-subjects')">Back</button>
@@ -449,7 +392,7 @@
 
 
     <!-- PDF VIEWER -->
-    <section id="pdf-viewer-screen" class="screen student-theme">
+    <section id="pdf-viewer-screen" class="screen admin-theme">
       <div class="nav-header pdf-viewer-header">
         <h2 id="pdf-viewer-title">PDF Viewer</h2>
         <div class="pdf-viewer-actions">

@@ -2,14 +2,38 @@ const API_BASE = "https://rebootworker.maktab4life.workers.dev";
 const STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktab4life.org/student/";
 const DEFAULT_STUDENT_GROUP = 1;
 const APP_VERSION_STORAGE_KEY = "maktab_app_version";
-const STUDENT_HOME_CLASS_DUAS_ARABIC = [
-  "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-  "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
-  "رَبِّ يَسِّرْ وَلاَ تُعَسِّرْ وَتَمِّمْ بِالْخَیْر وَبِكَ نَسْتَعِينُ يَا فَتَّاحُ يَا عَلِيْمُ",
-  "رَبِّ زِدْنِا عِلْمًا",
-  "اللّهُمَّ أعِنَّا على ذِكْرِكَ، وَشُكْرِكَ، وَحُسْنِ عِبَادَتِكَ",
-  "سُبْحَانَكَ لَا عِلْمَ لَنَا إِلَّا مَا عَلَّمْتَنَا ۖ إِنَّكَ أَنتَ الْعَلِيمُ الْحَكِيمُ"
-].join("\n\n");
+const CLASS_DUAS_ITEMS = [
+  {
+    arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
+    transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
+    translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
+  },
+  {
+    arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
+    transliteration: "Rabbish sharh lee sadree. Wa yassir lee amree. Wahlul ‘uqdatan mil lisa nee. Yafqahoo qawlee",
+    translation: "O my Sustainer! Open up my heart and make my task easy for me, and loosen the knot from my tongue so that they might fully understand my speech"
+  },
+  {
+    arabic: "رَبِّ يَسِّرْ وَلاَ تُعَسِّرْ وَتَمِّمْ بِالْخَیْر وَبِكَ نَسْتَعِينُ يَا فَتَّاحُ يَا عَلِيْمُ",
+    transliteration: "Rabbi, yassir wa la tu’assir wa tammim bil khair wa bika nasta’een. yaa fattaah Ya A’LeemU",
+    translation: "O Lord, make it easy and do not make it difficult, and make it end well. We seek your help. Oh the Opener, Oh the All Knowing"
+  },
+  {
+    arabic: "رَبِّ زِدْنِا عِلْمًا",
+    transliteration: "Rabbi Zidnaa IlMan",
+    translation: "Oh lord increase us in knowledge"
+  },
+  {
+    arabic: "اللّهُمَّ أعِنَّا على ذِكْرِكَ، وَشُكْرِكَ، وَحُسْنِ عِبَادَتِكَ",
+    transliteration: "Allahumma A inna Ala Zikrika, Wa Shukrika, Wa Husni Ibadatika",
+    translation: "O Allah, help me remember You, to be grateful to You and to worship You in an excellent manner"
+  },
+  {
+    arabic: "سُبْحَانَكَ لَا عِلْمَ لَنَا إِلَّا مَا عَلَّمْتَنَا ۖ إِنَّكَ أَنتَ الْعَلِيمُ الْحَكِيمُ",
+    transliteration: "subḥānaka lā ‘ilma lanā illā mā ‘allamtana, innaka antal-‘Alīmul-Ḥakīm.",
+    translation: "Glory be to You; we have no knowledge except what You have taught us. Indeed, it is You who is the All-Knowing, the All-Wise"
+  }
+];
 
 
 const state = {
@@ -1367,33 +1391,65 @@ function ensureTimetableStartImageAfterZoom(contentId, zoomButtonId, imageCardId
   }
 }
 
-function ensureStudentHomeClassDuasCardAfterTimetable(contentId, cardId) {
+function createClassDuasCard(cardId) {
+  const card = document.createElement("section");
+  card.id = cardId;
+  card.className = "class-duas-card";
+  card.setAttribute("aria-label", "Class duas");
+
+  const list = document.createElement("div");
+  list.className = "class-duas-card__list";
+
+  CLASS_DUAS_ITEMS.forEach(dua => {
+    const item = document.createElement("article");
+    item.className = "class-duas-card__item";
+
+    const arabic = document.createElement("p");
+    arabic.className = "class-duas-card__arabic";
+    arabic.lang = "ar";
+    arabic.dir = "rtl";
+    arabic.textContent = dua.arabic;
+
+    const transliteration = document.createElement("p");
+    transliteration.className = "class-duas-card__transliteration";
+    transliteration.lang = "en";
+    transliteration.dir = "ltr";
+    transliteration.textContent = dua.transliteration;
+
+    const translation = document.createElement("p");
+    translation.className = "class-duas-card__translation";
+    translation.lang = "en";
+    translation.dir = "ltr";
+    translation.textContent = dua.translation;
+
+    item.appendChild(arabic);
+    item.appendChild(transliteration);
+    item.appendChild(translation);
+    list.appendChild(item);
+  });
+
+  card.appendChild(list);
+  return card;
+}
+
+function ensureClassDuasCardAfterTimetable(contentId, cardId, imageCardIds = []) {
   const content = document.getElementById(contentId);
 
   if (!content) {
     return;
   }
 
-  const oldImageCard = document.getElementById("student-timetable-start-image-card");
-  if (oldImageCard) {
-    oldImageCard.remove();
-  }
+  imageCardIds.forEach(id => {
+    const imageCard = document.getElementById(id);
+    if (imageCard) {
+      imageCard.remove();
+    }
+  });
 
   let card = document.getElementById(cardId);
 
   if (!card) {
-    card = document.createElement("section");
-    card.id = cardId;
-    card.className = "student-home-duas-card";
-    card.lang = "ar";
-    card.dir = "rtl";
-    card.setAttribute("aria-label", "Class duas");
-
-    const text = document.createElement("p");
-    text.className = "student-home-duas-card__text";
-    text.textContent = STUDENT_HOME_CLASS_DUAS_ARABIC;
-
-    card.appendChild(text);
+    card = createClassDuasCard(cardId);
   }
 
   const timetableCard = content.closest(".timetable-card");
@@ -1499,7 +1555,7 @@ async function loadAdminHomeTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("admin-home-zoom-link-btn", globalTimetableZoomLink);
-    ensureTimetableStartImageAfterZoom("admin-home-timetable-content", "admin-home-zoom-link-btn", "admin-home-timetable-start-image-card");
+    ensureClassDuasCardAfterTimetable("admin-home-timetable-content", "admin-home-class-duas-card", ["admin-home-timetable-start-image-card"]);
   } catch (err) {
     container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
     setTimetableZoomButtonState("admin-home-zoom-link-btn", "");
@@ -1528,7 +1584,7 @@ async function loadStudentHomeTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
-    ensureStudentHomeClassDuasCardAfterTimetable("student-timetable-content", "student-home-class-duas-card");
+    ensureClassDuasCardAfterTimetable("student-timetable-content", "student-home-class-duas-card", ["student-timetable-start-image-card"]);
   } catch (err) {
     container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
     setTimetableZoomButtonState("student-zoom-link-btn", "");
@@ -1575,7 +1631,7 @@ async function showAdminTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("admin-timetable-zoom-link-btn", globalTimetableZoomLink);
-    ensureTimetableStartImageAfterZoom("admin-timetable-content", "admin-timetable-zoom-link-btn", "admin-timetable-start-image-card");
+    ensureClassDuasCardAfterTimetable("admin-timetable-content", "admin-timetable-class-duas-card", ["admin-timetable-start-image-card"]);
   } catch (err) {
     if (container) {
       container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;

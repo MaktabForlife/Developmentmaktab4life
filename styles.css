@@ -1923,26 +1923,56 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   object-fit: contain;
 }
 
-.student-home-duas-card {
+.class-duas-card {
   width: 100%;
   margin-top: 12px;
-  padding: 18px 14px;
+  padding: 16px 13px;
   background: var(--surface-card);
   border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 16px;
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
   text-align: center;
-  direction: rtl;
 }
 
-.student-home-duas-card__text {
-  margin: 0;
+.class-duas-card__list {
+  display: grid;
+  gap: 14px;
+}
+
+.class-duas-card__item {
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.14);
+}
+
+.class-duas-card__item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.class-duas-card__arabic {
+  margin: 0 0 8px;
   color: var(--primary);
   font-family: "Geeza Pro", "Tahoma", "Arial", var(--font-main);
-  font-size: clamp(1.15rem, 5.4vw, 1.85rem);
+  font-size: clamp(1.15rem, 5.2vw, 1.85rem);
   font-weight: 750;
-  line-height: 1.9;
-  white-space: pre-line;
+  line-height: 1.85;
+  text-align: center;
+}
+
+.class-duas-card__transliteration {
+  margin: 0 0 6px;
+  color: var(--text-strong);
+  font-size: clamp(0.88rem, 3.6vw, 1.03rem);
+  font-weight: 650;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.class-duas-card__translation {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.86rem, 3.5vw, 1rem);
+  line-height: 1.45;
   text-align: center;
 }
 
