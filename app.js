@@ -357,10 +357,11 @@ function updateAuthWelcomeBanner(username) {
 function updateAuthLoginLabel(type) {
   const titleText = type === "admin" ? "Admin Login" : "Student Login";
   const subtitleText = "";
+  const dom = window.M4LDom;
 
-  if (window.M4LDom) {
-    window.M4LDom.setText("portal-title", titleText);
-    window.M4LDom.setText("portal-subtitle", subtitleText);
+  if (dom && typeof dom.setText === "function") {
+    dom.setText("portal-title", titleText);
+    dom.setText("portal-subtitle", subtitleText);
     return;
   }
 
