@@ -6,7 +6,7 @@ const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
     transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
-    translation: "v18-Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
+    translation: "19-Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
     arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
@@ -799,6 +799,126 @@ function attachUserBandLogoutHandler(band) {
   return true;
 }
 
+function getActiveScreenId() {
+  const activeScreen = document.querySelector(".screen.active");
+  return activeScreen ? String(activeScreen.id || "") : "";
+}
+
+function removeLegacyScreenRefreshButtons() {
+  document.querySelectorAll(".manual-refresh-btn").forEach(button => {
+    if (!button.closest("#app-user-band")) {
+      button.remove();
+    }
+  });
+}
+
+async function refreshCurrentResourceView(button) {
+  await runManualRefresh(button, async () => {
+    const role = getBottomNavRole();
+    const shouldUseAdminResources = studentResourceViewMode === "admin" || role === "admin";
+
+    if (shouldUseAdminResources && typeof showAdminResources === "function") {
+      await showAdminResources();
+      return;
+    }
+
+    if (typeof showStudentResources === "function") {
+      await showStudentResources();
+      return;
+    }
+
+    console.warn("No resource refresh action is available for this screen.");
+  });
+}
+
+function getUserBandRefreshAction(screenId, role) {
+  const activeScreenId = String(screenId || getActiveScreenId() || "");
+
+  if (!activeScreenId || activeScreenId === "auth-screen" || activeScreenId === "pdf-viewer-screen") {
+    return null;
+  }
+
+  if (activeScreenId === "student-home") {
+    return typeof refreshStudentHomeTimetable === "function"
+      ? { label: "Refresh", title: "Refresh timetable", handler: refreshStudentHomeTimetable }
+      : null;
+  }
+
+  if (activeScreenId === "admin-home") {
+    return typeof refreshAdminHomeTimetable === "function"
+      ? { label: "Refresh", title: "Refresh timetable", handler: refreshAdminHomeTimetable }
+      : null;
+  }
+
+  if (activeScreenId === "admin-timetable-screen") {
+    return typeof refreshAdminTimetable === "function"
+      ? { label: "Refresh", title: "Refresh timetable", handler: refreshAdminTimetable }
+      : null;
+  }
+
+  if (String(activeScreenId).startsWith("student-resources")) {
+    return { label: "Refresh", title: "Refresh library", handler: refreshCurrentResourceView };
+  }
+
+  if (activeScreenId === "progress-subjects-screen") {
+    if (role === "student" && typeof refreshStudentTaskProgress === "function") {
+      return { label: "Refresh", title: "Refresh progress", handler: refreshStudentTaskProgress };
+    }
+
+    if (role === "admin" && typeof refreshProgressSubjects === "function") {
+      return { label: "Refresh", title: "Refresh progress", handler: refreshProgressSubjects };
+    }
+  }
+
+  if (activeScreenId === "progress-tasks-screen") {
+    if (role === "student" && typeof refreshStudentModuleTaskList === "function") {
+      return { label: "Refresh", title: "Refresh tasks", handler: refreshStudentModuleTaskList };
+    }
+
+    if (role === "admin" && typeof refreshProgressTasks === "function") {
+      return { label: "Refresh", title: "Refresh tasks", handler: refreshProgressTasks };
+    }
+  }
+
+  if (activeScreenId === "progress-task-students-screen" && role === "admin") {
+    if (progressState && progressState.contextType === "student" && typeof refreshIndividualStudentTaskList === "function") {
+      return { label: "Refresh", title: "Refresh student tasks", handler: refreshIndividualStudentTaskList };
+    }
+
+    if (typeof refreshProgressTaskStudents === "function") {
+      return { label: "Refresh", title: "Refresh student progress", handler: refreshProgressTaskStudents };
+    }
+  }
+
+  if (activeScreenId === "attendance-report-screen" && typeof refreshViewAttendance === "function") {
+    return { label: "Refresh", title: "Refresh attendance records", handler: refreshViewAttendance };
+  }
+
+  if (activeScreenId === "attendance-stats-screen" && typeof refreshAttendanceStats === "function") {
+    return { label: "Refresh", title: "Refresh attendance stats", handler: refreshAttendanceStats };
+  }
+
+  return null;
+}
+
+function attachUserBandRefreshHandler(band, refreshAction) {
+  if (!band || !refreshAction || typeof refreshAction.handler !== "function") return false;
+
+  const refreshButton = band.querySelector("[data-user-band-refresh]");
+  if (!refreshButton) return false;
+
+  refreshButton.addEventListener("click", event => {
+    event.preventDefault();
+
+    Promise.resolve(refreshAction.handler(refreshButton)).catch(error => {
+      console.error("User band refresh failed:", error);
+      alert(error && error.message ? error.message : "Unable to refresh this screen.");
+    });
+  });
+
+  return true;
+}
+
 function updateUserBand(screenId) {
   const band = getUserBandElement();
   if (!band) return false;
@@ -808,6 +928,7 @@ function updateUserBand(screenId) {
 
   band.classList.toggle("hidden", !shouldShow);
   setBodyUserBandState(shouldShow);
+  removeLegacyScreenRefreshButtons();
 
   if (!shouldShow) {
     clearUserBand(band);
@@ -816,18 +937,27 @@ function updateUserBand(screenId) {
 
   const username = getCurrentUserName() || (role === "admin" ? "Admin" : "Student");
   const levelText = getCurrentUserLevelText();
+  const refreshAction = getUserBandRefreshAction(screenId, role);
 
   band.innerHTML = `
     <div class="app-user-band__identity">
       <h2 class="app-user-band__name">${escapeHtml(username)}</h2>
       <p class="app-user-band__level">${escapeHtml(levelText)}</p>
     </div>
-    <button type="button" class="app-user-band__logout icon-action-btn icon-action-btn-large" data-user-band-logout aria-label="Logout" title="Logout">
-      <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/logout.svg')" aria-hidden="true"></span>
-      <span class="app-user-band__logout-label">Logout</span>
-    </button>
+    <div class="app-user-band__actions">
+      ${refreshAction ? `
+        <button type="button" class="app-user-band__refresh manual-refresh-btn icon-action-btn icon-action-btn-large" data-user-band-refresh aria-label="${escapeHtml(refreshAction.title || refreshAction.label || "Refresh")}" title="${escapeHtml(refreshAction.title || refreshAction.label || "Refresh")}">
+          ${getRefreshIconMarkup()}
+        </button>
+      ` : ""}
+      <button type="button" class="app-user-band__logout icon-action-btn icon-action-btn-large" data-user-band-logout aria-label="Logout" title="Logout">
+        <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/logout.svg')" aria-hidden="true"></span>
+        <span class="app-user-band__logout-label">Logout</span>
+      </button>
+    </div>
   `;
 
+  attachUserBandRefreshHandler(band, refreshAction);
   attachUserBandLogoutHandler(band);
   return true;
 }
@@ -1826,6 +1956,7 @@ function ensureAdminHomePanel() {
     screen.prepend(panel);
   }
 
+  removeLegacyScreenRefreshButtons();
   return panel;
 }
 
@@ -6312,45 +6443,14 @@ function getRefreshIconMarkup() {
 }
 
 function getManualRefreshButtonMarkup(onclickValue) {
-  return `
-    <button
-      type="button"
-      class="small-btn manual-refresh-btn icon-action-btn icon-action-btn-large"
-      title="Refresh"
-      aria-label="Refresh"
-      onclick="${onclickValue}"
-    >
-      ${getRefreshIconMarkup()}
-    </button>
-  `;
+  return "";
 }
 
 function setManualRefreshButton(screenId, handlerName) {
   const screen = document.getElementById(screenId);
   if (!screen) return;
 
-  const header = screen.querySelector(".nav-header");
-  if (!header) return;
-
-  const existing = header.querySelector(".manual-refresh-btn");
-  if (existing) {
-    existing.remove();
-  }
-
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "small-btn manual-refresh-btn icon-action-btn icon-action-btn-large";
-  button.innerHTML = getRefreshIconMarkup();
-  button.setAttribute("aria-label", "Refresh");
-  button.setAttribute("title", "Refresh");
-  button.setAttribute("onclick", handlerName);
-
-  const lastButton = header.querySelector("button:last-of-type");
-  if (lastButton) {
-    header.insertBefore(button, lastButton);
-  } else {
-    header.appendChild(button);
-  }
+  screen.querySelectorAll(".manual-refresh-btn").forEach(button => button.remove());
 }
 
 function hasUnsavedProgressChanges() {
