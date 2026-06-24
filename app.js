@@ -5,7 +5,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "29-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
+    transliteration: "30-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
@@ -7303,17 +7303,121 @@ function formatDisplayDate(dateString) {
   });
 }
 
+let attendanceRegisterSaveInProgress = false;
+
+function bindAttendanceRegisterUiHandlers(containerOrId) {
+  const container = getDomElement(containerOrId);
+  if (!container) return false;
+
+  if (container.__attendanceRegisterHandlersBound === true) {
+    return true;
+  }
+
+  container.__attendanceRegisterHandlersBound = true;
+  container.addEventListener("click", handleAttendanceRegisterClick);
+  container.addEventListener("change", handleAttendanceRegisterChange);
+  return true;
+}
+
+function handleAttendanceRegisterClick(event) {
+  const actionEl = event.target.closest("[data-attendance-register-action]");
+  if (!actionEl) return;
+
+  const container = getDomElement("attendance-register-content");
+  if (container && !container.contains(actionEl)) return;
+
+  const action = actionEl.dataset.attendanceRegisterAction || "";
+
+  if (actionEl.tagName === "BUTTON" || actionEl.tagName === "A") {
+    event.preventDefault();
+  }
+
+  if (action === "back-dashboard") {
+    showScreen("attendance-dashboard");
+    return;
+  }
+
+  if (action === "toggle-status") {
+    const studentid = actionEl.dataset.studentId || "";
+    if (studentid) {
+      toggleAttendanceStatus(studentid);
+    }
+    return;
+  }
+
+  if (action === "save-register") {
+    submitAttendanceRegister();
+  }
+}
+
+function handleAttendanceRegisterChange(event) {
+  const input = event.target.closest("[data-attendance-register-field]");
+  if (!input) return;
+
+  const container = getDomElement("attendance-register-content");
+  if (container && !container.contains(input)) return;
+
+  if (input.dataset.attendanceRegisterField === "date") {
+    // The selected date is read at save time. This handler exists so the date input is
+    // safely owned by the attendance register module without inline onchange code.
+  }
+}
+
+function getAttendanceRegisterDateValue() {
+  const dateInput = getDomElement("attendance-date");
+  return dateInput && dateInput.value ? dateInput.value : getLocalDateString();
+}
+
+function setAttendanceSaveButtonState(isSaving) {
+  const saveButton = document.querySelector("#attendance-register-content .attendance-save-btn");
+  if (!saveButton) return false;
+
+  saveButton.disabled = Boolean(isSaving);
+  saveButton.innerText = isSaving ? "Saving..." : "Save Attendance →";
+  return true;
+}
+
+function getAttendanceBackButtonMarkup() {
+  return `
+    <button
+      type="button"
+      class="small-btn back-icon-btn icon-action-btn icon-action-btn-large"
+      data-attendance-register-action="back-dashboard"
+      aria-label="Back"
+      title="Back"
+    >
+      <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span>
+      <span class="header-icon-label">Back</span>
+    </button>
+  `;
+}
+
 async function openMarkRegister() {
-  const container = document.getElementById("attendance-register-content");
-  showScreen("attendance-register-screen");
-  container.innerHTML = `<p class="helper-text">Loading students...</p>`;
+  const didShow = showScreen("attendance-register-screen");
+  if (!didShow) return;
 
-  const result = await apiPost("/api/attendance/students", {
-    classgroup: "ALL"
-  }, state.token);
+  const container = getDomElement("attendance-register-content");
+  if (!container) {
+    console.warn("Missing attendance register container.");
+    return;
+  }
 
-  if (!result.success) {
-    container.innerHTML = `<p class="error-message">${result.error || result.message || "Failed to load students."}</p>`;
+  bindAttendanceRegisterUiHandlers(container);
+  setDomHtml(container, `<p class="helper-text">Loading students...</p>`);
+
+  let result;
+  try {
+    result = await apiPost("/api/attendance/students", {
+      classgroup: "ALL"
+    }, state.token);
+  } catch (error) {
+    console.error("Failed to load attendance students:", error);
+    setDomHtml(container, `<p class="error-message">Failed to load students.</p>`);
+    return;
+  }
+
+  if (!result || !result.success) {
+    setDomHtml(container, `<p class="error-message">${escapeHtml(result?.error || result?.message || "Failed to load students.")}</p>`);
     return;
   }
 
@@ -7321,7 +7425,9 @@ async function openMarkRegister() {
   attendanceState = {};
 
   attendanceStudentsCache.forEach(student => {
-    attendanceState[student.studentid] = "Present";
+    if (student && student.studentid != null) {
+      attendanceState[student.studentid] = "Present";
+    }
   });
 
   renderAttendanceRegister(getLocalDateString());
@@ -7347,17 +7453,27 @@ function getAttendanceInitials(name) {
 }
 
 function renderAttendanceRegister(dateValue) {
-  const container = document.getElementById("attendance-register-content");
-  const students = [...attendanceStudentsCache].sort(sortAttendanceStudents);
+  const container = getDomElement("attendance-register-content");
+  if (!container) {
+    console.warn("Missing attendance register container.");
+    return false;
+  }
 
+  bindAttendanceRegisterUiHandlers(container);
+
+  const students = [...attendanceStudentsCache].sort(sortAttendanceStudents);
   const absentCount = students.filter(student => attendanceState[student.studentid] === "Absent").length;
 
   let html = `
     <div class="attendance-register-sticky">
     <div class="attendance-modern-header">
       <h2 class="visually-hidden">Attendance</h2>
-      ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
-      <button class="small-btn save-return-btn attendance-save-btn" onclick="submitAttendanceRegister()">Save Attendance →</button>
+      ${getAttendanceBackButtonMarkup()}
+      <button
+        type="button"
+        class="small-btn save-return-btn attendance-save-btn"
+        data-attendance-register-action="save-register"
+      >Save Attendance →</button>
     </div>
 
     
@@ -7366,7 +7482,12 @@ function renderAttendanceRegister(dateValue) {
           <span class="attendance-summary-icon" aria-hidden="true">📅</span>
           <div class="attendance-summary-text">
             <span class="attendance-summary-label">Date</span>
-            <input type="date" id="attendance-date" value="${escapeHtml(dateValue)}">
+            <input
+              type="date"
+              id="attendance-date"
+              value="${escapeHtml(dateValue || getLocalDateString())}"
+              data-attendance-register-field="date"
+            >
           </div>
         </div>
 
@@ -7396,15 +7517,18 @@ function renderAttendanceRegister(dateValue) {
   let currentGroup = "";
 
   students.forEach(student => {
+    if (!student || student.studentid == null) return;
+
+    const studentid = String(student.studentid);
     const group = String(student.classgroup || "Ungrouped");
     if (group !== currentGroup) {
       currentGroup = group;
       html += `<div class="attendance-group-line" aria-label="Group ${escapeHtml(group)}"></div>`;
     }
 
-    const status = attendanceState[student.studentid] || "Present";
+    const status = attendanceState[studentid] || "Present";
     const isPresent = status === "Present";
-    const displayName = student.username || student.studentid;
+    const displayName = student.username || studentid;
 
     html += `
       <div class="attendance-register-row">
@@ -7413,8 +7537,11 @@ function renderAttendanceRegister(dateValue) {
           <div class="attendance-student-name">${escapeHtml(displayName)}</div>
         </div>
         <button
+          type="button"
           class="attendance-toggle ${isPresent ? "is-present" : "is-absent"}"
-          onclick="toggleAttendanceStatus('${escapeJs(student.studentid)}')"
+          data-attendance-register-action="toggle-status"
+          data-student-id="${escapeHtml(studentid)}"
+          aria-pressed="${isPresent ? "false" : "true"}"
         >
           ${isPresent ? "PRESENT ✔" : "ABSENT ✘"}
         </button>
@@ -7422,19 +7549,22 @@ function renderAttendanceRegister(dateValue) {
     `;
   });
 
-  html += ``;
-
-  container.innerHTML = html;
+  setDomHtml(container, html);
+  setAttendanceSaveButtonState(attendanceRegisterSaveInProgress);
+  return true;
 }
 
 function toggleAttendanceStatus(studentid) {
+  if (!studentid) return;
+
   attendanceState[studentid] = attendanceState[studentid] === "Absent" ? "Present" : "Absent";
-  const dateValue = document.getElementById("attendance-date")?.value || getLocalDateString();
-  renderAttendanceRegister(dateValue);
+  renderAttendanceRegister(getAttendanceRegisterDateValue());
 }
 
 async function submitAttendanceRegister() {
-  const dateValue = document.getElementById("attendance-date")?.value || "";
+  if (attendanceRegisterSaveInProgress) return;
+
+  const dateValue = getAttendanceRegisterDateValue();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
     alert("Please select a valid date.");
@@ -7442,33 +7572,36 @@ async function submitAttendanceRegister() {
   }
 
   const absentStudents = attendanceStudentsCache
-    .filter(student => attendanceState[student.studentid] === "Absent")
+    .filter(student => student && attendanceState[student.studentid] === "Absent")
     .map(student => ({
       studentid: student.studentid,
       username: student.username,
       classgroup: student.classgroup
     }));
 
-  const saveButton = document.querySelector("#attendance-register-content .attendance-save-btn");
-  if (saveButton) {
-    saveButton.disabled = true;
-    saveButton.innerText = "Saving...";
+  attendanceRegisterSaveInProgress = true;
+  setAttendanceSaveButtonState(true);
+
+  let result;
+  try {
+    result = await apiPost("/api/attendance/submit-absent", {
+      date: dateValue,
+      absentStudents
+    }, state.token);
+  } catch (error) {
+    console.error("Failed to save attendance:", error);
+    result = { success: false, message: "Failed to save attendance." };
   }
 
-  const result = await apiPost("/api/attendance/submit-absent", {
-    date: dateValue,
-    absentStudents
-  }, state.token);
-
-  if (!result.success) {
-    alert(result.error || result.message || "Failed to save attendance.");
-    if (saveButton) {
-      saveButton.disabled = false;
-      saveButton.innerText = "Save Attendance →";
-    }
+  if (!result || !result.success) {
+    attendanceRegisterSaveInProgress = false;
+    setAttendanceSaveButtonState(false);
+    alert(result?.error || result?.message || "Failed to save attendance.");
     return;
   }
 
+  attendanceRegisterSaveInProgress = false;
+  setAttendanceSaveButtonState(false);
   alert(`Attendance saved successfully. ${absentStudents.length} student${absentStudents.length === 1 ? "" : "s"} marked absent.`);
   showScreen("attendance-dashboard");
 }
