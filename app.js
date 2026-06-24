@@ -5,7 +5,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "28-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
+    transliteration: "29-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
@@ -4603,7 +4603,8 @@ function getManageStudentsActionElement(event) {
   if (!actionEl) return null;
 
   const manageScope = actionEl.closest(
-    "#manage-students-screen, #manage-student-edit-screen, #manage-students-content, #manage-student-edit-content"
+    "#manage-students-screen, #manage-student-edit-screen, #manage-students-result-screen, " +
+    "#manage-students-content, #manage-student-edit-content, #manage-students-result-content"
   );
 
   return manageScope ? actionEl : null;
