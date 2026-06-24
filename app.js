@@ -5,7 +5,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "32-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
+    transliteration: "34-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
@@ -2252,6 +2252,119 @@ function escapeJsString(value) {
 let studentSubjectTaskGroups = {};
 let currentStudentSubjectKey = "";
 
+let progressUiGlobalHandlersBound = false;
+
+function bindProgressUiHandlers(containerOrId) {
+  // Progress actions use one delegated handler so dynamically-rendered
+  // student/admin progress rows do not need inline onclick strings.
+  if (progressUiGlobalHandlersBound === true) {
+    return !!getDomElement(containerOrId);
+  }
+
+  if (!document || typeof document.addEventListener !== "function") {
+    return false;
+  }
+
+  progressUiGlobalHandlersBound = true;
+  document.addEventListener("click", handleProgressUiClick);
+  document.addEventListener("keydown", handleProgressUiKeydown);
+  return !!getDomElement(containerOrId);
+}
+
+function getProgressActionElement(event) {
+  const target = event && event.target;
+  if (!target || typeof target.closest !== "function") return null;
+
+  const actionEl = target.closest("[data-progress-action]");
+  if (!actionEl) return null;
+
+  const progressScope = actionEl.closest(
+    "#progress-subjects-screen, #progress-tasks-screen, #progress-task-students-screen, " +
+    "#progress-subjects-list, #progress-tasks-list, #progress-task-students-list"
+  );
+
+  return progressScope ? actionEl : null;
+}
+
+function getProgressBoolean(value) {
+  return String(value || "").toLowerCase() === "true";
+}
+
+function handleProgressUiKeydown(event) {
+  if (!event || (event.key !== "Enter" && event.key !== " ")) return;
+
+  const actionEl = getProgressActionElement(event);
+  if (!actionEl) return;
+
+  event.preventDefault();
+  actionEl.click();
+}
+
+function handleProgressUiClick(event) {
+  const actionEl = getProgressActionElement(event);
+  if (!actionEl || actionEl.disabled) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const action = actionEl.dataset.progressAction || "";
+
+  switch (action) {
+    case "open-student-subject-tasks":
+      openStudentSubjectTasks(actionEl.dataset.subjectKey || "");
+      break;
+
+    case "toggle-student-subject-task":
+      toggleStudentSubjectTask(
+        actionEl.dataset.studenttaskid || "",
+        getProgressBoolean(actionEl.dataset.complete)
+      );
+      break;
+
+    case "toggle-student-task-inline-player":
+      toggleStudentTaskInlinePlayer(
+        actionEl.dataset.playerId || "",
+        actionEl.dataset.link || "",
+        actionEl.dataset.type || ""
+      );
+      break;
+
+    case "open-student-task-external-link":
+      openStudentTaskExternalLink(
+        actionEl.dataset.link || "",
+        actionEl.dataset.type || ""
+      );
+      break;
+
+    case "open-progress-subject":
+      openProgressSubject(
+        actionEl.dataset.subjectid || "",
+        actionEl.dataset.subjectname || ""
+      );
+      break;
+
+    case "open-progress-task":
+      openProgressTask(
+        actionEl.dataset.taskid || "",
+        actionEl.dataset.taskname || ""
+      );
+      break;
+
+    case "toggle-progress-pending":
+      toggleProgressPending(
+        actionEl.dataset.studenttaskid || "",
+        actionEl.dataset.field || "",
+        getProgressBoolean(actionEl.dataset.value)
+      );
+      break;
+
+    default:
+      console.warn("Unknown progress action:", action);
+      break;
+  }
+}
+
+
 async function showStudentTasks() {
   setProgressScreensForStudent();
   setManualRefreshButton("progress-subjects-screen", "refreshStudentTaskProgress(this)");
@@ -2443,12 +2556,18 @@ function renderStudentSubjectProgress() {
     const percentComplete = total === 0 ? 0 : Math.round((completed / total) * 100);
 
     return `
-      <button class="progress-list-button" onclick="openStudentSubjectTasks('${escapeForAttribute(subject.subjectid)}')">
+      <button
+        type="button"
+        class="progress-list-button"
+        data-progress-action="open-student-subject-tasks"
+        data-subject-key="${escapeForAttribute(subject.subjectid)}"
+      >
         <span class="progress-list-title">${escapeHtml(subject.subjectname)}</span>
         ${renderCompleteProgressBar(percentComplete)}
       </button>
     `;
   }).join(""));
+  bindProgressUiHandlers(container);
 }
 
 function openStudentSubjectTasks(subjectKey) {
@@ -2531,6 +2650,7 @@ function renderStudentSubjectTaskList() {
     ${renderTaskStatusHeader("Me", "Muallimah", { secondMuted: true })}
     ${taskRowsHtml}
   `);
+  bindProgressUiHandlers(container);
 }
 
 function buildStudentModuleTaskGroups(tasks) {
@@ -2586,7 +2706,14 @@ function renderStudentTaskStatusRow(task) {
         ${renderStudentTaskLinkButtons(task)}
       </div>
 
-      <div class="status-action task-status-control" onclick="toggleStudentSubjectTask('${escapeForAttribute(task.studenttaskid)}', ${isComplete ? "false" : "true"})">
+      <div
+        class="status-action task-status-control"
+        role="button"
+        tabindex="0"
+        data-progress-action="toggle-student-subject-task"
+        data-studenttaskid="${escapeForAttribute(task.studenttaskid)}"
+        data-complete="${isComplete ? "false" : "true"}"
+      >
         ${renderTaskStatusIndicator("complete", isComplete)}
       </div>
 
@@ -2647,7 +2774,10 @@ function renderStudentTaskLinkButtons(task) {
           type="button"
           class="student-task-link-btn"
           title="${escapeHtml(item.title)}"
-          onclick="event.stopPropagation(); toggleStudentTaskInlinePlayer('${escapeForAttribute(playerId)}', '${escapeForAttribute(item.link)}', '${escapeForAttribute(item.type)}')"
+          data-progress-action="toggle-student-task-inline-player"
+          data-player-id="${escapeForAttribute(playerId)}"
+          data-link="${escapeForAttribute(item.link)}"
+          data-type="${escapeForAttribute(item.type)}"
         >${escapeHtml(item.label)}</button>
         <div id="${escapeHtml(playerId)}" class="student-task-inline-player hidden"></div>
       `;
@@ -2658,7 +2788,9 @@ function renderStudentTaskLinkButtons(task) {
         type="button"
         class="student-task-link-btn"
         title="${escapeHtml(item.title)}"
-        onclick="event.stopPropagation(); openStudentTaskExternalLink('${escapeForAttribute(item.link)}', '${escapeForAttribute(item.type)}')"
+        data-progress-action="open-student-task-external-link"
+        data-link="${escapeForAttribute(item.link)}"
+        data-type="${escapeForAttribute(item.type)}"
       >${escapeHtml(item.label)}</button>
     `;
   }).join("");
@@ -6524,12 +6656,20 @@ async function loadProgressSubjects() {
 
     const subjects = result.subjects.map(normalizeProgressSubject).sort(sortProgressSubjects);
 
-    setDomHtml("progress-subjects-list", subjects.map(subject => `
-      <button class="progress-list-button" onclick="openProgressSubject('${escapeForAttribute(subject.subjectid)}', '${escapeForAttribute(subject.subjectname)}')">
+    const subjectsList = getDomElement("progress-subjects-list");
+    setDomHtml(subjectsList, subjects.map(subject => `
+      <button
+        type="button"
+        class="progress-list-button"
+        data-progress-action="open-progress-subject"
+        data-subjectid="${escapeForAttribute(subject.subjectid)}"
+        data-subjectname="${escapeForAttribute(subject.subjectname)}"
+      >
         <span class="progress-list-title">${escapeHtml(subject.subjectname)}</span>
         ${renderProgressBars(subject.completedPercent, subject.verifiedPercent)}
       </button>
     `).join(""));
+    bindProgressUiHandlers(subjectsList);
   } catch (err) {
     console.error("Could not load progress modules:", err);
     setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(err.message || "Could not load modules.")}</p>`);
@@ -6585,12 +6725,20 @@ async function loadProgressTasks() {
 
     const sortedTasks = result.tasks.map(normalizeProgressTask).sort(sortProgressTasks);
 
-    setDomHtml("progress-tasks-list", sortedTasks.map(task => `
-      <button class="progress-list-button" onclick="openProgressTask('${escapeForAttribute(task.taskid)}', '${escapeForAttribute(task.taskname)}')">
+    const tasksList = getDomElement("progress-tasks-list");
+    setDomHtml(tasksList, sortedTasks.map(task => `
+      <button
+        type="button"
+        class="progress-list-button"
+        data-progress-action="open-progress-task"
+        data-taskid="${escapeForAttribute(task.taskid)}"
+        data-taskname="${escapeForAttribute(task.taskname)}"
+      >
         <span class="progress-list-title">${escapeHtml(task.taskname)}</span>
         ${renderProgressBars(task.completedPercent, task.verifiedPercent)}
       </button>
     `).join(""));
+    bindProgressUiHandlers(tasksList);
   } catch (err) {
     console.error("Could not load progress tasks:", err);
     setDomHtml("progress-tasks-list", `<p class="error-message">${escapeHtml(err.message || "Could not load tasks.")}</p>`);
@@ -6703,11 +6851,27 @@ function renderProgressTaskStudents(rows) {
         <div class="student-status-row">
           <div class="student-status-name">${escapeHtml(row.username)}</div>
 
-          <div class="status-action task-status-control is-muted-status" onclick="toggleProgressPending('${escapeForAttribute(row.studenttaskid)}', 'completeStatus', ${isComplete ? "false" : "true"})">
+          <div
+            class="status-action task-status-control is-muted-status"
+            role="button"
+            tabindex="0"
+            data-progress-action="toggle-progress-pending"
+            data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"
+            data-field="completeStatus"
+            data-value="${isComplete ? "false" : "true"}"
+          >
             ${renderTaskStatusIndicator("complete", isComplete, { muted: !isComplete })}
           </div>
 
-          <div class="status-action task-status-control" onclick="toggleProgressPending('${escapeForAttribute(row.studenttaskid)}', 'verifyStatus', ${isVerified ? "false" : "true"})">
+          <div
+            class="status-action task-status-control"
+            role="button"
+            tabindex="0"
+            data-progress-action="toggle-progress-pending"
+            data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"
+            data-field="verifyStatus"
+            data-value="${isVerified ? "false" : "true"}"
+          >
             ${renderTaskStatusIndicator("verify", isVerified)}
           </div>
         </div>
@@ -6716,6 +6880,7 @@ function renderProgressTaskStudents(rows) {
   });
 
   setDomHtml(container, html);
+  bindProgressUiHandlers(container);
 }
 
 async function loadIndividualStudentTaskList() {
@@ -6833,11 +6998,27 @@ function renderIndividualStudentTaskList(rows) {
           <div class="student-status-row">
             <div class="student-status-name">${escapeHtml(row.taskname)}</div>
 
-            <div class="status-action task-status-control is-muted-status" onclick="toggleProgressPending('${escapeForAttribute(row.studenttaskid)}', 'completeStatus', ${isComplete ? "false" : "true"})">
+            <div
+            class="status-action task-status-control is-muted-status"
+            role="button"
+            tabindex="0"
+            data-progress-action="toggle-progress-pending"
+            data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"
+            data-field="completeStatus"
+            data-value="${isComplete ? "false" : "true"}"
+          >
               ${renderTaskStatusIndicator("complete", isComplete, { muted: !isComplete })}
             </div>
 
-            <div class="status-action task-status-control" onclick="toggleProgressPending('${escapeForAttribute(row.studenttaskid)}', 'verifyStatus', ${isVerified ? "false" : "true"})">
+            <div
+            class="status-action task-status-control"
+            role="button"
+            tabindex="0"
+            data-progress-action="toggle-progress-pending"
+            data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"
+            data-field="verifyStatus"
+            data-value="${isVerified ? "false" : "true"}"
+          >
               ${renderTaskStatusIndicator("verify", isVerified)}
             </div>
           </div>
@@ -6847,6 +7028,7 @@ function renderIndividualStudentTaskList(rows) {
   });
 
   setDomHtml(container, html);
+  bindProgressUiHandlers(container);
 }
 
 function toggleProgressPending(studenttaskid, field, value) {
