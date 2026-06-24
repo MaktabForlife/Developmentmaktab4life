@@ -5,8 +5,8 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
-    translation: "23-Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
+    transliteration: "24-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
+    translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
     arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
@@ -6882,8 +6882,8 @@ async function refreshIndividualStudentTaskList(button) {
 }
 
 async function refreshViewAttendance(button) {
-  const startDate = document.getElementById("view-start-date")?.value;
-  const endDate = document.getElementById("view-end-date")?.value;
+  const startDate = getAttendanceDateInputValue("view-start-date");
+  const endDate = getAttendanceDateInputValue("view-end-date");
 
   if (!isValidAttendanceDateRange(startDate, endDate)) {
     showAttendanceDatePopup("Start date must be before or the same as end date.");
@@ -6896,8 +6896,8 @@ async function refreshViewAttendance(button) {
 }
 
 async function refreshAttendanceStats(button) {
-  const startDate = document.getElementById("stats-start-date")?.value;
-  const endDate = document.getElementById("stats-end-date")?.value;
+  const startDate = getAttendanceDateInputValue("stats-start-date");
+  const endDate = getAttendanceDateInputValue("stats-end-date");
 
   if (!isValidAttendanceDateRange(startDate, endDate)) {
     showAttendanceDatePopup("Start date must be before or the same as end date.");
@@ -6961,6 +6961,11 @@ function clearAttendanceDatePopup() {
 function showAttendanceDatePopup(message) {
   clearAttendanceDatePopup();
 
+  if (!document.body) {
+    console.warn("Unable to show attendance date popup because document.body is missing.");
+    return false;
+  }
+
   const popup = document.createElement("div");
   popup.id = "attendance-date-popup";
   popup.className = "attendance-date-popup";
@@ -6968,6 +6973,21 @@ function showAttendanceDatePopup(message) {
   popup.textContent = message || "Please choose a valid date range.";
 
   document.body.appendChild(popup);
+  return true;
+}
+
+function getAttendanceDateInputValue(id) {
+  const input = getDomElement(id);
+  return input && "value" in input ? String(input.value || "") : "";
+}
+
+function normalizeAttendanceDateRange(startDate, endDate) {
+  const defaults = getDefaultAttendanceDateRange();
+
+  return {
+    start: startDate || defaults.start,
+    end: endDate || defaults.end
+  };
 }
 
 function handleAttendanceDateRangeChange(mode) {
@@ -6975,8 +6995,8 @@ function handleAttendanceDateRangeChange(mode) {
 
   const normalizedMode = mode === "stats" ? "stats" : "view";
   const prefix = normalizedMode === "stats" ? "stats" : "view";
-  const startDate = document.getElementById(`${prefix}-start-date`)?.value || "";
-  const endDate = document.getElementById(`${prefix}-end-date`)?.value || "";
+  const startDate = getAttendanceDateInputValue(`${prefix}-start-date`);
+  const endDate = getAttendanceDateInputValue(`${prefix}-end-date`);
 
   if (!isValidAttendanceDateRange(startDate, endDate)) {
     showAttendanceDatePopup("Start date must be before or the same as end date.");
@@ -6995,23 +7015,64 @@ function handleAttendanceDateRangeChange(mode) {
 function renderAttendanceDateFilter(mode, startDate, endDate) {
   const normalizedMode = mode === "stats" ? "stats" : "view";
   const prefix = normalizedMode === "stats" ? "stats" : "view";
-  const changeHandler = `handleAttendanceDateRangeChange('${normalizedMode}')`;
 
   return `
     <div class="attendance-filter-box">
       <div class="attendance-date-title">Choose date range</div>
 
       <div class="attendance-date-row attendance-date-row-compact">
-        <input type="date" id="${prefix}-start-date" value="${escapeHtml(startDate)}" onchange="${changeHandler}">
+        <input
+          type="date"
+          id="${prefix}-start-date"
+          value="${escapeHtml(startDate)}"
+          data-attendance-date-mode="${normalizedMode}"
+          data-attendance-date-field="start"
+        >
         <span class="attendance-date-label">START DATE</span>
       </div>
 
       <div class="attendance-date-row attendance-date-row-compact">
-        <input type="date" id="${prefix}-end-date" value="${escapeHtml(endDate)}" onchange="${changeHandler}">
+        <input
+          type="date"
+          id="${prefix}-end-date"
+          value="${escapeHtml(endDate)}"
+          data-attendance-date-mode="${normalizedMode}"
+          data-attendance-date-field="end"
+        >
         <span class="attendance-date-label">END DATE</span>
       </div>
     </div>
   `;
+}
+
+function bindAttendanceUiHandlers(containerOrId) {
+  const container = getDomElement(containerOrId);
+  if (!container) return false;
+
+  container.querySelectorAll("[data-attendance-date-mode]").forEach(input => {
+    input.addEventListener("change", () => {
+      handleAttendanceDateRangeChange(input.dataset.attendanceDateMode || "view");
+    });
+  });
+
+  container.querySelectorAll('[data-attendance-action="toggle-absent-dates"]').forEach(row => {
+    const toggle = () => {
+      const targetId = row.dataset.attendanceTarget || "";
+      if (targetId) {
+        toggleAbsentDates(targetId);
+      }
+    };
+
+    row.addEventListener("click", toggle);
+    row.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
+  });
+
+  return true;
 }
 
 function formatDisplayDate(dateString) {
@@ -7205,18 +7266,39 @@ function openViewAttendance() {
 }
 
 async function renderViewAttendanceScreen(startDate, endDate) {
-  const container = document.getElementById("attendance-report-content");
-  showScreen("attendance-report-screen");
-  container.innerHTML = `<p class="helper-text">Loading attendance...</p>`;
+  const range = normalizeAttendanceDateRange(startDate, endDate);
 
-  const result = await apiPost("/api/attendance/report", {
-    startDate,
-    endDate,
-    classgroup: "ALL"
-  }, state.token);
+  if (!isValidAttendanceDateRange(range.start, range.end)) {
+    showAttendanceDatePopup("Start date must be before or the same as end date.");
+    return;
+  }
+
+  const didShow = showScreen("attendance-report-screen");
+  if (!didShow) return;
+
+  const container = getDomElement("attendance-report-content");
+  if (!container) {
+    console.warn("Missing attendance report container.");
+    return;
+  }
+
+  setDomHtml(container, `<p class="helper-text">Loading attendance...</p>`);
+
+  let result;
+  try {
+    result = await apiPost("/api/attendance/report", {
+      startDate: range.start,
+      endDate: range.end,
+      classgroup: "ALL"
+    }, state.token);
+  } catch (error) {
+    console.error("Failed to load attendance report:", error);
+    setDomHtml(container, `<p class="error-message">Failed to load attendance.</p>`);
+    return;
+  }
 
   if (!result.success) {
-    container.innerHTML = `<p class="error-message">${result.error || result.message || "Failed to load attendance."}</p>`;
+    setDomHtml(container, `<p class="error-message">${escapeHtml(result.error || result.message || "Failed to load attendance.")}</p>`);
     return;
   }
 
@@ -7230,7 +7312,7 @@ async function renderViewAttendanceScreen(startDate, endDate) {
       ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
     </div>
 
-    ${renderAttendanceDateFilter("view", startDate, endDate)}
+    ${renderAttendanceDateFilter("view", range.start, range.end)}
 
     <div class="attendance-report-header">
       <div>NAME</div>
@@ -7250,7 +7332,13 @@ async function renderViewAttendanceScreen(startDate, endDate) {
       const rowId = `abs-${safeDomId(student.studentid)}`;
 
       html += `
-        <div class="attendance-report-row" onclick="toggleAbsentDates('${rowId}')">
+        <div
+          class="attendance-report-row"
+          role="button"
+          tabindex="0"
+          data-attendance-action="toggle-absent-dates"
+          data-attendance-target="${escapeHtml(rowId)}"
+        >
           <div>${escapeHtml(student.username || student.studentid)}</div>
           <div>${student.absentDays || 0}</div>
           <div>${formatPercent(student.attendancePercent)}</div>
@@ -7263,7 +7351,8 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     });
   });
 
-  container.innerHTML = html;
+  setDomHtml(container, html);
+  bindAttendanceUiHandlers(container);
 }
 
 function openAttendanceStats() {
@@ -7272,18 +7361,39 @@ function openAttendanceStats() {
 }
 
 async function renderAttendanceStatsScreen(startDate, endDate) {
-  const container = document.getElementById("attendance-stats-content");
-  showScreen("attendance-stats-screen");
-  container.innerHTML = `<p class="helper-text">Calculating statistics...</p>`;
+  const range = normalizeAttendanceDateRange(startDate, endDate);
 
-  const result = await apiPost("/api/attendance/report", {
-    startDate,
-    endDate,
-    classgroup: "ALL"
-  }, state.token);
+  if (!isValidAttendanceDateRange(range.start, range.end)) {
+    showAttendanceDatePopup("Start date must be before or the same as end date.");
+    return;
+  }
+
+  const didShow = showScreen("attendance-stats-screen");
+  if (!didShow) return;
+
+  const container = getDomElement("attendance-stats-content");
+  if (!container) {
+    console.warn("Missing attendance stats container.");
+    return;
+  }
+
+  setDomHtml(container, `<p class="helper-text">Calculating statistics...</p>`);
+
+  let result;
+  try {
+    result = await apiPost("/api/attendance/report", {
+      startDate: range.start,
+      endDate: range.end,
+      classgroup: "ALL"
+    }, state.token);
+  } catch (error) {
+    console.error("Failed to load attendance stats:", error);
+    setDomHtml(container, `<p class="error-message">Failed to load statistics.</p>`);
+    return;
+  }
 
   if (!result.success) {
-    container.innerHTML = `<p class="error-message">${result.error || result.message || "Failed to load statistics."}</p>`;
+    setDomHtml(container, `<p class="error-message">${escapeHtml(result.error || result.message || "Failed to load statistics.")}</p>`);
     return;
   }
 
@@ -7297,7 +7407,7 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
       ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
     </div>
 
-    ${renderAttendanceDateFilter("stats", startDate, endDate)}
+    ${renderAttendanceDateFilter("stats", range.start, range.end)}
 
     <div class="attendance-stat-grid">
       <div class="attendance-stat-card">
@@ -7356,7 +7466,8 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
     </div>
   `;
 
-  container.innerHTML = html;
+  setDomHtml(container, html);
+  bindAttendanceUiHandlers(container);
 }
 
 function sortAttendanceStudents(a, b) {
