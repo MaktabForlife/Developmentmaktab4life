@@ -4,7 +4,7 @@ const DEFAULT_STUDENT_GROUP = 1;
 const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
-    arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
+    arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
     transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
@@ -14,7 +14,7 @@ const CLASS_DUAS_ITEMS = [
     translation: "O my Sustainer! Open up my heart and make my task easy for me, and loosen the knot from my tongue so that they might fully understand my speech"
   },
   {
-    arabic: "رَبِّ يَسِّرْ وَلاَ تُعَسِّرْ وَتَمِّمْ بِالْخَیْر وَبِكَ نَسْتَعِينُ يَا فَتَّاحُ يَا عَلِيْمُ",
+    arabic: "رَبِّ يَسِّرْ وَلاَ تُعَسِّرْ وَتَمِّمْ بِالْخَیْر وَبِكَ نَسْتَعِينُ يَا فَتَّاحُ يَا عَلِيْمُ",
     transliteration: "Rabbi, yassir wa la tu’assir wa tammim bil khair wa bika nasta’een. yaa fattaah Ya A’LeemU",
     translation: "O Lord, make it easy and do not make it difficult, and make it end well. We seek your help. Oh the Opener, Oh the All Knowing"
   },
@@ -24,12 +24,12 @@ const CLASS_DUAS_ITEMS = [
     translation: "Oh lord increase us in knowledge"
   },
   {
-    arabic: "اللّهُمَّ أعِنَّا على ذِكْرِكَ، وَشُكْرِكَ، وَحُسْنِ عِبَادَتِكَ",
+    arabic: "اللّهُمَّ أعِنَّا على ذِكْرِكَ، وَشُكْرِكَ، وَحُسْنِ عِبَادَتِكَ",
     transliteration: "Allahumma A inna Ala Zikrika, Wa Shukrika, Wa Husni Ibadatika",
     translation: "O Allah, help me remember You, to be grateful to You and to worship You in an excellent manner"
   },
   {
-    arabic: "سُبْحَانَكَ لَا عِلْمَ لَنَا إِلَّا مَا عَلَّمْتَنَا ۖ إِنَّكَ أَنتَ الْعَلِيمُ الْحَكِيمُ",
+    arabic: "سُبْحَانَكَ لَا عِلْمَ لَنَا إِلَّا مَا عَلَّمْتَنَا ۖ إِنَّكَ أَنتَ الْعَلِيمُ الْحَكِيمُ",
     transliteration: "subḥānaka lā ‘ilma lanā illā mā ‘allamtana, innaka antal-‘Alīmul-Ḥakīm.",
     translation: "Glory be to You; we have no knowledge except what You have taught us. Indeed, it is You who is the All-Knowing, the All-Wise"
   }
@@ -159,8 +159,50 @@ function showScreen(screenId) {
   return true;
 }
 
+function setDomText(id, value) {
+  const dom = window.M4LDom;
+
+  if (dom && typeof dom.setText === "function") {
+    return dom.setText(id, value);
+  }
+
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  el.innerText = value == null ? "" : String(value);
+  return true;
+}
+
+function showDomElement(id) {
+  const dom = window.M4LDom;
+
+  if (dom && typeof dom.show === "function") {
+    return dom.show(id);
+  }
+
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  el.classList.remove("hidden");
+  return true;
+}
+
+function hideDomElement(id) {
+  const dom = window.M4LDom;
+
+  if (dom && typeof dom.hide === "function") {
+    return dom.hide(id);
+  }
+
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  el.classList.add("hidden");
+  return true;
+}
+
 function setError(message) {
-  document.getElementById("auth-error").innerText = message || "";
+  setDomText("auth-error", message || "");
 }
 
 function setupPinDigitBoxes() {
@@ -346,34 +388,19 @@ async function apiPost(path, body = {}, token = "") {
 ========================= */
 
 function updateAuthWelcomeBanner(username) {
-  const banner = document.getElementById("auth-welcome-banner");
-  if (!banner) return;
-
   const displayName = String(username || "").trim();
-  banner.innerText = displayName ? `Ahlan wa Sahlan ${displayName}` : "Ahlan wa Sahlan";
-  banner.classList.remove("hidden");
+  const bannerText = displayName ? `Ahlan wa Sahlan ${displayName}` : "Ahlan wa Sahlan";
+
+  setDomText("auth-welcome-banner", bannerText);
+  showDomElement("auth-welcome-banner");
 }
 
 function updateAuthLoginLabel(type) {
   const titleText = type === "admin" ? "Admin Login" : "Student Login";
   const subtitleText = "";
-  const dom = window.M4LDom;
 
-  if (dom && typeof dom.setText === "function") {
-    dom.setText("portal-title", titleText);
-    dom.setText("portal-subtitle", subtitleText);
-    return;
-  }
-
-  const title = document.getElementById("portal-title");
-  if (title) {
-    title.innerText = titleText;
-  }
-
-  const subtitle = document.getElementById("portal-subtitle");
-  if (subtitle) {
-    subtitle.innerText = subtitleText;
-  }
+  setDomText("portal-title", titleText);
+  setDomText("portal-subtitle", subtitleText);
 }
 
 async function checkStudent() {
@@ -393,10 +420,12 @@ async function checkStudent() {
     updateAuthLoginLabel("student");
 
     if (result.student.pinsetup === true) {
-      document.getElementById("login-pin-box").classList.remove("hidden");
+      showDomElement("login-pin-box");
+      hideDomElement("setup-pin-box");
       focusFirstPinDigit("login-pin");
     } else {
-      document.getElementById("setup-pin-box").classList.remove("hidden");
+      hideDomElement("login-pin-box");
+      showDomElement("setup-pin-box");
       focusFirstPinDigit("setup-pin");
     }
   } catch (err) {
@@ -423,10 +452,12 @@ async function checkAdmin() {
     document.body.classList.add("admin-body");
 
     if (result.admin.pinsetup === true) {
-      document.getElementById("login-pin-box").classList.remove("hidden");
+      showDomElement("login-pin-box");
+      hideDomElement("setup-pin-box");
       focusFirstPinDigit("login-pin");
     } else {
-      document.getElementById("setup-pin-box").classList.remove("hidden");
+      hideDomElement("login-pin-box");
+      showDomElement("setup-pin-box");
       focusFirstPinDigit("setup-pin");
     }
   } catch (err) {
@@ -458,8 +489,8 @@ async function submitSetupPin() {
 
   clearPinValue("setup-pin");
   clearPinValue("login-pin");
-  document.getElementById("setup-pin-box").classList.add("hidden");
-  document.getElementById("login-pin-box").classList.remove("hidden");
+  hideDomElement("setup-pin-box");
+  showDomElement("login-pin-box");
   focusFirstPinDigit("login-pin");
   setError("");
 }
