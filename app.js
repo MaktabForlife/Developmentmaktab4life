@@ -144,6 +144,10 @@ function showScreen(screenId) {
     return false;
   }
 
+  if (typeof updateUserBand === "function") {
+    updateUserBand(screenId);
+  }
+
   if (typeof updateBottomNavigation === "function") {
     updateBottomNavigation(screenId);
   }
