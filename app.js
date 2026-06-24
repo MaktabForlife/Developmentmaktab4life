@@ -121,21 +121,41 @@ function initApp() {
 }
 
 function showScreen(screenId) {
+  let didShow = false;
+
   if (window.M4LDom && typeof window.M4LDom.safeShowScreen === "function") {
-    return window.M4LDom.safeShowScreen(screenId);
+    didShow = window.M4LDom.safeShowScreen(screenId);
+  } else {
+    const target = document.getElementById(screenId);
+    if (!target) {
+      console.warn("Missing screen:", screenId);
+      return false;
+    }
+
+    document.querySelectorAll(".screen").forEach((screen) => {
+      screen.classList.remove("active");
+    });
+
+    target.classList.add("active");
+    didShow = true;
   }
 
-  const target = document.getElementById(screenId);
-  if (!target) {
-    console.warn("Missing screen:", screenId);
+  if (!didShow) {
     return false;
   }
 
-  document.querySelectorAll(".screen").forEach((screen) => {
-    screen.classList.remove("active");
-  });
+  if (typeof updateBottomNavigation === "function") {
+    updateBottomNavigation(screenId);
+  }
 
-  target.classList.add("active");
+  if (screenId === "student-home" && typeof scheduleStudentHomeTimetableLoad === "function") {
+    scheduleStudentHomeTimetableLoad();
+  }
+
+  if (screenId === "admin-home" && typeof scheduleAdminHomeTimetableLoad === "function") {
+    scheduleAdminHomeTimetableLoad();
+  }
+
   return true;
 }
 
@@ -335,14 +355,23 @@ function updateAuthWelcomeBanner(username) {
 }
 
 function updateAuthLoginLabel(type) {
+  const titleText = type === "admin" ? "Admin Login" : "Student Login";
+  const subtitleText = "";
+
+  if (window.M4LDom) {
+    window.M4LDom.setText("portal-title", titleText);
+    window.M4LDom.setText("portal-subtitle", subtitleText);
+    return;
+  }
+
   const title = document.getElementById("portal-title");
   if (title) {
-    title.innerText = type === "admin" ? "Admin Login" : "Student Login";
+    title.innerText = titleText;
   }
 
   const subtitle = document.getElementById("portal-subtitle");
   if (subtitle) {
-    subtitle.innerText = "";
+    subtitle.innerText = subtitleText;
   }
 }
 
