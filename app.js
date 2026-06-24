@@ -235,6 +235,30 @@ function setDomText(id, value) {
   return true;
 }
 
+function getDomElement(target) {
+  if (!target) return null;
+
+  if (typeof target === "string") {
+    return document.getElementById(target);
+  }
+
+  return target;
+}
+
+function setDomHtml(target, value) {
+  const dom = window.M4LDom;
+
+  if (typeof target === "string" && dom && typeof dom.setHtml === "function") {
+    return dom.setHtml(target, value);
+  }
+
+  const el = getDomElement(target);
+  if (!el) return false;
+
+  el.innerHTML = value == null ? "" : String(value);
+  return true;
+}
+
 function showDomElement(id) {
   const dom = window.M4LDom;
 
@@ -1228,10 +1252,17 @@ function scheduleStudentHomeTimetableLoad() {
     return;
   }
 
+  if (!document.getElementById("student-home") || !document.getElementById("student-timetable-content")) {
+    return;
+  }
+
   setTimeout(() => {
-    loadStudentHomeTimetable();
+    Promise.resolve(loadStudentHomeTimetable()).catch(error => {
+      console.warn("Student home timetable load failed:", error);
+    });
   }, 0);
 }
+
 
 function normalizeTimetableRows(result) {
   if (!result) return [];
@@ -1447,26 +1478,24 @@ function getTimetableCellEntries(model, time, day) {
 }
 
 function renderTimetable(containerOrId, timetableResult, options = {}) {
-  const container = typeof containerOrId === "string"
-    ? document.getElementById(containerOrId)
-    : containerOrId;
+  const container = getDomElement(containerOrId);
 
   if (!container) {
-    return;
+    return false;
   }
 
   const rows = normalizeTimetableRows(timetableResult);
 
   if (!rows.length) {
-    container.innerHTML = `<p class="helper-text">No timetable sessions have been added yet.</p>`;
-    return;
+    setDomHtml(container, `<p class="helper-text">No timetable sessions have been added yet.</p>`);
+    return true;
   }
 
   const model = buildTimetableModel(rows);
 
   if (!model.days.length || !model.starttimes.length) {
-    container.innerHTML = `<p class="helper-text">No timetable sessions have been added yet.</p>`;
-    return;
+    setDomHtml(container, `<p class="helper-text">No timetable sessions have been added yet.</p>`);
+    return true;
   }
 
   const headerHtml = model.days
@@ -1527,7 +1556,8 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     </div>
   `;
 
-  container.innerHTML = tableHtml;
+  setDomHtml(container, tableHtml);
+  return true;
 }
 
 async function fetchTimetable(options = {}) {
@@ -1722,10 +1752,17 @@ function scheduleAdminHomeTimetableLoad() {
     return;
   }
 
+  if (!document.getElementById("admin-home")) {
+    return;
+  }
+
   setTimeout(() => {
-    loadAdminHomeTimetable();
+    Promise.resolve(loadAdminHomeTimetable()).catch(error => {
+      console.warn("Admin home timetable load failed:", error);
+    });
   }, 0);
 }
+
 
 function ensureAdminHomePanel() {
   const screen = document.getElementById("admin-home");
@@ -1801,7 +1838,7 @@ async function loadAdminHomeTimetable(force = false) {
   }
 
   if (!timetableCache || force) {
-    container.innerHTML = `<p class="helper-text">Loading timetable...</p>`;
+    setDomHtml(container, `<p class="helper-text">Loading timetable...</p>`);
   }
 
   try {
@@ -1810,7 +1847,7 @@ async function loadAdminHomeTimetable(force = false) {
     setTimetableZoomButtonState("admin-home-zoom-link-btn", globalTimetableZoomLink);
     ensureClassDuasCardAfterTimetable("admin-home-timetable-content", "admin-home-class-duas-card", ["admin-home-timetable-start-image-card"]);
   } catch (err) {
-    container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
+    setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
     setTimetableZoomButtonState("admin-home-zoom-link-btn", "");
   }
 }
@@ -1830,7 +1867,7 @@ async function loadStudentHomeTimetable(force = false) {
   }
 
   if (!timetableCache || force) {
-    container.innerHTML = `<p class="helper-text">Loading timetable...</p>`;
+    setDomHtml(container, `<p class="helper-text">Loading timetable...</p>`);
   }
 
   try {
@@ -1839,7 +1876,7 @@ async function loadStudentHomeTimetable(force = false) {
     setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
     ensureClassDuasCardAfterTimetable("student-timetable-content", "student-home-class-duas-card", ["student-timetable-start-image-card"]);
   } catch (err) {
-    container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
+    setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
     setTimetableZoomButtonState("student-zoom-link-btn", "");
   }
 }
@@ -1877,7 +1914,7 @@ async function showAdminTimetable(force = false) {
   const container = document.getElementById("admin-timetable-content");
 
   if (container) {
-    container.innerHTML = `<p class="helper-text">Loading timetable...</p>`;
+    setDomHtml(container, `<p class="helper-text">Loading timetable...</p>`);
   }
 
   try {
@@ -1887,7 +1924,7 @@ async function showAdminTimetable(force = false) {
     ensureClassDuasCardAfterTimetable("admin-timetable-content", "admin-timetable-class-duas-card", ["admin-timetable-start-image-card"]);
   } catch (err) {
     if (container) {
-      container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
+      setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
     }
   }
 }
@@ -1918,7 +1955,7 @@ async function showAdminTimetableAdmin(focusZoom = false) {
   const message = document.getElementById("admin-timetable-message");
 
   if (previewContainer) {
-    previewContainer.innerHTML = `<p class="helper-text">Loading timetable...</p>`;
+    setDomHtml(previewContainer, `<p class="helper-text">Loading timetable...</p>`);
   }
 
   if (message) {
@@ -1937,7 +1974,7 @@ async function showAdminTimetableAdmin(focusZoom = false) {
     }
   } catch (err) {
     if (previewContainer) {
-      previewContainer.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`;
+      setDomHtml(previewContainer, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
     }
   }
 }
@@ -2626,16 +2663,25 @@ async function fetchResourceCategories(apiPath, body = {}) {
 }
 
 async function loadResourceCategories(apiPath, body = {}) {
-  showScreen("student-resources-subjects");
+  if (!showScreen("student-resources-subjects")) {
+    console.warn("Resources screen is missing; resource categories were not shown.");
+    return;
+  }
 
   const container = document.getElementById("student-resource-subject-list");
-  container.innerHTML = `<p class="helper-text">Loading resources...</p>`;
+
+  if (!container) {
+    console.warn("Missing resource subject list container.");
+    return;
+  }
+
+  setDomHtml(container, `<p class="helper-text">Loading resources...</p>`);
 
   try {
     await fetchResourceCategories(apiPath, body);
     renderStudentResourceSubjects();
   } catch (err) {
-    container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`;
+    setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`);
   }
 }
 
@@ -2660,17 +2706,18 @@ async function openStudentResourceDirect(categoryKey) {
   const container = document.getElementById("student-resource-detail-content");
 
   if (title) title.innerText = category.label;
-  if (container) container.innerHTML = `<p class="helper-text">Loading ${escapeHtml(category.label)} resources...</p>`;
+  setDomHtml(container, `<p class="helper-text">Loading ${escapeHtml(category.label)} resources...</p>`);
 
-  showScreen("student-resources-detail");
+  if (!showScreen("student-resources-detail")) {
+    console.warn("Resource detail screen is missing.");
+    return;
+  }
 
   try {
     await fetchResourceCategories("/api/resources/list", {});
     renderStudentResourceCategoryDetail(category);
   } catch (err) {
-    if (container) {
-      container.innerHTML = `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`;
-    }
+    setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`);
   }
 }
 
@@ -3022,7 +3069,7 @@ function renderStudentResourceSubjects() {
   const subjects = buildStudentResourceSubjectSummaries();
 
   if (subjects.length === 0) {
-    container.innerHTML = `<p class="helper-text">No resources are available yet.</p>`;
+    setDomHtml(container, `<p class="helper-text">No resources are available yet.</p>`);
     return;
   }
 
@@ -3031,13 +3078,13 @@ function renderStudentResourceSubjects() {
   });
 
   if (visibleCategories.length === 0) {
-    container.innerHTML = `<p class="helper-text">No resources are available yet.</p>`;
+    setDomHtml(container, `<p class="helper-text">No resources are available yet.</p>`);
     return;
   }
 
   const columnStyle = `--resource-media-columns: ${visibleCategories.length};`;
 
-  container.innerHTML = `
+  setDomHtml(container, `
     <div class="resource-media-matrix-wrap" style="${columnStyle}">
       <div class="resource-media-matrix" role="table" aria-label="Resources by subject and media type">
         <div class="resource-media-row resource-media-header" role="row">
@@ -3083,7 +3130,7 @@ function renderStudentResourceSubjects() {
         `).join("")}
       </div>
     </div>
-  `;
+  `);
 }
 
 function openStudentResourceMatrixSelection(subjectKey, categoryKey) {
@@ -3126,6 +3173,11 @@ function openStudentResourceMatrixSelection(subjectKey, categoryKey) {
 }
 
 function getStudentResourceModulePickerElement() {
+  if (!document.body) {
+    console.warn("Resource module picker could not be created because document.body is missing.");
+    return null;
+  }
+
   let picker = document.getElementById("resource-module-picker");
 
   if (!picker) {
@@ -3139,8 +3191,14 @@ function getStudentResourceModulePickerElement() {
   return picker;
 }
 
+
 function showStudentResourceModulePicker(category, modules) {
   const picker = getStudentResourceModulePickerElement();
+
+  if (!picker) {
+    return;
+  }
+
   const subjectName = currentStudentResourceSubjectName || "Subject";
 
   picker.innerHTML = `
@@ -3169,7 +3227,9 @@ function showStudentResourceModulePicker(category, modules) {
 
   picker.classList.remove("hidden");
   picker.setAttribute("aria-hidden", "false");
-  document.body.classList.add("resource-module-picker-open");
+  if (document.body) {
+    document.body.classList.add("resource-module-picker-open");
+  }
 }
 
 function closeStudentResourceModulePicker() {
@@ -3180,7 +3240,9 @@ function closeStudentResourceModulePicker() {
   picker.classList.add("hidden");
   picker.setAttribute("aria-hidden", "true");
   picker.innerHTML = "";
-  document.body.classList.remove("resource-module-picker-open");
+  if (document.body) {
+    document.body.classList.remove("resource-module-picker-open");
+  }
 }
 
 
@@ -3229,12 +3291,12 @@ function renderStudentResourceCategories(selectedSubject = null) {
 
   const total = STUDENT_RESOURCE_CATEGORIES.reduce((sum, category) => sum + (selectedSubject ? (selectedSubject.categoryCounts[category.key] || 0) : countResourcesForCategory(category)), 0);
 
-  container.innerHTML = `
+  setDomHtml(container, `
     <div class="resource-category-grid">
       ${categoryButtons}
     </div>
     ${total === 0 ? `<p class="helper-text">No resources are available yet.</p>` : ""}
-  `;
+  `);
 }
 
 function openStudentResourceCategory(categoryKey, knownCount = null) {
@@ -3351,11 +3413,11 @@ function renderStudentResourceModules(category) {
   const modules = buildCurrentResourceModuleSummaries(category);
 
   if (modules.length === 0) {
-    container.innerHTML = `<p class="helper-text">No modules are available for this media type.</p>`;
+    setDomHtml(container, `<p class="helper-text">No modules are available for this media type.</p>`);
     return;
   }
 
-  container.innerHTML = `
+  setDomHtml(container, `
     <div class="resource-subject-button-grid">
       ${modules.map(module => `
         <button class="resource-subject-drill-button" onclick="openStudentResourceModule('${escapeForAttribute(module.key)}')">
@@ -3363,7 +3425,7 @@ function renderStudentResourceModules(category) {
         </button>
       `).join("")}
     </div>
-  `;
+  `);
 }
 
 function openStudentResourceModule(moduleKey, returnScreen = "student-resources-modules") {
@@ -3428,7 +3490,7 @@ function renderStudentResourceCategoryDetail(category) {
   const subjectGroups = getCurrentSubjectGroupsForCategory(category);
 
   if (subjectGroups.length === 0) {
-    container.innerHTML = `<p class="helper-text">No ${escapeHtml(category.label)} resources are available yet.</p>`;
+    setDomHtml(container, `<p class="helper-text">No ${escapeHtml(category.label)} resources are available yet.</p>`);
     return;
   }
 
@@ -3444,11 +3506,11 @@ function renderStudentResourceCategoryDetail(category) {
   }).filter(subjectGroup => subjectGroup.modules.length > 0);
 
   if (filteredSubjectGroups.length === 0) {
-    container.innerHTML = `<p class="helper-text">No ${escapeHtml(category.label)} resources are available for this module.</p>`;
+    setDomHtml(container, `<p class="helper-text">No ${escapeHtml(category.label)} resources are available for this module.</p>`);
     return;
   }
 
-  container.innerHTML = filteredSubjectGroups.map(subjectGroup => `
+  setDomHtml(container, filteredSubjectGroups.map(subjectGroup => `
     <div class="resource-section resource-subject-group">
       ${currentStudentResourceModuleKey ? "" : `<h3>${escapeHtml(subjectGroup.subjectname || "Subject")}</h3>`}
       ${subjectGroup.modules.map(moduleGroup => `
@@ -3460,7 +3522,7 @@ function renderStudentResourceCategoryDetail(category) {
         </div>
       `).join("")}
     </div>
-  `).join("");
+  `).join(""));
 }
 
 function buildMediaResourceGroups(category) {
