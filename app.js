@@ -5,7 +5,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "26-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
+    transliteration: "28-Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
@@ -4551,32 +4551,80 @@ const manageStudentsState = {
 };
 
 
+let manageStudentsGlobalClickBound = false;
+let managedStudentSaveLastTriggeredAt = 0;
+
+function bindManageStudentsGlobalClickHandler() {
+  if (manageStudentsGlobalClickBound === true) return true;
+  if (!document || typeof document.addEventListener !== "function") return false;
+
+  manageStudentsGlobalClickBound = true;
+  document.addEventListener("click", handleManageStudentsUiClick);
+  return true;
+}
+
 function bindManageStudentsUiHandlers(containerOrId) {
   const container = getDomElement(containerOrId);
-  if (!container || container.__manageStudentsHandlersBound === true) return false;
+
+  bindManageStudentsGlobalClickHandler();
+
+  if (!container || container.__manageStudentsHandlersBound === true) {
+    return !!container;
+  }
 
   container.__manageStudentsHandlersBound = true;
-  container.addEventListener("click", handleManageStudentsUiClick);
   container.addEventListener("input", handleManageStudentsUiInput);
   container.addEventListener("keydown", handleManageStudentsUiKeydown);
   container.addEventListener("change", handleManageStudentsUiChange);
   return true;
 }
 
-function handleManageStudentsUiClick(event) {
-  const actionEl = event.target && event.target.closest
-    ? event.target.closest("[data-manage-action]")
-    : null;
+function triggerManagedStudentSave() {
+  const now = Date.now();
+  if (now - managedStudentSaveLastTriggeredAt < 700) return;
+  managedStudentSaveLastTriggeredAt = now;
 
+  saveManagedStudentChanges();
+}
+
+function bindManagedStudentEditActionHandlers(containerOrId) {
+  // Kept for compatibility with existing render calls.
+  // Manage Students click actions are now handled by one document-level delegated handler,
+  // so dynamically-rendered buttons such as Confirm Changes do not need per-button touch/click binding.
+  bindManageStudentsGlobalClickHandler();
+  return !!getDomElement(containerOrId);
+}
+
+function getManageStudentsActionElement(event) {
+  const target = event && event.target;
+  if (!target || typeof target.closest !== "function") return null;
+
+  const actionEl = target.closest("[data-manage-action]");
+  if (!actionEl) return null;
+
+  const manageScope = actionEl.closest(
+    "#manage-students-screen, #manage-student-edit-screen, #manage-students-content, #manage-student-edit-content"
+  );
+
+  return manageScope ? actionEl : null;
+}
+
+function isNativeManageStudentsInputAction(action) {
+  return action === "set-active-status" ||
+    action === "assignment-mode" ||
+    action === "toggle-subject-modules";
+}
+
+function handleManageStudentsUiClick(event) {
+  const actionEl = getManageStudentsActionElement(event);
   if (!actionEl) return;
 
   const action = actionEl.dataset.manageAction || "";
-
   if (!action) return;
 
   // Do not prevent the browser's native radio/checkbox behaviour.
   // The matching change handler will update state after the control changes.
-  if (action === "set-active-status" || action === "assignment-mode" || action === "toggle-subject-modules") {
+  if (isNativeManageStudentsInputAction(action)) {
     return;
   }
 
@@ -4608,7 +4656,7 @@ function handleManageStudentsUiClick(event) {
       resetManagedStudentPin();
       break;
     case "save-student":
-      saveManagedStudentChanges();
+      triggerManagedStudentSave();
       break;
     case "copy-login-link":
       copyStudentLoginLink(actionEl.dataset.loginLink || "");
@@ -5301,6 +5349,7 @@ function renderManagedStudentEditScreen() {
 
   setDomHtml(container, renderSelectedStudentEditor());
   bindManageStudentsUiHandlers(container);
+  bindManagedStudentEditActionHandlers(container);
 }
 
 function renderSelectedStudentEditor() {
