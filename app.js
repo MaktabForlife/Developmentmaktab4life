@@ -6,7 +6,7 @@ const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
     transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim",
-    translation: "19-Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
+    translation: "20-Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
     arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
@@ -812,6 +812,33 @@ function removeLegacyScreenRefreshButtons() {
   });
 }
 
+let userBandRefreshInProgress = false;
+
+function setUserBandRefreshState(isRefreshing, button) {
+  userBandRefreshInProgress = !!isRefreshing;
+
+  const targetButton = button || document.querySelector("#app-user-band [data-user-band-refresh]");
+  if (targetButton) {
+    targetButton.disabled = !!isRefreshing;
+    targetButton.classList.toggle("is-refreshing", !!isRefreshing);
+  }
+
+  return true;
+}
+
+async function runUserBandRefresh(button, callback) {
+  setUserBandRefreshState(true, button);
+
+  try {
+    await callback();
+  } finally {
+    setUserBandRefreshState(false, document.querySelector("#app-user-band [data-user-band-refresh]"));
+    if (typeof updateUserBand === "function") {
+      updateUserBand(getActiveScreenId());
+    }
+  }
+}
+
 async function refreshCurrentResourceView(button) {
   await runManualRefresh(button, async () => {
     const role = getBottomNavRole();
@@ -853,6 +880,24 @@ function getUserBandRefreshAction(screenId, role) {
   if (activeScreenId === "admin-timetable-screen") {
     return typeof refreshAdminTimetable === "function"
       ? { label: "Refresh", title: "Refresh timetable", handler: refreshAdminTimetable }
+      : null;
+  }
+
+  if (activeScreenId === "progress-report") {
+    return typeof showProgressReport === "function"
+      ? { label: "Refresh", title: "Refresh progress menu", handler: showProgressReport }
+      : null;
+  }
+
+  if (activeScreenId === "attendance-dashboard") {
+    return typeof showAttendanceDashboard === "function"
+      ? { label: "Refresh", title: "Refresh attendance menu", handler: showAttendanceDashboard }
+      : null;
+  }
+
+  if (activeScreenId === "admin-academics") {
+    return typeof showAdminAcademics === "function"
+      ? { label: "Refresh", title: "Refresh admin menu", handler: showAdminAcademics }
       : null;
   }
 
@@ -910,7 +955,11 @@ function attachUserBandRefreshHandler(band, refreshAction) {
   refreshButton.addEventListener("click", event => {
     event.preventDefault();
 
-    Promise.resolve(refreshAction.handler(refreshButton)).catch(error => {
+    if (userBandRefreshInProgress) return;
+
+    runUserBandRefresh(refreshButton, async () => {
+      await refreshAction.handler(refreshButton);
+    }).catch(error => {
       console.error("User band refresh failed:", error);
       alert(error && error.message ? error.message : "Unable to refresh this screen.");
     });
@@ -946,7 +995,7 @@ function updateUserBand(screenId) {
     </div>
     <div class="app-user-band__actions">
       ${refreshAction ? `
-        <button type="button" class="app-user-band__refresh manual-refresh-btn icon-action-btn icon-action-btn-large" data-user-band-refresh aria-label="${escapeHtml(refreshAction.title || refreshAction.label || "Refresh")}" title="${escapeHtml(refreshAction.title || refreshAction.label || "Refresh")}">
+        <button type="button" class="app-user-band__refresh manual-refresh-btn icon-action-btn icon-action-btn-large${userBandRefreshInProgress ? " is-refreshing" : ""}" data-user-band-refresh aria-label="${escapeHtml(refreshAction.title || refreshAction.label || "Refresh")}" title="${escapeHtml(refreshAction.title || refreshAction.label || "Refresh")}"${userBandRefreshInProgress ? " disabled" : ""}>
           ${getRefreshIconMarkup()}
         </button>
       ` : ""}
