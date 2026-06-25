@@ -1,4 +1,4 @@
-/* M4L v37 - Auth / PIN / API module
+/* M4L v41 - Auth / PIN / API module
    Load after /app.js and before the window load event fires.
    This is a classic script, not type=module, so functions remain globally available
    for the existing app while we split gradually.
