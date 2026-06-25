@@ -184,24 +184,29 @@ function openAdjacentAttendancePanel(activePanel, direction) {
 }
 
 function shouldIgnoreAttendanceSwipeTarget(target) {
-  return Boolean(target && target.closest('button, a, input, select, textarea, label, [role="button"]'));
+  /*
+    Attendance panels contain long rows and status buttons. Allow horizontal
+    swipes to begin on those rows/buttons so the screen can be changed from
+    the natural scroll area. Only form fields, links, labels, and the global
+    bottom nav opt out because they need their own direct interaction.
+  */
+  return Boolean(target && target.closest('a, input, select, textarea, label, [contenteditable="true"], .bottom-nav'));
 }
 
-function bindAttendancePanelSwipe(containerOrId, activePanel) {
-  const container = getDomElement(containerOrId);
-  if (!container || container.dataset.attendanceSwipePanel === activePanel) return Boolean(container);
+function bindAttendanceSwipeElement(element, activePanel) {
+  if (!element) return false;
 
-  container.dataset.attendanceSwipePanel = activePanel || "";
+  element.dataset.attendanceSwipePanel = activePanel || "";
 
-  if (container.dataset.attendanceSwipeBound === "true") return true;
+  if (element.dataset.attendanceSwipeBound === "true") return true;
 
-  container.dataset.attendanceSwipeBound = "true";
+  element.dataset.attendanceSwipeBound = "true";
 
   let touchStartX = 0;
   let touchStartY = 0;
   let touchStartTarget = null;
 
-  container.addEventListener("touchstart", event => {
+  element.addEventListener("touchstart", event => {
     const touch = event.touches && event.touches[0];
     if (!touch) return;
 
@@ -210,7 +215,7 @@ function bindAttendancePanelSwipe(containerOrId, activePanel) {
     touchStartTarget = event.target;
   }, { passive: true });
 
-  container.addEventListener("touchend", event => {
+  element.addEventListener("touchend", event => {
     if (shouldIgnoreAttendanceSwipeTarget(touchStartTarget)) {
       touchStartTarget = null;
       return;
@@ -223,15 +228,30 @@ function bindAttendancePanelSwipe(containerOrId, activePanel) {
     const deltaY = touch.clientY - touchStartY;
     touchStartTarget = null;
 
-    if (Math.abs(deltaX) < 70 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
+    if (Math.abs(deltaX) < 58 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
 
-    const panel = container.dataset.attendanceSwipePanel || activePanel;
+    const panel = element.dataset.attendanceSwipePanel || activePanel;
     if (deltaX < 0) {
       openAdjacentAttendancePanel(panel, 1);
     } else {
       openAdjacentAttendancePanel(panel, -1);
     }
   }, { passive: true });
+
+  return true;
+}
+
+function bindAttendancePanelSwipe(containerOrId, activePanel) {
+  const container = getDomElement(containerOrId);
+  if (!container) return false;
+
+  const screen = container.closest ? container.closest(".screen") : null;
+
+  bindAttendanceSwipeElement(container, activePanel);
+
+  if (screen && screen !== container) {
+    bindAttendanceSwipeElement(screen, activePanel);
+  }
 
   return true;
 }
