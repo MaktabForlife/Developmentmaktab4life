@@ -128,26 +128,54 @@ function handleAttendanceDateRangeChange(mode) {
 
   if (!isValidAttendanceDateRange(startDate, endDate)) {
     showAttendanceDatePopup("Start date must be before or the same as end date.");
-    return;
-  }
-
-  if (!endDate) return;
-
-  if (normalizedMode === "stats") {
-    renderAttendanceStatsScreen(startDate, endDate);
-  } else {
-    renderViewAttendanceScreen(startDate, endDate);
   }
 }
 
-function renderAttendanceDateFilter(mode, startDate, endDate) {
-  const normalizedMode = mode === "stats" ? "stats" : "view";
-  const prefix = normalizedMode === "stats" ? "stats" : "view";
+function renderAttendancePanelDots(activePanel) {
+  const panels = [
+    {
+      key: "register",
+      action: "open-register-panel",
+      label: "Show mark register"
+    },
+    {
+      key: "records",
+      action: "open-records-panel",
+      label: "Show attendance records"
+    },
+    {
+      key: "stats",
+      action: "open-stats-panel",
+      label: "Show attendance statistics"
+    }
+  ];
 
   return `
-    <div class="attendance-filter-box">
-      <div class="attendance-date-title">Choose date range</div>
+    <div class="attendance-panel-dots" aria-label="Attendance panels">
+      ${panels.map(panel => {
+        const isActive = panel.key === activePanel;
+        return `
+          <button
+            type="button"
+            class="section-swipe-dot${isActive ? " is-active" : ""}"
+            data-attendance-action="${panel.action}"
+            aria-label="${panel.label}"
+            aria-current="${isActive ? "true" : "false"}"
+          ></button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
+function renderAttendanceDateFilter(mode, startDate, endDate, buttonLabel) {
+  const normalizedMode = mode === "stats" ? "stats" : "view";
+  const prefix = normalizedMode === "stats" ? "stats" : "view";
+  const action = normalizedMode === "stats" ? "calculate-stats" : "view-records";
+  const label = buttonLabel || (normalizedMode === "stats" ? "Calculate" : "View Records");
+
+  return `
+    <div class="attendance-filter-box attendance-filter-box-compact">
       <div class="attendance-date-row attendance-date-row-compact">
         <input
           type="date"
@@ -169,36 +197,103 @@ function renderAttendanceDateFilter(mode, startDate, endDate) {
         >
         <span class="attendance-date-label">END DATE</span>
       </div>
+
+      <button
+        type="button"
+        class="attendance-filter-action-btn"
+        data-attendance-action="${action}"
+      >${escapeHtml(label)}</button>
     </div>
   `;
+}
+
+function handleAttendanceGeneralClick(event) {
+  const actionEl = event.target.closest("[data-attendance-action]");
+  if (!actionEl) return;
+
+  const action = actionEl.dataset.attendanceAction || "";
+
+  if (actionEl.tagName === "BUTTON" || actionEl.tagName === "A") {
+    event.preventDefault();
+  }
+
+  if (action === "open-register-panel") {
+    openMarkRegister();
+    return;
+  }
+
+  if (action === "open-records-panel") {
+    openViewAttendance();
+    return;
+  }
+
+  if (action === "open-stats-panel") {
+    openAttendanceStats();
+    return;
+  }
+
+  if (action === "view-records") {
+    const startDate = getAttendanceDateInputValue("view-start-date");
+    const endDate = getAttendanceDateInputValue("view-end-date");
+
+    if (!isValidAttendanceDateRange(startDate, endDate)) {
+      showAttendanceDatePopup("Start date must be before or the same as end date.");
+      return;
+    }
+
+    renderViewAttendanceScreen(startDate, endDate);
+    return;
+  }
+
+  if (action === "calculate-stats") {
+    const startDate = getAttendanceDateInputValue("stats-start-date");
+    const endDate = getAttendanceDateInputValue("stats-end-date");
+
+    if (!isValidAttendanceDateRange(startDate, endDate)) {
+      showAttendanceDatePopup("Start date must be before or the same as end date.");
+      return;
+    }
+
+    renderAttendanceStatsScreen(startDate, endDate);
+    return;
+  }
+
+  if (action === "toggle-absent-dates") {
+    const targetId = actionEl.dataset.attendanceTarget || "";
+    if (targetId) {
+      toggleAbsentDates(targetId);
+    }
+  }
+}
+
+function handleAttendanceGeneralKeydown(event) {
+  const actionEl = event.target.closest('[data-attendance-action="toggle-absent-dates"]');
+  if (!actionEl) return;
+
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    const targetId = actionEl.dataset.attendanceTarget || "";
+    if (targetId) {
+      toggleAbsentDates(targetId);
+    }
+  }
 }
 
 function bindAttendanceUiHandlers(containerOrId) {
   const container = getDomElement(containerOrId);
   if (!container) return false;
 
-  container.querySelectorAll("[data-attendance-date-mode]").forEach(input => {
-    input.addEventListener("change", () => {
-      handleAttendanceDateRangeChange(input.dataset.attendanceDateMode || "view");
-    });
-  });
-
-  container.querySelectorAll('[data-attendance-action="toggle-absent-dates"]').forEach(row => {
-    const toggle = () => {
-      const targetId = row.dataset.attendanceTarget || "";
-      if (targetId) {
-        toggleAbsentDates(targetId);
-      }
-    };
-
-    row.addEventListener("click", toggle);
-    row.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        toggle();
+  if (container.dataset.attendanceUiBound !== "true") {
+    container.dataset.attendanceUiBound = "true";
+    container.addEventListener("click", handleAttendanceGeneralClick);
+    container.addEventListener("keydown", handleAttendanceGeneralKeydown);
+    container.addEventListener("change", event => {
+      const input = event.target.closest("[data-attendance-date-mode]");
+      if (input && container.contains(input)) {
+        handleAttendanceDateRangeChange(input.dataset.attendanceDateMode || "view");
       }
     });
-  });
+  }
 
   return true;
 }
@@ -288,23 +383,8 @@ function setAttendanceSaveButtonState(isSaving) {
   if (!saveButton) return false;
 
   saveButton.disabled = Boolean(isSaving);
-  saveButton.innerText = isSaving ? "Saving..." : "Save Attendance →";
+  saveButton.innerText = isSaving ? "Saving..." : "Save";
   return true;
-}
-
-function getAttendanceBackButtonMarkup() {
-  return `
-    <button
-      type="button"
-      class="small-btn back-icon-btn icon-action-btn icon-action-btn-large"
-      data-attendance-register-action="back-dashboard"
-      aria-label="Back"
-      title="Back"
-    >
-      <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span>
-      <span class="header-icon-label">Back</span>
-    </button>
-  `;
 }
 
 async function openMarkRegister() {
@@ -380,18 +460,7 @@ function renderAttendanceRegister(dateValue) {
   const absentCount = students.filter(student => attendanceState[student.studentid] === "Absent").length;
 
   let html = `
-    <div class="attendance-register-sticky">
-    <div class="attendance-modern-header">
-      <h2 class="visually-hidden">Attendance</h2>
-      ${getAttendanceBackButtonMarkup()}
-      <button
-        type="button"
-        class="small-btn save-return-btn attendance-save-btn"
-        data-attendance-register-action="save-register"
-      >Save Attendance →</button>
-    </div>
-
-    
+    <div class="attendance-register-sticky attendance-sticky-control-pane">
       <div class="attendance-summary-card">
         <div class="attendance-summary-item">
           <span class="attendance-summary-icon" aria-hidden="true">📅</span>
@@ -417,11 +486,14 @@ function renderAttendanceRegister(dateValue) {
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="attendance-list-heading">
-      <span class="attendance-list-icon" aria-hidden="true">👥</span>
-      <span>Student List</span>
+      <button
+        type="button"
+        class="small-btn save-return-btn attendance-save-btn"
+        data-attendance-register-action="save-register"
+      >Save</button>
+
+      ${renderAttendancePanelDots("register")}
     </div>
   `;
 
@@ -465,6 +537,7 @@ function renderAttendanceRegister(dateValue) {
   });
 
   setDomHtml(container, html);
+  bindAttendanceUiHandlers(container);
   setAttendanceSaveButtonState(attendanceRegisterSaveInProgress);
   return true;
 }
@@ -518,12 +591,42 @@ async function submitAttendanceRegister() {
   attendanceRegisterSaveInProgress = false;
   setAttendanceSaveButtonState(false);
   alert(`Attendance saved successfully. ${absentStudents.length} student${absentStudents.length === 1 ? "" : "s"} marked absent.`);
-  showScreen("attendance-dashboard");
 }
 
 function openViewAttendance() {
   const range = getDefaultAttendanceDateRange();
-  renderViewAttendanceScreen(range.start, range.end);
+  renderViewAttendanceControls(range.start, range.end);
+}
+
+function renderAttendanceRecordsControlsMarkup(range) {
+  return `
+    <div class="attendance-sticky-control-pane attendance-report-control-pane">
+      <div class="attendance-subscreen-header">
+        <h2>Attendance Records</h2>
+      </div>
+      ${renderAttendanceDateFilter("view", range.start, range.end, "View Records")}
+      ${renderAttendancePanelDots("records")}
+    </div>
+  `;
+}
+
+function renderViewAttendanceControls(startDate, endDate, message) {
+  const range = normalizeAttendanceDateRange(startDate, endDate);
+  const didShow = showScreen("attendance-report-screen");
+  if (!didShow) return false;
+
+  const container = getDomElement("attendance-report-content");
+  if (!container) {
+    console.warn("Missing attendance report container.");
+    return false;
+  }
+
+  setDomHtml(container, `
+    ${renderAttendanceRecordsControlsMarkup(range)}
+    <p class="helper-text attendance-empty-state">${escapeHtml(message || "Choose a date range, then tap View Records.")}</p>
+  `);
+  bindAttendanceUiHandlers(container);
+  return true;
 }
 
 async function renderViewAttendanceScreen(startDate, endDate) {
@@ -543,7 +646,11 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     return;
   }
 
-  setDomHtml(container, `<p class="helper-text">Loading attendance...</p>`);
+  setDomHtml(container, `
+    ${renderAttendanceRecordsControlsMarkup(range)}
+    <p class="helper-text attendance-empty-state">Loading attendance records...</p>
+  `);
+  bindAttendanceUiHandlers(container);
 
   let result;
   try {
@@ -554,36 +661,30 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     }, state.token);
   } catch (error) {
     console.error("Failed to load attendance report:", error);
-    setDomHtml(container, `<p class="error-message">Failed to load attendance.</p>`);
+    setDomHtml(container, `
+      ${renderAttendanceRecordsControlsMarkup(range)}
+      <p class="error-message">Failed to load attendance.</p>
+    `);
+    bindAttendanceUiHandlers(container);
     return;
   }
 
   if (!result.success) {
-    setDomHtml(container, `<p class="error-message">${escapeHtml(result.error || result.message || "Failed to load attendance.")}</p>`);
+    setDomHtml(container, `
+      ${renderAttendanceRecordsControlsMarkup(range)}
+      <p class="error-message">${escapeHtml(result.error || result.message || "Failed to load attendance.")}</p>
+    `);
+    bindAttendanceUiHandlers(container);
     return;
   }
 
   const groups = groupAttendanceStudents(result.students || []);
   const sortedGroups = Object.keys(groups).sort(sortGroupValues);
 
-  let html = `
-    <div class="nav-header">
-      <h2>Attendance Records</h2>
-      ${getManualRefreshButtonMarkup("refreshViewAttendance(this)")}
-      ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
-    </div>
-
-    ${renderAttendanceDateFilter("view", range.start, range.end)}
-
-    <div class="attendance-report-header">
-      <div>NAME</div>
-      <div>DAY ABSENT</div>
-      <div class="attendance-percent-heading"><span>Attendance</span><span>%</span></div>
-    </div>
-  `;
+  let html = renderAttendanceRecordsControlsMarkup(range);
 
   if (sortedGroups.length === 0) {
-    html += `<p class="helper-text">No attendance records found.</p>`;
+    html += `<p class="helper-text attendance-empty-state">No attendance records found.</p>`;
   }
 
   sortedGroups.forEach(group => {
@@ -618,7 +719,38 @@ async function renderViewAttendanceScreen(startDate, endDate) {
 
 function openAttendanceStats() {
   const range = getDefaultAttendanceDateRange();
-  renderAttendanceStatsScreen(range.start, range.end);
+  renderAttendanceStatsControls(range.start, range.end);
+}
+
+function renderAttendanceStatsControlsMarkup(range) {
+  return `
+    <div class="attendance-sticky-control-pane attendance-stats-control-pane">
+      <div class="attendance-subscreen-header">
+        <h2>Statistics</h2>
+      </div>
+      ${renderAttendanceDateFilter("stats", range.start, range.end, "Calculate")}
+      ${renderAttendancePanelDots("stats")}
+    </div>
+  `;
+}
+
+function renderAttendanceStatsControls(startDate, endDate, message) {
+  const range = normalizeAttendanceDateRange(startDate, endDate);
+  const didShow = showScreen("attendance-stats-screen");
+  if (!didShow) return false;
+
+  const container = getDomElement("attendance-stats-content");
+  if (!container) {
+    console.warn("Missing attendance stats container.");
+    return false;
+  }
+
+  setDomHtml(container, `
+    ${renderAttendanceStatsControlsMarkup(range)}
+    <p class="helper-text attendance-empty-state">${escapeHtml(message || "Choose a date range, then tap Calculate.")}</p>
+  `);
+  bindAttendanceUiHandlers(container);
+  return true;
 }
 
 async function renderAttendanceStatsScreen(startDate, endDate) {
@@ -638,7 +770,11 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
     return;
   }
 
-  setDomHtml(container, `<p class="helper-text">Calculating statistics...</p>`);
+  setDomHtml(container, `
+    ${renderAttendanceStatsControlsMarkup(range)}
+    <p class="helper-text attendance-empty-state">Calculating statistics...</p>
+  `);
+  bindAttendanceUiHandlers(container);
 
   let result;
   try {
@@ -649,12 +785,20 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
     }, state.token);
   } catch (error) {
     console.error("Failed to load attendance stats:", error);
-    setDomHtml(container, `<p class="error-message">Failed to load statistics.</p>`);
+    setDomHtml(container, `
+      ${renderAttendanceStatsControlsMarkup(range)}
+      <p class="error-message">Failed to load statistics.</p>
+    `);
+    bindAttendanceUiHandlers(container);
     return;
   }
 
   if (!result.success) {
-    setDomHtml(container, `<p class="error-message">${escapeHtml(result.error || result.message || "Failed to load statistics.")}</p>`);
+    setDomHtml(container, `
+      ${renderAttendanceStatsControlsMarkup(range)}
+      <p class="error-message">${escapeHtml(result.error || result.message || "Failed to load statistics.")}</p>
+    `);
+    bindAttendanceUiHandlers(container);
     return;
   }
 
@@ -662,13 +806,7 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
   const perfectStudents = Array.isArray(result.perfectAttendanceStudents) ? result.perfectAttendanceStudents : [];
 
   let html = `
-    <div class="nav-header">
-      <h2>Statistics</h2>
-      ${getManualRefreshButtonMarkup("refreshAttendanceStats(this)")}
-      ${getBackIconButtonMarkup("showScreen('attendance-dashboard')")}
-    </div>
-
-    ${renderAttendanceDateFilter("stats", range.start, range.end)}
+    ${renderAttendanceStatsControlsMarkup(range)}
 
     <div class="attendance-stat-grid">
       <div class="attendance-stat-card">
