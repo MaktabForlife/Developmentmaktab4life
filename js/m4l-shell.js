@@ -34,8 +34,8 @@ function showScreen(screenId) {
   }
 
 
-  if ((screenId === "student-home" || screenId === "admin-home") && typeof bindHomeSwipeControls === "function") {
-    bindHomeSwipeControls(screenId);
+  if (typeof bindSectionSwipeControls === "function") {
+    bindSectionSwipeControls(screenId);
   }
 
   if (screenId === "student-home" && typeof scheduleStudentHomeTimetableLoad === "function") {
@@ -50,22 +50,22 @@ function showScreen(screenId) {
 }
 
 
-let homeSwipeResizeHandlerBound = false;
+let sectionSwipeResizeHandlerBound = false;
 
-function getHomeSwipeElements(screenId) {
+function getSectionSwipeElements(screenId) {
   const screen = document.getElementById(screenId);
 
   if (!screen) {
     return { screen: null, track: null, dots: [] };
   }
 
-  const track = screen.querySelector("[data-home-swipe-track]");
-  const dots = Array.from(screen.querySelectorAll("[data-home-swipe-dots] [data-home-panel-index]"));
+  const track = screen.querySelector("[data-section-swipe-track], [data-home-swipe-track]");
+  const dots = Array.from(screen.querySelectorAll("[data-section-swipe-dots] [data-section-panel-index], [data-home-swipe-dots] [data-home-panel-index]"));
 
   return { screen, track, dots };
 }
 
-function getHomeSwipeActiveIndex(track) {
+function getSectionSwipeActiveIndex(track) {
   if (!track) return 0;
 
   const panelCount = track.children ? track.children.length : 0;
@@ -77,14 +77,14 @@ function getHomeSwipeActiveIndex(track) {
   return Math.max(0, Math.min(panelCount - 1, index));
 }
 
-function updateHomeSwipeDots(screenId) {
-  const { track, dots } = getHomeSwipeElements(screenId);
+function updateSectionSwipeDots(screenId) {
+  const { track, dots } = getSectionSwipeElements(screenId);
 
   if (!track || !dots.length) {
     return false;
   }
 
-  const activeIndex = getHomeSwipeActiveIndex(track);
+  const activeIndex = getSectionSwipeActiveIndex(track);
 
   dots.forEach((dot, index) => {
     const isActive = index === activeIndex;
@@ -95,8 +95,8 @@ function updateHomeSwipeDots(screenId) {
   return true;
 }
 
-function scrollHomeSwipeToPanel(screenId, panelIndex) {
-  const { track } = getHomeSwipeElements(screenId);
+function scrollSectionSwipeToPanel(screenId, panelIndex) {
+  const { track } = getSectionSwipeElements(screenId);
 
   if (!track || !track.children || !track.children[panelIndex]) {
     return false;
@@ -111,31 +111,34 @@ function scrollHomeSwipeToPanel(screenId, panelIndex) {
   return true;
 }
 
-function bindHomeSwipeResizeHandler() {
-  if (homeSwipeResizeHandlerBound === true) return true;
+function bindSectionSwipeResizeHandler() {
+  if (sectionSwipeResizeHandlerBound === true) return true;
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") return false;
 
-  homeSwipeResizeHandlerBound = true;
+  sectionSwipeResizeHandlerBound = true;
 
   window.addEventListener("resize", () => {
-    updateHomeSwipeDots("student-home");
-    updateHomeSwipeDots("admin-home");
+    document.querySelectorAll(".screen").forEach(screen => {
+      if (screen && screen.id) {
+        updateSectionSwipeDots(screen.id);
+      }
+    });
   }, { passive: true });
 
   return true;
 }
 
-function bindHomeSwipeControls(screenId) {
-  const { track, dots } = getHomeSwipeElements(screenId);
+function bindSectionSwipeControls(screenId) {
+  const { track, dots } = getSectionSwipeElements(screenId);
 
   if (!track || !dots.length) {
     return false;
   }
 
-  bindHomeSwipeResizeHandler();
+  bindSectionSwipeResizeHandler();
 
-  if (track.dataset.homeSwipeBound !== "true") {
-    track.dataset.homeSwipeBound = "true";
+  if (track.dataset.sectionSwipeBound !== "true") {
+    track.dataset.sectionSwipeBound = "true";
 
     let pendingFrame = 0;
 
@@ -144,24 +147,48 @@ function bindHomeSwipeControls(screenId) {
 
       pendingFrame = window.requestAnimationFrame(() => {
         pendingFrame = 0;
-        updateHomeSwipeDots(screenId);
+        updateSectionSwipeDots(screenId);
       });
     }, { passive: true });
   }
 
   dots.forEach(dot => {
-    if (dot.dataset.homeSwipeDotBound === "true") return;
+    if (dot.dataset.sectionSwipeDotBound === "true") return;
 
-    dot.dataset.homeSwipeDotBound = "true";
+    dot.dataset.sectionSwipeDotBound = "true";
     dot.addEventListener("click", () => {
-      const index = Number(dot.dataset.homePanelIndex || 0);
-      scrollHomeSwipeToPanel(screenId, index);
-      updateHomeSwipeDots(screenId);
+      const index = Number(dot.dataset.sectionPanelIndex || dot.dataset.homePanelIndex || 0);
+      scrollSectionSwipeToPanel(screenId, index);
+      updateSectionSwipeDots(screenId);
     });
   });
 
-  setTimeout(() => updateHomeSwipeDots(screenId), 0);
+  setTimeout(() => updateSectionSwipeDots(screenId), 0);
   return true;
+}
+
+function getHomeSwipeElements(screenId) {
+  return getSectionSwipeElements(screenId);
+}
+
+function getHomeSwipeActiveIndex(track) {
+  return getSectionSwipeActiveIndex(track);
+}
+
+function updateHomeSwipeDots(screenId) {
+  return updateSectionSwipeDots(screenId);
+}
+
+function scrollHomeSwipeToPanel(screenId, panelIndex) {
+  return scrollSectionSwipeToPanel(screenId, panelIndex);
+}
+
+function bindHomeSwipeResizeHandler() {
+  return bindSectionSwipeResizeHandler();
+}
+
+function bindHomeSwipeControls(screenId) {
+  return bindSectionSwipeControls(screenId);
 }
 
 let headerIconActionHandlersBound = false;
@@ -516,9 +543,9 @@ function getUserBandRefreshAction(screenId, role) {
       : null;
   }
 
-  if (activeScreenId === "attendance-dashboard") {
-    return typeof showAttendanceDashboard === "function"
-      ? { label: "Refresh", title: "Refresh attendance menu", handler: showAttendanceDashboard }
+  if (activeScreenId === "attendance-register-screen") {
+    return typeof openMarkRegister === "function"
+      ? { label: "Refresh", title: "Refresh register", handler: openMarkRegister }
       : null;
   }
 
@@ -705,8 +732,8 @@ const BOTTOM_NAV_ITEMS = {
       key: "attendance",
       label: "Attendance",
       icon: "/icons/attendance.svg",
-      targetScreen: "attendance-dashboard",
-      actionName: "showAttendanceDashboard"
+      targetScreen: "attendance-register-screen",
+      actionName: "openMarkRegister"
     },
     {
       key: "admin",
