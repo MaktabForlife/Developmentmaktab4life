@@ -151,7 +151,6 @@ h3 {
 }
 
 
-
 .app-logo {
   width: 38vw;
   max-width: 200px;
@@ -609,8 +608,8 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 
 .status-pill {
-  display: inline-block;     
-  
+  display: inline-block;
+
   margin-top: 10px;
   padding: 6px 9px;
   border-radius: 999px;
@@ -689,9 +688,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   margin-left: 8px;
 }
 
-.save-btn {
-  margin-top: 12px;
-}
 
 #modify-subject-box {
   margin-top: 12px;
@@ -797,11 +793,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   color: var(--primary);
 }
 
-.progress-list-title {
-  font-family: var(--font-heading);
-  letter-spacing: 0.02em;
-  font-size: 1.1rem;
-}
 
 .progress-indicators {
   display: flex;
@@ -819,65 +810,18 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   white-space: nowrap;
 }
 
-.student-status-row {
-  background: var(--surface-card);
-  color: var(--primary);
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-radius: 16px;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 10px;
-  text-align: left;
-  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
-}
-
-.student-status-name {
-  color: var(--primary);
-  font-weight: bold;
-}
-
-.status-action {
-  text-align: center;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.status-tick {
-  font-size: 1.4rem;
-  font-weight: bold;
-}
-
-.group-heading {
-  background: var(--primary);
-  color: var(--text-inverse);
-  padding: 10px;
-  border-radius: 8px;
-  text-align: center;
-  font-family: var(--font-heading);
-  margin: 15px 0 8px;
-}
-
-@media (max-width: 520px) {
-  .student-status-row {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-
-  .student-status-name {
-    text-align: center;
-  }
-}
 
 .status-action {
   min-height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
 }
+
 
 .save-btn {
   margin-top: 16px;
@@ -938,13 +882,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   border-radius: 999px;
 }
 
-.progress-fill-complete {
-  background: var(--complete);
-}
-
-.progress-fill-verified {
-  background: var(--verified);
-}
 
 .student-status-row {
   background: var(--surface-card);
@@ -966,15 +903,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   font-weight: bold;
 }
 
-.status-action {
-  text-align: center;
-  cursor: pointer;
-  font-size: 0.85rem;
-  min-height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 .status-tick {
   font-size: 1.4rem;
@@ -1358,11 +1286,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   border-bottom: 3px solid var(--primary);
 }
 
-#progress-subjects-screen .nav-header,
-#progress-tasks-screen .nav-header,
-#progress-task-students-screen .nav-header {
-  border-bottom-color: var(--primary);
-}
 
 /* Thin separator used instead of thick primary group rows */
 .group-separator-line {
@@ -1491,9 +1414,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
     grid-template-columns: 1fr;
   }
 
-  .resource-count-pill {
-    justify-self: start;
-  }
 
   .resource-card-main {
     align-items: flex-start;
@@ -1739,10 +1659,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   font-size: 0.9rem;
   line-height: 1.35;
 }
-
-
-
-
 
 
 .admin-home-panel {
@@ -2530,7 +2446,6 @@ body.has-bottom-nav .app-shell {
 }
 
 
-
 /* Attendance Records and Stats shared filters */
 .attendance-date-title {
   margin: 0 0 10px;
@@ -2805,7 +2720,6 @@ body.has-bottom-nav .app-shell {
     font-size: 0.74rem;
   }
 }
-
 
 
 .progress-selector-screen .selector-card-button,
@@ -3367,23 +3281,6 @@ body.resource-module-picker-open {
   border-left-color: var(--primary);
 }
 
-.student-resource-title {
-  color: var(--primary);
-}
-
-.resource-subject-group h3 {
-  border-bottom-color: var(--primary);
-}
-
-.resource-module-heading {
-  background: rgba(var(--primary-rgb), 0.12);
-  color: var(--primary);
-  border-left-color: var(--primary);
-}
-
-.resource-count-pill {
-  color: var(--primary);
-}
 
 /* Splash Screen */
 .splash-screen {
@@ -4728,8 +4625,6 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   align-items: end;
   margin-top: 4px;
 }
-
-
 
 
 .student-edit-field-half {
