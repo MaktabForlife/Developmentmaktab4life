@@ -1,5 +1,6 @@
-/* M4L v51 - Clean app core after module splits.
-   Load before m4l-auth, m4l-shell, m4l-attendance, m4l-admin-academics, m4l-timetable, m4l-resources, m4l-progress, and m4l-manage-students. */
+/* M4L v54 - Core bootstrap guards for optional feature modules.
+   Load before m4l-auth, m4l-shell, and any optional feature modules.
+   Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
 const API_BASE = "https://rebootworker.maktab4life.workers.dev";
 const STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktab4life.org/student/";
 const DEFAULT_STUDENT_GROUP = 1;
@@ -7,7 +8,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim-51",
+    transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim-54",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
@@ -46,6 +47,116 @@ const state = {
   user: null,
   loginSubmitting: false
 };
+
+const bootstrapWarningKeys = new Set();
+
+function getGlobalFunction(functionName) {
+  const name = String(functionName || "").trim();
+
+  if (!name) return null;
+
+  const candidate = window[name];
+  return typeof candidate === "function" ? candidate : null;
+}
+
+function warnMissingBootstrapFunction(functionName, label, required) {
+  const key = `missing:${functionName}`;
+
+  if (bootstrapWarningKeys.has(key)) return;
+  bootstrapWarningKeys.add(key);
+
+  const message = required
+    ? `Required startup function is missing: ${label || functionName}`
+    : `Optional startup function is not loaded: ${label || functionName}`;
+
+  console.warn(message);
+}
+
+function callBootstrapFunction(functionName, args = [], options = {}) {
+  const label = options.label || functionName;
+  const required = options.required === true;
+  const fn = getGlobalFunction(functionName);
+
+  if (!fn) {
+    warnMissingBootstrapFunction(functionName, label, required);
+
+    if (required) {
+      throw new Error(`Missing required startup function: ${functionName}`);
+    }
+
+    return { called: false, value: options.defaultValue };
+  }
+
+  try {
+    return { called: true, value: fn(...args) };
+  } catch (error) {
+    console.error(`Startup function failed: ${label}`, error);
+
+    if (required) {
+      throw error;
+    }
+
+    return { called: false, value: options.defaultValue };
+  }
+}
+
+function bindBootstrapUiHandlers() {
+  callBootstrapFunction("setupPinDigitBoxes", [], {
+    label: "PIN input handlers",
+    required: true
+  });
+
+  callBootstrapFunction("bindHeaderIconActionHandlers", [], {
+    label: "header icon action handlers",
+    required: true
+  });
+
+  callBootstrapFunction("bindTimetableUiHandlers", [], {
+    label: "timetable UI handlers"
+  });
+
+  callBootstrapFunction("bindAdminSubjectUiHandlers", [], {
+    label: "admin curriculum UI handlers"
+  });
+
+  callBootstrapFunction("bindMediaViewerHandlers", [], {
+    label: "media viewer handlers"
+  });
+}
+
+function safeSetError(message) {
+  const result = callBootstrapFunction("setError", [message], {
+    label: "auth error renderer",
+    defaultValue: false
+  });
+
+  if (result.called) return result.value;
+
+  return setDomText("auth-error", message || "");
+}
+
+function safeShowScreen(screenId) {
+  const result = callBootstrapFunction("showScreen", [screenId], {
+    label: "screen navigation",
+    defaultValue: false
+  });
+
+  if (result.called) return result.value;
+
+  if (window.M4LDom && typeof window.M4LDom.safeShowScreen === "function") {
+    return window.M4LDom.safeShowScreen(screenId);
+  }
+
+  const target = document.getElementById(screenId);
+  if (!target) return false;
+
+  document.querySelectorAll(".screen").forEach(screen => {
+    screen.classList.remove("active");
+  });
+
+  target.classList.add("active");
+  return true;
+}
 async function checkForAppUpdate() {
   try {
     const response = await fetch(`/version.json?t=${Date.now()}`, {
@@ -89,18 +200,16 @@ async function checkForAppUpdate() {
 window.addEventListener("load", initApp);
 window.addEventListener("keydown", event => {
   if (event.key === "Escape") {
-    closeStudentResourceModulePicker();
+    callBootstrapFunction("closeStudentResourceModulePicker", [], {
+      label: "resource module picker close"
+    });
   }
 });
 
 function initApp() {
   try {
     checkForAppUpdate();
-    setupPinDigitBoxes();
-    bindHeaderIconActionHandlers();
-    bindTimetableUiHandlers();
-    bindAdminSubjectUiHandlers();
-    bindMediaViewerHandlers();
+    bindBootstrapUiHandlers();
 
     const route = getPortalRouteFromLocation();
 
@@ -108,7 +217,10 @@ function initApp() {
       state.portalType = "admin";
       state.uniqueid = route.uniqueid;
       setAuthTheme("admin");
-      checkAdmin();
+      callBootstrapFunction("checkAdmin", [], {
+        label: "admin link check",
+        required: true
+      });
       return;
     }
 
@@ -116,7 +228,10 @@ function initApp() {
       state.portalType = "student";
       state.uniqueid = route.uniqueid;
       setAuthTheme("student");
-      checkStudent();
+      callBootstrapFunction("checkStudent", [], {
+        label: "student link check",
+        required: true
+      });
       return;
     }
 
@@ -158,7 +273,7 @@ function showInvalidLoginLinkMessage() {
   state.uniqueid = null;
 
   setAuthTheme("");
-  setError("");
+  safeSetError("");
   setDomText("portal-title", "Invalid Login Link");
   setDomText(
     "portal-subtitle",
@@ -167,7 +282,7 @@ function showInvalidLoginLinkMessage() {
   hideDomElement("auth-welcome-banner");
   hideDomElement("login-pin-box");
   hideDomElement("setup-pin-box");
-  showScreen("auth-screen");
+  safeShowScreen("auth-screen");
 }
 
 function showStartupErrorMessage() {
@@ -177,11 +292,11 @@ function showStartupErrorMessage() {
     "portal-subtitle",
     "Please refresh the page. If the problem continues, contact the Maktab4Life administrator."
   );
-  setError("Unable to start the app. Please refresh and try again.");
+  safeSetError("Unable to start the app. Please refresh and try again.");
   hideDomElement("auth-welcome-banner");
   hideDomElement("login-pin-box");
   hideDomElement("setup-pin-box");
-  showScreen("auth-screen");
+  safeShowScreen("auth-screen");
 }
 
 /* M4L v38: showScreen moved to /js/m4l-shell.js */
@@ -412,3 +527,12 @@ function hideSplashScreen() {
     splash.remove();
   }, 400);
 }
+
+
+window.M4LBootstrap = {
+  getGlobalFunction,
+  callBootstrapFunction,
+  bindBootstrapUiHandlers,
+  safeSetError,
+  safeShowScreen
+};
