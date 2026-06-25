@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- PWA: Admin install settings -->
-  <link rel="stylesheet" href="/styles.css?v=58" />
+  <link rel="stylesheet" href="/styles.css?v=59" />
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -351,15 +351,42 @@
 
     <!-- ADMIN ATTENDANCE -->
     <section id="attendance-dashboard" class="screen admin-theme">
-      <div class="nav-header">
-        <h2 class="visually-hidden">Attendance</h2>
-        <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-      </div>
+      <h2 class="visually-hidden">Attendance</h2>
 
-      <div class="list-stack">
-        <button class="list-btn" onclick="openMarkRegister()">Mark Register</button>
-        <button class="list-btn" onclick="openViewAttendance()">Attendance Records</button>
-        <button class="list-btn" onclick="openAttendanceStats()">View Attendance Stats</button>
+      <div class="section-swipe-shell attendance-swipe-shell" data-section-swipe="attendance-dashboard">
+        <div
+          id="attendance-dashboard-swipe-track"
+          class="attendance-dashboard-panel section-swipe-track attendance-swipe-track"
+          data-section-swipe-track
+          aria-label="Attendance panels"
+        >
+          <section class="section-swipe-panel attendance-swipe-panel" aria-label="Mark register">
+            <button class="attendance-panel-card" type="button" onclick="openMarkRegister()">
+              <span class="attendance-panel-card__title">Mark Register</span>
+              <span class="attendance-panel-card__text">Take today’s class attendance.</span>
+            </button>
+          </section>
+
+          <section class="section-swipe-panel attendance-swipe-panel" aria-label="Attendance records">
+            <button class="attendance-panel-card" type="button" onclick="openViewAttendance()">
+              <span class="attendance-panel-card__title">Attendance Records</span>
+              <span class="attendance-panel-card__text">Choose a date range and view saved records.</span>
+            </button>
+          </section>
+
+          <section class="section-swipe-panel attendance-swipe-panel" aria-label="Attendance statistics">
+            <button class="attendance-panel-card" type="button" onclick="openAttendanceStats()">
+              <span class="attendance-panel-card__title">View Attendance Stats</span>
+              <span class="attendance-panel-card__text">Check class average attendance over a date range.</span>
+            </button>
+          </section>
+        </div>
+
+        <div class="section-swipe-dots attendance-swipe-dots" data-section-swipe-dots aria-label="Attendance panels">
+          <button type="button" class="section-swipe-dot is-active" data-section-panel-index="0" aria-label="Show mark register panel" aria-current="true"></button>
+          <button type="button" class="section-swipe-dot" data-section-panel-index="1" aria-label="Show attendance records panel" aria-current="false"></button>
+          <button type="button" class="section-swipe-dot" data-section-panel-index="2" aria-label="Show attendance statistics panel" aria-current="false"></button>
+        </div>
       </div>
     </section>
 
@@ -457,10 +484,10 @@
 
   </main>
 <script src="/js/m4l-dom.js?v=11"></script>
-<script src="/app.js?v=58"></script>
+<script src="/app.js?v=56a"></script>
 <script src="/js/m4l-auth.js?v=55"></script>
 <script src="/js/m4l-shell.js?v=55"></script>
-<script src="/js/m4l-attendance.js?v=55"></script>
+<script src="/js/m4l-attendance.js?v=59"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
 <script src="/js/m4l-timetable.js?v=55"></script>
 <script src="/js/m4l-resources.js?v=55"></script>
