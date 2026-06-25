@@ -47,6 +47,27 @@ async function refreshAttendanceStats(button) {
 let attendanceStudentsCache = [];
 let attendanceState = {};
 
+function isAttendanceDesktopLayout() {
+  return Boolean(window.matchMedia && window.matchMedia("(min-width: 768px)").matches);
+}
+
+function hydrateAttendanceDesktopSidePanels() {
+  if (!isAttendanceDesktopLayout()) return false;
+
+  const range = getDefaultAttendanceDateRange();
+
+  /*
+    Desktop shows all three Attendance panels at once. Load the default
+    Records and Statistics data immediately so the side-by-side layout is
+    complete when Attendance is opened from the nav. Date changes still only
+    validate; the View Records / Calculate buttons remain the manual reload
+    controls after the default render.
+  */
+  renderViewAttendanceScreen(range.start, range.end);
+  renderAttendanceStatsScreen(range.start, range.end);
+  return true;
+}
+
 function showAttendanceDashboard() {
   return openMarkRegister();
 }
@@ -509,6 +530,7 @@ async function openMarkRegister() {
   });
 
   renderAttendanceRegister(getLocalDateString());
+  hydrateAttendanceDesktopSidePanels();
 }
 
 function getAttendanceInitials(name) {
@@ -678,8 +700,11 @@ async function submitAttendanceRegister() {
 }
 
 function openViewAttendance() {
-  const range = getDefaultAttendanceDateRange();
-  renderViewAttendanceControls(range.start, range.end);
+  const range = normalizeAttendanceDateRange(
+    getAttendanceDateInputValue("view-start-date"),
+    getAttendanceDateInputValue("view-end-date")
+  );
+  renderViewAttendanceScreen(range.start, range.end);
 }
 
 function renderAttendanceRecordsControlsMarkup(range) {
@@ -694,11 +719,8 @@ function renderAttendanceRecordsControlsMarkup(range) {
   `;
 }
 
-function renderViewAttendanceControls(startDate, endDate, message) {
+function renderViewAttendanceControlsInline(startDate, endDate, message) {
   const range = normalizeAttendanceDateRange(startDate, endDate);
-  const didShow = showScreen("attendance-report-screen");
-  if (!didShow) return false;
-
   const container = getDomElement("attendance-report-content");
   if (!container) {
     console.warn("Missing attendance report container.");
@@ -712,6 +734,12 @@ function renderViewAttendanceControls(startDate, endDate, message) {
   bindAttendanceUiHandlers(container);
   bindAttendancePanelSwipe(container, "records");
   return true;
+}
+
+function renderViewAttendanceControls(startDate, endDate, message) {
+  const didShow = showScreen("attendance-report-screen");
+  if (!didShow) return false;
+  return renderViewAttendanceControlsInline(startDate, endDate, message);
 }
 
 async function renderViewAttendanceScreen(startDate, endDate) {
@@ -807,8 +835,11 @@ async function renderViewAttendanceScreen(startDate, endDate) {
 }
 
 function openAttendanceStats() {
-  const range = getDefaultAttendanceDateRange();
-  renderAttendanceStatsControls(range.start, range.end);
+  const range = normalizeAttendanceDateRange(
+    getAttendanceDateInputValue("stats-start-date"),
+    getAttendanceDateInputValue("stats-end-date")
+  );
+  renderAttendanceStatsScreen(range.start, range.end);
 }
 
 function renderAttendanceStatsControlsMarkup(range) {
@@ -823,11 +854,8 @@ function renderAttendanceStatsControlsMarkup(range) {
   `;
 }
 
-function renderAttendanceStatsControls(startDate, endDate, message) {
+function renderAttendanceStatsControlsInline(startDate, endDate, message) {
   const range = normalizeAttendanceDateRange(startDate, endDate);
-  const didShow = showScreen("attendance-stats-screen");
-  if (!didShow) return false;
-
   const container = getDomElement("attendance-stats-content");
   if (!container) {
     console.warn("Missing attendance stats container.");
@@ -841,6 +869,12 @@ function renderAttendanceStatsControls(startDate, endDate, message) {
   bindAttendanceUiHandlers(container);
   bindAttendancePanelSwipe(container, "stats");
   return true;
+}
+
+function renderAttendanceStatsControls(startDate, endDate, message) {
+  const didShow = showScreen("attendance-stats-screen");
+  if (!didShow) return false;
+  return renderAttendanceStatsControlsInline(startDate, endDate, message);
 }
 
 async function renderAttendanceStatsScreen(startDate, endDate) {
