@@ -168,7 +168,29 @@
         <p class="helper-text">Loading resources...</p>
       </div>
     </section>
+    
+<!-- STUDENT PROGRESS -->
+<section id="progress-subjects-screen" class="screen student-theme">
+  <div class="nav-header">
+    <h2 id="progress-subjects-title">My Tasks</h2>
+    <button class="small-btn" onclick="showScreen('student-home')">Back</button>
+  </div>
 
+  <div id="progress-subjects-list" class="list-stack">
+    <p class="helper-text">Loading tasks...</p>
+  </div>
+</section>
+
+<section id="progress-tasks-screen" class="screen student-theme">
+  <div class="nav-header">
+    <h2 id="progress-tasks-title">Tasks</h2>
+    <button class="small-btn" onclick="showScreen('progress-subjects-screen')">Back</button>
+  </div>
+
+  <div id="progress-tasks-list" class="list-stack">
+    <p class="helper-text">Loading tasks...</p>
+  </div>
+</section>
 <!-- PDF VIEWER -->
     <section id="pdf-viewer-screen" class="screen student-theme">
       <div class="nav-header pdf-viewer-header">
@@ -202,7 +224,7 @@
 
   </main>
 <script src="/js/m4l-dom.js?v=11"></script>
-<script src="/app.js?v=56a"></script>
+<script src="/app.js?v=56b"></script>
 <script src="/js/m4l-auth.js?v=56"></script>
 <script src="/js/m4l-shell.js?v=56"></script>
 <script src="/js/m4l-timetable.js?v=56"></script>
