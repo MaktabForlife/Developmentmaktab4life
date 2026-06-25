@@ -559,9 +559,6 @@ function renderStudentTaskLinkButtons(task) {
 }
 
 
-
-
-
 function toggleStudentTaskInlinePlayer(playerId, link, type) {
   if (!link) return;
 
@@ -1455,38 +1452,7 @@ async function saveStudentTaskChangesAndReturn() {
 /* =========================
    HELPERS
 ========================= */
-function setAuthTheme(type) {
-  const authScreen = document.getElementById("auth-screen");
-  const body = document.body;
-
-  if (authScreen) {
-    authScreen.classList.remove("student-theme", "admin-theme");
-
-    if (type === "student") {
-      authScreen.classList.add("student-theme");
-    }
-
-    if (type === "admin") {
-      authScreen.classList.add("admin-theme");
-    }
-  }
-
-  if (body) {
-    body.classList.remove("student-body", "admin-body");
-
-    if (type === "student") {
-      body.classList.add("student-body");
-    }
-
-    if (type === "admin") {
-      body.classList.add("admin-body");
-    }
-  }
-}
-
-
-
-
+/* setAuthTheme now lives in app.js with the shared startup helpers. */
 
 function groupTasksBySubject(tasks) {
   const grouped = {};
@@ -1647,16 +1613,7 @@ function escapeForAttribute(value) {
     .replaceAll('"', "&quot;");
 }
 
-function escapeHtml(value) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-
+/* escapeHtml is provided by app.js. */
 
 
 /* =========================
