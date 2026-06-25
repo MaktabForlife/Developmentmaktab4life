@@ -1,4 +1,4 @@
-/* M4L v43 - App shell after Auth/Shell/Timetable/Resources/Progress/Manage Students split.
+/* M4L v44 - App shell after Manage Students split regression fixes.
    Load before m4l-auth, m4l-shell, m4l-timetable, m4l-resources, m4l-progress, and m4l-manage-students. */
 const API_BASE = "https://rebootworker.maktab4life.workers.dev";
 const STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktab4life.org/student/";
@@ -7,7 +7,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim-43",
+    transliteration: "Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim-44",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
