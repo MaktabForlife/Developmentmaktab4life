@@ -1,7 +1,5 @@
-/* M4L v41 - Shell / Navigation / User Band module
-   Load after /app.js and /js/m4l-auth.js.
-   Classic script: keeps existing global function names while app.js is split gradually.
-*/
+/* M4L v54 - Shell / Navigation / User Band module.
+   Adds optional-module guards so later role-based script loading can omit unused modules safely. */
 
 function showScreen(screenId) {
   let didShow = false;
@@ -337,18 +335,29 @@ async function runUserBandRefresh(button, callback) {
   }
 }
 
+function getStudentResourceViewModeSafe() {
+  return typeof studentResourceViewMode !== "undefined"
+    ? String(studentResourceViewMode || "")
+    : "";
+}
+
+function isOptionalFunctionLoaded(functionName) {
+  return typeof window[String(functionName || "")] === "function";
+}
+
 async function refreshCurrentResourceView(button) {
   await runManualRefresh(button, async () => {
     const role = getBottomNavRole();
-    const shouldUseAdminResources = studentResourceViewMode === "admin" || role === "admin";
+    const resourceMode = getStudentResourceViewModeSafe();
+    const shouldUseAdminResources = resourceMode === "admin" || role === "admin";
 
-    if (shouldUseAdminResources && typeof showAdminResources === "function") {
-      await showAdminResources();
+    if (shouldUseAdminResources && isOptionalFunctionLoaded("showAdminResources")) {
+      await window.showAdminResources();
       return;
     }
 
-    if (typeof showStudentResources === "function") {
-      await showStudentResources();
+    if (isOptionalFunctionLoaded("showStudentResources")) {
+      await window.showStudentResources();
       return;
     }
 
@@ -424,7 +433,9 @@ function getUserBandRefreshAction(screenId, role) {
   }
 
   if (activeScreenId === "progress-task-students-screen" && role === "admin") {
-    if (progressState && progressState.contextType === "student" && typeof refreshIndividualStudentTaskList === "function") {
+    const safeProgressState = typeof progressState !== "undefined" ? progressState : null;
+
+    if (safeProgressState && safeProgressState.contextType === "student" && typeof refreshIndividualStudentTaskList === "function") {
       return { label: "Refresh", title: "Refresh student tasks", handler: refreshIndividualStudentTaskList };
     }
 
@@ -1014,5 +1025,7 @@ window.M4LShell = {
   placeBottomNavigationForViewport: typeof placeBottomNavigationForViewport === "function" ? placeBottomNavigationForViewport : undefined,
   runUserBandRefresh: typeof runUserBandRefresh === "function" ? runUserBandRefresh : undefined,
   refreshCurrentResourceView: typeof refreshCurrentResourceView === "function" ? refreshCurrentResourceView : undefined,
+  getStudentResourceViewModeSafe: typeof getStudentResourceViewModeSafe === "function" ? getStudentResourceViewModeSafe : undefined,
+  isOptionalFunctionLoaded: typeof isOptionalFunctionLoaded === "function" ? isOptionalFunctionLoaded : undefined,
   getUserBandRefreshAction: typeof getUserBandRefreshAction === "function" ? getUserBandRefreshAction : undefined
 };
