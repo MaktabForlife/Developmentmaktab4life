@@ -184,6 +184,64 @@ function renderAttendancePanelDots(activePanel) {
   `;
 }
 
+
+function renderAttendancePanelHeading(text) {
+  return `
+    <div class="attendance-subscreen-header">
+      <h3 class="attendance-panel-heading">${escapeHtml(text)}</h3>
+    </div>
+  `;
+}
+
+function renderAttendanceActionButton(action, label) {
+  return `
+    <button
+      type="button"
+      class="attendance-action-btn"
+      data-attendance-action="${escapeHtml(action)}"
+    >${escapeHtml(label)}</button>
+  `;
+}
+
+function renderAttendanceDateControl(mode, startDate, endDate) {
+  const normalizedMode = mode === "stats" ? "stats" : "view";
+  const prefix = normalizedMode === "stats" ? "stats" : "view";
+
+  return `
+    <div class="attendance-summary-card attendance-date-range-card">
+      <div class="attendance-summary-item">
+        <span class="attendance-summary-icon" aria-hidden="true">📅</span>
+        <div class="attendance-summary-text">
+          <span class="attendance-summary-label">Start Date</span>
+          <input
+            type="date"
+            id="${prefix}-start-date"
+            value="${escapeHtml(startDate)}"
+            data-attendance-date-mode="${normalizedMode}"
+            data-attendance-date-field="start"
+          >
+        </div>
+      </div>
+
+      <div class="attendance-summary-divider" aria-hidden="true"></div>
+
+      <div class="attendance-summary-item">
+        <span class="attendance-summary-icon" aria-hidden="true">📅</span>
+        <div class="attendance-summary-text">
+          <span class="attendance-summary-label">End Date</span>
+          <input
+            type="date"
+            id="${prefix}-end-date"
+            value="${escapeHtml(endDate)}"
+            data-attendance-date-mode="${normalizedMode}"
+            data-attendance-date-field="end"
+          >
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function getAttendancePanelSequence() {
   return [
     { key: "register", handler: openMarkRegister },
@@ -279,39 +337,13 @@ function bindAttendancePanelSwipe(containerOrId, activePanel) {
 
 function renderAttendanceDateFilter(mode, startDate, endDate, buttonLabel) {
   const normalizedMode = mode === "stats" ? "stats" : "view";
-  const prefix = normalizedMode === "stats" ? "stats" : "view";
   const action = normalizedMode === "stats" ? "calculate-stats" : "view-records";
-  const label = buttonLabel || (normalizedMode === "stats" ? "Calculate" : "View Records");
+  const label = buttonLabel || "Calculate";
 
   return `
-    <div class="attendance-filter-box attendance-filter-box-compact">
-      <div class="attendance-date-row attendance-date-row-compact">
-        <input
-          type="date"
-          id="${prefix}-start-date"
-          value="${escapeHtml(startDate)}"
-          data-attendance-date-mode="${normalizedMode}"
-          data-attendance-date-field="start"
-        >
-        <span class="attendance-date-label">START DATE</span>
-      </div>
-
-      <div class="attendance-date-row attendance-date-row-compact">
-        <input
-          type="date"
-          id="${prefix}-end-date"
-          value="${escapeHtml(endDate)}"
-          data-attendance-date-mode="${normalizedMode}"
-          data-attendance-date-field="end"
-        >
-        <span class="attendance-date-label">END DATE</span>
-      </div>
-
-      <button
-        type="button"
-        class="attendance-filter-action-btn"
-        data-attendance-action="${action}"
-      >${escapeHtml(label)}</button>
+    <div class="attendance-control-block attendance-filter-box attendance-filter-box-compact">
+      ${renderAttendanceDateControl(normalizedMode, startDate, endDate)}
+      ${renderAttendanceActionButton(action, label)}
     </div>
   `;
 }
@@ -566,37 +598,41 @@ function renderAttendanceRegister(dateValue) {
 
   let html = `
     <div class="attendance-register-sticky attendance-sticky-control-pane">
-      <div class="attendance-summary-card">
-        <div class="attendance-summary-item">
-          <span class="attendance-summary-icon" aria-hidden="true">📅</span>
-          <div class="attendance-summary-text">
-            <span class="attendance-summary-label">Date</span>
-            <input
-              type="date"
-              id="attendance-date"
-              value="${escapeHtml(dateValue || getLocalDateString())}"
-              data-attendance-register-field="date"
-            >
+      ${renderAttendancePanelHeading("Register")}
+
+      <div class="attendance-control-block attendance-register-control-block">
+        <div class="attendance-summary-card">
+          <div class="attendance-summary-item">
+            <span class="attendance-summary-icon" aria-hidden="true">📅</span>
+            <div class="attendance-summary-text">
+              <span class="attendance-summary-label">Date</span>
+              <input
+                type="date"
+                id="attendance-date"
+                value="${escapeHtml(dateValue || getLocalDateString())}"
+                data-attendance-register-field="date"
+              >
+            </div>
+          </div>
+
+          <div class="attendance-summary-divider" aria-hidden="true"></div>
+
+          <div class="attendance-summary-item">
+            <span class="attendance-summary-icon" aria-hidden="true">👥</span>
+            <div class="attendance-summary-text">
+              <span class="attendance-summary-label">Absent</span>
+              <strong class="attendance-absence-feedback">${absentCount} student${absentCount === 1 ? "" : "s"}</strong>
+              <span class="attendance-summary-subtext">marked absent</span>
+            </div>
           </div>
         </div>
 
-        <div class="attendance-summary-divider" aria-hidden="true"></div>
-
-        <div class="attendance-summary-item">
-          <span class="attendance-summary-icon" aria-hidden="true">👥</span>
-          <div class="attendance-summary-text">
-            <span class="attendance-summary-label">Absent</span>
-            <strong class="attendance-absence-feedback">${absentCount} student${absentCount === 1 ? "" : "s"}</strong>
-            <span class="attendance-summary-subtext">marked absent</span>
-          </div>
-        </div>
+        <button
+          type="button"
+          class="attendance-action-btn attendance-save-btn"
+          data-attendance-register-action="save-register"
+        >Save</button>
       </div>
-
-      <button
-        type="button"
-        class="small-btn save-return-btn attendance-save-btn"
-        data-attendance-register-action="save-register"
-      >Save</button>
 
       ${renderAttendancePanelDots("register")}
     </div>
@@ -710,10 +746,8 @@ function openViewAttendance() {
 function renderAttendanceRecordsControlsMarkup(range) {
   return `
     <div class="attendance-sticky-control-pane attendance-report-control-pane">
-      <div class="attendance-subscreen-header">
-        <h2>Attendance Records</h2>
-      </div>
-      ${renderAttendanceDateFilter("view", range.start, range.end, "View Records")}
+      ${renderAttendancePanelHeading("Attendance Records")}
+      ${renderAttendanceDateFilter("view", range.start, range.end, "Calculate")}
       ${renderAttendancePanelDots("records")}
     </div>
   `;
@@ -845,9 +879,7 @@ function openAttendanceStats() {
 function renderAttendanceStatsControlsMarkup(range) {
   return `
     <div class="attendance-sticky-control-pane attendance-stats-control-pane">
-      <div class="attendance-subscreen-header">
-        <h2>Statistics</h2>
-      </div>
+      ${renderAttendancePanelHeading("Statistics")}
       ${renderAttendanceDateFilter("stats", range.start, range.end, "Calculate")}
       ${renderAttendancePanelDots("stats")}
     </div>
