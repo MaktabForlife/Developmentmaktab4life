@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- PWA: Admin install settings -->
-  <link rel="stylesheet" href="/styles.css?v=59" />
+  <link rel="stylesheet" href="/styles.css?v=59.1" />
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -69,6 +69,10 @@
     <!-- ADMIN HOME -->
     <section id="admin-home" class="screen admin-theme">
       <div class="home-swipe-shell" data-home-swipe="admin-home">
+        <div class="home-swipe-dots" data-home-swipe-dots aria-label="Home panels">
+          <button type="button" class="home-swipe-dot is-active" data-home-panel-index="0" aria-label="Show timetable panel" aria-current="true"></button>
+          <button type="button" class="home-swipe-dot" data-home-panel-index="1" aria-label="Show class duas panel" aria-current="false"></button>
+        </div>
         <div
           id="admin-home-panel"
           class="student-home-panel admin-home-panel home-swipe-track"
@@ -116,10 +120,6 @@
           </section>
         </div>
 
-        <div class="home-swipe-dots" data-home-swipe-dots aria-label="Home panels">
-          <button type="button" class="home-swipe-dot is-active" data-home-panel-index="0" aria-label="Show timetable panel" aria-current="true"></button>
-          <button type="button" class="home-swipe-dot" data-home-panel-index="1" aria-label="Show class duas panel" aria-current="false"></button>
-        </div>
       </div>
     </section>
 
@@ -439,10 +439,10 @@
 
   </main>
 <script src="/js/m4l-dom.js?v=11"></script>
-<script src="/app.js?v=59d"></script>
+<script src="/app.js?v=59.1"></script>
 <script src="/js/m4l-auth.js?v=55"></script>
-<script src="/js/m4l-shell.js?v=59"></script>
-<script src="/js/m4l-attendance.js?v=59"></script>
+<script src="/js/m4l-shell.js?v=59.1"></script>
+<script src="/js/m4l-attendance.js?v=59.1"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
 <script src="/js/m4l-timetable.js?v=55"></script>
 <script src="/js/m4l-resources.js?v=55"></script>
