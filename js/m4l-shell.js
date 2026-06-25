@@ -969,11 +969,12 @@ function isBottomNavItemAvailable(item) {
     return false;
   }
 
-  if (item.actionName && typeof window[item.actionName] !== "function") {
-    console.warn("Missing bottom nav action:", item.actionName);
-    return false;
-  }
-
+  /*
+    Keep nav rendering independent from optional module load timing.
+    Some nav items use actionName helpers that are defined by later classic scripts.
+    The screen target is the stable availability check; the click handler will call
+    the action when it exists and otherwise fall back to showScreen(targetScreen).
+  */
   return true;
 }
 
@@ -1097,7 +1098,7 @@ function handleBottomNavigationClick(role, key) {
   if (!isBottomNavItemAvailable(item)) return false;
 
   try {
-    if (item.actionName) {
+    if (item.actionName && typeof window[item.actionName] === "function") {
       const result = window[item.actionName]();
       if (result && typeof result.catch === "function") {
         result.catch(error => {
