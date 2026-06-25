@@ -193,6 +193,21 @@ function renderAttendancePanelHeading(text) {
   `;
 }
 
+function renderAttendanceTopPanel(activePanel, heading, bodyMarkup) {
+  const panelKey = String(activePanel || "register");
+  return `
+    <div class="attendance-sticky-control-pane attendance-${escapeHtml(panelKey)}-control-pane">
+      <section class="attendance-top-panel attendance-top-panel--${escapeHtml(panelKey)}">
+        ${renderAttendancePanelHeading(heading)}
+        <div class="attendance-top-content">
+          ${bodyMarkup || ""}
+        </div>
+      </section>
+      ${renderAttendancePanelDots(panelKey)}
+    </div>
+  `;
+}
+
 function renderAttendanceActionButton(action, label) {
   return `
     <button
@@ -596,53 +611,48 @@ function renderAttendanceRegister(dateValue) {
   const students = [...attendanceStudentsCache].sort(sortAttendanceStudents);
   const absentCount = students.filter(student => attendanceState[student.studentid] === "Absent").length;
 
-  let html = `
-    <div class="attendance-register-sticky attendance-sticky-control-pane">
-      ${renderAttendancePanelHeading("Register")}
-
-      <div class="attendance-control-block attendance-register-control-block">
-        <div class="attendance-summary-card">
-          <div class="attendance-summary-item">
-            <span class="attendance-summary-icon" aria-hidden="true">📅</span>
-            <div class="attendance-summary-text">
-              <span class="attendance-summary-label">Date</span>
-              <input
-                type="date"
-                id="attendance-date"
-                value="${escapeHtml(dateValue || getLocalDateString())}"
-                data-attendance-register-field="date"
-              >
-            </div>
-          </div>
-
-          <div class="attendance-summary-divider" aria-hidden="true"></div>
-
-          <div class="attendance-summary-item">
-            <span class="attendance-summary-icon" aria-hidden="true">👥</span>
-            <div class="attendance-summary-text">
-              <span class="attendance-summary-label">Absent</span>
-              <strong class="attendance-absence-feedback">${absentCount} student${absentCount === 1 ? "" : "s"}</strong>
-              <span class="attendance-summary-subtext">marked absent</span>
-            </div>
+  let html = renderAttendanceTopPanel("register", "Register", `
+    <div class="attendance-control-block attendance-register-control-block">
+      <div class="attendance-summary-card">
+        <div class="attendance-summary-item">
+          <span class="attendance-summary-icon" aria-hidden="true">📅</span>
+          <div class="attendance-summary-text">
+            <span class="attendance-summary-label">Date</span>
+            <input
+              type="date"
+              id="attendance-date"
+              value="${escapeHtml(dateValue || getLocalDateString())}"
+              data-attendance-register-field="date"
+            >
           </div>
         </div>
 
-        <button
-          type="button"
-          class="attendance-action-btn attendance-save-btn"
-          data-attendance-register-action="save-register"
-        >Save</button>
+        <div class="attendance-summary-divider" aria-hidden="true"></div>
+
+        <div class="attendance-summary-item">
+          <span class="attendance-summary-icon" aria-hidden="true">👥</span>
+          <div class="attendance-summary-text">
+            <span class="attendance-summary-label">Absent</span>
+            <strong class="attendance-absence-feedback">${absentCount} student${absentCount === 1 ? "" : "s"}</strong>
+            <span class="attendance-summary-subtext">marked absent</span>
+          </div>
+        </div>
       </div>
 
-      ${renderAttendancePanelDots("register")}
+      <button
+        type="button"
+        class="attendance-action-btn attendance-save-btn"
+        data-attendance-register-action="save-register"
+      >Save</button>
     </div>
-  `;
+  `);
 
   if (students.length === 0) {
     html += `<p class="helper-text">No active students found.</p>`;
   }
 
   let currentGroup = "";
+  let renderedGroupCount = 0;
 
   students.forEach(student => {
     if (!student || student.studentid == null) return;
@@ -651,7 +661,10 @@ function renderAttendanceRegister(dateValue) {
     const group = String(student.classgroup || "Ungrouped");
     if (group !== currentGroup) {
       currentGroup = group;
-      html += `<div class="attendance-group-line" aria-label="Group ${escapeHtml(group)}"></div>`;
+      if (renderedGroupCount > 0) {
+        html += `<div class="attendance-group-line" aria-label="Group ${escapeHtml(group)}"></div>`;
+      }
+      renderedGroupCount += 1;
     }
 
     const status = attendanceState[studentid] || "Present";
@@ -744,13 +757,11 @@ function openViewAttendance() {
 }
 
 function renderAttendanceRecordsControlsMarkup(range) {
-  return `
-    <div class="attendance-sticky-control-pane attendance-report-control-pane">
-      ${renderAttendancePanelHeading("Attendance Records")}
-      ${renderAttendanceDateFilter("view", range.start, range.end, "Calculate")}
-      ${renderAttendancePanelDots("records")}
-    </div>
-  `;
+  return renderAttendanceTopPanel(
+    "records",
+    "Attendance Records",
+    renderAttendanceDateFilter("view", range.start, range.end, "Calculate")
+  );
 }
 
 function renderViewAttendanceControlsInline(startDate, endDate, message) {
@@ -837,8 +848,10 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     html += `<p class="helper-text attendance-empty-state">No attendance records found.</p>`;
   }
 
-  sortedGroups.forEach(group => {
-    html += `<div class="attendance-group-line" aria-label="Group ${escapeHtml(group)}"></div>`;
+  sortedGroups.forEach((group, groupIndex) => {
+    if (groupIndex > 0) {
+      html += `<div class="attendance-group-line" aria-label="Group ${escapeHtml(group)}"></div>`;
+    }
 
     groups[group].forEach(student => {
       const rowId = `abs-${safeDomId(student.studentid)}`;
@@ -877,13 +890,11 @@ function openAttendanceStats() {
 }
 
 function renderAttendanceStatsControlsMarkup(range) {
-  return `
-    <div class="attendance-sticky-control-pane attendance-stats-control-pane">
-      ${renderAttendancePanelHeading("Statistics")}
-      ${renderAttendanceDateFilter("stats", range.start, range.end, "Calculate")}
-      ${renderAttendancePanelDots("stats")}
-    </div>
-  `;
+  return renderAttendanceTopPanel(
+    "stats",
+    "Statistics",
+    renderAttendanceDateFilter("stats", range.start, range.end, "Calculate")
+  );
 }
 
 function renderAttendanceStatsControlsInline(startDate, endDate, message) {
