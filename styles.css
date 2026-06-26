@@ -1,25 +1,32 @@
+:root {
+  /* ==========================================
+     BRAND PALETTE (Sage & Lavender)
+     ========================================== */
+  --primary: #A8B992;          /* Muted Sage Green - Core brand identifier */
+  --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
+  --banner-color: #CDB4DB;     /* Dusty Lavender - Soft contrast for headers/banners */
 
-:root {  /* Brand */
-  --primary: #234569;
-  --primary-rgb: 35, 69, 105;
-  --banner-color: #91c0ff;
+  /* ==========================================
+     SURFACES (Depth & Container Hierarchy)
+     ========================================== */
+  --surface-app: #FBFBF9;      /* Off-white page background (prevents eye strain) */
+  --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
+  --surface-soft: #F0F4EC;     /* Light pastel sage for section blocks */
+  --surface-chip: #F4EEF6;     /* Ultra-light lavender for pill tags & badges */
+  --surface-tint: #DFE7D7;     /* Mid-tone sage tint for disabled fields/borders */
+  --surface-track: #E4DCE7;    /* Desaturated lavender for slider/progress tracks */
+  --surface-dark: #7A6287;     /* Deep dusty lavender for dark modes or dark overlays */
+  --surface-video: #1C2214;    /* Deep earthy olive-black for media player backing */
 
-  /* Surfaces */
-  --surface-app: #f7fafa;
-  --surface-card:#c4c4c4;
-  --surface-soft: #f2f3f5;
-  --surface-chip: #e5e4e2;
-  --surface-tint: #d4d4d4;
-  --surface-track: #dddddd;
-  --surface-dark: #96a0b3;
-  --surface-video: #111111;
-
-  /* Text */
-  --text: #2f2f2f;
-  --text-strong: #222222;
-  --text-muted: #555555;
-  --text-subtle: #666666;
-  --text-inverse: #f5f5f5;
+  /* ==========================================
+     TEXT (Organic Typography Hierarchy)
+     ========================================== */
+  --text: #3B472A;             /* Earthy dark sage - standard body copy reading color */
+  --text-strong: #222B17;      /* Rich deep forest - crisp visibility for H1/H2 headings */
+  --text-muted: #5E6D49;       /* Medium sage-gray for secondary label hints */
+  --text-subtle: #7A8965;      /* Softer tone for captions, dates, and metadata */
+  --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
+}
 
   /* Status */
   --success: #32cd32;
