@@ -1,4 +1,4 @@
-/* M4L v41 - Timetable module
+/* M4L v62 - Timetable module
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -445,50 +445,7 @@ function setTimetableZoomButtonState(buttonId, zoomLink) {
   button.title = hasLink ? "Open Zoom link" : "Zoom link has not been added yet";
 }
 
-function ensureTimetableStartImageAfterZoom(contentId, zoomButtonId, imageCardId, placement = "afterZoom") {
-  const content = document.getElementById(contentId);
-  const zoomButton = document.getElementById(zoomButtonId);
-
-  if (!content && !zoomButton) {
-    return;
-  }
-
-  let imageCard = document.getElementById(imageCardId);
-
-  if (!imageCard) {
-    imageCard = document.createElement("div");
-    imageCard.id = imageCardId;
-    imageCard.className = "timetable-start-image-card";
-    imageCard.innerHTML = `
-      <img src="/images/startclass.png" alt="Class start guide" class="timetable-start-image" loading="lazy" />
-    `;
-  }
-
-  if (placement === "afterTimetable" && content) {
-    const timetableCard = content.closest(".timetable-card");
-
-    if (timetableCard && timetableCard.parentNode) {
-      timetableCard.insertAdjacentElement("afterend", imageCard);
-      return;
-    }
-
-    if (content.parentNode) {
-      content.insertAdjacentElement("afterend", imageCard);
-      return;
-    }
-  }
-
-  if (zoomButton && zoomButton.parentNode) {
-    zoomButton.insertAdjacentElement("afterend", imageCard);
-    return;
-  }
-
-  if (content && content.parentNode) {
-    content.insertAdjacentElement("afterend", imageCard);
-  }
-}
-
-/* M4L v40: Class duas home-card helpers remain in app.js; timetable module only calls the placement helper after rendering. */
+/* Class duas home-card helpers remain in app.js; timetable module only calls the duas placement helper after rendering. */
 
 function scheduleAdminHomeTimetableLoad() {
   if (!state.token || getBottomNavRole() !== "admin") {
@@ -617,7 +574,7 @@ async function loadAdminHomeTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("admin-home-zoom-link-btn", globalTimetableZoomLink);
-    ensureClassDuasCardAfterTimetable("admin-home-timetable-content", "admin-home-class-duas-card", ["admin-home-timetable-start-image-card"]);
+    ensureClassDuasCardAfterTimetable("admin-home-timetable-content", "admin-home-class-duas-card", []);
   } catch (err) {
     setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
     setTimetableZoomButtonState("admin-home-zoom-link-btn", "");
@@ -646,7 +603,7 @@ async function loadStudentHomeTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
-    ensureClassDuasCardAfterTimetable("student-timetable-content", "student-home-class-duas-card", ["student-timetable-start-image-card"]);
+    ensureClassDuasCardAfterTimetable("student-timetable-content", "student-home-class-duas-card", []);
   } catch (err) {
     setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
     setTimetableZoomButtonState("student-zoom-link-btn", "");
@@ -693,7 +650,7 @@ async function showAdminTimetable(force = false) {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
     setTimetableZoomButtonState("admin-timetable-zoom-link-btn", globalTimetableZoomLink);
-    ensureClassDuasCardAfterTimetable("admin-timetable-content", "admin-timetable-class-duas-card", ["admin-timetable-start-image-card"]);
+    ensureClassDuasCardAfterTimetable("admin-timetable-content", "admin-timetable-class-duas-card", []);
   } catch (err) {
     if (container) {
       setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
