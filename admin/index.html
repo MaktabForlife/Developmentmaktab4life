@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- PWA: Admin install settings -->
-  <link rel="stylesheet" href="/styles.css?v=65.4.2" />
+  <link rel="stylesheet" href="/styles.css?v=66" />
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -306,23 +306,65 @@
   </div>
 </section>
     <!-- ADMIN ATTENDANCE -->
-<section id="attendance-register-screen" class="screen admin-theme">
-  <div id="attendance-register-content">
-    <p class="helper-text">Loading attendance...</p>
-  </div>
-</section>
-
-
-    
-    <section id="attendance-report-screen" class="screen admin-theme">
-      <div id="attendance-report-content" class="list-stack">
-        <p class="helper-text">Loading attendance...</p>
+    <section id="attendance-screen" class="screen admin-theme">
+      <div
+        class="attendance-panel-dots"
+        data-attendance-swipe-dots
+        aria-label="Attendance panels"
+      >
+        <button
+          type="button"
+          class="attendance-panel-dot is-active"
+          data-attendance-panel-index="0"
+          aria-label="Show Register"
+          aria-current="true"
+        ></button>
+        <button
+          type="button"
+          class="attendance-panel-dot"
+          data-attendance-panel-index="1"
+          aria-label="Show Records"
+          aria-current="false"
+        ></button>
+        <button
+          type="button"
+          class="attendance-panel-dot"
+          data-attendance-panel-index="2"
+          aria-label="Show Stats"
+          aria-current="false"
+        ></button>
       </div>
-    </section>
 
-    <section id="attendance-stats-screen" class="screen admin-theme">
-      <div id="attendance-stats-content" class="list-stack">
-        <p class="helper-text">Loading statistics...</p>
+      <div class="attendance-swipe-track" data-attendance-swipe-track>
+        <section
+          id="attendance-register-panel"
+          class="attendance-swipe-panel"
+          aria-label="Register"
+        >
+          <div id="attendance-register-content">
+            <p class="helper-text">Loading attendance...</p>
+          </div>
+        </section>
+
+        <section
+          id="attendance-report-panel"
+          class="attendance-swipe-panel"
+          aria-label="Attendance Records"
+        >
+          <div id="attendance-report-content">
+            <p class="helper-text">Loading attendance...</p>
+          </div>
+        </section>
+
+        <section
+          id="attendance-stats-panel"
+          class="attendance-swipe-panel"
+          aria-label="Attendance Stats"
+        >
+          <div id="attendance-stats-content">
+            <p class="helper-text">Loading statistics...</p>
+          </div>
+        </section>
       </div>
     </section>
 
@@ -401,9 +443,9 @@
 <script src="/js/m4l-dom.js?v=11"></script>
 <script src="/app.js?v=59-12"></script>
 <script src="/js/m4l-auth.js?v=55"></script>
-<script src="/js/m4l-shell.js?v=63"></script>
+<script src="/js/m4l-shell.js?v=66"></script>
 <script src="/js/m4l-swipe.js?v=64.2"></script>
-<script src="/js/m4l-attendance.js?v=64.3"></script>
+<script src="/js/m4l-attendance.js?v=66"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
 <script src="/js/m4l-timetable.js?v=62"></script>
 <script src="/js/m4l-resources.js?v=65.4.2"></script>
