@@ -1,8 +1,9 @@
-/* M4L v49 - Attendance module
-   Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
-   This is a classic script, not type=module, so existing onclick/global calls remain safe
-   while the app is split gradually.
-   Owns Attendance dashboard, Mark Register, Attendance Records, and Attendance Stats.
+/* M4L v64 - Attendance module
+   Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
+   This is a classic script, not type=module, so existing onclick/global calls remain safe.
+
+   Owns Attendance dashboard content and data hydration.
+   Shared panel movement, dots, and touch swipe gestures are owned by /js/m4l-swipe.js.
 */
 
 /* =========================
@@ -119,6 +120,14 @@ function activateAttendancePanel(panelKey) {
   const didShow = showScreen(getAttendancePanelScreenId(panelKey));
   if (didShow) {
     scrollAttendancePanelIntoView(panelKey);
+
+    if (window.M4LSwipe && typeof window.M4LSwipe.updateAttendanceSwipeDots === "function") {
+      window.M4LSwipe.updateAttendanceSwipeDots(panelKey);
+    }
+
+    if (window.M4LSwipe && typeof window.M4LSwipe.bindAttendanceSwipeControls === "function") {
+      window.M4LSwipe.bindAttendanceSwipeControls(panelKey);
+    }
   }
 
   return didShow;
@@ -303,30 +312,30 @@ function renderAttendancePanelDots(activePanel) {
   const panels = [
     {
       key: "register",
-      action: "open-register-panel",
       label: "Show mark register"
     },
     {
       key: "records",
-      action: "open-records-panel",
       label: "Show attendance records"
     },
     {
       key: "stats",
-      action: "open-stats-panel",
       label: "Show attendance statistics"
     }
   ];
 
   return `
-    <div class="attendance-panel-dots" aria-label="Attendance panels">
-      ${panels.map(panel => {
+    <div class="attendance-panel-dots" data-swipe-group="attendance" aria-label="Attendance panels">
+      ${panels.map((panel, index) => {
         const isActive = panel.key === activePanel;
         return `
           <button
             type="button"
             class="section-swipe-dot${isActive ? " is-active" : ""}"
-            data-attendance-action="${panel.action}"
+            data-swipe-group="attendance"
+            data-swipe-panel-index="${index}"
+            data-attendance-panel-index="${index}"
+            data-attendance-panel="${panel.key}"
             aria-label="${panel.label}"
             aria-current="${isActive ? "true" : "false"}"
           ></button>
@@ -335,7 +344,6 @@ function renderAttendancePanelDots(activePanel) {
     </div>
   `;
 }
-
 
 function renderAttendancePanelHeading(text) {
   return `
@@ -409,97 +417,15 @@ function renderAttendanceDateControl(mode, startDate, endDate) {
   `;
 }
 
-function getAttendancePanelSequence() {
-  return [
-    { key: "register", handler: openMarkRegister },
-    { key: "records", handler: openViewAttendance },
-    { key: "stats", handler: openAttendanceStats }
-  ];
-}
-
-function openAdjacentAttendancePanel(activePanel, direction) {
-  const sequence = getAttendancePanelSequence();
-  const currentIndex = sequence.findIndex(panel => panel.key === activePanel);
-  if (currentIndex < 0) return false;
-
-  const nextIndex = currentIndex + direction;
-  if (nextIndex < 0 || nextIndex >= sequence.length) return false;
-
-  sequence[nextIndex].handler();
-  return true;
-}
-
-function shouldIgnoreAttendanceSwipeTarget(target) {
-  /*
-    Attendance panels contain long rows and status buttons. Allow horizontal
-    swipes to begin on those rows/buttons so the screen can be changed from
-    the natural scroll area. Only form fields, links, labels, and the global
-    bottom nav opt out because they need their own direct interaction.
-  */
-  return Boolean(target && target.closest('a, input, select, textarea, label, [contenteditable="true"], .bottom-nav'));
-}
-
-function bindAttendanceSwipeElement(element, activePanel) {
-  if (!element) return false;
-
-  element.dataset.attendanceSwipePanel = activePanel || "";
-
-  if (element.dataset.attendanceSwipeBound === "true") return true;
-
-  element.dataset.attendanceSwipeBound = "true";
-
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let touchStartTarget = null;
-
-  element.addEventListener("touchstart", event => {
-    const touch = event.touches && event.touches[0];
-    if (!touch) return;
-
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    touchStartTarget = event.target;
-  }, { passive: true });
-
-  element.addEventListener("touchend", event => {
-    if (shouldIgnoreAttendanceSwipeTarget(touchStartTarget)) {
-      touchStartTarget = null;
-      return;
-    }
-
-    const touch = event.changedTouches && event.changedTouches[0];
-    if (!touch) return;
-
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-    touchStartTarget = null;
-
-    if (Math.abs(deltaX) < 58 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
-
-    const panel = element.dataset.attendanceSwipePanel || activePanel;
-    if (deltaX < 0) {
-      openAdjacentAttendancePanel(panel, 1);
-    } else {
-      openAdjacentAttendancePanel(panel, -1);
-    }
-  }, { passive: true });
-
-  return true;
-}
-
 function bindAttendancePanelSwipe(containerOrId, activePanel) {
   const container = getDomElement(containerOrId);
   if (!container) return false;
 
-  const screen = container.closest ? container.closest(".screen") : null;
-
-  bindAttendanceSwipeElement(container, activePanel);
-
-  if (screen && screen !== container) {
-    bindAttendanceSwipeElement(screen, activePanel);
+  if (window.M4LSwipe && typeof window.M4LSwipe.bindAttendanceSwipeControls === "function") {
+    return window.M4LSwipe.bindAttendanceSwipeControls(activePanel || "register", container);
   }
 
-  return true;
+  return false;
 }
 
 function renderAttendanceDateFilter(mode, startDate, endDate, buttonLabel) {
@@ -525,20 +451,6 @@ function handleAttendanceGeneralClick(event) {
     event.preventDefault();
   }
 
-  if (action === "open-register-panel") {
-    openMarkRegister();
-    return;
-  }
-
-  if (action === "open-records-panel") {
-    openViewAttendance();
-    return;
-  }
-
-  if (action === "open-stats-panel") {
-    openAttendanceStats();
-    return;
-  }
 
   if (action === "view-records") {
     const startDate = getAttendanceDateInputValue("view-start-date");
@@ -1311,5 +1223,6 @@ window.M4LAttendance = {
   refreshViewAttendance,
   refreshAttendanceStats,
   renderViewAttendanceScreen,
-  renderAttendanceStatsScreen
+  renderAttendanceStatsScreen,
+  bindAttendancePanelSwipe
 };
