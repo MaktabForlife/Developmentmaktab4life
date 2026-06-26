@@ -19,7 +19,10 @@ async function refreshViewAttendance(button) {
   }
 
   await runManualRefresh(button, async () => {
-    await renderViewAttendanceScreen(startDate, endDate);
+    await renderViewAttendanceScreen(startDate, endDate, {
+      activate: false,
+      force: true
+    });
   });
 }
 
@@ -33,7 +36,10 @@ async function refreshAttendanceStats(button) {
   }
 
   await runManualRefresh(button, async () => {
-    await renderAttendanceStatsScreen(startDate, endDate);
+    await renderAttendanceStatsScreen(startDate, endDate, {
+      activate: false,
+      force: true
+    });
   });
 }
 
@@ -47,26 +53,172 @@ async function refreshAttendanceStats(button) {
 let attendanceStudentsCache = [];
 let attendanceState = {};
 
+const ATTENDANCE_DESKTOP_MEDIA_QUERY = "(min-width: 1180px)";
+let attendanceQuietHydrationStarted = false;
+
 function isAttendanceDesktopLayout() {
-  return Boolean(window.matchMedia && window.matchMedia("(min-width: 768px)").matches);
+  return Boolean(window.matchMedia && window.matchMedia(ATTENDANCE_DESKTOP_MEDIA_QUERY).matches);
 }
 
 function hydrateAttendanceDesktopSidePanels() {
-  if (!isAttendanceDesktopLayout()) return false;
-
-  const range = getDefaultAttendanceDateRange();
-
   /*
-    Desktop shows all three Attendance panels at once. Load the default
-    Records and Statistics data immediately so the side-by-side layout is
-    complete when Attendance is opened from the nav. Date changes still only
-    validate; the View Records / Calculate buttons remain the manual reload
-    controls after the default render.
+    Large desktop shows all three Attendance panels side-by-side. The same
+    hydration helper is used by small/medium swipe layouts so the panel shells
+    exist immediately and the inactive panels are prepared quietly.
   */
-  renderViewAttendanceScreen(range.start, range.end);
-  renderAttendanceStatsScreen(range.start, range.end);
+  hydrateAttendanceInactivePanelsQuietly();
   return true;
 }
+
+function getAttendancePanelScreenId(panelKey) {
+  const screens = {
+    register: "attendance-register-screen",
+    records: "attendance-report-screen",
+    stats: "attendance-stats-screen"
+  };
+
+  return screens[panelKey] || screens.register;
+}
+
+function getAttendancePanelContentId(panelKey) {
+  const containers = {
+    register: "attendance-register-content",
+    records: "attendance-report-content",
+    stats: "attendance-stats-content"
+  };
+
+  return containers[panelKey] || containers.register;
+}
+
+function getAttendancePanelContent(panelKey) {
+  return getDomElement(getAttendancePanelContentId(panelKey));
+}
+
+function scrollAttendancePanelIntoView(panelKey) {
+  if (isAttendanceDesktopLayout()) return false;
+
+  const screen = getDomElement(getAttendancePanelScreenId(panelKey));
+  if (!screen || typeof screen.scrollIntoView !== "function") return false;
+
+  window.requestAnimationFrame(() => {
+    try {
+      screen.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "start"
+      });
+    } catch (error) {
+      screen.scrollIntoView();
+    }
+  });
+
+  return true;
+}
+
+function activateAttendancePanel(panelKey) {
+  const didShow = showScreen(getAttendancePanelScreenId(panelKey));
+  if (didShow) {
+    scrollAttendancePanelIntoView(panelKey);
+  }
+
+  return didShow;
+}
+
+function markAttendancePanelLoading(panelKey, isLoading) {
+  const container = getAttendancePanelContent(panelKey);
+  if (!container) return false;
+
+  container.dataset.attendanceLoading = isLoading ? "true" : "false";
+  return true;
+}
+
+function markAttendancePanelHydrated(panelKey, range) {
+  const container = getAttendancePanelContent(panelKey);
+  if (!container) return false;
+
+  container.dataset.attendanceHydrated = "true";
+  if (range) {
+    container.dataset.attendanceRangeStart = range.start || "";
+    container.dataset.attendanceRangeEnd = range.end || "";
+  }
+
+  markAttendancePanelLoading(panelKey, false);
+  return true;
+}
+
+function clearAttendancePanelHydration(panelKey) {
+  const container = getAttendancePanelContent(panelKey);
+  if (!container) return false;
+
+  delete container.dataset.attendanceHydrated;
+  delete container.dataset.attendanceRangeStart;
+  delete container.dataset.attendanceRangeEnd;
+  container.dataset.attendanceLoading = "false";
+  return true;
+}
+
+function isAttendancePanelHydrated(panelKey) {
+  const container = getAttendancePanelContent(panelKey);
+  return Boolean(container && container.dataset.attendanceHydrated === "true");
+}
+
+function isAttendancePanelLoading(panelKey) {
+  const container = getAttendancePanelContent(panelKey);
+  return Boolean(container && container.dataset.attendanceLoading === "true");
+}
+
+function renderAttendanceInactivePanelShells() {
+  const range = getDefaultAttendanceDateRange();
+
+  const recordsContainer = getAttendancePanelContent("records");
+  if (recordsContainer && !isAttendancePanelHydrated("records") && !isAttendancePanelLoading("records")) {
+    renderViewAttendanceControlsInline(range.start, range.end, "Preparing attendance records...");
+  }
+
+  const statsContainer = getAttendancePanelContent("stats");
+  if (statsContainer && !isAttendancePanelHydrated("stats") && !isAttendancePanelLoading("stats")) {
+    renderAttendanceStatsControlsInline(range.start, range.end, "Preparing statistics...");
+  }
+
+  return true;
+}
+
+function hydrateAttendanceInactivePanelsQuietly(force = false) {
+  if (attendanceQuietHydrationStarted && !force) return false;
+
+  attendanceQuietHydrationStarted = true;
+  renderAttendanceInactivePanelShells();
+
+  const range = getDefaultAttendanceDateRange();
+  const runHydration = () => {
+    renderViewAttendanceScreen(range.start, range.end, {
+      activate: false,
+      force,
+      quiet: true
+    });
+
+    renderAttendanceStatsScreen(range.start, range.end, {
+      activate: false,
+      force,
+      quiet: true
+    });
+  };
+
+  if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runHydration, { timeout: 1500 });
+  } else {
+    window.setTimeout(runHydration, 250);
+  }
+
+  return true;
+}
+
+function invalidateAttendanceComputedPanels() {
+  clearAttendancePanelHydration("records");
+  clearAttendancePanelHydration("stats");
+  attendanceQuietHydrationStarted = false;
+}
+
 
 function showAttendanceDashboard() {
   return openMarkRegister();
@@ -397,7 +549,7 @@ function handleAttendanceGeneralClick(event) {
       return;
     }
 
-    renderViewAttendanceScreen(startDate, endDate);
+    renderViewAttendanceScreen(startDate, endDate, { force: true });
     return;
   }
 
@@ -410,7 +562,7 @@ function handleAttendanceGeneralClick(event) {
       return;
     }
 
-    renderAttendanceStatsScreen(startDate, endDate);
+    renderAttendanceStatsScreen(startDate, endDate, { force: true });
     return;
   }
 
@@ -539,7 +691,7 @@ function setAttendanceSaveButtonState(isSaving) {
 }
 
 async function openMarkRegister() {
-  const didShow = showScreen("attendance-register-screen");
+  const didShow = activateAttendancePanel("register");
   if (!didShow) return;
 
   const container = getDomElement("attendance-register-content");
@@ -550,6 +702,7 @@ async function openMarkRegister() {
 
   bindAttendanceRegisterUiHandlers(container);
   setDomHtml(container, `<p class="helper-text">Loading students...</p>`);
+  renderAttendanceInactivePanelShells();
 
   let result;
   try {
@@ -577,26 +730,8 @@ async function openMarkRegister() {
   });
 
   renderAttendanceRegister(getLocalDateString());
-  hydrateAttendanceDesktopSidePanels();
-}
-
-function getAttendanceInitials(name) {
-  const cleanName = String(name || "").trim();
-
-  if (!cleanName) {
-    return "?";
-  }
-
-  const parts = cleanName
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
-  return cleanName.slice(0, 2).toUpperCase();
+  markAttendancePanelHydrated("register");
+  hydrateAttendanceInactivePanelsQuietly();
 }
 
 function renderAttendanceRegister(dateValue) {
@@ -674,7 +809,6 @@ function renderAttendanceRegister(dateValue) {
     html += `
       <div class="attendance-register-row">
         <div class="attendance-student-main">
-          <span class="attendance-student-avatar" aria-hidden="true">${escapeHtml(getAttendanceInitials(displayName))}</span>
           <div class="attendance-student-name">${escapeHtml(displayName)}</div>
         </div>
         <button
@@ -694,6 +828,7 @@ function renderAttendanceRegister(dateValue) {
   bindAttendanceUiHandlers(container);
   bindAttendancePanelSwipe(container, "register");
   setAttendanceSaveButtonState(attendanceRegisterSaveInProgress);
+  markAttendancePanelHydrated("register");
   return true;
 }
 
@@ -745,6 +880,9 @@ async function submitAttendanceRegister() {
 
   attendanceRegisterSaveInProgress = false;
   setAttendanceSaveButtonState(false);
+  invalidateAttendanceComputedPanels();
+  renderAttendanceInactivePanelShells();
+  hydrateAttendanceInactivePanelsQuietly(true);
   alert(`Attendance saved successfully. ${absentStudents.length} student${absentStudents.length === 1 ? "" : "s"} marked absent.`);
 }
 
@@ -753,7 +891,17 @@ function openViewAttendance() {
     getAttendanceDateInputValue("view-start-date"),
     getAttendanceDateInputValue("view-end-date")
   );
-  renderViewAttendanceScreen(range.start, range.end);
+
+  const didShow = activateAttendancePanel("records");
+  if (!didShow) return;
+
+  const container = getAttendancePanelContent("records");
+  if (!container) return;
+
+  if (!isAttendancePanelHydrated("records") && !isAttendancePanelLoading("records")) {
+    renderViewAttendanceControlsInline(range.start, range.end, "Preparing attendance records...");
+    renderViewAttendanceScreen(range.start, range.end, { activate: false });
+  }
 }
 
 function renderAttendanceRecordsControlsMarkup(range) {
@@ -787,22 +935,32 @@ function renderViewAttendanceControls(startDate, endDate, message) {
   return renderViewAttendanceControlsInline(startDate, endDate, message);
 }
 
-async function renderViewAttendanceScreen(startDate, endDate) {
+async function renderViewAttendanceScreen(startDate, endDate, options = {}) {
   const range = normalizeAttendanceDateRange(startDate, endDate);
+  const shouldActivate = options.activate !== false;
+  const shouldForce = options.force === true;
 
   if (!isValidAttendanceDateRange(range.start, range.end)) {
     showAttendanceDatePopup("Start date must be before or the same as end date.");
     return;
   }
 
-  const didShow = showScreen("attendance-report-screen");
-  if (!didShow) return;
+  if (shouldActivate) {
+    const didShow = activateAttendancePanel("records");
+    if (!didShow) return;
+  }
 
   const container = getDomElement("attendance-report-content");
   if (!container) {
     console.warn("Missing attendance report container.");
     return;
   }
+
+  if (isAttendancePanelLoading("records") && !shouldForce) {
+    return;
+  }
+
+  markAttendancePanelLoading("records", true);
 
   setDomHtml(container, `
     ${renderAttendanceRecordsControlsMarkup(range)}
@@ -826,6 +984,7 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     `);
     bindAttendanceUiHandlers(container);
     bindAttendancePanelSwipe(container, "records");
+    markAttendancePanelLoading("records", false);
     return;
   }
 
@@ -836,6 +995,7 @@ async function renderViewAttendanceScreen(startDate, endDate) {
     `);
     bindAttendanceUiHandlers(container);
     bindAttendancePanelSwipe(container, "records");
+    markAttendancePanelLoading("records", false);
     return;
   }
 
@@ -879,6 +1039,7 @@ async function renderViewAttendanceScreen(startDate, endDate) {
   setDomHtml(container, html);
   bindAttendanceUiHandlers(container);
   bindAttendancePanelSwipe(container, "records");
+  markAttendancePanelHydrated("records", range);
 }
 
 function openAttendanceStats() {
@@ -886,7 +1047,17 @@ function openAttendanceStats() {
     getAttendanceDateInputValue("stats-start-date"),
     getAttendanceDateInputValue("stats-end-date")
   );
-  renderAttendanceStatsScreen(range.start, range.end);
+
+  const didShow = activateAttendancePanel("stats");
+  if (!didShow) return;
+
+  const container = getAttendancePanelContent("stats");
+  if (!container) return;
+
+  if (!isAttendancePanelHydrated("stats") && !isAttendancePanelLoading("stats")) {
+    renderAttendanceStatsControlsInline(range.start, range.end, "Preparing statistics...");
+    renderAttendanceStatsScreen(range.start, range.end, { activate: false });
+  }
 }
 
 function renderAttendanceStatsControlsMarkup(range) {
@@ -920,22 +1091,32 @@ function renderAttendanceStatsControls(startDate, endDate, message) {
   return renderAttendanceStatsControlsInline(startDate, endDate, message);
 }
 
-async function renderAttendanceStatsScreen(startDate, endDate) {
+async function renderAttendanceStatsScreen(startDate, endDate, options = {}) {
   const range = normalizeAttendanceDateRange(startDate, endDate);
+  const shouldActivate = options.activate !== false;
+  const shouldForce = options.force === true;
 
   if (!isValidAttendanceDateRange(range.start, range.end)) {
     showAttendanceDatePopup("Start date must be before or the same as end date.");
     return;
   }
 
-  const didShow = showScreen("attendance-stats-screen");
-  if (!didShow) return;
+  if (shouldActivate) {
+    const didShow = activateAttendancePanel("stats");
+    if (!didShow) return;
+  }
 
   const container = getDomElement("attendance-stats-content");
   if (!container) {
     console.warn("Missing attendance stats container.");
     return;
   }
+
+  if (isAttendancePanelLoading("stats") && !shouldForce) {
+    return;
+  }
+
+  markAttendancePanelLoading("stats", true);
 
   setDomHtml(container, `
     ${renderAttendanceStatsControlsMarkup(range)}
@@ -959,6 +1140,7 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
     `);
     bindAttendanceUiHandlers(container);
     bindAttendancePanelSwipe(container, "stats");
+    markAttendancePanelLoading("stats", false);
     return;
   }
 
@@ -969,6 +1151,7 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
     `);
     bindAttendanceUiHandlers(container);
     bindAttendancePanelSwipe(container, "stats");
+    markAttendancePanelLoading("stats", false);
     return;
   }
 
@@ -1038,6 +1221,7 @@ async function renderAttendanceStatsScreen(startDate, endDate) {
   setDomHtml(container, html);
   bindAttendanceUiHandlers(container);
   bindAttendancePanelSwipe(container, "stats");
+  markAttendancePanelHydrated("stats", range);
 }
 
 function sortAttendanceStudents(a, b) {
