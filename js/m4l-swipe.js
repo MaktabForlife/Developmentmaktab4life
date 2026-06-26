@@ -1,4 +1,4 @@
-/* M4L v64 - Shared swipe controls
+/* M4L v64.2 - Shared swipe controls
    Load after /js/m4l-shell.js and before feature modules that create/bind panels.
    This is a classic script, not type=module.
 
@@ -191,6 +191,7 @@
   ];
 
   let attendanceSwipeResizeHandlerBound = false;
+  let attendanceSwipeDelegatedHandlersBound = false;
 
   function getAttendancePanelConfig(panelKeyOrIndex) {
     if (typeof panelKeyOrIndex === "number") {
@@ -245,6 +246,84 @@
     return Boolean(dots.length);
   }
 
+  function isVisibleFixedTopElement(element) {
+    if (!element) return false;
+
+    const style = window.getComputedStyle ? window.getComputedStyle(element) : null;
+    if (!style || style.display === "none" || style.visibility === "hidden") return false;
+
+    const rect = element.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+
+    const isFixedLike = style.position === "fixed" || style.position === "sticky";
+    if (!isFixedLike) return false;
+
+    /*
+      The primary nav can be fixed at the top on desktop or at the bottom on
+      mobile. Only top-positioned fixed elements contribute to the safe top
+      offset for Attendance panels.
+    */
+    return rect.top < Math.max(160, window.innerHeight * 0.35);
+  }
+
+  function getAttendanceFixedChromeBottom(screenId) {
+    let bottom = 0;
+
+    const userBand = document.getElementById("app-user-band");
+    if (isVisibleFixedTopElement(userBand)) {
+      bottom = Math.max(bottom, userBand.getBoundingClientRect().bottom);
+    }
+
+    const bottomNav = document.getElementById("bottom-nav");
+    if (isVisibleFixedTopElement(bottomNav)) {
+      bottom = Math.max(bottom, bottomNav.getBoundingClientRect().bottom);
+    }
+
+    const screen = document.getElementById(screenId || getAttendancePanelConfig(getAttendanceActivePanelKey()).screenId);
+    const dots = screen && screen.querySelector ? screen.querySelector(".attendance-panel-dots") : null;
+    if (isVisibleFixedTopElement(dots)) {
+      bottom = Math.max(bottom, dots.getBoundingClientRect().bottom);
+    }
+
+    return Math.ceil(bottom + 10);
+  }
+
+  function keepAttendancePanelBelowDots(screenId) {
+    const screen = document.getElementById(screenId || getAttendancePanelConfig(getAttendanceActivePanelKey()).screenId);
+    if (!screen || !screen.classList.contains("active")) return false;
+
+    const target = screen.querySelector(".attendance-sticky-control-pane") || screen;
+    if (!target) return false;
+
+    const runAlignment = () => {
+      const offset = getAttendanceFixedChromeBottom(screen.id);
+      const rect = target.getBoundingClientRect();
+      const delta = rect.top - offset;
+
+      if (Math.abs(delta) <= 4) {
+        return;
+      }
+
+      const scrollingElement = document.scrollingElement || document.documentElement || document.body;
+      const currentScrollTop = scrollingElement ? scrollingElement.scrollTop : (window.pageYOffset || 0);
+      const nextTop = Math.max(0, currentScrollTop + delta);
+
+      window.scrollTo({
+        top: nextTop,
+        left: window.pageXOffset || 0,
+        behavior: "auto"
+      });
+    };
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(runAlignment);
+    } else {
+      window.setTimeout(runAlignment, 0);
+    }
+
+    return true;
+  }
+
   function openAttendanceSwipePanel(panelKeyOrIndex) {
     const config = getAttendancePanelConfig(panelKeyOrIndex);
     const handler = window[config.handlerName];
@@ -255,7 +334,10 @@
     }
 
     handler();
-    window.setTimeout(() => updateAttendanceSwipeDots(config.key), 0);
+    window.setTimeout(() => {
+      updateAttendanceSwipeDots(config.key);
+      keepAttendancePanelBelowDots(config.screenId);
+    }, 0);
     return true;
   }
 
@@ -328,24 +410,52 @@
     return true;
   }
 
+  function getAttendanceDotTarget(dot) {
+    if (!dot) return 0;
+
+    const key = dot.dataset.attendancePanel || "";
+    if (key) return key;
+
+    const indexText = dot.dataset.attendancePanelIndex || dot.dataset.swipePanelIndex || "0";
+    return Number(indexText || 0);
+  }
+
+  function bindAttendanceSwipeDelegatedHandlers() {
+    if (attendanceSwipeDelegatedHandlersBound === true) return true;
+    if (!document || typeof document.addEventListener !== "function") return false;
+
+    attendanceSwipeDelegatedHandlersBound = true;
+    document.addEventListener("click", event => {
+      const dot = event.target && event.target.closest
+        ? event.target.closest(".attendance-panel-dots [data-attendance-panel], .attendance-panel-dots [data-attendance-panel-index], .attendance-panel-dots [data-swipe-panel-index]")
+        : null;
+
+      if (!dot) return;
+
+      event.preventDefault();
+      openAttendanceSwipePanel(getAttendanceDotTarget(dot));
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+
+      const dot = event.target && event.target.closest
+        ? event.target.closest(".attendance-panel-dots [data-attendance-panel], .attendance-panel-dots [data-attendance-panel-index], .attendance-panel-dots [data-swipe-panel-index]")
+        : null;
+
+      if (!dot) return;
+
+      event.preventDefault();
+      openAttendanceSwipePanel(getAttendanceDotTarget(dot));
+    });
+
+    return true;
+  }
+
   function bindAttendanceSwipeDots() {
     const dots = getAttendanceSwipeDots();
 
-    dots.forEach(dot => {
-      if (dot.dataset.m4lAttendanceDotBound === "true") return;
-
-      dot.dataset.m4lAttendanceDotBound = "true";
-      dot.addEventListener("click", event => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        const key = dot.dataset.attendancePanel || "";
-        const indexText = dot.dataset.attendancePanelIndex || dot.dataset.swipePanelIndex || "0";
-        const target = key || Number(indexText || 0);
-        openAttendanceSwipePanel(target);
-      });
-    });
-
+    bindAttendanceSwipeDelegatedHandlers();
     updateAttendanceSwipeDots();
     return Boolean(dots.length);
   }
@@ -357,6 +467,7 @@
     attendanceSwipeResizeHandlerBound = true;
     window.addEventListener("resize", () => {
       updateAttendanceSwipeDots();
+      window.setTimeout(() => keepAttendancePanelBelowDots(), 0);
     }, { passive: true });
 
     return true;
@@ -380,7 +491,10 @@
       bindAttendanceSwipeElement(screen, panelKey);
     }
 
-    window.setTimeout(() => updateAttendanceSwipeDots(panelKey), 0);
+    window.setTimeout(() => {
+      updateAttendanceSwipeDots(panelKey);
+      keepAttendancePanelBelowDots(getAttendancePanelConfig(panelKey).screenId);
+    }, 0);
     return true;
   }
 
@@ -414,7 +528,8 @@
     openAttendanceSwipePanel,
     openAdjacentAttendancePanel,
     bindAttendanceSwipeControls,
-    bindAttendanceSwipePanels
+    bindAttendanceSwipePanels,
+    keepAttendancePanelBelowDots
   };
 
   /*
@@ -433,6 +548,7 @@
   window.openAdjacentAttendancePanel = openAdjacentAttendancePanel;
   window.bindAttendanceSwipeControls = bindAttendanceSwipeControls;
   window.bindAttendanceSwipePanels = bindAttendanceSwipePanels;
+  window.keepAttendancePanelBelowDots = keepAttendancePanelBelowDots;
 
   function bindInitialSwipePanels() {
     bindHomeSwipePanels();
