@@ -6,6 +6,7 @@
   --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
   --banner-color: #CDB4DB;     /* Dusty Lavender - Soft contrast for headers/banners */
   --background-color: #F0F4EC; /* Light pastel sage */
+  --background: var(--background-color);
 
 
   /* ==========================================
@@ -75,7 +76,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background-color);
+  background: var(--background);
   color: var(--text);
   font-family: var(--font-main);
   display: flex;
@@ -1331,7 +1332,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 
-/* Resources / Library ribbon - V65.4 */
+/* Resources / Library ribbon - V65.4.2 */
 .library-resource-browser {
   --library-ribbon-gap: 10px;
   --library-card-width: 148px;
@@ -1515,13 +1516,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   margin-top: 8px;
   border-radius: 10px;
   background: var(--surface-video);
-}
-
-.inline-resource-preview,
-.inline-audio-player {
-  grid-column: 1 / -1;
-  margin-top: 10px;
-  width: 100%;
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
