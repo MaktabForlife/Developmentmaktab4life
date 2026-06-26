@@ -1638,7 +1638,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 
-/* Student Home: timetable and Zoom placeholders */
+/* Student/Admin Home: timetable, Zoom and class duas panels */
 .student-home-panel {
   display: grid;
   gap: 12px;
@@ -1972,35 +1972,6 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   cursor: not-allowed;
 }
 
-.timetable-content-strip,
-.timetable-content-panel {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.timetable-content-panel-image,
-.timetable-start-image-card {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  width: 100%;
-  margin-top: 12px;
-  background: var(--surface-card);
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
-}
-
-.timetable-start-image {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
 .class-duas-card {
   width: 100%;
   margin-top: 12px;
@@ -2192,8 +2163,9 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   .home-swipe-track,
   .section-swipe-track {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
+    align-items: start;
     overflow: visible;
     scroll-snap-type: none;
   }
@@ -2205,8 +2177,10 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
   .home-swipe-panel,
   .section-swipe-panel {
+    flex: initial;
     width: auto;
     max-width: none;
+    min-width: 0;
     scroll-snap-align: none;
   }
 
