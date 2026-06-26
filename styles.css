@@ -5,8 +5,7 @@
   --primary: #A8B992;          /* Muted Sage Green - Core brand identifier */
   --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
   --banner-color: #CDB4DB;     /* Dusty Lavender - Soft contrast for headers/banners */
-  --background-color: #F0F4EC;     /* Light pastel sage for section blocks */
-
+   --background-color: #F0F4EC;     /* Light pastel sage for section blocks */
   /* ==========================================
      SURFACES (Depth & Container Hierarchy)
      ========================================== */
@@ -72,7 +71,7 @@
   box-sizing: border-box;
 }
 body {
-  background: var(--background-color);
+ background: var(--background-color);
   margin: 0;
   min-height: 100vh;
   color: var(--text);
@@ -1089,6 +1088,10 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .progress-button-list {
+  --library-glass-card-bg: rgba(var(--white-rgb), 0.54);
+  --library-glass-card-border: rgba(var(--white-rgb), 0.64);
+  --library-glass-card-shadow: 0 8px 22px rgba(var(--black-rgb), 0.10);
+  --library-glass-card-blur: 12px;
   display: grid;
   gap: 14px;
   margin-top: 16px;
@@ -1330,11 +1333,11 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 
-/* Resources / Library ribbon - V65.1 */
+/* Resources / Library ribbon - V65.2 */
 .library-resource-browser {
   --library-ribbon-gap: 10px;
   --library-card-width: 148px;
-  --library-card-min-height: 150px;
+  --library-card-min-height: 135px;
   display: grid;
   gap: 14px;
   width: 100%;
@@ -1347,7 +1350,10 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   gap: 10px;
   min-width: 0;
   padding: 14px;
-  background: var(--surface-soft);
+  background:
+    radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.28), transparent 42%),
+    radial-gradient(circle at bottom right, var(--surface-track), transparent 48%),
+    linear-gradient(135deg, var(--surface-soft), var(--surface-track));
   border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 18px;
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
@@ -1390,12 +1396,12 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   scroll-snap-align: start;
   text-align: center;
   color: var(--primary);
-  background: rgba(var(--white-rgb), 0.58);
-  border: 1px solid rgba(var(--white-rgb), 0.52);
+  background: var(--library-glass-card-bg);
+  border: 1px solid var(--library-glass-card-border);
   border-radius: 18px;
-  box-shadow: 0 3px 8px rgba(var(--black-rgb), 0.10);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--library-glass-card-shadow);
+  backdrop-filter: blur(var(--library-glass-card-blur));
+  -webkit-backdrop-filter: blur(var(--library-glass-card-blur));
 }
 
 .library-resource-card:active {
@@ -1405,6 +1411,11 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 .library-resource-card:focus-visible {
   outline: 3px solid rgba(var(--primary-rgb), 0.34);
   outline-offset: 3px;
+}
+
+.library-resource-card--part-video {
+  background: var(--surface-chip);
+  background: color-mix(in srgb, var(--surface-chip) 78%, rgba(var(--white-rgb), 0.42));
 }
 
 .library-resource-icon-wrap {
@@ -1506,7 +1517,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .library-resource-card {
-    background: rgba(var(--white-rgb), 0.82);
+    background: rgba(var(--white-rgb), 0.84);
   }
 }
 
@@ -1521,7 +1532,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 @media (max-width: 420px) {
   .library-resource-browser {
     --library-card-width: 142px;
-    --library-card-min-height: 146px;
+    --library-card-min-height: 132px;
   }
 
   .library-module-section {
@@ -2042,37 +2053,13 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 @media (max-width: 767px) {
-  /*
-    Root fix:
-    Home dots are fixed, so Home content must reserve the dot band inside the
-    Home swipe shell. This keeps the Zoom button and timetable below the banner
-    and dots without pushing every screen down.
-  */
-  body.has-user-band #student-home.screen,
-  body.has-user-band #admin-home.screen {
-    padding-top: 12px;
-  }
-
-  body.has-user-band #student-home .home-swipe-shell,
-  body.has-user-band #admin-home .home-swipe-shell {
-    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
-  }
-
-  /*
-    Attendance keeps its own top clearance because its top controls are sticky
-    and are aligned separately by the Attendance swipe controller.
-  */
+  #student-home.screen,
+  #admin-home.screen,
   #attendance-register-screen.screen,
   #attendance-report-screen.screen,
   #attendance-stats-screen.screen {
     padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
   }
-
-  .attendance-sticky-control-pane {
-    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 8px);
-  }
-}
-
 
   .attendance-sticky-control-pane {
     top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 8px);
