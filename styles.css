@@ -1951,7 +1951,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   min-height: 56px;
   margin-top: 12px;
   border-radius: 16px;
-  background: var( --surface-chip);
+  background: var(--banner-color);
   color: var(--primary);
   border: 1px solid rgba(var(--primary-rgb), 0.18);
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
