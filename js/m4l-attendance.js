@@ -1,9 +1,10 @@
-/* M4L v64.3 - Attendance module
+/* M4L v66 - Attendance module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
 
    Owns Attendance dashboard content and data hydration.
-   Shared panel movement, dots, and touch swipe gestures are owned by /js/m4l-swipe.js.
+   Attendance panel movement now uses one real screen with native horizontal scroll snapping.
+v66
 */
 
 /* =========================
@@ -55,82 +56,206 @@ let attendanceStudentsCache = [];
 let attendanceState = {};
 
 const ATTENDANCE_DESKTOP_MEDIA_QUERY = "(min-width: 1180px)";
+const ATTENDANCE_SCREEN_ID = "attendance-screen";
+const ATTENDANCE_PANEL_SEQUENCE = [
+  { key: "register", contentId: "attendance-register-content" },
+  { key: "records", contentId: "attendance-report-content" },
+  { key: "stats", contentId: "attendance-stats-content" }
+];
 let attendanceQuietHydrationStarted = false;
+let attendanceNativeScrollBound = false;
 
 function isAttendanceDesktopLayout() {
   return Boolean(window.matchMedia && window.matchMedia(ATTENDANCE_DESKTOP_MEDIA_QUERY).matches);
 }
 
 function hydrateAttendanceDesktopSidePanels() {
-  /*
-    Large desktop shows all three Attendance panels side-by-side. The same
-    hydration helper is used by small/medium swipe layouts so the panel shells
-    exist immediately and the inactive panels are prepared quietly.
-  */
   hydrateAttendanceInactivePanelsQuietly();
   return true;
 }
 
-function getAttendancePanelScreenId(panelKey) {
-  const screens = {
-    register: "attendance-register-screen",
-    records: "attendance-report-screen",
-    stats: "attendance-stats-screen"
-  };
+function getAttendancePanelKey(panelKeyOrIndex) {
+  if (typeof panelKeyOrIndex === "number") {
+    return (ATTENDANCE_PANEL_SEQUENCE[panelKeyOrIndex] || ATTENDANCE_PANEL_SEQUENCE[0]).key;
+  }
 
-  return screens[panelKey] || screens.register;
+  const key = String(panelKeyOrIndex || "register");
+  const panel = ATTENDANCE_PANEL_SEQUENCE.find(item => item.key === key || item.contentId === key);
+  return (panel || ATTENDANCE_PANEL_SEQUENCE[0]).key;
+}
+
+function getAttendancePanelIndex(panelKeyOrIndex) {
+  const key = getAttendancePanelKey(panelKeyOrIndex);
+  const index = ATTENDANCE_PANEL_SEQUENCE.findIndex(panel => panel.key === key);
+  return index < 0 ? 0 : index;
+}
+
+function getAttendancePanelScreenId() {
+  return ATTENDANCE_SCREEN_ID;
 }
 
 function getAttendancePanelContentId(panelKey) {
-  const containers = {
-    register: "attendance-register-content",
-    records: "attendance-report-content",
-    stats: "attendance-stats-content"
-  };
-
-  return containers[panelKey] || containers.register;
+  const key = getAttendancePanelKey(panelKey);
+  const panel = ATTENDANCE_PANEL_SEQUENCE.find(item => item.key === key);
+  return (panel || ATTENDANCE_PANEL_SEQUENCE[0]).contentId;
 }
 
 function getAttendancePanelContent(panelKey) {
   return getDomElement(getAttendancePanelContentId(panelKey));
 }
 
-function scrollAttendancePanelIntoView(panelKey) {
-  if (isAttendanceDesktopLayout()) return false;
+function getAttendanceSwipeTrack() {
+  const screen = getDomElement(ATTENDANCE_SCREEN_ID);
+  return screen ? screen.querySelector("[data-attendance-swipe-track]") : null;
+}
 
-  const screen = getDomElement(getAttendancePanelScreenId(panelKey));
-  if (!screen || typeof screen.scrollIntoView !== "function") return false;
+function getAttendanceActivePanelKey() {
+  const activeDot = document.querySelector("[data-attendance-panel-index].is-active");
+  if (activeDot) {
+    return getAttendancePanelKey(Number(activeDot.dataset.attendancePanelIndex || 0));
+  }
 
-  window.requestAnimationFrame(() => {
-    try {
-      screen.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "start"
-      });
-    } catch (error) {
-      screen.scrollIntoView();
-    }
+  const track = getAttendanceSwipeTrack();
+  if (track && track.clientWidth) {
+    return getAttendancePanelKey(Math.round((track.scrollLeft || 0) / track.clientWidth));
+  }
+
+  return "register";
+}
+
+function updateAttendanceDots(activePanel) {
+  const activeIndex = getAttendancePanelIndex(activePanel);
+
+  document.querySelectorAll("[data-attendance-panel-index]").forEach(dot => {
+    const index = Number(dot.dataset.attendancePanelIndex || 0);
+    const isActive = index === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "true" : "false");
   });
 
   return true;
 }
 
-function activateAttendancePanel(panelKey) {
-  const didShow = showScreen(getAttendancePanelScreenId(panelKey));
-  if (didShow) {
-    scrollAttendancePanelIntoView(panelKey);
+function bindAttendanceNativeScroll() {
+  const screen = getDomElement(ATTENDANCE_SCREEN_ID);
+  const track = getAttendanceSwipeTrack();
+  if (!screen || !track) return false;
 
-    if (window.M4LSwipe && typeof window.M4LSwipe.updateAttendanceSwipeDots === "function") {
-      window.M4LSwipe.updateAttendanceSwipeDots(panelKey);
-    }
-
-    if (window.M4LSwipe && typeof window.M4LSwipe.bindAttendanceSwipeControls === "function") {
-      window.M4LSwipe.bindAttendanceSwipeControls(panelKey);
-    }
+  if (attendanceNativeScrollBound === true) {
+    return true;
   }
 
+  attendanceNativeScrollBound = true;
+
+  let pendingFrame = 0;
+
+  track.addEventListener("scroll", () => {
+    if (pendingFrame) return;
+
+    pendingFrame = window.requestAnimationFrame(() => {
+      pendingFrame = 0;
+      const width = track.clientWidth || 1;
+      const index = Math.round((track.scrollLeft || 0) / width);
+      updateAttendanceDots(index);
+    });
+  }, { passive: true });
+
+  screen.addEventListener("click", event => {
+    const dot = event.target && event.target.closest
+      ? event.target.closest("[data-attendance-panel-index]")
+      : null;
+
+    if (!dot || !screen.contains(dot)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const index = Number(dot.dataset.attendancePanelIndex || 0);
+    openAttendancePanelByIndex(index);
+  });
+
+  return true;
+}
+
+function showAttendanceScreen() {
+  const didShow = showScreen(ATTENDANCE_SCREEN_ID);
+  if (didShow) {
+    bindAttendanceNativeScroll();
+  }
   return didShow;
+}
+
+function scrollAttendancePanelIntoView(panelKey) {
+  const track = getAttendanceSwipeTrack();
+  const index = getAttendancePanelIndex(panelKey);
+  const panel = track && track.children ? track.children[index] : null;
+
+  if (!track || !panel || typeof panel.scrollIntoView !== "function") {
+    updateAttendanceDots(index);
+    return false;
+  }
+
+  const runScroll = () => {
+    try {
+      panel.scrollIntoView({
+        behavior: isAttendanceDesktopLayout() ? "auto" : "smooth",
+        block: "nearest",
+        inline: "start"
+      });
+    } catch (error) {
+      panel.scrollIntoView();
+    }
+
+    updateAttendanceDots(index);
+  };
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(runScroll);
+  } else {
+    window.setTimeout(runScroll, 0);
+  }
+
+  return true;
+}
+
+function activateAttendancePanel(panelKey) {
+  const didShow = showAttendanceScreen();
+  if (!didShow) return false;
+
+  bindAttendanceNativeScroll();
+  scrollAttendancePanelIntoView(panelKey);
+  return true;
+}
+
+function openAttendancePanelByIndex(index) {
+  const key = getAttendancePanelKey(Number(index || 0));
+
+  if (key === "records") {
+    openViewAttendance();
+    return true;
+  }
+
+  if (key === "stats") {
+    openAttendanceStats();
+    return true;
+  }
+
+  openMarkRegister();
+  return true;
+}
+
+async function refreshCurrentAttendancePanel(button) {
+  const activeKey = getAttendanceActivePanelKey();
+
+  if (activeKey === "records") {
+    return refreshViewAttendance(button);
+  }
+
+  if (activeKey === "stats") {
+    return refreshAttendanceStats(button);
+  }
+
+  return openMarkRegister({ force: true });
 }
 
 function markAttendancePanelLoading(panelKey, isLoading) {
@@ -363,7 +488,6 @@ function renderAttendanceTopPanel(activePanel, heading, bodyMarkup) {
           ${bodyMarkup || ""}
         </div>
       </section>
-      ${renderAttendancePanelDots(panelKey)}
     </div>
   `;
 }
@@ -421,11 +545,9 @@ function bindAttendancePanelSwipe(containerOrId, activePanel) {
   const container = getDomElement(containerOrId);
   if (!container) return false;
 
-  if (window.M4LSwipe && typeof window.M4LSwipe.bindAttendanceSwipeControls === "function") {
-    return window.M4LSwipe.bindAttendanceSwipeControls(activePanel || "register", container);
-  }
-
-  return false;
+  bindAttendanceNativeScroll();
+  updateAttendanceDots(activePanel || getAttendanceActivePanelKey());
+  return true;
 }
 
 function renderAttendanceDateFilter(mode, startDate, endDate, buttonLabel) {
@@ -860,7 +982,7 @@ function renderViewAttendanceControlsInline(startDate, endDate, message) {
 }
 
 function renderViewAttendanceControls(startDate, endDate, message) {
-  const didShow = showScreen("attendance-report-screen");
+  const didShow = activateAttendancePanel("records");
   if (!didShow) return false;
   return renderViewAttendanceControlsInline(startDate, endDate, message);
 }
@@ -1020,7 +1142,7 @@ function renderAttendanceStatsControlsInline(startDate, endDate, message) {
 }
 
 function renderAttendanceStatsControls(startDate, endDate, message) {
-  const didShow = showScreen("attendance-stats-screen");
+  const didShow = activateAttendancePanel("stats");
   if (!didShow) return false;
   return renderAttendanceStatsControlsInline(startDate, endDate, message);
 }
@@ -1221,6 +1343,12 @@ function safeDomId(value) {
 
 window.M4LAttendance = {
   showAttendanceDashboard,
+  showAttendanceScreen,
+  scrollAttendancePanelIntoView,
+  updateAttendanceDots,
+  bindAttendanceNativeScroll,
+  getAttendanceActivePanelKey,
+  refreshCurrentAttendancePanel,
   openMarkRegister,
   openViewAttendance,
   openAttendanceStats,
@@ -1230,3 +1358,11 @@ window.M4LAttendance = {
   renderAttendanceStatsScreen,
   bindAttendancePanelSwipe
 };
+
+
+window.showAttendanceScreen = showAttendanceScreen;
+window.scrollAttendancePanelIntoView = scrollAttendancePanelIntoView;
+window.updateAttendanceDots = updateAttendanceDots;
+window.bindAttendanceNativeScroll = bindAttendanceNativeScroll;
+window.getAttendanceActivePanelKey = getAttendanceActivePanelKey;
+window.refreshCurrentAttendancePanel = refreshCurrentAttendancePanel;
