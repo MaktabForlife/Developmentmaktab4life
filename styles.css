@@ -1328,310 +1328,175 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 
-/* Resources */
-.resource-subject-button {
-  background: var(--surface-card);
-  color: var(--primary);
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-radius: 16px;
-  padding: 16px;
+/* Resources / Library ribbon */
+.library-resource-browser {
+  --library-ribbon-gap: 10px;
+  --library-card-width: 148px;
+  --library-card-min-height: 168px;
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
   text-align: left;
+}
+
+.library-subject-section {
+  display: grid;
   gap: 12px;
-}
-
-.resource-subject-title {
-  font-family: var(--font-heading);
-  letter-spacing: 0.02em;
-  font-size: 1.08rem;
-}
-
-.resource-count-pill {
-  background: var(--surface-chip);
-  color: var(--primary);
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-family: var(--font-main);
-  font-size: 0.82rem;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-.resource-section {
-  background: var(--surface-card);
-  border-radius: 14px;
+  min-width: 0;
   padding: 14px;
-  margin-bottom: 14px;
-  text-align: left;
-}
-
-.resource-section h3 {
-  margin-bottom: 12px;
-}
-
-.resource-list {
-  display: grid;
-  gap: 10px;
-}
-
-.task-resource-group {
-  margin-top: 12px;
-}
-
-.task-resource-heading {
-  background: var(--primary);
-  color: var(--text-inverse);
-  padding: 9px 11px;
-  border-radius: 10px;
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-
-.resource-card {
-  background: var(--surface-chip);
-  border-radius: 14px;
-  padding: 12px;
-}
-
-.resource-card-main {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 10px;
-}
-
-.resource-type-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--primary);
-  color: var(--text-inverse);
-  border-radius: 999px;
-  padding: 5px 9px;
-  font-size: 0.72rem;
-  font-weight: bold;
-  min-width: 58px;
-}
-
-.resource-name {
-  font-weight: bold;
-  color: var(--text-strong);
-  line-height: 1.25;
-}
-
-.resource-player {
-  width: 100%;
-  margin: 6px 0 10px;
-}
-
-.resource-open-btn {
-  min-height: 40px;
-  padding: 9px 12px;
-  font-size: 0.82rem;
-  width: 100%;
-}
-
-@media (max-width: 420px) {
-  .resource-subject-button {
-    grid-template-columns: 1fr;
-  }
-
-
-  .resource-card-main {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
-/* Resource Category Layout */
-.resource-category-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.resource-category-button {
   background: var(--surface-card);
-  color: var(--primary);
   border: 1px solid rgba(var(--primary-rgb), 0.14);
-  border-radius: 16px;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  text-align: left;
-  gap: 12px;
-}
-
-.resource-category-button.is-empty {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.resource-category-main {
-  display: grid;
-  gap: 4px;
-}
-
-.resource-category-title {
-  font-family: var(--font-heading);
-  letter-spacing: 0.02em;
-  font-size: 1.08rem;
-}
-
-.resource-category-subtitle {
-  font-family: var(--font-main);
-  font-size: 0.82rem;
-  opacity: 0.9;
-  letter-spacing: 0;
-}
-
-.resource-subject-group h3 {
-  border-bottom: 2px solid var(--primary);
-  padding-bottom: 8px;
-  margin-bottom: 10px;
-}
-
-.resource-task-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 20px;
-  row-gap: 14px;
-}
-
-@media (max-width: 360px) {
-  .resource-task-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-.student-resource-row {
-  display: grid;
-  grid-template-columns: 1fr 44px;
-  gap: 10px;
-  align-items: center;
-  background: var(--surface-card);
-  border-radius: 14px;
-  padding: 12px;
-  text-align: left;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
 
-.student-resource-row-main {
+.library-subject-title {
+  margin: 0;
+  padding-bottom: 8px;
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+  line-height: 1.2;
+}
+
+.library-module-list {
+  display: grid;
+  gap: 16px;
   min-width: 0;
 }
 
-.student-resource-title {
-  font-weight: bold;
+.library-module-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.library-module-title {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--font-heading);
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.library-resource-row {
+  display: flex;
+  gap: var(--library-ribbon-gap);
+  width: 100%;
+  min-width: 0;
+  padding: 2px 36px 10px 1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.library-resource-card {
+  flex: 0 0 var(--library-card-width);
+  width: var(--library-card-width);
+  min-height: var(--library-card-min-height);
+  padding: 14px 12px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: 12px;
+  scroll-snap-align: start;
+  text-align: left;
   color: var(--primary);
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.18);
+  border-radius: 18px;
+  box-shadow: 0 3px 8px rgba(var(--black-rgb), 0.10);
+}
+
+.library-resource-card:active {
+  transform: scale(0.98);
+}
+
+.library-resource-card:focus-visible {
+  outline: 3px solid rgba(var(--primary-rgb), 0.34);
+  outline-offset: 3px;
+}
+
+.library-resource-icon-wrap {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.library-resource-icon {
+  width: 42px;
+  height: 42px;
+  display: block;
+  object-fit: contain;
+}
+
+.library-resource-type-label {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 4px 8px;
+  color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.10);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.library-resource-title {
+  display: block;
+  min-width: 0;
+  color: var(--text-strong);
+  font-size: 0.92rem;
+  font-weight: 800;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
-.student-resource-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-}
-
-.small-badge {
-  min-width: 46px;
-  padding: 4px 7px;
-  font-size: 0.68rem;
-}
-
-.resource-arrow-btn {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--primary);
-  box-shadow: none;
-  font-family: var(--font-main);
-  font-size: 1rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.resource-arrow-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-@media (max-width: 420px) {
-  .resource-category-button {
-    grid-template-columns: 1fr;
-  }
-
-  .resource-count-pill {
-    justify-self: start;
-  }
-}
-
-
-/* Inline audio player for student resources */
-.inline-audio-player {
-  grid-column: 1 / -1;
-  margin-top: 10px;
+.library-inline-preview {
   width: 100%;
+  min-width: 0;
+  margin-top: 2px;
+  padding: 12px;
+  background: var(--surface-soft);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 14px;
+}
+
+.library-inline-preview__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+.library-inline-preview__header strong {
+  min-width: 0;
+  color: var(--text-strong);
+  font-size: 0.92rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.library-inline-preview__header span {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .resource-audio-control {
   width: 100%;
   display: block;
   margin-top: 8px;
-}
-
-.resource-type-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
-  display: inline-block;
-  color: var(--primary);
-  background: currentColor;
-  -webkit-mask: var(--app-icon-url) center / contain no-repeat;
-  mask: var(--app-icon-url) center / contain no-repeat;
-}
-
-.resource-action-icon {
-  width: var(--icon-size-large);
-  height: var(--icon-size-large);
-}
-
-.student-resource-meta .resource-type-badge {
-  margin-right: 0;
-}
-
-/* Student resource module grouping and inline previews */
-.resource-module-block {
-  margin-top: 12px;
-}
-
-.resource-module-heading {
-  background: rgba(var(--primary-rgb), 0.12);
-  color: var(--primary);
-  border-left: 5px solid var(--primary);
-  border-radius: 10px;
-  padding: 9px 11px;
-  font-weight: bold;
-  margin-bottom: 8px;
-  text-align: left;
-}
-
-.inline-resource-preview {
-  grid-column: 1 / -1;
-  margin-top: 10px;
-  width: 100%;
 }
 
 .resource-video-control {
@@ -1642,10 +1507,40 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   background: var(--surface-video);
 }
 
-.resource-format-text {
-    display: none;
+.inline-resource-preview,
+.inline-audio-player {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  width: 100%;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .library-resource-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(var(--primary-rgb), 0.30);
+    box-shadow: 0 6px 12px rgba(var(--black-rgb), 0.13);
+  }
+}
+
+@media (max-width: 420px) {
+  .library-resource-browser {
+    --library-card-width: 142px;
+    --library-card-min-height: 162px;
+  }
+
+  .library-subject-section {
+    padding: 12px;
+  }
+
+  .library-resource-row {
+    padding-right: 32px;
+  }
+
+  .library-resource-icon {
+    width: 38px;
+    height: 38px;
+  }
+}
 
 /* Student/Admin Home: timetable, Zoom and class duas panels */
 .student-home-panel {
@@ -4051,3 +3946,29 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   }
 }
 
+/* M4L v64.3.1 - Mobile Home top alignment
+   Keeps the Home Zoom/Timetable panel below the fixed banner and swipe dots.
+*/
+
+@media (max-width: 767px) {
+  body.has-user-band #student-home.screen,
+  body.has-user-band #admin-home.screen {
+    /*
+      The user band and swipe dots are fixed.
+      Move the Home card itself below the dots instead of relying only on
+      internal padding, which can allow the first panel to sit under the banner.
+    */
+    margin-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 8px);
+    padding-top: 12px;
+  }
+
+  body.has-user-band #student-home .home-swipe-track,
+  body.has-user-band #admin-home .home-swipe-track {
+    margin-top: 0;
+  }
+
+  body.has-user-band #student-home .home-swipe-panel,
+  body.has-user-band #admin-home .home-swipe-panel {
+    align-content: start;
+  }
+}
