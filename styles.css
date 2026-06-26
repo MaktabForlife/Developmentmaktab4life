@@ -9,7 +9,7 @@
   /* ==========================================
      SURFACES (Depth & Container Hierarchy)
      ========================================== */
-  --surface-app: #FBFBF9;      /* Off-white page background (prevents eye strain) */
+  --surface-app: #F0F4EC;      /* trial with light pastel sage instead of Off-white page background (prevents eye strain) */
   --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
   --surface-soft: #F0F4EC;     /* Light pastel sage for section blocks */
   --surface-chip: #F4EEF6;     /* Ultra-light lavender for pill tags & badges */
@@ -1677,7 +1677,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   align-content: center;
   gap: 10px;
   padding: 22px 18px;
-  background: var(--surface-card);
+  background: var(--surface-soft);
   color: var(--primary);
   border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 18px;
