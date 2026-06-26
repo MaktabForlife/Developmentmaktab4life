@@ -1,14 +1,13 @@
-/* M4L v63 - Shared Home swipe controls
-   Load after /js/m4l-shell.js and before modules that may create/bind Home panels.
+/* M4L v64 - Shared swipe controls
+   Load after /js/m4l-shell.js and before feature modules that create/bind panels.
    This is a classic script, not type=module.
 
-   Owns Home swipe behaviour only:
+   Owns shared swipe behaviour for:
    - Student Home
    - Admin Home
-   - Home swipe dots
-   - Home panel scroll/dot sync
+   - Admin Attendance
 
-   Attendance keeps its own swipe logic for now and can be migrated safely later.
+   Feature modules still own their content and data hydration.
 */
 
 (function () {
@@ -179,6 +178,225 @@
     return didBind;
   }
 
+
+
+  /* =========================
+     Attendance swipe controls
+     ========================= */
+
+  const attendancePanelSequence = [
+    { key: "register", screenId: "attendance-register-screen", handlerName: "openMarkRegister" },
+    { key: "records", screenId: "attendance-report-screen", handlerName: "openViewAttendance" },
+    { key: "stats", screenId: "attendance-stats-screen", handlerName: "openAttendanceStats" }
+  ];
+
+  let attendanceSwipeResizeHandlerBound = false;
+
+  function getAttendancePanelConfig(panelKeyOrIndex) {
+    if (typeof panelKeyOrIndex === "number") {
+      return attendancePanelSequence[panelKeyOrIndex] || attendancePanelSequence[0];
+    }
+
+    const key = String(panelKeyOrIndex || "register");
+    return attendancePanelSequence.find(panel => panel.key === key || panel.screenId === key) || attendancePanelSequence[0];
+  }
+
+  function getAttendancePanelIndex(panelKeyOrIndex) {
+    const config = getAttendancePanelConfig(panelKeyOrIndex);
+    const index = attendancePanelSequence.findIndex(panel => panel.key === config.key);
+    return index < 0 ? 0 : index;
+  }
+
+  function getAttendanceActivePanelKey() {
+    const activeScreen = document.querySelector(".screen.active");
+    if (activeScreen && activeScreen.id) {
+      const activePanel = attendancePanelSequence.find(panel => panel.screenId === activeScreen.id);
+      if (activePanel) return activePanel.key;
+    }
+
+    return "register";
+  }
+
+  function isAttendanceSwipeScreen(screenId) {
+    return attendancePanelSequence.some(panel => panel.screenId === screenId);
+  }
+
+  function getAttendanceSwipeDots() {
+    return Array.from(document.querySelectorAll(
+      ".attendance-panel-dots [data-attendance-panel], .attendance-panel-dots [data-attendance-panel-index], .attendance-panel-dots [data-swipe-panel-index]"
+    ));
+  }
+
+  function updateAttendanceSwipeDots(activePanel) {
+    const activeKey = getAttendancePanelConfig(activePanel || getAttendanceActivePanelKey()).key;
+    const activeIndex = getAttendancePanelIndex(activeKey);
+    const dots = getAttendanceSwipeDots();
+
+    dots.forEach(dot => {
+      const dotKey = dot.dataset.attendancePanel || "";
+      const dotIndexText = dot.dataset.attendancePanelIndex || dot.dataset.swipePanelIndex || "";
+      const dotIndex = dotIndexText === "" ? -1 : Number(dotIndexText);
+      const isActive = dotKey ? dotKey === activeKey : dotIndex === activeIndex;
+
+      dot.classList.toggle("is-active", isActive);
+      dot.setAttribute("aria-current", isActive ? "true" : "false");
+    });
+
+    return Boolean(dots.length);
+  }
+
+  function openAttendanceSwipePanel(panelKeyOrIndex) {
+    const config = getAttendancePanelConfig(panelKeyOrIndex);
+    const handler = window[config.handlerName];
+
+    if (typeof handler !== "function") {
+      console.warn("Missing attendance panel handler:", config.handlerName);
+      return false;
+    }
+
+    handler();
+    window.setTimeout(() => updateAttendanceSwipeDots(config.key), 0);
+    return true;
+  }
+
+  function openAdjacentAttendancePanel(activePanel, direction) {
+    const currentIndex = getAttendancePanelIndex(activePanel || getAttendanceActivePanelKey());
+    const nextIndex = currentIndex + Number(direction || 0);
+
+    if (nextIndex < 0 || nextIndex >= attendancePanelSequence.length) {
+      return false;
+    }
+
+    return openAttendanceSwipePanel(nextIndex);
+  }
+
+  function shouldIgnoreAttendanceSwipeTarget(target) {
+    /*
+      Attendance panels contain long rows and status buttons. Allow horizontal
+      swipes to begin on those rows/buttons so the screen can be changed from
+      the natural scroll area. Only form fields, links, labels, editable text,
+      and the global bottom nav opt out because they need direct interaction.
+    */
+    return Boolean(target && target.closest('a, input, select, textarea, label, [contenteditable="true"], .bottom-nav'));
+  }
+
+  function bindAttendanceSwipeElement(element, activePanel) {
+    if (!element) return false;
+
+    element.dataset.attendanceSwipePanel = getAttendancePanelConfig(activePanel || getAttendanceActivePanelKey()).key;
+
+    if (element.dataset.m4lAttendanceSwipeBound === "true") return true;
+
+    element.dataset.m4lAttendanceSwipeBound = "true";
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTarget = null;
+
+    element.addEventListener("touchstart", event => {
+      const touch = event.touches && event.touches[0];
+      if (!touch) return;
+
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchStartTarget = event.target;
+    }, { passive: true });
+
+    element.addEventListener("touchend", event => {
+      if (shouldIgnoreAttendanceSwipeTarget(touchStartTarget)) {
+        touchStartTarget = null;
+        return;
+      }
+
+      const touch = event.changedTouches && event.changedTouches[0];
+      if (!touch) return;
+
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+      touchStartTarget = null;
+
+      if (Math.abs(deltaX) < 58 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+      const panel = element.dataset.attendanceSwipePanel || getAttendanceActivePanelKey();
+      if (deltaX < 0) {
+        openAdjacentAttendancePanel(panel, 1);
+      } else {
+        openAdjacentAttendancePanel(panel, -1);
+      }
+    }, { passive: true });
+
+    return true;
+  }
+
+  function bindAttendanceSwipeDots() {
+    const dots = getAttendanceSwipeDots();
+
+    dots.forEach(dot => {
+      if (dot.dataset.m4lAttendanceDotBound === "true") return;
+
+      dot.dataset.m4lAttendanceDotBound = "true";
+      dot.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const key = dot.dataset.attendancePanel || "";
+        const indexText = dot.dataset.attendancePanelIndex || dot.dataset.swipePanelIndex || "0";
+        const target = key || Number(indexText || 0);
+        openAttendanceSwipePanel(target);
+      });
+    });
+
+    updateAttendanceSwipeDots();
+    return Boolean(dots.length);
+  }
+
+  function bindAttendanceSwipeResizeHandler() {
+    if (attendanceSwipeResizeHandlerBound === true) return true;
+    if (typeof window === "undefined" || typeof window.addEventListener !== "function") return false;
+
+    attendanceSwipeResizeHandlerBound = true;
+    window.addEventListener("resize", () => {
+      updateAttendanceSwipeDots();
+    }, { passive: true });
+
+    return true;
+  }
+
+  function bindAttendanceSwipeControls(activePanel, containerOrElement) {
+    const panelKey = getAttendancePanelConfig(activePanel || getAttendanceActivePanelKey()).key;
+    const container = typeof containerOrElement === "string"
+      ? document.getElementById(containerOrElement)
+      : containerOrElement;
+    const screen = container && container.closest ? container.closest(".screen") : document.getElementById(getAttendancePanelConfig(panelKey).screenId);
+
+    bindAttendanceSwipeResizeHandler();
+    bindAttendanceSwipeDots();
+
+    if (container) {
+      bindAttendanceSwipeElement(container, panelKey);
+    }
+
+    if (screen && screen !== container) {
+      bindAttendanceSwipeElement(screen, panelKey);
+    }
+
+    window.setTimeout(() => updateAttendanceSwipeDots(panelKey), 0);
+    return true;
+  }
+
+  function bindAttendanceSwipePanels() {
+    let didBind = false;
+
+    attendancePanelSequence.forEach(panel => {
+      const screen = document.getElementById(panel.screenId);
+      if (screen) {
+        didBind = bindAttendanceSwipeControls(panel.key, screen) || didBind;
+      }
+    });
+
+    return didBind;
+  }
+
   window.M4LSwipe = {
     getHomeSwipeElements,
     isHomeSwipeScreen,
@@ -187,12 +405,21 @@
     scrollHomeSwipeToPanel,
     bindHomeSwipeResizeHandler,
     bindHomeSwipeControls,
-    bindHomeSwipePanels
+    bindHomeSwipePanels,
+    getAttendancePanelConfig,
+    getAttendancePanelIndex,
+    getAttendanceActivePanelKey,
+    isAttendanceSwipeScreen,
+    updateAttendanceSwipeDots,
+    openAttendanceSwipePanel,
+    openAdjacentAttendancePanel,
+    bindAttendanceSwipeControls,
+    bindAttendanceSwipePanels
   };
 
   /*
     Compatibility globals for existing classic-script calls.
-    These intentionally cover Home only.
+    Home and Attendance helpers are exposed while feature modules are migrated gradually.
   */
   window.getHomeSwipeElements = getHomeSwipeElements;
   window.getHomeSwipeActiveIndex = getHomeSwipeActiveIndex;
@@ -201,10 +428,20 @@
   window.bindHomeSwipeResizeHandler = bindHomeSwipeResizeHandler;
   window.bindHomeSwipeControls = bindHomeSwipeControls;
   window.bindHomeSwipePanels = bindHomeSwipePanels;
+  window.updateAttendanceSwipeDots = updateAttendanceSwipeDots;
+  window.openAttendanceSwipePanel = openAttendanceSwipePanel;
+  window.openAdjacentAttendancePanel = openAdjacentAttendancePanel;
+  window.bindAttendanceSwipeControls = bindAttendanceSwipeControls;
+  window.bindAttendanceSwipePanels = bindAttendanceSwipePanels;
+
+  function bindInitialSwipePanels() {
+    bindHomeSwipePanels();
+    bindAttendanceSwipePanels();
+  }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindHomeSwipePanels, { once: true });
+    document.addEventListener("DOMContentLoaded", bindInitialSwipePanels, { once: true });
   } else {
-    bindHomeSwipePanels();
+    bindInitialSwipePanels();
   }
 })();
