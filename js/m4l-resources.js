@@ -1,4 +1,4 @@
-/* M4L v65.2 - Library / Resources ribbon module
+/* M4L v65.3 - Library / Resources ribbon module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-timetable.js.
    This is a classic script, not type=module, so existing global function calls remain safe.
    Owns the Library resource ribbons plus PDF/audio/video resource viewing.
@@ -734,7 +734,11 @@ function renderLibraryResourceCard(resource, options = {}) {
       aria-label="${escapeForAttribute(`${resource.typeLabel} resource: ${resource.title}`)}"
     >
       <span class="library-resource-icon-wrap">
-        <img src="${escapeForAttribute(resource.icon)}" alt="" class="library-resource-icon" loading="lazy">
+        <span
+          class="library-resource-icon"
+          style="--library-resource-icon-url: url('${escapeForAttribute(resource.icon)}')"
+          aria-hidden="true"
+        ></span>
         <span class="library-resource-type-label">${escapeHtml(resource.typeLabel)}</span>
       </span>
       <span class="library-resource-title">${escapeHtml(resource.title)}</span>
