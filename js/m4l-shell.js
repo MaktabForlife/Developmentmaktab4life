@@ -1,5 +1,5 @@
-/* M4L v66 - Shell / Navigation / User Band module.
-   Adds optional-module guards so later role-based script loading can omit unused modules safely. */
+/* M4L v67.2 - Shell / Navigation / User Band module.
+   Owns Home native scroll dot binding; /js/m4l-swipe.js is no longer required. */
 
 function showScreen(screenId) {
   let didShow = false;
@@ -38,8 +38,8 @@ function showScreen(screenId) {
   }
 
 
-  if (typeof bindSectionSwipeControls === "function") {
-    bindSectionSwipeControls(screenId);
+  if (typeof bindHomeNativeScrollControls === "function") {
+    bindHomeNativeScrollControls(screenId);
   }
 
   if (screenId === "student-home" && typeof scheduleStudentHomeTimetableLoad === "function") {
@@ -54,61 +54,100 @@ function showScreen(screenId) {
 }
 
 
-let sectionSwipeResizeHandlerBound = false;
 
-function shouldUseSharedHomeSwipeModule(screenId) {
-  if (typeof M4LSwipe === "undefined" || !M4LSwipe) {
-    return false;
-  }
+let homeNativeScrollResizeHandlerBound = false;
 
-  if (typeof M4LSwipe.isHomeSwipeScreen === "function") {
-    return M4LSwipe.isHomeSwipeScreen(screenId);
-  }
-
-  const screen = document.getElementById(screenId);
-  return Boolean(screen && screen.querySelector("[data-home-swipe-track]"));
+function isHomeNativeScrollScreen(screenId) {
+  const { track, dots } = getHomeNativeScrollElements(screenId);
+  return Boolean(track && dots.length);
 }
 
-function getSectionSwipeElements(screenId) {
+function getHomeNativeScrollElements(screenId) {
   const screen = document.getElementById(screenId);
 
   if (!screen) {
     return { screen: null, track: null, dots: [] };
   }
 
-  const track = screen.querySelector("[data-section-swipe-track], [data-home-swipe-track]");
-  const dots = Array.from(screen.querySelectorAll("[data-section-swipe-dots] [data-section-panel-index], [data-home-swipe-dots] [data-home-panel-index]"));
+  const track = screen.querySelector("[data-home-swipe-track]");
+  const dots = Array.from(screen.querySelectorAll("[data-home-swipe-dots] [data-home-panel-index]"));
 
   return { screen, track, dots };
 }
 
-function getSectionSwipeActiveIndex(track) {
+function getHomeNativeScrollPanels(track) {
+  if (!track || !track.children) {
+    return [];
+  }
+
+  const children = Array.from(track.children);
+  const panels = children.filter(child => {
+    return child &&
+      child.matches &&
+      child.matches("[data-home-swipe-panel], .home-swipe-panel");
+  });
+
+  return panels.length ? panels : children;
+}
+
+function getHomeNativeScrollPanelStep(track) {
+  const panels = getHomeNativeScrollPanels(track);
+
+  if (!track || panels.length <= 1) {
+    return 1;
+  }
+
+  const firstPanel = panels[0];
+  const secondPanel = panels[1];
+
+  if (firstPanel && secondPanel) {
+    const firstRect = firstPanel.getBoundingClientRect();
+    const secondRect = secondPanel.getBoundingClientRect();
+    const measuredStep = Math.abs(secondRect.left - firstRect.left);
+
+    if (measuredStep > 1) {
+      return measuredStep;
+    }
+  }
+
+  return track.clientWidth || 1;
+}
+
+function getHomeNativeScrollActiveIndex(track) {
   if (!track) return 0;
 
-  const panelCount = track.children ? track.children.length : 0;
+  const panels = getHomeNativeScrollPanels(track);
+  const panelCount = panels.length;
+
   if (panelCount <= 1) return 0;
 
-  const panelWidth = track.clientWidth || 1;
-  const index = Math.round(track.scrollLeft / panelWidth);
+  /*
+    On large desktop the Home panels become a grid and the dots are hidden.
+    In that mode there should be no meaningful horizontal scroll; returning
+    zero keeps the state stable while CSS owns the layout.
+  */
+  if ((track.scrollWidth || 0) <= (track.clientWidth || 0) + 2) {
+    return 0;
+  }
+
+  const step = getHomeNativeScrollPanelStep(track);
+  const index = Math.round((track.scrollLeft || 0) / step);
 
   return Math.max(0, Math.min(panelCount - 1, index));
 }
 
-function updateSectionSwipeDots(screenId) {
-  if (shouldUseSharedHomeSwipeModule(screenId) && typeof M4LSwipe.updateHomeSwipeDots === "function") {
-    return M4LSwipe.updateHomeSwipeDots(screenId);
-  }
-
-  const { track, dots } = getSectionSwipeElements(screenId);
+function updateHomeNativeScrollDots(screenId) {
+  const { track, dots } = getHomeNativeScrollElements(screenId);
 
   if (!track || !dots.length) {
     return false;
   }
 
-  const activeIndex = getSectionSwipeActiveIndex(track);
+  const activeIndex = getHomeNativeScrollActiveIndex(track);
 
-  dots.forEach((dot, index) => {
-    const isActive = index === activeIndex;
+  dots.forEach((dot, fallbackIndex) => {
+    const dotIndex = Number(dot.dataset.homePanelIndex || fallbackIndex || 0);
+    const isActive = dotIndex === activeIndex;
     dot.classList.toggle("is-active", isActive);
     dot.setAttribute("aria-current", isActive ? "true" : "false");
   });
@@ -116,46 +155,43 @@ function updateSectionSwipeDots(screenId) {
   return true;
 }
 
-function scrollSectionSwipeToPanel(screenId, panelIndex) {
-  if (shouldUseSharedHomeSwipeModule(screenId) && typeof M4LSwipe.scrollHomeSwipeToPanel === "function") {
-    return M4LSwipe.scrollHomeSwipeToPanel(screenId, panelIndex);
-  }
+function scrollHomeNativeScrollToPanel(screenId, panelIndex) {
+  const { track } = getHomeNativeScrollElements(screenId);
+  const panels = getHomeNativeScrollPanels(track);
+  const index = Number(panelIndex || 0);
 
-  const { track } = getSectionSwipeElements(screenId);
-
-  if (!track || !track.children || !track.children[panelIndex]) {
+  if (!track || !panels[index]) {
     return false;
   }
 
-  track.children[panelIndex].scrollIntoView({
+  panels[index].scrollIntoView({
     behavior: "smooth",
     block: "nearest",
     inline: "start"
   });
 
+  updateHomeNativeScrollDots(screenId);
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => updateHomeNativeScrollDots(screenId));
+  } else {
+    window.setTimeout(() => updateHomeNativeScrollDots(screenId), 0);
+  }
+
   return true;
 }
 
-function updateActiveSectionBodyClasses(screenId) {
-  if (!document || !document.body) return false;
-
-  const normalizedId = String(screenId || "");
-  const isAttendanceSection = normalizedId === "attendance-screen";
-
-  document.body.classList.toggle("is-attendance-section", isAttendanceSection);
-  return true;
-}
-
-function bindSectionSwipeResizeHandler() {
-  if (sectionSwipeResizeHandlerBound === true) return true;
+function bindHomeNativeScrollResizeHandler() {
+  if (homeNativeScrollResizeHandlerBound === true) return true;
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") return false;
 
-  sectionSwipeResizeHandlerBound = true;
+  homeNativeScrollResizeHandlerBound = true;
 
   window.addEventListener("resize", () => {
+    bindHomeNativeScrollPanels();
     document.querySelectorAll(".screen").forEach(screen => {
-      if (screen && screen.id) {
-        updateSectionSwipeDots(screen.id);
+      if (screen && screen.id && screen.querySelector("[data-home-swipe-track]")) {
+        updateHomeNativeScrollDots(screen.id);
       }
     });
   }, { passive: true });
@@ -163,21 +199,17 @@ function bindSectionSwipeResizeHandler() {
   return true;
 }
 
-function bindSectionSwipeControls(screenId) {
-  if (shouldUseSharedHomeSwipeModule(screenId) && typeof M4LSwipe.bindHomeSwipeControls === "function") {
-    return M4LSwipe.bindHomeSwipeControls(screenId);
-  }
-
-  const { track, dots } = getSectionSwipeElements(screenId);
+function bindHomeNativeScrollControls(screenId) {
+  const { track, dots } = getHomeNativeScrollElements(screenId);
 
   if (!track || !dots.length) {
     return false;
   }
 
-  bindSectionSwipeResizeHandler();
+  bindHomeNativeScrollResizeHandler();
 
-  if (track.dataset.sectionSwipeBound !== "true") {
-    track.dataset.sectionSwipeBound = "true";
+  if (track.dataset.homeNativeScrollBound !== "true") {
+    track.dataset.homeNativeScrollBound = "true";
 
     let pendingFrame = 0;
 
@@ -186,72 +218,104 @@ function bindSectionSwipeControls(screenId) {
 
       pendingFrame = window.requestAnimationFrame(() => {
         pendingFrame = 0;
-        updateSectionSwipeDots(screenId);
+        updateHomeNativeScrollDots(screenId);
       });
     }, { passive: true });
   }
 
   dots.forEach(dot => {
-    if (dot.dataset.sectionSwipeDotBound === "true") return;
+    if (dot.dataset.homeNativeDotBound === "true") return;
 
-    dot.dataset.sectionSwipeDotBound = "true";
-    dot.addEventListener("click", () => {
-      const index = Number(dot.dataset.sectionPanelIndex || dot.dataset.homePanelIndex || 0);
-      scrollSectionSwipeToPanel(screenId, index);
-      updateSectionSwipeDots(screenId);
+    dot.dataset.homeNativeDotBound = "true";
+    dot.addEventListener("click", event => {
+      event.preventDefault();
+      const index = Number(dot.dataset.homePanelIndex || 0);
+      scrollHomeNativeScrollToPanel(screenId, index);
     });
   });
 
-  setTimeout(() => updateSectionSwipeDots(screenId), 0);
+  window.setTimeout(() => updateHomeNativeScrollDots(screenId), 0);
   return true;
 }
 
-function getHomeSwipeElements(screenId) {
-  if (typeof M4LSwipe !== "undefined" && M4LSwipe && typeof M4LSwipe.getHomeSwipeElements === "function") {
-    return M4LSwipe.getHomeSwipeElements(screenId);
-  }
+function bindHomeNativeScrollPanels() {
+  let didBind = false;
 
-  return getSectionSwipeElements(screenId);
+  document.querySelectorAll("[data-home-swipe]").forEach(shell => {
+    const screen = shell.closest ? shell.closest(".screen") : null;
+    const screenId = screen && screen.id ? screen.id : (shell.dataset.homeSwipe || "");
+
+    if (screenId) {
+      didBind = bindHomeNativeScrollControls(screenId) || didBind;
+    }
+  });
+
+  return didBind;
+}
+
+/* Compatibility names kept for existing classic-script calls. */
+function shouldUseSharedHomeSwipeModule(screenId) {
+  return isHomeNativeScrollScreen(screenId);
+}
+
+function getSectionSwipeElements(screenId) {
+  return getHomeNativeScrollElements(screenId);
+}
+
+function getSectionSwipeActiveIndex(track) {
+  return getHomeNativeScrollActiveIndex(track);
+}
+
+function updateSectionSwipeDots(screenId) {
+  return updateHomeNativeScrollDots(screenId);
+}
+
+function scrollSectionSwipeToPanel(screenId, panelIndex) {
+  return scrollHomeNativeScrollToPanel(screenId, panelIndex);
+}
+
+function bindSectionSwipeResizeHandler() {
+  return bindHomeNativeScrollResizeHandler();
+}
+
+function bindSectionSwipeControls(screenId) {
+  return bindHomeNativeScrollControls(screenId);
+}
+
+function getHomeSwipeElements(screenId) {
+  return getHomeNativeScrollElements(screenId);
 }
 
 function getHomeSwipeActiveIndex(track) {
-  if (typeof M4LSwipe !== "undefined" && M4LSwipe && typeof M4LSwipe.getHomeSwipeActiveIndex === "function") {
-    return M4LSwipe.getHomeSwipeActiveIndex(track);
-  }
-
-  return getSectionSwipeActiveIndex(track);
+  return getHomeNativeScrollActiveIndex(track);
 }
 
 function updateHomeSwipeDots(screenId) {
-  if (typeof M4LSwipe !== "undefined" && M4LSwipe && typeof M4LSwipe.updateHomeSwipeDots === "function") {
-    return M4LSwipe.updateHomeSwipeDots(screenId);
-  }
-
-  return updateSectionSwipeDots(screenId);
+  return updateHomeNativeScrollDots(screenId);
 }
 
 function scrollHomeSwipeToPanel(screenId, panelIndex) {
-  if (typeof M4LSwipe !== "undefined" && M4LSwipe && typeof M4LSwipe.scrollHomeSwipeToPanel === "function") {
-    return M4LSwipe.scrollHomeSwipeToPanel(screenId, panelIndex);
-  }
-
-  return scrollSectionSwipeToPanel(screenId, panelIndex);
+  return scrollHomeNativeScrollToPanel(screenId, panelIndex);
 }
 
 function bindHomeSwipeResizeHandler() {
-  if (typeof M4LSwipe !== "undefined" && M4LSwipe && typeof M4LSwipe.bindHomeSwipeResizeHandler === "function") {
-    return M4LSwipe.bindHomeSwipeResizeHandler();
-  }
-
-  return bindSectionSwipeResizeHandler();
+  return bindHomeNativeScrollResizeHandler();
 }
 
 function bindHomeSwipeControls(screenId) {
-  if (typeof M4LSwipe !== "undefined" && M4LSwipe && typeof M4LSwipe.bindHomeSwipeControls === "function") {
-    return M4LSwipe.bindHomeSwipeControls(screenId);
-  }
+  return bindHomeNativeScrollControls(screenId);
+}
 
-  return bindSectionSwipeControls(screenId);
+function bindHomeSwipePanels() {
+  return bindHomeNativeScrollPanels();
+}
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindHomeNativeScrollPanels, { once: true });
+  } else {
+    bindHomeNativeScrollPanels();
+  }
 }
 
 let headerIconActionHandlersBound = false;
@@ -1230,6 +1294,11 @@ window.M4LShell = {
   getBottomNavRole: typeof getBottomNavRole === "function" ? getBottomNavRole : undefined,
   updateBottomNavigation: typeof updateBottomNavigation === "function" ? updateBottomNavigation : undefined,
   bindHomeSwipeControls: typeof bindHomeSwipeControls === "function" ? bindHomeSwipeControls : undefined,
+  bindHomeNativeScrollControls: typeof bindHomeNativeScrollControls === "function" ? bindHomeNativeScrollControls : undefined,
+  bindHomeNativeScrollPanels: typeof bindHomeNativeScrollPanels === "function" ? bindHomeNativeScrollPanels : undefined,
+  updateHomeNativeScrollDots: typeof updateHomeNativeScrollDots === "function" ? updateHomeNativeScrollDots : undefined,
+  scrollHomeNativeScrollToPanel: typeof scrollHomeNativeScrollToPanel === "function" ? scrollHomeNativeScrollToPanel : undefined,
+  bindHomeSwipePanels: typeof bindHomeSwipePanels === "function" ? bindHomeSwipePanels : undefined,
   placeBottomNavigationForViewport: typeof placeBottomNavigationForViewport === "function" ? placeBottomNavigationForViewport : undefined,
   runUserBandRefresh: typeof runUserBandRefresh === "function" ? runUserBandRefresh : undefined,
   refreshCurrentResourceView: typeof refreshCurrentResourceView === "function" ? refreshCurrentResourceView : undefined,
