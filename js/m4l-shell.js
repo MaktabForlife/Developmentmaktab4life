@@ -1,4 +1,4 @@
-/* M4L v63 - Shell / Navigation / User Band module.
+/* M4L v66 - Shell / Navigation / User Band module.
    Adds optional-module guards so later role-based script loading can omit unused modules safely. */
 
 function showScreen(screenId) {
@@ -140,9 +140,7 @@ function updateActiveSectionBodyClasses(screenId) {
   if (!document || !document.body) return false;
 
   const normalizedId = String(screenId || "");
-  const isAttendanceSection = normalizedId === "attendance-register-screen" ||
-    normalizedId === "attendance-report-screen" ||
-    normalizedId === "attendance-stats-screen";
+  const isAttendanceSection = normalizedId === "attendance-screen";
 
   document.body.classList.toggle("is-attendance-section", isAttendanceSection);
   return true;
@@ -608,9 +606,13 @@ function getUserBandRefreshAction(screenId, role) {
       : null;
   }
 
-  if (activeScreenId === "attendance-register-screen") {
+  if (activeScreenId === "attendance-screen") {
+    if (typeof refreshCurrentAttendancePanel === "function") {
+      return { label: "Refresh", title: "Refresh attendance", handler: refreshCurrentAttendancePanel };
+    }
+
     return typeof openMarkRegister === "function"
-      ? { label: "Refresh", title: "Refresh register", handler: openMarkRegister }
+      ? { label: "Refresh", title: "Refresh attendance", handler: openMarkRegister }
       : null;
   }
 
@@ -654,14 +656,6 @@ function getUserBandRefreshAction(screenId, role) {
     if (typeof refreshProgressTaskStudents === "function") {
       return { label: "Refresh", title: "Refresh student progress", handler: refreshProgressTaskStudents };
     }
-  }
-
-  if (activeScreenId === "attendance-report-screen" && typeof refreshViewAttendance === "function") {
-    return { label: "Refresh", title: "Refresh attendance records", handler: refreshViewAttendance };
-  }
-
-  if (activeScreenId === "attendance-stats-screen" && typeof refreshAttendanceStats === "function") {
-    return { label: "Refresh", title: "Refresh attendance stats", handler: refreshAttendanceStats };
   }
 
   return null;
@@ -797,7 +791,7 @@ const BOTTOM_NAV_ITEMS = {
       key: "attendance",
       label: "Attendance",
       icon: "/icons/attendance.svg",
-      targetScreen: "attendance-register-screen",
+      targetScreen: "attendance-screen",
       actionName: "openMarkRegister"
     },
     {
