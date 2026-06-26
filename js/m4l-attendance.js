@@ -690,7 +690,7 @@ function setAttendanceSaveButtonState(isSaving) {
   return true;
 }
 
-async function openMarkRegister() {
+async function openMarkRegister(options = {}) {
   const didShow = activateAttendancePanel("register");
   if (!didShow) return;
 
@@ -700,9 +700,26 @@ async function openMarkRegister() {
     return;
   }
 
+  const force = Boolean(options && options.force === true);
+  const registerDate = getAttendanceRegisterDateValue();
+
   bindAttendanceRegisterUiHandlers(container);
-  setDomHtml(container, `<p class="helper-text">Loading students...</p>`);
   renderAttendanceInactivePanelShells();
+
+  /*
+    Do not rebuild the Register every time the user swipes back to it.
+    Once the register has been loaded, the cached student list and the current
+    attendanceState are the source of truth until an explicit force refresh is
+    requested. This preserves the selected date and any Present/Absent changes
+    while moving between Attendance swipe panels.
+  */
+  if (!force && isAttendancePanelHydrated("register")) {
+    renderAttendanceRegister(registerDate);
+    hydrateAttendanceInactivePanelsQuietly();
+    return;
+  }
+
+  setDomHtml(container, `<p class="helper-text">Loading students...</p>`);
 
   let result;
   try {
@@ -729,7 +746,7 @@ async function openMarkRegister() {
     }
   });
 
-  renderAttendanceRegister(getLocalDateString());
+  renderAttendanceRegister(registerDate);
   markAttendancePanelHydrated("register");
   hydrateAttendanceInactivePanelsQuietly();
 }
