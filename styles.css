@@ -1150,7 +1150,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   height: 9px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--surface-track);
+  background: var(--disabled);
 }
 
 .progress-fill {
