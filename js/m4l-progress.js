@@ -1,4 +1,4 @@
-/* M4L v70.1 - Student Progress frozen header and table layout module
+/* M4L v70.2 - Student Progress per-panel header and responsive swipe/grid module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, and /js/m4l-resources.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -526,46 +526,71 @@ function getStudentProgressModuleByKey(modules, moduleKey) {
   return list.find(module => String(module.subjectid || "") === key) || list[0];
 }
 
-function renderStudentProgressHeaderBar(percentComplete) {
+function renderStudentProgressHeaderBar(percentComplete, options = {}) {
   const width = Math.max(0, Math.min(100, Number(percentComplete) || 0));
+  const moduleKey = options.moduleKey !== undefined
+    ? ` data-progress-module-fill="${escapeForAttribute(options.moduleKey)}"`
+    : "";
 
   return `
     <div class="student-progress-status-bar" aria-label="Module progress">
       <span class="student-progress-status-track">
-        <span class="student-progress-status-fill" data-progress-active-fill style="width:${width}%"></span>
+        <span class="student-progress-status-fill"${moduleKey} style="width:${width}%"></span>
       </span>
     </div>
   `;
 }
 
-function renderStudentProgressFrozenHeader(modules, activeModuleKey) {
-  const activeModule = getStudentProgressModuleByKey(modules, activeModuleKey);
-  const title = activeModule ? activeModule.subjectname || "Module" : "Module";
-  const summary = getStudentModuleProgressSummary(activeModule);
-
+function renderStudentProgressGlobalActions(modules, activeModuleKey) {
   return `
-    <div class="student-progress-sticky-card" data-progress-sticky-header>
-      <div class="student-progress-header-row">
-        <h2 class="student-progress-active-module-title" data-progress-active-title>${escapeHtml(title)}</h2>
+    <div class="student-progress-global-actions" data-progress-global-actions>
+      <div class="student-progress-global-save-row">
         <button
           type="button"
           class="student-progress-save-btn"
           data-progress-action="save-student-progress"
-          aria-label="Save student progress changes"
+          aria-label="Save all student progress changes"
         >Save</button>
       </div>
-      ${renderStudentProgressHeaderBar(summary.percentComplete)}
       ${renderStudentProgressSwipeDots(modules, activeModuleKey)}
     </div>
   `;
 }
 
+/* Compatibility wrapper retained for older calls. The V70.2 layout no longer
+   uses a global frozen module heading/progress bar; each module panel owns its
+   own heading and progress indicator. */
+function renderStudentProgressFrozenHeader(modules, activeModuleKey) {
+  return renderStudentProgressGlobalActions(modules, activeModuleKey);
+}
+
+function updateStudentProgressModuleIndicators(moduleKey) {
+  const modules = getStudentProgressModules();
+  const targetModules = moduleKey
+    ? modules.filter(module => String(module.subjectid || "") === String(moduleKey || ""))
+    : modules;
+
+  targetModules.forEach(module => {
+    const key = String(module.subjectid || "");
+    const summary = getStudentModuleProgressSummary(module);
+
+    document
+      .querySelectorAll("#progress-subjects-screen [data-progress-module-fill]")
+      .forEach(fill => {
+        if (String(fill.dataset.progressModuleFill || "") === key) {
+          fill.style.width = `${summary.percentComplete}%`;
+        }
+      });
+  });
+
+  return true;
+}
+
 function updateStudentProgressFrozenHeader() {
-  const screen = document.getElementById("progress-subjects-screen");
   const track = getStudentProgressSwipeTrack();
   const modules = getStudentProgressModules();
 
-  if (!screen || !track || !modules.length) {
+  if (!track || !modules.length) {
     return false;
   }
 
@@ -580,19 +605,8 @@ function updateStudentProgressFrozenHeader() {
   }
 
   currentStudentSubjectKey = String(activeModule.subjectid || activeModuleKey || currentStudentSubjectKey || "");
-
-  const title = screen.querySelector("[data-progress-active-title]");
-  if (title) {
-    title.textContent = activeModule.subjectname || "Module";
-  }
-
   setDomText("progress-subjects-title", activeModule.subjectname || "Progress");
-
-  const summary = getStudentModuleProgressSummary(activeModule);
-  const fill = screen.querySelector("[data-progress-active-fill]");
-  if (fill) {
-    fill.style.width = `${summary.percentComplete}%`;
-  }
+  updateStudentProgressModuleIndicators();
 
   return true;
 }
@@ -714,6 +728,8 @@ function renderStudentProgressTaskTable(module) {
 
 function renderStudentProgressModulePanel(module, index, moduleCount) {
   const moduleKey = String(module.subjectid || "");
+  const title = module.subjectname || `Module ${index + 1}`;
+  const summary = getStudentModuleProgressSummary(module);
 
   return `
     <section
@@ -721,8 +737,12 @@ function renderStudentProgressModulePanel(module, index, moduleCount) {
       data-progress-swipe-panel
       data-progress-panel-index="${index}"
       data-progress-module-key="${escapeForAttribute(moduleKey)}"
-      aria-label="${escapeForAttribute(module.subjectname || `Module ${index + 1}`)}"
+      aria-label="${escapeForAttribute(title)}"
     >
+      <div class="student-progress-module-header">
+        <h2 class="student-progress-module-title">${escapeHtml(title)}</h2>
+        ${renderStudentProgressHeaderBar(summary.percentComplete, { moduleKey })}
+      </div>
       ${renderStudentProgressTaskTable(module)}
     </section>
   `;
@@ -756,7 +776,7 @@ function renderStudentSubjectProgress(options = {}) {
 
   setDomHtml(container, `
     <div class="student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
-      ${renderStudentProgressFrozenHeader(modules, preferredModuleKey)}
+      ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
       <div
         id="student-progress-swipe-track"
         class="student-progress-swipe-track"
@@ -773,7 +793,7 @@ function renderStudentSubjectProgress(options = {}) {
   updateStudentProgressFrozenHeader();
   window.setTimeout(updateStudentProgressTaskScrollState, 0);
 
-  if (preferredModuleKey) {
+  if (preferredModuleKey && preferredModuleKey !== String(modules[0].subjectid || "")) {
     scrollStudentProgressSwipeToModule(preferredModuleKey, {
       behavior: options.scrollBehavior || "auto"
     });
@@ -1121,7 +1141,7 @@ function toggleStudentSubjectTask(studenttaskid, complete) {
 
   if (getStudentProgressSwipeTrack()) {
     updateStudentProgressStatusControls(studenttaskid, complete);
-    updateStudentProgressFrozenHeader();
+    updateStudentProgressModuleIndicators();
     updateStudentProgressTaskScrollState();
     return;
   }
