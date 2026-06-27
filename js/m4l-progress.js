@@ -1,4 +1,4 @@
-/* M4L v71.3 - Admin Progress rigid swipe panels + close guard + Student Progress V70.3 baseline
+/* M4L v71.4 - Admin Progress centred group sheet + dashboard dots + Student Progress V70.3 baseline
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, and /js/m4l-resources.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -140,6 +140,13 @@ function handleProgressUiClick(event) {
     case "scroll-admin-progress-group":
       scrollAdminProgressGroupToIndex(
         Number(actionEl.dataset.progressGroupIndex || 0)
+      );
+      break;
+
+    case "scroll-admin-dashboard-task":
+      scrollAdminProgressDashboardRailToIndex(
+        actionEl,
+        Number(actionEl.dataset.progressTaskIndex || 0)
       );
       break;
 
@@ -339,6 +346,7 @@ function prepareAdminProgressTaskHeader() {
   }
 
   bindAdminProgressSwipeUpClose(header, requestCloseAdminProgressTaskScreen);
+  bindAdminProgressSwipeUpClose(document.getElementById("progress-task-students-screen"), requestCloseAdminProgressTaskScreen);
   return true;
 }
 
@@ -1351,7 +1359,7 @@ let adminProgressDashboardRows = [];
 let adminProgressActiveTaskRows = [];
 let adminProgressPopoutRows = [];
 
-const ADMIN_PROGRESS_DASHBOARD_CACHE_KEY = "m4l_admin_progress_dashboard_v71_3";
+const ADMIN_PROGRESS_DASHBOARD_CACHE_KEY = "m4l_admin_progress_dashboard_v71_4";
 let adminProgressLeaveGuardBound = false;
 
 function hasProgressPendingUpdates() {
@@ -1936,22 +1944,173 @@ function renderAdminProgressDashboard(modules) {
 
   setDomHtml(dashboard, html);
   bindProgressUiHandlers(dashboard);
+  bindAdminProgressDashboardRailControls(dashboard);
 }
 
-function renderAdminProgressModuleShelf(module) {
+function renderAdminProgressModuleShelf(module, moduleIndex = 0) {
   const tasks = Array.isArray(module.tasks) ? module.tasks : [];
+  const moduleName = module.modulename || module.subjectname || "Module";
 
   return `
-    <section class="admin-progress-module-shelf" aria-label="${escapeForAttribute(module.modulename || module.subjectname || "Module")}">
+    <section
+      class="admin-progress-module-shelf"
+      data-admin-progress-dashboard-shelf
+      data-progress-module-index="${moduleIndex}"
+      aria-label="${escapeForAttribute(moduleName)}"
+    >
       <div class="admin-progress-module-heading">
-        <h3>${escapeHtml(module.modulename || module.subjectname || "Module")}</h3>
+        <h3>${escapeHtml(moduleName)}</h3>
         <span class="admin-progress-module-count">${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}</span>
       </div>
-      <div class="admin-progress-task-rail" aria-label="${escapeForAttribute(module.modulename || "Module")} tasks">
+      ${renderAdminProgressDashboardTaskDots(tasks, moduleName)}
+      <div
+        class="admin-progress-task-rail"
+        data-admin-progress-dashboard-rail
+        aria-label="${escapeForAttribute(moduleName)} tasks"
+      >
         ${tasks.map(renderAdminProgressTaskCard).join("")}
       </div>
     </section>
   `;
+}
+
+function renderAdminProgressDashboardTaskDots(tasks, moduleName) {
+  const list = Array.isArray(tasks) ? tasks : [];
+
+  if (list.length <= 1) {
+    return "";
+  }
+
+  return `
+    <div class="admin-progress-task-dots" data-admin-progress-dashboard-task-dots aria-label="${escapeForAttribute(moduleName || "Module")} task cards">
+      ${list.map((task, index) => `
+        <button
+          type="button"
+          class="admin-progress-task-dot${index === 0 ? " is-active" : ""}"
+          data-progress-action="scroll-admin-dashboard-task"
+          data-progress-task-index="${index}"
+          aria-label="Show ${escapeForAttribute(task.taskname || `task ${index + 1}`)}"
+          aria-current="${index === 0 ? "true" : "false"}"
+        ></button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getAdminProgressDashboardShelfFromElement(element) {
+  return element && typeof element.closest === "function"
+    ? element.closest("[data-admin-progress-dashboard-shelf], .admin-progress-module-shelf")
+    : null;
+}
+
+function getAdminProgressDashboardRailFromShelf(shelf) {
+  return shelf ? shelf.querySelector("[data-admin-progress-dashboard-rail], .admin-progress-task-rail") : null;
+}
+
+function getAdminProgressDashboardRailCards(rail) {
+  if (!rail || !rail.children) return [];
+
+  return Array.from(rail.children).filter(child => {
+    return child && child.matches && child.matches(".admin-progress-task-card");
+  });
+}
+
+function getAdminProgressDashboardRailActiveIndex(rail) {
+  if (!rail) return 0;
+
+  const cards = getAdminProgressDashboardRailCards(rail);
+  if (cards.length <= 1) return 0;
+
+  const firstCard = cards[0];
+  const secondCard = cards[1];
+  let step = firstCard ? firstCard.getBoundingClientRect().width : (rail.clientWidth || 1);
+
+  if (firstCard && secondCard) {
+    const firstRect = firstCard.getBoundingClientRect();
+    const secondRect = secondCard.getBoundingClientRect();
+    const measuredStep = Math.abs(secondRect.left - firstRect.left);
+
+    if (measuredStep > 1) {
+      step = measuredStep;
+    }
+  }
+
+  const index = Math.round((rail.scrollLeft || 0) / Math.max(1, step));
+  return Math.max(0, Math.min(cards.length - 1, index));
+}
+
+function updateAdminProgressDashboardRailDots(rail) {
+  const targetRail = rail || null;
+  const shelf = targetRail ? targetRail.closest("[data-admin-progress-dashboard-shelf], .admin-progress-module-shelf") : null;
+
+  if (!shelf || !targetRail) return false;
+
+  const dots = Array.from(shelf.querySelectorAll("[data-admin-progress-dashboard-task-dots] [data-progress-task-index]"));
+  if (!dots.length) return false;
+
+  const activeIndex = getAdminProgressDashboardRailActiveIndex(targetRail);
+
+  dots.forEach((dot, fallbackIndex) => {
+    const dotIndex = Number(dot.dataset.progressTaskIndex || fallbackIndex || 0);
+    const isActive = dotIndex === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+
+  return true;
+}
+
+function scrollAdminProgressDashboardRailToIndex(actionEl, taskIndex, options = {}) {
+  const shelf = getAdminProgressDashboardShelfFromElement(actionEl);
+  const rail = getAdminProgressDashboardRailFromShelf(shelf);
+  const cards = getAdminProgressDashboardRailCards(rail);
+  const index = Number(taskIndex || 0);
+
+  if (!rail || !cards[index]) return false;
+
+  cards[index].scrollIntoView({
+    behavior: options.behavior || "smooth",
+    block: "nearest",
+    inline: "start"
+  });
+
+  updateAdminProgressDashboardRailDots(rail);
+
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => updateAdminProgressDashboardRailDots(rail));
+  } else {
+    window.setTimeout(() => updateAdminProgressDashboardRailDots(rail), 0);
+  }
+
+  return true;
+}
+
+function bindAdminProgressDashboardRailControls(container) {
+  const host = getDomElement(container) || document;
+  const rails = Array.from(host.querySelectorAll("[data-admin-progress-dashboard-rail], .admin-progress-task-rail"));
+
+  rails.forEach(rail => {
+    if (rail.dataset.adminProgressDashboardRailBound === "true") {
+      updateAdminProgressDashboardRailDots(rail);
+      return;
+    }
+
+    rail.dataset.adminProgressDashboardRailBound = "true";
+    let pendingFrame = 0;
+
+    rail.addEventListener("scroll", () => {
+      if (pendingFrame) return;
+
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = 0;
+        updateAdminProgressDashboardRailDots(rail);
+      });
+    }, { passive: true });
+
+    window.setTimeout(() => updateAdminProgressDashboardRailDots(rail), 0);
+  });
+
+  return rails.length > 0;
 }
 
 function renderAdminProgressTaskCard(task) {
