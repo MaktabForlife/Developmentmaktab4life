@@ -1,4 +1,4 @@
-/* M4L v69 - Timetable board module
+/* M4L v69.1 - Timetable board module
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -346,7 +346,7 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
 
   const headerHtml = model.days
     .map(day => `
-      <div class="m4l-timetable-pill m4l-timetable-day-pill" role="columnheader">
+      <div class="m4l-timetable-heading-pill m4l-timetable-day-heading" role="columnheader">
         ${escapeHtml(day)}
       </div>
     `)
@@ -356,7 +356,7 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     const shouldMergeRow = rowIndex === 0 && shouldMergeTimetableRow(model, time);
 
     const timeHtml = `
-      <div class="m4l-timetable-pill m4l-timetable-time-pill" role="rowheader">
+      <div class="m4l-timetable-time-label" role="rowheader">
         ${escapeHtml(time)}
       </div>
     `;
@@ -364,13 +364,15 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     if (shouldMergeRow) {
       const entries = getTimetableCellEntries(model, time, model.days[0]);
       return `
-        ${timeHtml}
-        <div
-          class="m4l-timetable-subject-cell m4l-timetable-subject-cell--merged"
-          role="cell"
-          aria-label="${escapeForAttribute(time)} shared subject"
-        >
-          ${renderTimetableSubjectEntries(entries, options)}
+        <div class="m4l-timetable-row m4l-timetable-row--merged" role="row">
+          ${timeHtml}
+          <div
+            class="m4l-timetable-subject-cell m4l-timetable-subject-cell--merged"
+            role="cell"
+            aria-label="${escapeForAttribute(time)} shared subject"
+          >
+            ${renderTimetableSubjectEntries(entries, options)}
+          </div>
         </div>
       `;
     }
@@ -399,7 +401,12 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
       `;
     }).join("");
 
-    return `${timeHtml}${cellHtml}`;
+    return `
+      <div class="m4l-timetable-row" role="row">
+        ${timeHtml}
+        ${cellHtml}
+      </div>
+    `;
   }).join("");
 
   const timetableHtml = `
@@ -408,11 +415,17 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
       role="region"
       aria-label="Timetable"
       tabindex="0"
-      style="--timetable-day-count: ${dayCount};"
     >
-      <div class="m4l-timetable-board" role="table" aria-label="Timetable board">
-        <div class="m4l-timetable-pill m4l-timetable-time-heading" role="columnheader">Time</div>
-        ${headerHtml}
+      <div
+        class="m4l-timetable-board"
+        role="table"
+        aria-label="Timetable board"
+        style="--timetable-day-count: ${dayCount};"
+      >
+        <div class="m4l-timetable-row m4l-timetable-row--head" role="row">
+          <div class="m4l-timetable-heading-pill m4l-timetable-time-heading" role="columnheader">Time</div>
+          ${headerHtml}
+        </div>
         ${bodyHtml}
       </div>
     </div>
