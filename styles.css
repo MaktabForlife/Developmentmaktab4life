@@ -2386,8 +2386,8 @@ button.m4l-timetable-subject {
     --m4l-timetable-time-column: clamp(36px, 12vw, 52px);
     --m4l-timetable-column-gap: clamp(2px, 0.9vw, 5px);
     --m4l-timetable-row-pad: clamp(9px, 2.7vw, 13px);
-    --m4l-timetable-text-size: clamp(0.48rem, 1.9vw, 0.66rem);
-    --m4l-timetable-pill-text-size: clamp(0.46rem, 1.8vw, 0.62rem);
+    --m4l-timetable-text-size: clamp(0.5rem, 2vw, 0.68rem);
+    --m4l-timetable-pill-text-size: clamp(0.5rem, 2vw, 0.68rem);
   }
 
   .m4l-timetable-heading-pill {
