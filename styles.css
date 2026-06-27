@@ -1,4 +1,4 @@
-/* M4L v69.2 - Timetable CSS cleanup and normal text pass. */
+/* M4L v69.3 - Timetable font, divider and container background refinements. */
 :root {
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)
@@ -2183,10 +2183,10 @@ body.has-user-band #progress-subjects-screen.student-theme .nav-header {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  padding: 3px;
+  padding: clamp(8px, 2.2vw, 12px);
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: 18px;
+  background: var(--surface-chip);
   box-shadow: none;
 }
 
@@ -2194,8 +2194,8 @@ body.has-user-band #progress-subjects-screen.student-theme .nav-header {
   --m4l-timetable-time-column: clamp(42px, 13vw, 64px);
   --m4l-timetable-column-gap: clamp(3px, 1.15vw, 8px);
   --m4l-timetable-row-pad: clamp(10px, 2.8vw, 16px);
-  --m4l-timetable-text-size: clamp(0.5rem, 2.6vw, 0.67rem);
-  --m4l-timetable-pill-text-size: clamp(0.52rem, 1.85vw, 0.72rem);
+  --m4l-timetable-text-size: clamp(0.62rem, 2.8vw, 0.9rem);
+  --m4l-timetable-pill-text-size: clamp(0.58rem, 2.3vw, 0.82rem);
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -2217,6 +2217,7 @@ body.has-user-band #progress-subjects-screen.student-theme .nav-header {
 }
 
 .m4l-timetable-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, var(--m4l-timetable-time-column)) repeat(var(--timetable-day-count, 5), minmax(0, 1fr));
   column-gap: var(--m4l-timetable-column-gap);
@@ -2235,6 +2236,18 @@ body.has-user-band #progress-subjects-screen.student-theme .nav-header {
 .m4l-timetable-row:last-child {
   border-bottom: 0;
 }
+
+.m4l-timetable-row:not(.m4l-timetable-row--head)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--m4l-timetable-time-column);
+  width: 1px;
+  background: var(--primary);
+  pointer-events: none;
+}
+
 
 .m4l-timetable-heading-pill,
 .m4l-timetable-break-pill {
@@ -2349,9 +2362,9 @@ button.m4l-timetable-subject {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  background: transparent;
+  background: var(--surface-chip);
   border: 0;
-  border-radius: 0;
+  border-radius: 18px;
 }
 
 #student-home .zoom-link-button,
@@ -2389,8 +2402,8 @@ button.m4l-timetable-subject {
     --m4l-timetable-time-column: clamp(36px, 12vw, 52px);
     --m4l-timetable-column-gap: clamp(2px, 0.9vw, 5px);
     --m4l-timetable-row-pad: clamp(9px, 2.7vw, 13px);
-    --m4l-timetable-text-size: clamp(0.5rem, 2.6vw, 0.67rem);
-    --m4l-timetable-pill-text-size: clamp(0.5rem, 2vw, 0.68rem);
+    --m4l-timetable-text-size: clamp(0.58rem, 2.85vw, 0.78rem);
+    --m4l-timetable-pill-text-size: clamp(0.54rem, 2.35vw, 0.74rem);
   }
 
   .m4l-timetable-heading-pill {
