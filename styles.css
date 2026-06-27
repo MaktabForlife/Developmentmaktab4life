@@ -1276,10 +1276,14 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 
 
-/* Admin Progress native snap shelves - V71.1 */
+/* Admin Progress native snap shelves - V71.2 */
 #progress-report.admin-progress-screen,
 #progress-task-students-screen.admin-theme {
   text-align: left;
+  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 32px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-progress-landing-header {
@@ -1342,23 +1346,13 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   scroll-padding-inline: 2px;
   -webkit-overflow-scrolling: touch;
   padding: 2px 2px 8px;
+  scrollbar-width: none;
 }
 
 .admin-progress-task-rail::-webkit-scrollbar,
-.admin-progress-group-swipe-track::-webkit-scrollbar {
-  height: 6px;
-}
-
-.admin-progress-task-rail::-webkit-scrollbar-track,
-.admin-progress-group-swipe-track::-webkit-scrollbar-track {
-  background: var(--surface-chip);
-  border-radius: 999px;
-}
-
-.admin-progress-task-rail::-webkit-scrollbar-thumb,
-.admin-progress-group-swipe-track::-webkit-scrollbar-thumb {
-  background: var(--surface-track);
-  border-radius: 999px;
+.admin-progress-group-swipe-track::-webkit-scrollbar,
+.admin-progress-popout-module-track::-webkit-scrollbar {
+  display: none;
 }
 
 .admin-progress-task-card {
@@ -1399,20 +1393,15 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .admin-progress-card-bar-row {
   display: grid;
-  grid-template-columns: 60px minmax(82px, 1fr) 40px;
+  grid-template-columns: 60px minmax(82px, 1fr);
   align-items: center;
   gap: 8px;
 }
 
-.admin-progress-card-bar-label,
-.admin-progress-card-percent {
+.admin-progress-card-bar-label {
   color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 700;
-}
-
-.admin-progress-card-percent {
-  text-align: right;
 }
 
 .admin-progress-card-track {
@@ -1431,6 +1420,41 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .admin-progress-task-class-list {
   display: block;
+}
+
+.admin-progress-task-work-header {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.admin-progress-task-work-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1.02rem, 4.2vw, 1.35rem);
+  line-height: 1.2;
+}
+
+.admin-progress-save-button {
+  width: auto;
+  min-width: 124px;
+  min-height: 42px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: var(--primary-lighter);
+  color: var(--text-inverse);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.admin-progress-save-button:disabled {
+  opacity: 0.68;
+  cursor: wait;
+}
+
+.admin-progress-task-save {
+  justify-self: start;
 }
 
 .admin-progress-task-swipe-shell {
@@ -1473,6 +1497,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   scroll-padding-inline: 2px;
   -webkit-overflow-scrolling: touch;
   padding: 2px 2px 10px;
+  scrollbar-width: none;
 }
 
 .admin-progress-group-container {
@@ -1504,31 +1529,41 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .admin-progress-student-row,
 .admin-progress-popout-task-row {
+  grid-template-columns: minmax(0, 50%) 44px 44px;
+  gap: 4px;
   margin-bottom: 0;
-  background: var(--surface-chip);
+  background: var(--surface-card);
   border-color: rgba(var(--primary-rgb), 0.12);
+  padding: 8px;
 }
 
 .admin-progress-student-name-button {
   width: 100%;
   min-height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  background: transparent;
+  background: var(--surface-chip);
   color: var(--text-muted);
   box-shadow: none;
-  font-weight: 800;
+  font-weight: 400;
   text-align: left;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
 .admin-progress-status-control {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--surface-card);
   color: var(--primary);
+  box-shadow: none;
 }
 
 .admin-progress-complete-control {
@@ -1554,12 +1589,15 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .admin-progress-student-popout {
   position: fixed;
-  inset: 0;
-  z-index: 160;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 10px);
+  right: 0;
+  bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 8px);
+  left: 0;
+  z-index: 70;
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  padding: 12px max(12px, env(safe-area-inset-right, 0px)) 12px max(12px, env(safe-area-inset-left, 0px));
 }
 
 .admin-progress-student-popout.hidden {
@@ -1578,7 +1616,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   width: min(100%, 560px);
   max-height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border-radius: 22px;
@@ -1596,9 +1634,20 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 .admin-progress-popout-header h3 {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
   color: var(--text-muted);
   line-height: 1.2;
+  font-weight: 400;
+}
+
+.admin-progress-popout-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .admin-progress-popout-close {
@@ -1607,16 +1656,66 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .admin-progress-popout-content {
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   display: grid;
-  align-content: start;
+  align-content: stretch;
+}
+
+.admin-progress-popout-swipe-shell {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.admin-progress-popout-module-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 24px;
+}
+
+.admin-progress-popout-module-dot {
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  min-height: 9px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--surface-track);
+  box-shadow: none;
+  opacity: 0.75;
+}
+
+.admin-progress-popout-module-dot.is-active {
+  width: 22px;
+  background: var(--primary);
+  opacity: 1;
+}
+
+.admin-progress-popout-module-track {
+  min-height: 0;
+  display: flex;
   gap: 14px;
-  padding-right: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 2px;
   -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 10px;
+  scrollbar-width: none;
 }
 
 .admin-progress-popout-module {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  scroll-snap-align: start;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   padding: 12px;
   border-radius: 18px;
@@ -1626,29 +1725,43 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 
 .admin-progress-popout-module-title {
   color: var(--text-muted);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .admin-progress-popout-task-list {
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
+  align-content: start;
   gap: 9px;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-progress-popout-task-name {
   color: var(--text-muted);
+  font-weight: 400;
 }
 
 .admin-progress-popout-actions {
-  display: flex;
-  justify-content: center;
-  padding-top: 4px;
+  display: none;
 }
 
 .admin-progress-popout-save {
-  max-width: 220px;
+  flex: 0 0 auto;
 }
 
 @media (min-width: 760px) {
+  #progress-report.admin-progress-screen,
+  #progress-task-students-screen.admin-theme {
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 42px);
+  }
+
+  .admin-progress-student-popout {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 18px);
+    bottom: 14px;
+  }
+
   .admin-progress-task-card {
     flex-basis: 300px;
   }
@@ -1698,7 +1811,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   }
 
   .admin-progress-card-bar-row {
-    grid-template-columns: 56px minmax(70px, 1fr) 36px;
+    grid-template-columns: 56px minmax(70px, 1fr);
     gap: 6px;
   }
 
@@ -1708,9 +1821,20 @@ body.has-user-band .top-bar button[onclick="logout()"] {
     padding: 12px;
   }
 
+  .admin-progress-student-row,
+  .admin-progress-popout-task-row {
+    display: grid;
+    grid-template-columns: minmax(0, 50%) 42px 42px;
+    overflow-x: visible;
+  }
+
+  .admin-progress-status-control {
+    width: 42px;
+    min-width: 42px;
+  }
+
   .admin-progress-student-name-button {
-    flex: 1 0 110px;
-    min-width: 110px;
+    min-width: 0;
     font-size: 0.95rem;
   }
 
