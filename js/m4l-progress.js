@@ -1,4 +1,4 @@
-/* M4L v70 - Student Progress frozen header and table layout module
+/* M4L v70.1 - Student Progress frozen header and table layout module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, and /js/m4l-resources.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -1068,10 +1068,40 @@ function openStudentTaskExternalLink(link, type) {
 }
 
 
+
+function updateStudentProgressStatusControls(studenttaskid, complete) {
+  const id = String(studenttaskid || "");
+  const isComplete = !!complete;
+
+  if (!id) {
+    return false;
+  }
+
+  let didUpdate = false;
+
+  document
+    .querySelectorAll("#progress-subjects-screen [data-progress-action='toggle-student-subject-task']")
+    .forEach(button => {
+      if (String(button.dataset.studenttaskid || "") !== id) {
+        return;
+      }
+
+      const taskName = button.getAttribute("aria-label")
+        ? String(button.getAttribute("aria-label")).replace(/^Mark (complete|incomplete):\s*/i, "")
+        : "task";
+
+      button.dataset.complete = isComplete ? "false" : "true";
+      button.classList.toggle("is-on", isComplete);
+      button.setAttribute("aria-label", `${isComplete ? "Mark incomplete" : "Mark complete"}: ${taskName}`);
+      button.innerHTML = renderTaskStatusIndicator("complete", isComplete);
+      didUpdate = true;
+    });
+
+  return didUpdate;
+}
+
 function toggleStudentSubjectTask(studenttaskid, complete) {
   if (!studenttaskid) return;
-
-  const activeModuleKey = getStudentProgressSwipeActiveModuleKey() || currentStudentSubjectKey || "";
 
   if (!progressPendingUpdates[studenttaskid]) {
     progressPendingUpdates[studenttaskid] = {
@@ -1090,10 +1120,9 @@ function toggleStudentSubjectTask(studenttaskid, complete) {
   });
 
   if (getStudentProgressSwipeTrack()) {
-    renderStudentSubjectProgress({
-      moduleKey: activeModuleKey,
-      scrollBehavior: "auto"
-    });
+    updateStudentProgressStatusControls(studenttaskid, complete);
+    updateStudentProgressFrozenHeader();
+    updateStudentProgressTaskScrollState();
     return;
   }
 
