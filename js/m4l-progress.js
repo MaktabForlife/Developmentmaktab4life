@@ -1,4 +1,4 @@
-/* M4L v44 - Progress module
+/* M4L v68 - Student Progress native swipe module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, and /js/m4l-resources.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -74,6 +74,12 @@ function handleProgressUiClick(event) {
       openStudentSubjectTasks(actionEl.dataset.subjectKey || "");
       break;
 
+    case "scroll-student-progress-module":
+      scrollStudentProgressSwipeToIndex(
+        Number(actionEl.dataset.progressPanelIndex || 0)
+      );
+      break;
+
     case "toggle-student-subject-task":
       toggleStudentSubjectTask(
         actionEl.dataset.studenttaskid || "",
@@ -125,6 +131,7 @@ function handleProgressUiClick(event) {
 }
 
 
+
 async function showStudentTasks() {
   setProgressScreensForStudent();
   setManualRefreshButton("progress-subjects-screen", "refreshStudentTaskProgress(this)");
@@ -134,7 +141,7 @@ async function showStudentTasks() {
     return;
   }
 
-  setDomText("progress-subjects-title", "My Tasks");
+  setDomText("progress-subjects-title", "My Progress");
 
   if (!setDomHtml("progress-subjects-list", `<p class="helper-text">Loading tasks...</p>`)) {
     console.warn("Missing progress-subjects-list container.");
@@ -173,10 +180,10 @@ function setProgressScreensForStudent() {
     screen.classList.add("student-theme");
   });
 
-  const subjectBackButton = document.querySelector("#progress-subjects-screen .small-btn");
+  const subjectBackButton = document.querySelector("#progress-subjects-screen .nav-header .small-btn:not(.student-progress-save-btn)");
   setHomeIconButton(subjectBackButton, "showScreen('student-home')");
 
-  const taskBackButton = document.querySelector("#progress-tasks-screen .small-btn");
+  const taskBackButton = document.querySelector("#progress-tasks-screen .small-btn:not(.student-progress-save-btn)");
   if (taskBackButton) {
     taskBackButton.classList.remove("save-return-btn", "student-progress-save-btn");
     setBackIconButton(taskBackButton, "showScreen('progress-subjects-screen')");
@@ -185,8 +192,9 @@ function setProgressScreensForStudent() {
   ensureStudentProgressSaveButton();
 }
 
+
 function ensureStudentProgressSaveButton() {
-  const header = document.querySelector("#progress-tasks-screen .nav-header");
+  const header = document.querySelector("#progress-subjects-screen .nav-header");
   if (!header) return;
 
   let saveButton = header.querySelector(".student-progress-save-btn");
@@ -198,18 +206,20 @@ function ensureStudentProgressSaveButton() {
   }
 
   saveButton.className = "small-btn save-return-btn student-progress-save-btn";
-  saveButton.textContent = "Save and Exit";
+  saveButton.textContent = "Save";
   saveButton.removeAttribute("onclick");
+  saveButton.setAttribute("aria-label", "Save student progress changes");
 
   if (saveButton.dataset.m4lStudentProgressSaveBound !== "true") {
     saveButton.dataset.m4lStudentProgressSaveBound = "true";
     saveButton.addEventListener("click", () => {
-      if (typeof saveStudentTaskChangesAndReturn === "function") {
-        saveStudentTaskChangesAndReturn();
+      if (typeof saveStudentProgressSwipeChanges === "function") {
+        saveStudentProgressSwipeChanges(saveButton);
       }
     });
   }
 }
+
 
 function setProgressScreensForAdmin() {
   document.querySelectorAll(".student-progress-save-btn").forEach(button => button.remove());
@@ -296,39 +306,317 @@ function buildStudentSubjectTaskGroups(tasks) {
   return groups;
 }
 
-function renderStudentSubjectProgress() {
+function getStudentProgressModules() {
+  return Object.values(studentSubjectTaskGroups || {}).sort(sortModuleGroupsByModuleId);
+}
+
+function getStudentProgressSwipeTrack() {
+  return document.querySelector("#progress-subjects-screen [data-progress-swipe-track]");
+}
+
+function getStudentProgressSwipePanels(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+
+  if (!targetTrack || !targetTrack.children) {
+    return [];
+  }
+
+  return Array.from(targetTrack.children).filter(child => {
+    return child &&
+      child.matches &&
+      child.matches("[data-progress-swipe-panel], .student-progress-module-panel");
+  });
+}
+
+function getStudentProgressSwipePanelStep(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+  const panels = getStudentProgressSwipePanels(targetTrack);
+
+  if (!targetTrack || panels.length <= 1) {
+    return 1;
+  }
+
+  const firstPanel = panels[0];
+  const secondPanel = panels[1];
+
+  if (firstPanel && secondPanel) {
+    const firstRect = firstPanel.getBoundingClientRect();
+    const secondRect = secondPanel.getBoundingClientRect();
+    const measuredStep = Math.abs(secondRect.left - firstRect.left);
+
+    if (measuredStep > 1) {
+      return measuredStep;
+    }
+  }
+
+  return targetTrack.clientWidth || 1;
+}
+
+function getStudentProgressSwipeActiveIndex(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+
+  if (!targetTrack) {
+    return 0;
+  }
+
+  const panels = getStudentProgressSwipePanels(targetTrack);
+  const panelCount = panels.length;
+
+  if (panelCount <= 1) {
+    return 0;
+  }
+
+  // Desktop/grid layout has no meaningful horizontal scroll.
+  if ((targetTrack.scrollWidth || 0) <= (targetTrack.clientWidth || 0) + 2) {
+    return 0;
+  }
+
+  const step = getStudentProgressSwipePanelStep(targetTrack);
+  const index = Math.round((targetTrack.scrollLeft || 0) / step);
+
+  return Math.max(0, Math.min(panelCount - 1, index));
+}
+
+function getStudentProgressSwipeActiveModuleKey() {
+  const track = getStudentProgressSwipeTrack();
+  const panels = getStudentProgressSwipePanels(track);
+  const activeIndex = getStudentProgressSwipeActiveIndex(track);
+  const activePanel = panels[activeIndex];
+
+  return activePanel ? String(activePanel.dataset.progressModuleKey || "") : "";
+}
+
+function updateStudentProgressSwipeDots() {
+  const screen = document.getElementById("progress-subjects-screen");
+  const track = getStudentProgressSwipeTrack();
+
+  if (!screen || !track) {
+    return false;
+  }
+
+  const dots = Array.from(screen.querySelectorAll("[data-progress-swipe-dots] [data-progress-panel-index]"));
+  if (!dots.length) {
+    return false;
+  }
+
+  const activeIndex = getStudentProgressSwipeActiveIndex(track);
+  const panels = getStudentProgressSwipePanels(track);
+  const activePanel = panels[activeIndex];
+
+  if (activePanel) {
+    currentStudentSubjectKey = String(activePanel.dataset.progressModuleKey || currentStudentSubjectKey || "");
+  }
+
+  dots.forEach((dot, fallbackIndex) => {
+    const dotIndex = Number(dot.dataset.progressPanelIndex || fallbackIndex || 0);
+    const isActive = dotIndex === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+
+  return true;
+}
+
+function scrollStudentProgressSwipeToIndex(panelIndex, options = {}) {
+  const track = getStudentProgressSwipeTrack();
+  const panels = getStudentProgressSwipePanels(track);
+  const index = Number(panelIndex || 0);
+
+  if (!track || !panels[index]) {
+    return false;
+  }
+
+  const behavior = options.behavior || "smooth";
+
+  panels[index].scrollIntoView({
+    behavior,
+    block: "nearest",
+    inline: "start"
+  });
+
+  currentStudentSubjectKey = String(panels[index].dataset.progressModuleKey || currentStudentSubjectKey || "");
+  updateStudentProgressSwipeDots();
+
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(updateStudentProgressSwipeDots);
+  } else {
+    window.setTimeout(updateStudentProgressSwipeDots, 0);
+  }
+
+  return true;
+}
+
+function scrollStudentProgressSwipeToModule(moduleKey, options = {}) {
+  const track = getStudentProgressSwipeTrack();
+  const panels = getStudentProgressSwipePanels(track);
+
+  if (!track || !panels.length) {
+    return false;
+  }
+
+  const key = String(moduleKey || "");
+  const index = Math.max(0, panels.findIndex(panel => {
+    return String(panel.dataset.progressModuleKey || "") === key;
+  }));
+
+  return scrollStudentProgressSwipeToIndex(index, options);
+}
+
+let studentProgressSwipeResizeHandlerBound = false;
+
+function bindStudentProgressSwipeResizeHandler() {
+  if (studentProgressSwipeResizeHandlerBound === true) {
+    return true;
+  }
+
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+    return false;
+  }
+
+  studentProgressSwipeResizeHandlerBound = true;
+  window.addEventListener("resize", updateStudentProgressSwipeDots, { passive: true });
+  return true;
+}
+
+function bindStudentProgressSwipeControls() {
+  const track = getStudentProgressSwipeTrack();
+
+  if (!track) {
+    return false;
+  }
+
+  bindStudentProgressSwipeResizeHandler();
+
+  if (track.dataset.progressSwipeBound !== "true") {
+    track.dataset.progressSwipeBound = "true";
+    let pendingFrame = 0;
+
+    track.addEventListener("scroll", () => {
+      if (pendingFrame) return;
+
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = 0;
+        updateStudentProgressSwipeDots();
+      });
+    }, { passive: true });
+  }
+
+  window.setTimeout(updateStudentProgressSwipeDots, 0);
+  return true;
+}
+
+function renderStudentProgressSwipeDots(modules, activeModuleKey) {
+  if (!modules || modules.length <= 1) {
+    return "";
+  }
+
+  const activeKey = String(activeModuleKey || modules[0].subjectid || "");
+
+  return `
+    <div class="student-progress-swipe-dots" data-progress-swipe-dots aria-label="Progress modules">
+      ${modules.map((module, index) => {
+        const moduleKey = String(module.subjectid || "");
+        const isActive = moduleKey === activeKey || (!activeKey && index === 0);
+
+        return `
+          <button
+            type="button"
+            class="student-progress-swipe-dot${isActive ? " is-active" : ""}"
+            data-progress-action="scroll-student-progress-module"
+            data-progress-panel-index="${index}"
+            aria-label="Show ${escapeForAttribute(module.subjectname || `module ${index + 1}`)}"
+            aria-current="${isActive ? "true" : "false"}"
+          ></button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderStudentProgressModulePanel(module, index, moduleCount) {
+  const total = module.tasks.length;
+  const completed = module.tasks.filter(task => isStatusOn(task.completestatus)).length;
+  const percentComplete = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const moduleKey = String(module.subjectid || "");
+  const taskRowsHtml = [...module.tasks]
+    .sort(sortByModuleThenTask)
+    .map(task => renderStudentTaskStatusRow(task))
+    .join("");
+
+  return `
+    <section
+      class="student-progress-module-panel"
+      data-progress-swipe-panel
+      data-progress-panel-index="${index}"
+      data-progress-module-key="${escapeForAttribute(moduleKey)}"
+      aria-label="${escapeForAttribute(module.subjectname || `Module ${index + 1}`)}"
+    >
+      <div class="student-progress-module-card">
+        <p class="student-progress-module-count">Module ${index + 1} of ${moduleCount}</p>
+        <h3 class="student-progress-module-title">${escapeHtml(module.subjectname || "Module")}</h3>
+        ${renderCompleteProgressBar(percentComplete)}
+      </div>
+
+      <div class="student-progress-task-list">
+        ${renderTaskStatusHeader("Me", "Muallimah", { secondMuted: true })}
+        ${taskRowsHtml}
+      </div>
+    </section>
+  `;
+}
+
+function renderStudentSubjectProgress(options = {}) {
   const container = getDomElement("progress-subjects-list");
   if (!container) {
     console.warn("Missing progress-subjects-list container.");
     return;
   }
 
-  const subjects = Object.values(studentSubjectTaskGroups || {}).sort(sortModuleGroupsByModuleId);
+  const modules = getStudentProgressModules();
 
-  if (subjects.length === 0) {
+  if (modules.length === 0) {
     setDomHtml(container, `<p class="helper-text">No tasks assigned yet.</p>`);
     return;
   }
 
-  setDomHtml(container, subjects.map(subject => {
-    const total = subject.tasks.length;
-    const completed = subject.tasks.filter(task => isStatusOn(task.completestatus)).length;
-    const percentComplete = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const preferredModuleKey = String(
+    options.moduleKey ||
+    getStudentProgressSwipeActiveModuleKey() ||
+    currentStudentSubjectKey ||
+    modules[0].subjectid ||
+    ""
+  );
 
-    return `
-      <button
-        type="button"
-        class="progress-list-button"
-        data-progress-action="open-student-subject-tasks"
-        data-subject-key="${escapeForAttribute(subject.subjectid)}"
+  if (!currentStudentSubjectKey) {
+    currentStudentSubjectKey = preferredModuleKey;
+  }
+
+  setDomHtml(container, `
+    <div class="student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
+      ${renderStudentProgressSwipeDots(modules, preferredModuleKey)}
+      <div
+        id="student-progress-swipe-track"
+        class="student-progress-swipe-track"
+        data-progress-swipe-track
+        aria-label="Student progress modules"
       >
-        <span class="progress-list-title">${escapeHtml(subject.subjectname)}</span>
-        ${renderCompleteProgressBar(percentComplete)}
-      </button>
-    `;
-  }).join(""));
+        ${modules.map((module, index) => renderStudentProgressModulePanel(module, index, modules.length)).join("")}
+      </div>
+    </div>
+  `);
+
   bindProgressUiHandlers(container);
+  bindStudentProgressSwipeControls();
+
+  if (preferredModuleKey) {
+    scrollStudentProgressSwipeToModule(preferredModuleKey, {
+      behavior: options.scrollBehavior || "auto"
+    });
+  } else {
+    updateStudentProgressSwipeDots();
+  }
 }
+
 
 function openStudentSubjectTasks(subjectKey) {
   setProgressScreensForStudent();
@@ -616,6 +904,10 @@ function openStudentTaskExternalLink(link, type) {
 
 
 function toggleStudentSubjectTask(studenttaskid, complete) {
+  if (!studenttaskid) return;
+
+  const activeModuleKey = getStudentProgressSwipeActiveModuleKey() || currentStudentSubjectKey || "";
+
   if (!progressPendingUpdates[studenttaskid]) {
     progressPendingUpdates[studenttaskid] = {
       studenttaskid
@@ -632,8 +924,17 @@ function toggleStudentSubjectTask(studenttaskid, complete) {
     });
   });
 
+  if (getStudentProgressSwipeTrack()) {
+    renderStudentSubjectProgress({
+      moduleKey: activeModuleKey,
+      scrollBehavior: "auto"
+    });
+    return;
+  }
+
   renderStudentSubjectTaskList();
 }
+
 
 async function toggleStudentTask(studenttaskid, complete) {
   const result = await apiPost("/api/tasks/update-complete", {
@@ -1424,8 +1725,44 @@ async function saveProgressPendingChangesAndReturn() {
   }
 }
 
+async function saveStudentProgressSwipeChanges(button) {
+  const saveButton = button || document.querySelector("#progress-subjects-screen .student-progress-save-btn");
+  const originalText = saveButton ? saveButton.innerText : "Save";
+  const pendingCount = Object.keys(progressPendingUpdates || {}).length;
+
+  if (pendingCount === 0) {
+    if (saveButton) {
+      saveButton.innerText = "Saved";
+      window.setTimeout(() => {
+        saveButton.innerText = originalText;
+      }, 900);
+    }
+    return false;
+  }
+
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.innerText = "Saving...";
+  }
+
+  const saved = await saveProgressPendingChanges({ reload: false, alert: false });
+
+  if (saveButton) {
+    saveButton.disabled = false;
+    saveButton.innerText = saved ? "Saved" : originalText;
+
+    if (saved) {
+      window.setTimeout(() => {
+        saveButton.innerText = originalText;
+      }, 900);
+    }
+  }
+
+  return saved;
+}
+
 async function saveStudentTaskChangesAndReturn() {
-  const button = document.querySelector("#progress-tasks-screen .small-btn");
+  const button = document.querySelector("#progress-tasks-screen .student-progress-save-btn, #progress-tasks-screen .small-btn");
   const originalText = button ? button.innerText : "Save and Exit";
 
   if (button) {
@@ -1447,6 +1784,7 @@ async function saveStudentTaskChangesAndReturn() {
   progressPendingUpdates = {};
   showStudentTasks();
 }
+
 
 
 /* =========================
@@ -1737,6 +2075,8 @@ window.M4LProgress = {
   refreshStudentModuleTaskList: typeof refreshStudentModuleTaskList === "function" ? refreshStudentModuleTaskList : undefined,
   refreshStudentTaskList: typeof refreshStudentTaskList === "function" ? refreshStudentTaskList : undefined,
   saveStudentTaskChangesAndReturn: typeof saveStudentTaskChangesAndReturn === "function" ? saveStudentTaskChangesAndReturn : undefined,
+  saveStudentProgressSwipeChanges: typeof saveStudentProgressSwipeChanges === "function" ? saveStudentProgressSwipeChanges : undefined,
+  bindStudentProgressSwipeControls: typeof bindStudentProgressSwipeControls === "function" ? bindStudentProgressSwipeControls : undefined,
   showProgressReport: typeof showProgressReport === "function" ? showProgressReport : undefined,
   openProgressContext: typeof openProgressContext === "function" ? openProgressContext : undefined,
   openSelectedGroupProgress: typeof openSelectedGroupProgress === "function" ? openSelectedGroupProgress : undefined,
