@@ -16,7 +16,7 @@ let progressUiGlobalHandlersBound = false;
 
 function bindProgressUiHandlers(containerOrId) {
   // Progress actions use one delegated handler so dynamically-rendered
-  // student/admin progress rows do not need inline onclick strings.
+  // student/admin progress rows do not need inline onclaick strings.
   if (progressUiGlobalHandlersBound === true) {
     return !!getDomElement(containerOrId);
   }
