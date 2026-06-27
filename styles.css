@@ -3,24 +3,31 @@
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)
      ========================================== */
-  --primary: #A8B992;          /* Muted Sage Green - Core brand identifier */
-  --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
-  --banner-color: #CDB4DB;     /* Dusty Lavender - Soft contrast for headers/banners */
-  --background-color: #F0F4EC; /* Light pastel sage */
-  --background: var(--background-color);
 
 
   /* ==========================================
-     SURFACES (Depth & Container Hierarchy)
+     SAGE PALETTE
      ========================================== */
-  --surface-app: #FBFBF9;      /* Off-white page background (prevents eye strain) */
+    --primary: #A8B992;          /* SAGE DUST  - Core brand identifier */
+    --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
+    --surface-soft: #F0F4EC;     /* Light pastel sage for backgrounds */
+    --surface-tint: #DFE7D7;     /* Mid-tone sage tint for disabled fields/borders */
+    --surface-video:#3B472A;    /* Deep earthy olive-black  */
+
+  /* ==========================================
+     LAVENDER PALETTE
+     ========================================== */
+  --surface-chip: #F4EEF6;     /* Ultra-light lavender for surfaces */
+  --surface-track: #DBBCDF;    /* Mid-lavender for pills  */
+   --banner-color: #CDB4DB     /* Dusty Lavender - Soft contrast for headers/banners */
+  --surface-banner: #BCBBC2    /* lavender banner */
+  --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
+
+  /* ==========================================
+    WHITEs
+     ========================================== */
+  --surface-app: #F3F5EF;      /* Off-white page background (prevents eye strain) */
   --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
-  --surface-soft: #F0F4EC;     /* Light pastel sage for section blocks */
-  --surface-chip: #F4EEF6;     /* Ultra-light lavender for pill tags & badges */
-  --surface-tint: #DFE7D7;     /* Mid-tone sage tint for disabled fields/borders */
-  --surface-track: #E4DCE7;    /* Desaturated lavender for slider/progress tracks */
-  --surface-dark: #7A6287;     /* Deep dusty lavender for dark modes or dark overlays */
-  --surface-video: #1C2214;    /* Deep earthy olive-black for media player backing */
 
   /* ==========================================
      TEXT (Organic Typography Hierarchy)
@@ -74,7 +81,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background);
+  background: var(--surface-soft;
   color: var(--text);
   font-family: var(--font-main);
   display: flex;
