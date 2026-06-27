@@ -1,4 +1,4 @@
-/* M4L v70.1 - Student Progress large-screen grid and static toggle refinements. */
+/* M4L v70.2 - Student Progress per-panel headers and responsive swipe/grid refinements. */
 :root {
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)
@@ -1340,7 +1340,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 
-/* Student Progress native swipe/grid - V70.1 */
+/* Student Progress native swipe/grid - V70.2 */
 #progress-subjects-screen.student-theme {
   padding-inline: 12px;
 }
@@ -1358,48 +1358,36 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   width: 100%;
   min-width: 0;
   display: grid;
-  gap: 12px;
+  gap: 14px;
   text-align: left;
 }
 
-.student-progress-sticky-card {
+/* Global actions only. Module headings/progress bars live inside each panel. */
+.student-progress-global-actions {
   position: sticky;
   top: 0;
   z-index: 72;
   width: 100%;
   min-width: 0;
   display: grid;
-  gap: 9px;
-  margin: -4px 0 4px;
-  padding: 12px 12px 10px;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
   background: var(--surface-card);
   border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.08);
 }
 
-body.has-user-band #progress-subjects-screen.student-theme .student-progress-sticky-card {
+body.has-user-band #progress-subjects-screen.student-theme .student-progress-global-actions {
   top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 8px);
 }
 
-.student-progress-header-row {
+.student-progress-global-save-row {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   min-width: 0;
-}
-
-.student-progress-active-module-title {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  color: var(--primary);
-  font-family: var(--font-heading);
-  font-size: clamp(1.05rem, 5vw, 1.42rem);
-  font-weight: 800;
-  line-height: 1.18;
-  overflow-wrap: anywhere;
 }
 
 .student-progress-save-btn {
@@ -1419,27 +1407,6 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
 .student-progress-save-btn:disabled {
   opacity: 0.72;
   cursor: wait;
-}
-
-.student-progress-status-bar {
-  width: 100%;
-  min-width: 0;
-}
-
-.student-progress-status-track {
-  display: block;
-  width: 100%;
-  height: 9px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--disabled);
-}
-
-.student-progress-status-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--complete);
 }
 
 .student-progress-swipe-dots {
@@ -1473,8 +1440,6 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
   gap: 12px;
   width: 100%;
   min-width: 0;
-  padding-top: 8px;
-  scroll-padding-top: 8px;
   overflow-x: auto;
   overflow-y: visible;
   scroll-snap-type: x mandatory;
@@ -1493,16 +1458,60 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  display: block;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 12px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
   scroll-snap-align: start;
   scroll-snap-stop: always;
+}
+
+.student-progress-module-header {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.student-progress-module-title {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: clamp(1.05rem, 5vw, 1.42rem);
+  font-weight: 800;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.student-progress-status-bar {
+  width: 100%;
+  min-width: 0;
+}
+
+.student-progress-status-track {
+  display: block;
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--disabled);
+}
+
+.student-progress-status-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--complete);
 }
 
 .student-progress-task-scroll {
   position: relative;
   width: 100%;
   min-width: 0;
-  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 168px);
+  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 220px);
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--surface-chip);
@@ -1671,12 +1680,8 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
     padding-inline: 10px;
   }
 
-  .student-progress-sticky-card {
-    padding: 11px 10px 9px;
-  }
-
-  .student-progress-header-row {
-    gap: 9px;
+  .student-progress-global-actions {
+    padding: 9px 10px;
   }
 
   .student-progress-save-btn {
@@ -1684,9 +1689,13 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
     padding-inline: 12px;
   }
 
+  .student-progress-module-panel {
+    padding: 10px;
+  }
+
   .student-progress-task-scroll {
     padding: 7px 9px;
-    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 160px);
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 210px);
   }
 
   .student-progress-task-row {
@@ -1710,8 +1719,10 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
   }
 }
 
-@media (min-width: 768px), (hover: hover) and (pointer: fine) {
-  body.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-sticky-card {
+/* Match the Home/Attendance large-screen behaviour: swipe on smaller widths,
+   responsive grid on large desktop only. */
+@media (min-width: 1180px) {
+  body.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-actions {
     top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 18px);
   }
 
@@ -1721,9 +1732,8 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
 
   .student-progress-swipe-track {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     gap: 18px;
-    padding-top: 10px;
     overflow: visible;
     scroll-snap-type: none;
     scroll-behavior: auto;
@@ -3119,7 +3129,7 @@ body.is-attendance-section #attendance-screen.screen {
   padding: 9px 14px;
   border-radius: 14px;
   color: #FFFFFF;
-  background: var(--surface-tint);
+  background: var(--primary-color-light);
   border: 0;
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
   font-size: 0.92rem;
