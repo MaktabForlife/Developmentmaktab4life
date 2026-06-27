@@ -1,4 +1,4 @@
-/* M4L v69 - Home timetable board and Class Duas redesign. */
+/* M4L v69.1 - Home timetable board refinements. */
 :root {
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)
@@ -26,7 +26,7 @@
   /* ==========================================
     WHITEs
      ========================================== */
-  --surface-app: #fdfffa      /* Off-white page background (prevents eye strain) */
+  --surface-app: #fdfffa;      /* Off-white page background (prevents eye strain) */
   --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
 
   /* ==========================================
@@ -2302,92 +2302,124 @@ body.has-user-band #progress-subjects-screen.student-theme .nav-header {
 }
 
 .m4l-timetable-board {
-  --m4l-timetable-time-column: 64px;
-  --m4l-timetable-day-column: minmax(72px, 1fr);
-  display: grid;
-  grid-template-columns: minmax(var(--m4l-timetable-time-column), 0.74fr) repeat(var(--timetable-day-count, 5), var(--m4l-timetable-day-column));
-  gap: 8px;
+  --m4l-timetable-time-column: clamp(42px, 13vw, 64px);
+  --m4l-timetable-column-gap: clamp(3px, 1.15vw, 8px);
+  --m4l-timetable-row-pad: clamp(10px, 2.8vw, 16px);
+  --m4l-timetable-heading-font-size: clamp(0.56rem, 1.9vw, 0.78rem);
+  --m4l-timetable-subject-font-size: clamp(0.62rem, 2.1vw, 0.86rem);
   width: 100%;
-  min-width: max(100%, calc(var(--m4l-timetable-time-column) + (var(--timetable-day-count, 5) * 72px) + (var(--timetable-day-count, 5) * 8px)));
-  padding: 12px;
-  border: 1px solid rgba(var(--white-rgb), 0.50);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.40), transparent 44%),
-    radial-gradient(circle at bottom right, color-mix(in srgb, var(--banner-color) 58%, transparent), transparent 52%),
-    linear-gradient(135deg, var(--surface-soft), var(--surface-track));
-  box-shadow: inset 0 1px 0 rgba(var(--white-rgb), 0.42);
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 0;
+  padding: 0;
+  color: var(--text-strong);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
 }
 
-@supports not (background: color-mix(in srgb, white 50%, transparent)) {
-  .m4l-timetable-board {
-    background:
-      radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.40), transparent 44%),
-      radial-gradient(circle at bottom right, rgba(205, 180, 219, 0.58), transparent 52%),
-      linear-gradient(135deg, var(--surface-soft), var(--surface-track));
-  }
+.m4l-timetable-row {
+  display: grid;
+  grid-template-columns: minmax(0, var(--m4l-timetable-time-column)) repeat(var(--timetable-day-count, 5), minmax(0, 1fr));
+  column-gap: var(--m4l-timetable-column-gap);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--m4l-timetable-row-pad) 0;
+  border-bottom: 1px solid var(--primary);
 }
 
-.m4l-timetable-pill {
-  min-height: 34px;
+.m4l-timetable-row--head {
+  padding-top: 0;
+}
+
+.m4l-timetable-row:last-child {
+  border-bottom: 0;
+}
+
+.m4l-timetable-heading-pill {
+  min-width: 0;
+  min-height: clamp(26px, 7vw, 34px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 9px;
+  padding: clamp(5px, 1.7vw, 8px) clamp(4px, 1.6vw, 9px);
   color: var(--text-strong);
-  background: var(--surface-track);
-  border: 1px solid rgba(var(--white-rgb), 0.46);
+  background: var(--surface-tint);
+  border: 0;
   border-radius: 999px;
-  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.06);
-  font-size: clamp(0.72rem, 2.8vw, 0.86rem);
+  box-shadow: none;
+  font-size: var(--m4l-timetable-heading-font-size);
   font-weight: 400;
-  line-height: 1.1;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
   text-align: center;
-  white-space: nowrap;
+  text-transform: uppercase;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.m4l-timetable-time-heading,
-.m4l-timetable-time-pill {
+.m4l-timetable-time-label {
+  min-width: 0;
   color: var(--text-strong);
+  font-size: var(--m4l-timetable-heading-font-size);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .m4l-timetable-subject-cell {
-  min-height: 48px;
+  min-width: 0;
   display: grid;
   place-items: center;
-  gap: 5px;
-  padding: 8px 7px;
+  gap: 3px;
+  min-height: clamp(34px, 10vw, 48px);
+  padding: 0 clamp(1px, 0.8vw, 5px);
   color: var(--text-strong);
-  background: rgba(var(--white-rgb), 0.36);
-  border: 1px solid rgba(var(--white-rgb), 0.48);
-  border-radius: 16px;
-  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.05);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   text-align: center;
+  overflow: hidden;
 }
 
 .m4l-timetable-subject-cell--merged {
   grid-column: span var(--timetable-day-count, 5);
-  min-height: 52px;
-  background: var(--surface-chip);
-  border-color: rgba(var(--white-rgb), 0.62);
-  box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.07);
+  min-height: clamp(36px, 10.8vw, 52px);
+  padding: clamp(7px, 2vw, 10px) clamp(8px, 2.6vw, 14px);
+  background: var(--surface-soft);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
 }
 
 .m4l-timetable-subject-cell--empty {
-  opacity: 0.58;
-  background: rgba(var(--white-rgb), 0.18);
-  box-shadow: none;
+  min-height: clamp(22px, 7vw, 34px);
 }
 
 .m4l-timetable-subject {
   width: 100%;
   min-width: 0;
-  color: var(--text-strong); 
-  font-size: clamp(0.72rem, 2.8vw, 0.86rem);
+  max-width: 100%;
+  color: var(--text-strong);
+  font-size: var(--m4l-timetable-subject-font-size);
   font-weight: 400;
-  line-height: 1.15;
+  letter-spacing: 0.02em;
+  line-height: 1.12;
   text-align: center;
+  text-transform: uppercase;
+  white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 button.m4l-timetable-subject {
@@ -2408,53 +2440,44 @@ button.m4l-timetable-subject {
   justify-content: center;
   padding: 8px 12px;
   color: var(--text-strong);
-  background: var(--surface-track);
+  background: var(--surface-tint);
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 400;
   text-align: center;
 }
 
 #student-home .home-swipe-panel--timetable,
 #admin-home .home-swipe-panel--timetable {
-  background:
-    radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.22), transparent 42%),
-    radial-gradient(circle at bottom right, color-mix(in srgb, var(--banner-color) 34%, transparent), transparent 48%),
-    linear-gradient(135deg, rgba(var(--white-rgb), 0.34), rgba(var(--white-rgb), 0.16));
-}
-
-@supports not (background: color-mix(in srgb, white 50%, transparent)) {
-  #student-home .home-swipe-panel--timetable,
-  #admin-home .home-swipe-panel--timetable {
-    background:
-      radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.22), transparent 42%),
-      radial-gradient(circle at bottom right, rgba(205, 180, 219, 0.34), transparent 48%),
-      linear-gradient(135deg, rgba(var(--white-rgb), 0.34), rgba(var(--white-rgb), 0.16));
-  }
+  background: var(--surface-card);
 }
 
 #student-home .timetable-card,
 #admin-home .timetable-card {
   overflow: visible;
-  padding: 12px;
-  background: rgba(var(--white-rgb), 0.44);
-  border: 1px solid rgba(var(--white-rgb), 0.58);
-  border-left: 1px solid rgba(var(--white-rgb), 0.58);
-  border-radius: 24px;
-  box-shadow: 0 14px 30px rgba(var(--black-rgb), 0.11);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  #student-home .timetable-card,
-  #admin-home .timetable-card {
-    background: var(--surface-card);
-  }
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 #student-home .m4l-timetable-scroll,
 #admin-home .m4l-timetable-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+#student-home .zoom-link-button,
+#admin-home .zoom-link-button {
+  background: var(--primary);
 }
 
 .class-duas-card {
@@ -2483,34 +2506,26 @@ button.m4l-timetable-subject {
 
 @media (max-width: 520px) {
   .m4l-timetable-board {
-    --m4l-timetable-time-column: 56px;
-    --m4l-timetable-day-column: minmax(66px, 1fr);
-    gap: 6px;
-    min-width: max(100%, calc(var(--m4l-timetable-time-column) + (var(--timetable-day-count, 5) * 66px) + (var(--timetable-day-count, 5) * 6px)));
-    padding: 9px;
-    border-radius: 20px;
+    --m4l-timetable-time-column: clamp(36px, 12vw, 52px);
+    --m4l-timetable-column-gap: clamp(2px, 0.9vw, 5px);
+    --m4l-timetable-row-pad: clamp(9px, 2.7vw, 13px);
+    --m4l-timetable-heading-font-size: clamp(0.48rem, 1.95vw, 0.68rem);
+    --m4l-timetable-subject-font-size: clamp(0.54rem, 2.15vw, 0.75rem);
   }
 
-  .m4l-timetable-pill {
-    min-height: 30px;
-    padding: 7px 6px;
-    font-size: clamp(0.64rem, 2.9vw, 0.76rem);
+  .m4l-timetable-heading-pill {
+    min-height: 26px;
+    padding-inline: clamp(3px, 1vw, 6px);
   }
 
   .m4l-timetable-subject-cell {
-    min-height: 44px;
-    padding: 7px 5px;
-    border-radius: 14px;
+    min-height: clamp(30px, 9vw, 42px);
+    padding-inline: 1px;
   }
 
   .m4l-timetable-subject-cell--merged {
-    min-height: 48px;
-  }
-
-  #student-home .timetable-card,
-  #admin-home .timetable-card {
-    padding: 9px;
-    border-radius: 20px;
+    min-height: clamp(34px, 10vw, 46px);
+    padding-inline: clamp(6px, 2vw, 10px);
   }
 }
 
