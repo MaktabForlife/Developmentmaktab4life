@@ -1,4 +1,4 @@
-/* M4L v70 - Student Progress frozen header/table refinements. */
+/* M4L v70.1 - Student Progress large-screen grid and static toggle refinements. */
 :root {
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)
@@ -1340,7 +1340,7 @@ body.has-user-band .top-bar button[onclick="logout()"] {
 }
 
 
-/* Student Progress native swipe - V70 */
+/* Student Progress native swipe/grid - V70.1 */
 #progress-subjects-screen.student-theme {
   padding-inline: 12px;
 }
@@ -1473,6 +1473,8 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
   gap: 12px;
   width: 100%;
   min-width: 0;
+  padding-top: 8px;
+  scroll-padding-top: 8px;
   overflow-x: auto;
   overflow-y: visible;
   scroll-snap-type: x mandatory;
@@ -1503,7 +1505,7 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
   max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 168px);
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--surface-soft);
+  background: var(--surface-chip);
   border-radius: 16px;
   padding: 8px 10px;
   scrollbar-width: thin;
@@ -1713,8 +1715,30 @@ body.has-user-band #progress-subjects-screen.student-theme .student-progress-sti
     top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 18px);
   }
 
+  .student-progress-swipe-dots {
+    display: none;
+  }
+
+  .student-progress-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 18px;
+    padding-top: 10px;
+    overflow: visible;
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+
+  .student-progress-module-panel {
+    flex: initial;
+    width: auto;
+    max-width: none;
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+
   .student-progress-task-scroll {
-    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 190px);
+    max-height: none;
   }
 }
 
