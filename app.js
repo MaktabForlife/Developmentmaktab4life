@@ -1,4 +1,4 @@
-/* M4L v54 - Core bootstrap guards for optional feature modules.
+/* M4L v69 - Core bootstrap guards and Home Class Duas card.
    Load before m4l-auth, m4l-shell, and any optional feature modules.
    Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
 const API_BASE = "https://rebootworker.maktab4life.workers.dev";
@@ -414,11 +414,10 @@ function createClassDuasCard(cardId) {
   card.className = "class-duas-card";
   card.setAttribute("aria-label", "Class duas");
 
-const title = document.createElement("h3");
+  const title = document.createElement("h3");
   title.className = "class-duas-card__title";
-  title.textContent = "Duas for Learning";
+  title.textContent = "Class Duas";
 
-   
   const list = document.createElement("div");
   list.className = "class-duas-card__list";
 
