@@ -1,4 +1,4 @@
-/* M4L v71.1 - Admin Progress class progress header + grouped task swipe + Student Progress V70.3 baseline
+/* M4L v71.1b - Admin Progress individual module swipe + class progress grouped task swipe + Student Progress V70.3 baseline
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, and /js/m4l-resources.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -143,6 +143,16 @@ function handleProgressUiClick(event) {
       );
       break;
 
+    case "scroll-admin-popout-module":
+      scrollAdminProgressPopoutModuleToIndex(
+        Number(actionEl.dataset.progressModuleIndex || 0)
+      );
+      break;
+
+    case "save-admin-progress-task":
+      saveAdminProgressTaskChanges(actionEl);
+      break;
+
     case "toggle-progress-pending-popout":
       toggleProgressPendingForAdminPopout(
         actionEl.dataset.studenttaskid || "",
@@ -274,18 +284,8 @@ function setProgressScreensForAdmin() {
 
   const taskStudentsBackButton = document.querySelector("#progress-task-students-screen .small-btn");
   if (taskStudentsBackButton) {
-    taskStudentsBackButton.innerText = "Save and Exit";
-    taskStudentsBackButton.classList.add("save-return-btn");
-    taskStudentsBackButton.removeAttribute("onclick");
-
-    if (taskStudentsBackButton.dataset.m4lAdminProgressSaveBound !== "true") {
-      taskStudentsBackButton.dataset.m4lAdminProgressSaveBound = "true";
-      taskStudentsBackButton.addEventListener("click", () => {
-        if (typeof saveProgressPendingChangesAndReturn === "function") {
-          saveProgressPendingChangesAndReturn();
-        }
-      });
-    }
+    taskStudentsBackButton.classList.remove("save-return-btn", "student-progress-save-btn", "admin-progress-save-button");
+    setBackIconButton(taskStudentsBackButton, "showScreen('progress-report')");
   }
 }
 
@@ -1298,6 +1298,130 @@ let adminProgressDashboardRows = [];
 let adminProgressActiveTaskRows = [];
 let adminProgressPopoutRows = [];
 
+const ADMIN_PROGRESS_DASHBOARD_CACHE_KEY = "m4l_admin_progress_dashboard_v71_2";
+let adminProgressLeaveGuardBound = false;
+
+function hasProgressPendingUpdates() {
+  return Object.keys(progressPendingUpdates || {}).length > 0;
+}
+
+function isAdminProgressScreenId(screenId) {
+  return [
+    "progress-report",
+    "progress-subjects-screen",
+    "progress-tasks-screen",
+    "progress-task-students-screen"
+  ].includes(String(screenId || ""));
+}
+
+function readAdminProgressDashboardCache() {
+  if (typeof window === "undefined" || !window.sessionStorage) return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(ADMIN_PROGRESS_DASHBOARD_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.modules)) return null;
+
+    return {
+      modules: parsed.modules,
+      rows: Array.isArray(parsed.rows) ? parsed.rows : [],
+      savedAt: parsed.savedAt || 0
+    };
+  } catch (err) {
+    console.warn("Could not read admin progress dashboard cache:", err);
+    return null;
+  }
+}
+
+function writeAdminProgressDashboardCache(modules, rows) {
+  if (typeof window === "undefined" || !window.sessionStorage) return false;
+
+  try {
+    window.sessionStorage.setItem(ADMIN_PROGRESS_DASHBOARD_CACHE_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      modules: Array.isArray(modules) ? modules : [],
+      rows: Array.isArray(rows) ? rows : []
+    }));
+    return true;
+  } catch (err) {
+    console.warn("Could not cache admin progress dashboard:", err);
+    return false;
+  }
+}
+
+function clearAdminProgressDashboardCache() {
+  if (typeof window === "undefined" || !window.sessionStorage) return false;
+
+  try {
+    window.sessionStorage.removeItem(ADMIN_PROGRESS_DASHBOARD_CACHE_KEY);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function bindAdminProgressLeaveGuard() {
+  if (adminProgressLeaveGuardBound === true) return true;
+  if (typeof window === "undefined") return false;
+
+  adminProgressLeaveGuardBound = true;
+
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("beforeunload", event => {
+      if (!hasProgressPendingUpdates()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+  }
+
+  if (typeof window.showScreen !== "function" || window.showScreen.__m4lAdminProgressGuard === true) {
+    return true;
+  }
+
+  const originalShowScreen = window.showScreen;
+
+  const guardedShowScreen = function guardedShowScreen(screenId, ...args) {
+    const targetScreenId = String(screenId || "");
+    const activeScreen = document.querySelector(".screen.active");
+    const activeScreenId = activeScreen ? String(activeScreen.id || "") : "";
+
+    const leavingProgress = isAdminProgressScreenId(activeScreenId) &&
+      !isAdminProgressScreenId(targetScreenId) &&
+      hasProgressPendingUpdates();
+
+    if (!leavingProgress) {
+      return originalShowScreen.call(this, screenId, ...args);
+    }
+
+    const shouldSave = window.confirm(
+      "You have unsaved progress changes. Press OK to save before leaving Progress, or Cancel to stay."
+    );
+
+    if (!shouldSave) {
+      return false;
+    }
+
+    saveProgressPendingChanges({ reload: false, alert: false })
+      .then(saved => {
+        if (saved || !hasProgressPendingUpdates()) {
+          originalShowScreen.call(this, screenId, ...args);
+        }
+      })
+      .catch(err => {
+        console.error("Could not save progress before leaving:", err);
+        alert(err.message || "Could not save progress changes.");
+      });
+
+    return false;
+  };
+
+  guardedShowScreen.__m4lAdminProgressGuard = true;
+  window.showScreen = guardedShowScreen;
+  return true;
+}
+
 async function showProgressReport() {
   setProgressScreensForAdmin();
   prepareAdminProgressMonitor();
@@ -1327,6 +1451,7 @@ function prepareAdminProgressMonitor() {
   const screen = document.getElementById("progress-report");
   if (!screen) return;
 
+  bindAdminProgressLeaveGuard();
   screen.classList.add("progress-selector-screen", "admin-progress-screen");
 
   const header = screen.querySelector(".nav-header");
@@ -1351,6 +1476,73 @@ function prepareAdminProgressMonitor() {
   }
 }
 
+async function fetchAdminProgressDashboardData() {
+  const overview = await apiPost("/api/progress/task-detail", {
+    studentid: "ALL",
+    classgroup: "ALL",
+    subjectid: "ALL",
+    taskid: "ALL"
+  }, state.token);
+
+  if (!overview.success) {
+    throw new Error(overview.error || "Could not load class progress.");
+  }
+
+  const overviewRows = Array.isArray(overview.students)
+    ? overview.students.map(normalizeProgressStudentRow)
+    : [];
+
+  let tasks = Array.isArray(overview.tasks)
+    ? overview.tasks.map(normalizeProgressTask)
+    : [];
+
+  const subjects = Array.isArray(overview.subjects)
+    ? overview.subjects.map(normalizeProgressSubject).sort(sortProgressSubjects)
+    : [];
+
+  if (tasks.length === 0 && subjects.length > 0) {
+    const taskResults = await Promise.all(subjects.map(subject => {
+      return apiPost("/api/progress/task-detail", {
+        studentid: "ALL",
+        classgroup: "ALL",
+        subjectid: subject.subjectid || "ALL",
+        taskid: "ALL"
+      }, state.token).catch(err => ({ success: false, error: err.message, tasks: [] }));
+    }));
+
+    tasks = taskResults
+      .filter(result => result && result.success && Array.isArray(result.tasks))
+      .flatMap(result => result.tasks.map(normalizeProgressTask));
+  }
+
+  if (tasks.length === 0 && overviewRows.length > 0) {
+    tasks = buildAdminTaskSummariesFromRows(overviewRows);
+  }
+
+  return {
+    rows: overviewRows,
+    modules: buildAdminProgressModules(tasks, overviewRows)
+  };
+}
+
+async function refreshAdminProgressDashboardCacheInBackground(options = {}) {
+  try {
+    const fresh = await fetchAdminProgressDashboardData();
+    adminProgressDashboardRows = fresh.rows;
+    adminProgressDashboardModules = fresh.modules;
+    writeAdminProgressDashboardCache(fresh.modules, fresh.rows);
+
+    if (options.render === true) {
+      renderAdminProgressDashboard(fresh.modules);
+    }
+
+    return fresh;
+  } catch (err) {
+    console.warn("Could not refresh admin progress dashboard cache:", err);
+    return null;
+  }
+}
+
 async function loadAdminProgressDashboard() {
   const dashboard = getDomElement("admin-progress-dashboard");
   if (!dashboard) {
@@ -1358,57 +1550,24 @@ async function loadAdminProgressDashboard() {
     return;
   }
 
+  const cached = readAdminProgressDashboardCache();
+
+  if (cached && Array.isArray(cached.modules) && cached.modules.length > 0) {
+    adminProgressDashboardModules = cached.modules;
+    adminProgressDashboardRows = cached.rows;
+    renderAdminProgressDashboard(cached.modules);
+    refreshAdminProgressDashboardCacheInBackground({ render: true });
+    return;
+  }
+
   setDomHtml(dashboard, `<p class="helper-text">Loading class progress...</p>`);
 
   try {
-    const overview = await apiPost("/api/progress/task-detail", {
-      studentid: "ALL",
-      classgroup: "ALL",
-      subjectid: "ALL",
-      taskid: "ALL"
-    }, state.token);
-
-    if (!overview.success) {
-      setDomHtml(dashboard, `<p class="error-message">${escapeHtml(overview.error || "Could not load class progress.")}</p>`);
-      return;
-    }
-
-    const overviewRows = Array.isArray(overview.students)
-      ? overview.students.map(normalizeProgressStudentRow)
-      : [];
-
-    adminProgressDashboardRows = overviewRows;
-
-    let tasks = Array.isArray(overview.tasks)
-      ? overview.tasks.map(normalizeProgressTask)
-      : [];
-
-    const subjects = Array.isArray(overview.subjects)
-      ? overview.subjects.map(normalizeProgressSubject).sort(sortProgressSubjects)
-      : [];
-
-    if (tasks.length === 0 && subjects.length > 0) {
-      const taskResults = await Promise.all(subjects.map(subject => {
-        return apiPost("/api/progress/task-detail", {
-          studentid: "ALL",
-          classgroup: "ALL",
-          subjectid: subject.subjectid || "ALL",
-          taskid: "ALL"
-        }, state.token).catch(err => ({ success: false, error: err.message, tasks: [] }));
-      }));
-
-      tasks = taskResults
-        .filter(result => result && result.success && Array.isArray(result.tasks))
-        .flatMap(result => result.tasks.map(normalizeProgressTask));
-    }
-
-    if (tasks.length === 0 && overviewRows.length > 0) {
-      tasks = buildAdminTaskSummariesFromRows(overviewRows);
-    }
-
-    const modules = buildAdminProgressModules(tasks, overviewRows);
-    adminProgressDashboardModules = modules;
-    renderAdminProgressDashboard(modules);
+    const fresh = await fetchAdminProgressDashboardData();
+    adminProgressDashboardRows = fresh.rows;
+    adminProgressDashboardModules = fresh.modules;
+    writeAdminProgressDashboardCache(fresh.modules, fresh.rows);
+    renderAdminProgressDashboard(fresh.modules);
   } catch (err) {
     console.error("Could not load admin progress dashboard:", err);
     setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load class progress.")}</p>`);
@@ -1684,17 +1843,15 @@ function renderAdminProgressCardBars(completedPercent, verifiedPercent) {
     <span class="admin-progress-card-bars">
       <span class="admin-progress-card-bar-row">
         <span class="admin-progress-card-bar-label">Complete</span>
-        <span class="admin-progress-card-track">
+        <span class="admin-progress-card-track" aria-label="Complete progress">
           <span class="admin-progress-card-fill progress-fill-complete" style="width:${completeWidth}%"></span>
         </span>
-        <span class="admin-progress-card-percent">${completeWidth}%</span>
       </span>
       <span class="admin-progress-card-bar-row">
         <span class="admin-progress-card-bar-label">Verify</span>
-        <span class="admin-progress-card-track">
+        <span class="admin-progress-card-track" aria-label="Verify progress">
           <span class="admin-progress-card-fill progress-fill-verified" style="width:${verifiedWidth}%"></span>
         </span>
-        <span class="admin-progress-card-percent">${verifiedWidth}%</span>
       </span>
     </span>
   `;
@@ -2165,6 +2322,15 @@ function renderProgressTaskStudents(rows) {
   }).join("");
 
   const html = `
+    <div class="admin-progress-task-work-header">
+      <h3 class="admin-progress-task-work-title">${escapeHtml(progressState.taskname || "Task")}</h3>
+      <button
+        type="button"
+        class="admin-progress-save-button admin-progress-task-save"
+        data-progress-action="save-admin-progress-task"
+        aria-label="Save class progress changes"
+      >Save</button>
+    </div>
     <div class="admin-progress-task-swipe-shell" data-admin-progress-group-swipe-shell>
       ${renderAdminProgressGroupSwipeDots(groups)}
       <div class="admin-progress-group-swipe-track" data-admin-progress-group-swipe-track aria-label="${escapeForAttribute(progressState.taskname || "Task")} class groups">
@@ -2179,6 +2345,48 @@ function renderProgressTaskStudents(rows) {
   bindAdminProgressGroupSwipeControls();
 }
 
+
+async function saveAdminProgressTaskChanges(button) {
+  const saveButton = button || document.querySelector("#progress-task-students-screen .admin-progress-task-save");
+  const originalText = saveButton ? saveButton.innerText : "Save";
+  const pendingCount = Object.keys(progressPendingUpdates || {}).length;
+
+  if (pendingCount === 0) {
+    if (saveButton) {
+      saveButton.innerText = "Saved";
+      window.setTimeout(() => {
+        saveButton.innerText = originalText;
+      }, 900);
+    }
+    return false;
+  }
+
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.innerText = "Saving...";
+  }
+
+  const saved = await saveProgressPendingChanges({ reload: false, alert: false });
+
+  if (saved) {
+    clearAdminProgressDashboardCache();
+    await loadProgressTaskStudents();
+    refreshAdminProgressDashboardCacheInBackground({ render: false });
+  }
+
+  if (saveButton) {
+    saveButton.disabled = false;
+    saveButton.innerText = saved ? "Saved" : originalText;
+
+    if (saved) {
+      window.setTimeout(() => {
+        saveButton.innerText = originalText;
+      }, 900);
+    }
+  }
+
+  return saved;
+}
 
 function getAdminProgressGroupSwipeTrack() {
   return document.querySelector("#progress-task-students-screen [data-admin-progress-group-swipe-track]");
@@ -2425,13 +2633,13 @@ function ensureAdminProgressStudentPopout() {
       <section class="admin-progress-popout-panel" role="dialog" aria-modal="true" aria-labelledby="admin-progress-popout-title">
         <div class="admin-progress-popout-header">
           <h3 id="admin-progress-popout-title">Student Progress</h3>
-          <button type="button" class="back-icon-btn admin-progress-popout-close" data-progress-action="close-admin-progress-student-popout" aria-label="Close student progress"><span class="back-icon-btn__icon" aria-hidden="true"></span><span class="header-icon-label">Back</span></button>
+          <div class="admin-progress-popout-header-actions">
+            <button type="button" class="admin-progress-save-button admin-progress-popout-save" data-progress-action="save-admin-progress-popout">Save</button>
+            <button type="button" class="back-icon-btn admin-progress-popout-close" data-progress-action="close-admin-progress-student-popout" aria-label="Close student progress"><span class="back-icon-btn__icon" aria-hidden="true"></span><span class="header-icon-label">Back</span></button>
+          </div>
         </div>
         <div id="admin-progress-popout-content" class="admin-progress-popout-content">
           <p class="helper-text">Loading student progress...</p>
-        </div>
-        <div class="admin-progress-popout-actions">
-          <button type="button" class="student-progress-save-btn admin-progress-popout-save" data-progress-action="save-admin-progress-popout">Save</button>
         </div>
       </section>
     </div>
@@ -2521,8 +2729,12 @@ function renderAdminStudentProgressPopout(rows, username) {
     return;
   }
 
-  const html = modules.map(module => `
-    <section class="admin-progress-popout-module" aria-label="${escapeForAttribute(module.modulename || "Module")}">
+  const panelsHtml = modules.map((module, index) => `
+    <section
+      class="admin-progress-popout-module"
+      data-admin-popout-module-panel
+      data-progress-module-index="${index}"
+      aria-label="${escapeForAttribute(module.modulename || "Module")}">
       <div class="admin-progress-popout-module-title">${escapeHtml(module.modulename || "Module")}</div>
       <div class="admin-progress-popout-task-list">
         ${module.rows.sort(sortByModuleThenTask).map(renderAdminStudentProgressPopoutRow).join("")}
@@ -2530,8 +2742,171 @@ function renderAdminStudentProgressPopout(rows, username) {
     </section>
   `).join("");
 
+  const html = `
+    <div class="admin-progress-popout-swipe-shell" data-admin-popout-module-swipe-shell>
+      ${renderAdminProgressPopoutModuleSwipeDots(modules)}
+      <div class="admin-progress-popout-module-track" data-admin-popout-module-swipe-track aria-label="${escapeForAttribute(username || "Student")} progress modules">
+        ${panelsHtml}
+      </div>
+    </div>
+  `;
+
   setDomHtml(content, html);
   bindProgressUiHandlers(content);
+  bindAdminProgressPopoutModuleSwipeControls();
+}
+
+function getAdminProgressPopoutModuleSwipeTrack() {
+  return document.querySelector("#admin-progress-student-popout [data-admin-popout-module-swipe-track]");
+}
+
+function getAdminProgressPopoutModulePanels(track) {
+  const targetTrack = track || getAdminProgressPopoutModuleSwipeTrack();
+
+  if (!targetTrack || !targetTrack.children) {
+    return [];
+  }
+
+  return Array.from(targetTrack.children).filter(child => {
+    return child &&
+      child.matches &&
+      child.matches("[data-admin-popout-module-panel], .admin-progress-popout-module");
+  });
+}
+
+function getAdminProgressPopoutModuleActiveIndex(track) {
+  const targetTrack = track || getAdminProgressPopoutModuleSwipeTrack();
+
+  if (!targetTrack) {
+    return 0;
+  }
+
+  const panels = getAdminProgressPopoutModulePanels(targetTrack);
+
+  if (panels.length <= 1) {
+    return 0;
+  }
+
+  if ((targetTrack.scrollWidth || 0) <= (targetTrack.clientWidth || 0) + 2) {
+    return 0;
+  }
+
+  const firstPanel = panels[0];
+  const secondPanel = panels[1];
+  let step = targetTrack.clientWidth || 1;
+
+  if (firstPanel && secondPanel) {
+    const firstRect = firstPanel.getBoundingClientRect();
+    const secondRect = secondPanel.getBoundingClientRect();
+    const measuredStep = Math.abs(secondRect.left - firstRect.left);
+
+    if (measuredStep > 1) {
+      step = measuredStep;
+    }
+  }
+
+  const index = Math.round((targetTrack.scrollLeft || 0) / step);
+  return Math.max(0, Math.min(panels.length - 1, index));
+}
+
+function updateAdminProgressPopoutModuleSwipeDots() {
+  const popout = document.getElementById("admin-progress-student-popout");
+  const track = getAdminProgressPopoutModuleSwipeTrack();
+
+  if (!popout || !track) {
+    return false;
+  }
+
+  const dots = Array.from(popout.querySelectorAll("[data-admin-popout-module-swipe-dots] [data-progress-module-index]"));
+
+  if (!dots.length) {
+    return false;
+  }
+
+  const activeIndex = getAdminProgressPopoutModuleActiveIndex(track);
+
+  dots.forEach((dot, fallbackIndex) => {
+    const dotIndex = Number(dot.dataset.progressModuleIndex || fallbackIndex || 0);
+    const isActive = dotIndex === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+
+  return true;
+}
+
+function scrollAdminProgressPopoutModuleToIndex(moduleIndex, options = {}) {
+  const track = getAdminProgressPopoutModuleSwipeTrack();
+  const panels = getAdminProgressPopoutModulePanels(track);
+  const index = Number(moduleIndex || 0);
+
+  if (!track || !panels[index]) {
+    return false;
+  }
+
+  panels[index].scrollIntoView({
+    behavior: options.behavior || "smooth",
+    block: "nearest",
+    inline: "start"
+  });
+
+  updateAdminProgressPopoutModuleSwipeDots();
+
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(updateAdminProgressPopoutModuleSwipeDots);
+  } else {
+    window.setTimeout(updateAdminProgressPopoutModuleSwipeDots, 0);
+  }
+
+  return true;
+}
+
+function renderAdminProgressPopoutModuleSwipeDots(modules) {
+  const list = Array.isArray(modules) ? modules : [];
+
+  if (list.length <= 1) {
+    return "";
+  }
+
+  return `
+    <div class="admin-progress-popout-module-dots" data-admin-popout-module-swipe-dots aria-label="Student progress modules">
+      ${list.map((module, index) => `
+        <button
+          type="button"
+          class="admin-progress-popout-module-dot${index === 0 ? " is-active" : ""}"
+          data-progress-action="scroll-admin-popout-module"
+          data-progress-module-index="${index}"
+          aria-label="Show ${escapeForAttribute(module.modulename || `module ${index + 1}`)}"
+          aria-current="${index === 0 ? "true" : "false"}"
+        ></button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function bindAdminProgressPopoutModuleSwipeControls() {
+  const track = getAdminProgressPopoutModuleSwipeTrack();
+
+  if (!track) {
+    return false;
+  }
+
+  if (track.dataset.adminPopoutModuleSwipeBound !== "true") {
+    track.dataset.adminPopoutModuleSwipeBound = "true";
+    let pendingFrame = 0;
+
+    track.addEventListener("scroll", () => {
+      if (pendingFrame) return;
+
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = 0;
+        updateAdminProgressPopoutModuleSwipeDots();
+      });
+    }, { passive: true });
+  }
+
+  window.setTimeout(updateAdminProgressPopoutModuleSwipeDots, 0);
+  return true;
 }
 
 function renderAdminStudentProgressPopoutRow(row) {
@@ -2643,7 +3018,9 @@ async function saveAdminProgressPopoutChanges(button) {
   const saved = await saveProgressPendingChanges({ reload: false, alert: false });
 
   if (saved) {
+    clearAdminProgressDashboardCache();
     await loadProgressTaskStudents();
+    refreshAdminProgressDashboardCacheInBackground({ render: false });
     if (studentid) {
       await openAdminProgressStudentPopout(studentid, username);
     }
