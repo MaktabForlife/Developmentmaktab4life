@@ -414,6 +414,11 @@ function createClassDuasCard(cardId) {
   card.className = "class-duas-card";
   card.setAttribute("aria-label", "Class duas");
 
+const title = document.createElement("h3");
+  title.className = "class-duas-card__title";
+  title.textContent = "Duas for Learning";
+
+   
   const list = document.createElement("div");
   list.className = "class-duas-card__list";
 
@@ -444,7 +449,7 @@ function createClassDuasCard(cardId) {
     item.appendChild(translation);
     list.appendChild(item);
   });
-
+  card.appendChild(title);
   card.appendChild(list);
   return card;
 }
