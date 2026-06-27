@@ -1,432 +1,4965 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Maktab4Life Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- PWA: Admin install settings -->
-  <link rel="stylesheet" href="/styles.css?v=71.1a" />
-  <link rel="manifest" href="/admin-manifest.json" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/admin-favicon-16x16.png" />
-
-</head>
-
-<body>
-  <main class="app-shell">
-
-    <!-- LOGIN / PIN SCREEN -->
-    <section id="auth-screen" class="screen active">
-      <div id="auth-welcome-banner" class="auth-welcome-banner hidden">
-        Ahlan wa Sahlan
-      </div>
-
-      <div class="auth-brand-block">
-        <h2 class="auth-brand-title">Maktabhelper</h2>
-        <img src="/logo.png" alt="Maktab4Life Logo" class="app-logo auth-logo" />
-        <h2 class="auth-brand-title">Reboot Your Maktab</h2>
-        <p id="portal-title" class="auth-login-label">Admin Login</p>
-        <p id="portal-subtitle" class="subtitle auth-user-subtitle">Checking your link...</p>
-      </div>
-
-      <div id="setup-pin-box" class="auth-box hidden">
-        <h2>Create PIN</h2>
-        <ol class="pin-instruction-list">
-          <li>Create a memorable PIN.</li>
-          <li>Login with your PIN.</li>
-          <li>Add the page to your Homescreen.</li>
-        </ol>
-
-        <div class="pin-digit-row" data-pin-group="setup-pin" aria-label="Create 4-digit PIN">
-          <input id="setup-pin-1" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
-          <input id="setup-pin-2" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 2" />
-          <input id="setup-pin-3" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 3" />
-          <input id="setup-pin-4" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="done" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 4" />
-        </div>
-        <input id="setup-pin" type="hidden" />
-
-        <button onclick="submitSetupPin()">Set PIN</button>
-      </div>
-
-      <div id="login-pin-box" class="auth-box hidden">
-        <h2>Enter PIN</h2>
-        <p class="helper-text">Enter your 4-digit PIN to continue.</p>
-
-        <div class="pin-digit-row" data-pin-group="login-pin" aria-label="Enter 4-digit PIN">
-          <input id="login-pin-1" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
-          <input id="login-pin-2" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 2" />
-          <input id="login-pin-3" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 3" />
-          <input id="login-pin-4" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="done" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 4" />
-        </div>
-        <input id="login-pin" type="hidden" />
-      </div>
-
-      <p id="auth-error" class="error-message"></p>
-    </section>
-
-    <!-- ADMIN HOME -->
-    <section id="admin-home" class="screen admin-theme">
-      <div class="home-swipe-shell" data-home-swipe="admin-home">
-        <div class="home-swipe-dots" data-home-swipe-dots aria-label="Home panels">
-          <button type="button" class="home-swipe-dot is-active" data-home-panel-index="0" aria-label="Show timetable panel" aria-current="true"></button>
-          <button type="button" class="home-swipe-dot" data-home-panel-index="1" aria-label="Show class duas panel" aria-current="false"></button>
-        </div>
-        <div
-          id="admin-home-panel"
-          class="student-home-panel admin-home-panel home-swipe-track"
-          data-home-swipe-track
-          aria-label="Admin Home panels"
-        >
-          <section class="home-swipe-panel home-swipe-panel--timetable" data-home-swipe-panel data-home-panel-index="0" aria-label="Zoom and timetable">
-            <button
-              id="admin-home-zoom-link-btn"
-              type="button"
-              class="zoom-link-button"
-              data-timetable-action="open-zoom"
-            >
-              <span class="zoom-link-button__icon" aria-hidden="true"></span>
-              <span class="zoom-link-button__text">Join Zoom Class</span>
-            </button>
-
-            <section class="timetable-card">
-              <div class="timetable-card-header">
-                <h3>Timetable</h3>
-                <button
-                  type="button"
-                  class="small-btn manual-refresh-btn"
-                  title="Refresh timetable"
-                  aria-label="Refresh timetable"
-                  onclick="refreshAdminHomeTimetable(this)"
-                >
-                  <span class="manual-refresh-btn__icon" aria-hidden="true"></span>
-                  <span class="visually-hidden">Refresh timetable</span>
-                </button>
-              </div>
-
-              <div id="admin-home-timetable-content">
-                <p class="helper-text">Loading timetable...</p>
-              </div>
-            </section>
-          </section>
-
-          <section
-            id="admin-home-duas-panel"
-            class="home-swipe-panel home-swipe-panel--duas"
-            data-home-swipe-panel
-            data-home-panel-index="1"
-            aria-label="Class duas"
-          >
-            <p class="helper-text">Loading class duas...</p>
-          </section>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- ADMIN ACADEMICS MENU -->
-    <section id="admin-academics" class="screen admin-theme">
-      <div class="nav-header">
-        <h2>Admin</h2>
-      </div>
-
-      <div class="list-stack">
-        <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
-        <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
-        <button class="list-btn" onclick="showAdminResources()">Library</button>
-        <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
-        <button class="list-btn" onclick="showAdminTimetableAdmin()">Timetable</button>
-        <button class="list-btn" onclick="showAdminZoomLinkAdmin()">Zoom Link</button>
-      </div>
-    </section>
-
-    <!-- SHARED LIBRARY SCREEN -->
-    <section id="student-resources-subjects" class="screen admin-theme">
-      <div id="student-resource-subject-list" class="list-stack">
-        <p class="helper-text">Loading resources...</p>
-      </div>
-    </section>
-    <!-- PROGRESS REPORT -->
-<section id="progress-report" class="screen admin-theme admin-progress-screen">
-  <div class="nav-header admin-progress-landing-header">
-    <h2>CLASS PROGRESS</h2>
-  </div>
-
-  <div id="admin-progress-dashboard" class="admin-progress-dashboard">
-    <p class="helper-text">Loading progress...</p>
-  </div>
-</section>
-
-<section id="progress-subjects-screen" class="screen admin-theme">
-  <div class="nav-header">
-    <h2 id="progress-subjects-title">Modules</h2>
-    <button class="small-btn" onclick="showScreen('progress-report')">Back</button>
-  </div>
-
-  <div id="progress-subjects-list" class="list-stack"></div>
-</section>
-
-<section id="progress-tasks-screen" class="screen admin-theme">
-  <div class="nav-header">
-    <h2 id="progress-tasks-title">Tasks</h2>
-    <button class="small-btn" onclick="showScreen('progress-subjects-screen')">Back</button>
-  </div>
-
-  <div id="progress-tasks-list" class="list-stack"></div>
-</section>
-
-<section id="progress-task-students-screen" class="screen admin-theme">
-  <div class="nav-header">
-    <h2 id="progress-task-students-title">Task</h2>
-    <button class="small-btn" onclick="showScreen('progress-tasks-screen')">Back</button>
-  </div>
-
-  <div id="progress-task-students-list" class="list-stack"></div>
-</section>
-
-    
-
-
-
-
-    <!-- MANAGE STUDENTS -->
-    <section id="manage-students-screen" class="screen admin-theme student-admin-screen">
-      <div class="student-admin-modern-header">
-        <h2>Manage Students</h2>
-        <button class="small-btn" onclick="showScreen('admin-academics')">Back</button>
-      </div>
-
-      <div id="manage-students-content">
-        <p class="helper-text">Loading student management...</p>
-      </div>
-    </section>
-
-    <section id="manage-students-result-screen" class="screen admin-theme student-admin-screen">
-      <div class="student-admin-modern-header">
-        <h2>Student Link</h2>
-        <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-      </div>
-
-      <div id="manage-students-result-content">
-        <p class="helper-text">Loading student link...</p>
-      </div>
-    </section>
-
-    <section id="manage-student-edit-screen" class="screen admin-theme student-admin-screen">
-      <div class="student-admin-modern-header">
-        <h2>Edit Student</h2>
-        <button class="small-btn" onclick="backToManagedStudentList()">Back</button>
-      </div>
-
-      <div id="manage-student-edit-content">
-        <p class="helper-text">Loading student...</p>
-      </div>
-    </section>
-    
-    <section id="subjects-screen" class="screen admin-theme">
-         <div class="nav-header">
-            <h2>Subjects</h2>
-    <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-  </div>
-
-  <div class="dashboard-section subject-panel">
-       <h3>Add Subjects</h3>
-
-        <div id="subject-add-list" class="subject-add-list"></div>
-
-       <button id="submit-subjects-btn" class="save-btn hidden" onclick="submitPendingSubjects()">
-      Submit Subjects
-    </button>
-
-    <p id="subject-add-message" class="helper-text"></p>
-  </div>
-
-  <div class="dashboard-section subject-panel">
-    <h3>Modify Subject</h3>
-
-    <select id="modify-subject-select" onchange="selectSubjectToModify()">
-      <option value="">Select subject...</option>
-    </select>
-
-   <div id="modify-subject-box" class="hidden">
-  <input id="modify-subject-name" type="text" placeholder="Subject name" />
-
-  <div class="status-action-row">
-    <div id="selected-subject-status" class="status-display">
-      STATUS: -
-    </div>
-
-    <button
-      id="toggle-subject-status-btn"
-      class="status-toggle-btn"
-      onclick="toggleSubjectStatusLocal()"
-    >
-      Change Status
-    </button>
-  </div>
-
-  <button class="save-btn" onclick="saveSubjectChanges()">
-    Save These Changes
-  </button>
-</div>
-  </div>
-</section>
-
-<section id="teacher-student-tasks" class="screen admin-theme">
-  <div class="nav-header">
-    <h2 id="teacher-student-tasks-title">Student Tasks</h2>
-    <button class="small-btn" onclick="showScreen('progress-report')">Back</button>
-  </div>
-
-  <div id="teacher-student-task-list" class="list-stack">
-    <p class="helper-text">Loading student tasks...</p>
-  </div>
-</section>
-    <!-- ADMIN ATTENDANCE -->
-    <section id="attendance-screen" class="screen admin-theme">
-      <div
-        class="attendance-panel-dots"
-        data-attendance-swipe-dots
-        aria-label="Attendance panels"
-      >
-        <button
-          type="button"
-          class="attendance-panel-dot is-active"
-          data-attendance-panel-index="0"
-          aria-label="Show Register"
-          aria-current="true"
-        ></button>
-        <button
-          type="button"
-          class="attendance-panel-dot"
-          data-attendance-panel-index="1"
-          aria-label="Show Records"
-          aria-current="false"
-        ></button>
-        <button
-          type="button"
-          class="attendance-panel-dot"
-          data-attendance-panel-index="2"
-          aria-label="Show Stats"
-          aria-current="false"
-        ></button>
-      </div>
-
-      <div class="attendance-swipe-track" data-attendance-swipe-track>
-        <section
-          id="attendance-register-panel"
-          class="attendance-swipe-panel"
-          aria-label="Register"
-        >
-          <div id="attendance-register-content">
-            <p class="helper-text">Loading attendance...</p>
-          </div>
-        </section>
-
-        <section
-          id="attendance-report-panel"
-          class="attendance-swipe-panel"
-          aria-label="Attendance Records"
-        >
-          <div id="attendance-report-content">
-            <p class="helper-text">Loading attendance...</p>
-          </div>
-        </section>
-
-        <section
-          id="attendance-stats-panel"
-          class="attendance-swipe-panel"
-          aria-label="Attendance Stats"
-        >
-          <div id="attendance-stats-content">
-            <p class="helper-text">Loading statistics...</p>
-          </div>
-        </section>
-      </div>
-    </section>
-
-
-    <!-- ADMIN TIMETABLE -->
-    <section id="admin-timetable-screen" class="screen admin-theme">
-      <div class="nav-header">
-        <h2>Timetable</h2>
-        <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-      </div>
-
-      <div class="timetable-card">
-        <div id="admin-timetable-content">
-          <p class="helper-text">Loading timetable...</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="admin-timetable-admin-screen" class="screen admin-theme">
-      <div class="nav-header">
-        <h2>Timetable / Zoom Link</h2>
-        <button class="small-btn" onclick="showScreen('admin-academics')">Back</button>
-      </div>
-
-      <div class="dashboard-section timetable-admin-form">
-        <h3>Global Zoom Link</h3>
-        <p class="helper-text">This link is stored in the TimeTable tab, row 2, ZoomLink column.</p>
-        <input id="admin-global-zoom-link" type="url" inputmode="url" placeholder="https://..." />
-        <button type="button" class="save-btn" onclick="saveAdminTimetableZoomLink(this)">
-          Save Zoom Link
-        </button>
-        <p id="admin-timetable-message" class="helper-text timetable-status-message"></p>
-      </div>
-
-      <div class="timetable-card">
-        <h3>Timetable Preview</h3>
-        <div id="admin-timetable-admin-preview">
-          <p class="helper-text">Loading timetable...</p>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- PDF VIEWER -->
-    <section id="pdf-viewer-screen" class="screen admin-theme">
-      <div class="nav-header pdf-viewer-header">
-        <h2 id="pdf-viewer-title">PDF Viewer</h2>
-        <div class="pdf-viewer-actions">
-          <button class="small-btn pdf-direct-btn" onclick="openCurrentPdfDirect()">Open</button>
-          <button class="small-btn" onclick="closePdfViewer()">Back</button>
-        </div>
-      </div>
-
-      <iframe
-        id="pdf-viewer-frame"
-        class="pdf-viewer-frame"
-        title="PDF Viewer"
-      ></iframe>
-    </section>
-
-    <!-- PLACEHOLDER SCREEN -->
-    <section id="placeholder-screen" class="screen">
-      <div class="nav-header">
-        <h2 id="placeholder-title">Screen</h2>
-        <button class="small-btn home-icon-btn" onclick="goHome()" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-      </div>
-
-      <div class="dashboard-section">
-        <p class="helper-text">This screen will be connected next.</p>
-      </div>
-    </section>
-
-    <nav id="bottom-nav" class="bottom-nav hidden" aria-label="Primary navigation"></nav>
-
-  </main>
-<script src="/js/m4l-dom.js?v=11"></script>
-<script src="/app.js?v=69"></script>
-<script src="/js/m4l-auth.js?v=55"></script>
-<script src="/js/m4l-shell.js?v=69"></script>
-<script src="/js/m4l-attendance.js?v=69"></script>
-<script src="/js/m4l-admin-academics.js?v=55"></script>
-<script src="/js/m4l-timetable.js?v=69.1"></script>
-<script src="/js/m4l-resources.js?v=69"></script>
-<script src="/js/m4l-progress.js?v=71.1a"></script>
-<script src="/js/m4l-manage-students.js?v=55"></script>
-</body>
-</html>
+/* M4L v71.1 - Admin Progress class progress header + grouped task swipe + Student Progress V70.3 baseline. */
+:root {
+  /* ==========================================
+     BRAND PALETTE (Sage & Lavender)
+     ========================================== */
+
+
+  /* ==========================================
+     SAGE PALETTE
+     ========================================== */
+    --primary: #A8B992;          /* SAGE DUST  - Core brand identifier */
+    --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
+    --primary-light: color-mix(in srgb, var(--primary) 80%, white 35%);
+    --primary-lighter: color-mix(in srgb, var(--primary) 80%, white 50%);
+     -primary-lightest: color-mix(in srgb, var(--primary) 80%, white 70%);
+
+    --surface-soft: #F0F4EC;     /* Light pastel sage for backgrounds */
+    --surface-tint: #DFE7D7;     /* Mid-tone sage tint for disabled fields/borders */
+    --surface-video:#3B472A;    /* Deep earthy olive-black  */
+
+  /* ==========================================
+     LAVENDER PALETTE
+     ========================================== */
+  --surface-chip: #F4EEF6;     /* Ultra-light lavender for surfaces */
+  --surface-track: #DBBCDF;    /* Mid-lavender for pills  */
+   --banner-color: #CDB4DB;     /* Dusty Lavender - Soft contrast for headers/banners */
+  --surface-banner: #BCBBC2;    /* lavender banner */
+  --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
+
+  /* ==========================================
+    WHITEs
+     ========================================== */
+  --surface-app: #fdfffa;      /* Off-white page background (prevents eye strain) */
+  --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
+
+  /* ==========================================
+     TEXT (Organic Typography Hierarchy)
+     ========================================== */
+  --text: #3B472A;             /* Earthy dark sage - standard body copy reading color */
+  --text-strong: #222B17;      /* Rich deep forest - crisp visibility for H1/H2 headings */
+  --text-muted: #5E6D49;       /* Medium sage-gray for secondary label hints */
+  --text-subtle: #7A8965;      /* Softer tone for captions, dates, and metadata */
+  --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
+
+  /* Status */
+  --success: #32cd32;
+  --success-bg: #eaf8ed;
+  --danger: #c01832;
+  --danger-bg: #fff0f1;
+  --error: #8b0000;
+  --complete: #32cd32;
+  --verified: #ffd700;
+  --disabled: #d3d3d3;
+
+  /* Utility */
+  --black-rgb: 0, 0, 0;
+  --white-rgb: 255, 255, 255;
+  --shadow: rgba(var(--black-rgb), 0.14);
+
+  --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-heading: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Responsive primary navigation */
+  --bottom-nav-height: 76px;
+  --bottom-nav-safe-area: env(safe-area-inset-bottom, 0px);
+  --nav-rail-width: 92px;
+  --top-nav-height: 70px;
+  --user-band-height: 58px;
+  --user-band-safe-area-top: env(safe-area-inset-top, 0px);
+  --swipe-dot-band-gap: 18px;
+  --swipe-dot-bar-height: 24px;
+  --attendance-panel-visible-gap: 10px;
+  --attendance-panel-min-width: 340px;
+  --icon-size: 24px;
+  --icon-size-small: 20px;
+  --icon-size-large: 34px;
+  --task-status-icon-size: 30px;
+  --status-muted: #9a9a9a;
+}
+
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-family: var(--font-main);
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 520px;
+  min-height: calc(100vh - 20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  background: var(--surface-app);
+  border-radius: 18px;
+  box-shadow: 0 8px 18px var(--shadow);
+  padding: 18px;
+  text-align: center;
+}
+
+.screen.active {
+  display: block;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  margin-top: 0;
+  color: var(--primary);
+}
+
+
+.pin-digit-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin: 10px 0 14px;
+}
+
+.pin-digit-row .pin-digit {
+  flex: 0 1 64px;
+  width: 64px;
+  max-width: 64px;
+  min-width: 0;
+  height: 64px;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  caret-color: var(--primary);
+  -webkit-text-security: disc;
+}
+
+.pin-digit-row .pin-digit:focus {
+  outline: 2px solid rgba(var(--primary-rgb), 0.30);
+  outline-offset: 2px;
+}
+
+@media (max-width: 360px) {
+  .pin-digit-row {
+    gap: 7px;
+  }
+
+  .pin-digit-row .pin-digit {
+    flex-basis: 56px;
+    width: 56px;
+    max-width: 56px;
+    height: 56px;
+    font-size: 1.45rem;
+  }
+}
+
+
+.app-logo {
+  width: 38vw;
+  max-width: 200px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+  margin: 0 auto 15px;
+  display: block;
+    background-color: transparent;
+
+}
+
+
+.subtitle,
+.helper-text,
+.mini-text {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.auth-box {
+  background: var(--surface-card);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 18px;
+  border: 1px solid rgba(var(--primary-rgb), 0.25);
+}
+
+.hidden {
+  display: none;
+}
+
+input:not([type="radio"]):not([type="checkbox"]),
+select {
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  border: 1px solid var(--primary);
+  font-size: 1rem;
+  color: var(--primary);
+  margin: 10px 0 14px;
+  background: var(--surface-soft);
+}
+
+#modify-subject-select {
+  min-height: 64px;
+  padding: 18px;
+  font-size: 1.1rem;
+}
+
+.login-heading {
+  display: block;
+  margin: 8px 0 6px;
+  color: var(--primary);
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.login-welcome {
+  display: block;
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+
+.auth-welcome-banner {
+  margin: -4px -4px 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--banner-color);
+  color: var(--text-strong);
+  font-family: var(--font-heading);
+  font-size: clamp(1.15rem, 5vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.auth-brand-block {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.auth-brand-title {
+  margin: 0;
+  color: var(--primary);
+  font-size: clamp(1.35rem, 6vw, 1.8rem);
+  line-height: 1.15;
+}
+
+.auth-brand-block .auth-brand-title:first-of-type {
+  color: var(--text-muted);
+}
+
+.auth-logo {
+  width: min(42vw, 170px);
+  max-width: 170px;
+  margin: 2px auto 4px;
+}
+
+.auth-login-label {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.auth-user-subtitle {
+  margin: 3px 0 0;
+}
+
+.auth-user-subtitle:empty {
+  display: none;
+}
+
+.pin-instruction-list {
+  max-width: 330px;
+  margin: 0 auto 14px;
+  padding-left: 1.35rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.pin-instruction-list li + li {
+  margin-top: 6px;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 1rem;
+  font-family: var(--font-main);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  background: var(--surface-tint);
+  box-shadow: 0 4px 8px rgba(var(--black-rgb), 0.16);
+  width: 100%;
+  min-height: 48px;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+
+.small-btn {
+  width: auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shared icon system: icons are masks, with no coded backgrounds by default. */
+.app-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: inline-block;
+  flex: 0 0 auto;
+  color: currentColor;
+  background: currentColor;
+  -webkit-mask: var(--app-icon-url) center / contain no-repeat;
+  mask: var(--app-icon-url) center / contain no-repeat;
+}
+
+.app-icon-small {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+.app-icon-large {
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
+}
+
+.icon-action-btn,
+.home-icon-btn,
+.back-icon-btn,
+.manual-refresh-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.icon-action-btn-large,
+.home-icon-btn,
+.back-icon-btn {
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  min-height: 52px;
+}
+
+.home-icon-btn,
+.back-icon-btn {
+  width: 58px;
+  min-width: 58px;
+  min-height: 58px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.header-icon-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.home-icon-btn__icon,
+.home-text-action-btn__icon {
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
+  display: inline-block;
+  flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask: url('/icons/home.svg') center / contain no-repeat;
+  mask: url('/icons/home.svg') center / contain no-repeat;
+}
+
+.home-text-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .icon-action-btn:hover,
+  .home-icon-btn:hover,
+  .back-icon-btn:hover,
+  .manual-refresh-btn:hover:not(:disabled) {
+    opacity: 0.78;
+    transform: translateY(-1px);
+    box-shadow: none;
+  }
+}
+
+/* Permanent authenticated user band */
+.app-user-band {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 110;
+  width: 100%;
+  max-width: none;
+  min-height: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  padding: calc(7px + var(--user-band-safe-area-top)) max(14px, env(safe-area-inset-left, 0px)) 7px max(14px, env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--banner-color);
+  color: #FFFFFF;
+  box-shadow: 0 5px 16px rgba(var(--black-rgb), 0.18);
+  transform: translateZ(0);
+}
+
+.app-user-band.hidden {
+  display: none;
+}
+
+.app-user-band__identity {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.app-user-band__name {
+  margin: 0;
+  color: #FFFFFF;
+  font-size: clamp(1.08rem, 4.4vw, 1.55rem);
+  line-height: 1.05;
+}
+
+.app-user-band__level {
+  margin: 0;
+  color: rgba(var(--white-rgb), 0.86);
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.app-user-band__logout {
+  width: 58px;
+  min-width: 58px;
+  height: auto;
+  min-height: 48px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #FFFFFF;
+}
+
+.app-user-band__logout-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.app-user-band .icon-action-btn,
+.app-user-band .manual-refresh-btn,
+.app-user-band .home-icon-btn,
+.app-user-band .back-icon-btn,
+.app-user-band button {
+  color: #FFFFFF;
+}
+
+body.has-user-band .app-shell {
+  padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 10px);
+}
+
+body.has-user-band .top-bar button[onclick="logout()"] {
+  display: none;
+}
+
+.top-bar,
+.nav-header {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border-bottom: 2px solid rgba(var(--black-rgb), 0.18);
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+
+.top-bar h1,
+.top-bar h2,
+.nav-header h1,
+.nav-header h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.home-card {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  text-align: left;
+  padding: 18px;
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 0;
+  width: 36px;
+  height: 36px;
+  color: var(--primary);
+  font-family: var(--font-main);
+  font-weight: bold;
+}
+
+.list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-btn {
+  text-align: left;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  flex-shrink: 0;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.dashboard-section {
+  background: var(--surface-card);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.task-card {
+   background: var(--surface-soft);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: left;
+  border-left: 6px solid var(--primary);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  margin-bottom: 10px;
+}
+
+.admin-task-card {
+  border-left-color: var(--primary);
+}
+
+.task-title {
+  font-weight: bold;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.task-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+
+.status-pill {
+  display: inline-block;
+
+  margin-top: 10px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: var(--surface-chip);
+  color: var(--text-strong);
+}
+
+.error-message {
+  color: var(--error);
+  font-weight: bold;
+  min-height: 20px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-card {
+  background: var(--surface-card);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+.subject-panel h3 {
+  margin-bottom: 14px;
+}
+
+.subject-add-row {
+  display: grid;
+  grid-template-columns: 1fr 52px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.subject-add-row input {
+  margin: 0;
+}
+
+.enter-btn {
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 14px;
+  font-size: 1.4rem;
+  font-family: var(--font-main);
+}
+
+.pending-subject-chip {
+  background: var(--surface-chip);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-subject-chip button {
+  width: auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  margin-left: 8px;
+}
+
+
+#modify-subject-box {
+  margin-top: 12px;
+}
+
+.status-action-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.status-display {
+  background: var(--surface-chip);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: bold;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.status-toggle-btn {
+  width: auto;
+  min-width: 130px;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 420px) {
+  .status-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .status-toggle-btn {
+    width: 100%;
+  }
+}
+
+.subject-heading {
+  background: var(--primary);
+  color: var(--text-inverse);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+  text-align: left;
+  margin-top: 12px;
+}
+
+
+.progress-bar-wrap {
+  background: var(--surface-track);
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+
+.task-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task-status-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.clickable-card {
+  cursor: pointer;
+}
+
+.mini-progress-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mini-progress-box {
+  background: var(--surface-chip);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+
+.mini-progress-number {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+
+.progress-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.progress-pill {
+  background: var(--surface-chip);
+  color: var(--primary);
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+
+.status-action {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+
+.save-btn {
+  margin-top: 16px;
+}
+
+.progress-list-button {
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  align-items: center;
+  text-align: left;
+  gap: 14px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.progress-list-title {
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+  font-size: 1.1rem;
+}
+
+.progress-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progress-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar-label {
+  width: 68px;
+  font-size: 0.78rem;
+  color: var(--primary);
+  opacity: 0.95;
+  text-align: right;
+}
+
+.progress-track {
+  flex: 1;
+  height: 14px;
+  background: var(--surface-track);
+  border: 1px solid rgba(var(--primary-rgb), 0.18);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+
+.student-status-row {
+  background: var(--surface-card);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.student-status-name {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+
+.status-tick {
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.status-tick-complete {
+  color: var(--complete);
+}
+
+.status-tick-verified {
+  color: var(--verified);
+}
+
+
+.task-status-heading-row {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0 12px 2px;
+  margin: 0 0 4px;
+}
+
+.task-status-heading-row .student-status-name {
+  min-height: 1px;
+}
+
+.task-status-heading {
+  min-height: 26px;
+  color: var(--primary);
+  cursor: default;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.task-status-control {
+  min-height: 44px;
+  color: var(--primary);
+}
+
+.task-status-control.is-view-only {
+  cursor: default;
+}
+
+.task-status-control.is-muted-status,
+.task-status-heading.is-muted-status {
+  color: var(--status-muted);
+}
+
+.task-status-icon {
+  width: var(--task-status-icon-size);
+  height: var(--task-status-icon-size);
+  display: inline-block;
+  flex: 0 0 auto;
+  background: currentColor;
+  color: var(--primary);
+  -webkit-mask: var(--task-status-icon-url) center / contain no-repeat;
+  mask: var(--task-status-icon-url) center / contain no-repeat;
+}
+
+.task-status-icon--complete {
+  --task-status-icon-url: url('/icons/tocomplete.svg');
+}
+
+.task-status-icon--verify {
+  --task-status-icon-url: url('/icons/toverify.svg');
+}
+
+.task-status-icon--muted {
+  color: var(--status-muted);
+  opacity: 0.78;
+}
+
+.group-heading {
+  background: var(--primary);
+  color: var(--text-inverse);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  font-family: var(--font-heading);
+  margin: 15px 0 8px;
+}
+
+@media (max-width: 700px) {
+  .progress-list-button {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-bar-label {
+    width: 60px;
+    font-size: 0.74rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .student-status-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    align-items: center;
+    text-align: left;
+    padding: 10px;
+  }
+
+  .student-status-name {
+    flex: 1 0 110px;
+    min-width: 110px;
+    text-align: left;
+    font-size: 0.95rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .status-action {
+    flex: 0 0 82px;
+    width: 82px;
+    min-width: 82px;
+    min-height: 44px;
+    font-size: 0.68rem;
+    line-height: 1.05;
+    white-space: normal;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .status-tick {
+    font-size: 1.6rem;
+  }
+
+  .task-status-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .task-status-heading {
+    font-size: 0.72rem;
+  }
+
+  .task-status-heading-row {
+    padding-block: 0;
+    margin-bottom: 2px;
+  }
+
+  .task-status-heading-row .status-action {
+    min-height: 24px;
+  }
+}
+
+@media (min-width: 600px) {
+  .card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.progress-button-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.progress-drill-button {
+  width: 100%;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  background: var(--surface-card);
+  border-radius: 18px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--primary);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.progress-drill-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--primary-rgb), 0.26);
+}
+
+.progress-button-title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.dual-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.progress-line {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-label {
+  font-size: 0.78rem;
+  opacity: 0.82;
+}
+
+.progress-track {
+  display: block;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--disabled);
+}
+
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.progress-fill-complete {
+  background: var(--complete);
+}
+
+.progress-fill-verified {
+  background: var(--verified);
+}
+
+.progress-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.progress-group-block {
+  margin-top: 18px;
+}
+
+.progress-group-block h4 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.progress-student-list {
+  display: grid;
+  gap: 10px;
+}
+
+.progress-student-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  background: var(--surface-card);
+  color: var(--primary);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.progress-student-name {
+  font-weight: 650;
+}
+
+.status-toggle {
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--surface-card);
+  color: var(--primary);
+}
+
+.status-toggle.is-complete {
+  color: var(--complete);
+  border-color: var(--complete);
+}
+
+.status-toggle.is-verified {
+  color: var(--verified);
+  border-color: var(--verified);
+}
+
+.status-toggle.is-off {
+  color: var(--disabled);
+  border-color: var(--disabled);
+}
+
+.save-progress-button {
+  margin-top: 20px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .progress-student-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    align-items: center;
+    text-align: left;
+    padding: 10px;
+  }
+
+  .progress-student-name {
+    flex: 1 0 110px;
+    min-width: 110px;
+    text-align: left;
+    font-size: 0.95rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .status-toggle {
+    flex: 0 0 82px;
+    width: 82px;
+    min-width: 82px;
+    min-height: 44px;
+    padding: 5px 4px;
+    font-size: 0.68rem;
+    line-height: 1.05;
+    white-space: normal;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+
+
+/* Admin Progress native snap shelves - V71.1 */
+#progress-report.admin-progress-screen,
+#progress-task-students-screen.admin-theme {
+  text-align: left;
+}
+
+.admin-progress-landing-header {
+  justify-content: center;
+  text-align: center;
+  border-bottom: 3px solid var(--primary);
+}
+
+.admin-progress-landing-header h2 {
+  flex: 0 1 auto;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1.28rem, 5vw, 1.85rem);
+  line-height: 1.15;
+  letter-spacing: 0.08em;
+}
+
+.admin-progress-dashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-progress-module-shelf {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.admin-progress-module-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-progress-module-heading h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1.02rem;
+  line-height: 1.2;
+}
+
+.admin-progress-module-count {
+  flex: 0 0 auto;
+  color: var(--text-subtle);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-progress-task-rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 2px;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 8px;
+}
+
+.admin-progress-task-rail::-webkit-scrollbar,
+.admin-progress-group-swipe-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.admin-progress-task-rail::-webkit-scrollbar-track,
+.admin-progress-group-swipe-track::-webkit-scrollbar-track {
+  background: var(--surface-chip);
+  border-radius: 999px;
+}
+
+.admin-progress-task-rail::-webkit-scrollbar-thumb,
+.admin-progress-group-swipe-track::-webkit-scrollbar-thumb {
+  background: var(--surface-track);
+  border-radius: 999px;
+}
+
+.admin-progress-task-card {
+  flex: 0 0 min(82vw, 300px);
+  width: min(82vw, 300px);
+  scroll-snap-align: start;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 166px;
+  padding: 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  background: var(--surface-chip);
+  color: var(--text);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  text-align: left;
+  white-space: normal;
+}
+
+.admin-progress-task-card-title {
+  color: var(--text-muted);
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-task-card-label {
+  color: var(--text-subtle);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-progress-card-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-progress-card-bar-row {
+  display: grid;
+  grid-template-columns: 60px minmax(82px, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-progress-card-bar-label,
+.admin-progress-card-percent {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-progress-card-percent {
+  text-align: right;
+}
+
+.admin-progress-card-track {
+  display: block;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-track);
+}
+
+.admin-progress-card-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.admin-progress-task-class-list {
+  display: block;
+}
+
+.admin-progress-task-swipe-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-progress-group-swipe-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 24px;
+}
+
+.admin-progress-group-swipe-dot {
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  min-height: 9px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--surface-track);
+  box-shadow: none;
+  opacity: 0.75;
+}
+
+.admin-progress-group-swipe-dot.is-active {
+  width: 22px;
+  background: var(--primary);
+  opacity: 1;
+}
+
+.admin-progress-group-swipe-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 2px;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 10px;
+}
+
+.admin-progress-group-container {
+  flex: 0 0 min(88vw, 430px);
+  width: min(88vw, 430px);
+  scroll-snap-align: start;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.admin-progress-group-title {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.admin-progress-group-list {
+  display: grid;
+  gap: 9px;
+}
+
+.admin-progress-student-row,
+.admin-progress-popout-task-row {
+  margin-bottom: 0;
+  background: var(--surface-chip);
+  border-color: rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-student-name-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font-weight: 800;
+  text-align: left;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-status-control {
+  color: var(--primary);
+}
+
+.admin-progress-complete-control {
+  color: var(--disabled);
+}
+
+.admin-progress-verify-control {
+  color: var(--primary);
+}
+
+.admin-progress-status-control .task-status-icon,
+.admin-progress-status-control .status-tick {
+  color: currentColor;
+}
+
+.admin-progress-complete-control .status-tick-complete {
+  color: currentColor;
+}
+
+.admin-progress-verify-control .status-tick-verified {
+  color: currentColor;
+}
+
+.admin-progress-student-popout {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+}
+
+.admin-progress-student-popout.hidden {
+  display: none;
+}
+
+.admin-progress-popout-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--black-rgb), 0.34);
+}
+
+.admin-progress-popout-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--surface-app);
+  box-shadow: 0 18px 46px rgba(var(--black-rgb), 0.26);
+}
+
+.admin-progress-popout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 3px solid var(--primary);
+  padding-bottom: 10px;
+}
+
+.admin-progress-popout-header h3 {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.admin-progress-popout-close {
+  color: var(--primary);
+}
+
+.admin-progress-popout-content {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-progress-popout-module {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-popout-module-title {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.admin-progress-popout-task-list {
+  display: grid;
+  gap: 9px;
+}
+
+.admin-progress-popout-task-name {
+  color: var(--text-muted);
+}
+
+.admin-progress-popout-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.admin-progress-popout-save {
+  max-width: 220px;
+}
+
+@media (min-width: 760px) {
+  .admin-progress-task-card {
+    flex-basis: 300px;
+  }
+
+  .admin-progress-dashboard {
+    gap: 20px;
+  }
+
+  .admin-progress-group-container {
+    flex-basis: min(430px, 42vw);
+  }
+
+  .admin-progress-popout-panel {
+    margin-left: auto;
+    margin-right: 24px;
+    width: min(520px, 46vw);
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-group-swipe-dots {
+    display: none;
+  }
+
+  .admin-progress-group-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding-bottom: 2px;
+  }
+
+  .admin-progress-group-container {
+    width: auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-progress-module-shelf {
+    padding: 12px;
+  }
+
+  .admin-progress-task-card {
+    flex-basis: 82vw;
+    width: 82vw;
+  }
+
+  .admin-progress-card-bar-row {
+    grid-template-columns: 56px minmax(70px, 1fr) 36px;
+    gap: 6px;
+  }
+
+  .admin-progress-group-container {
+    flex-basis: 88vw;
+    width: 88vw;
+    padding: 12px;
+  }
+
+  .admin-progress-student-name-button {
+    flex: 1 0 110px;
+    min-width: 110px;
+    font-size: 0.95rem;
+  }
+
+  .admin-progress-popout-panel {
+    width: 100%;
+    border-radius: 18px;
+  }
+}
+
+/* Reusable Save Changes and Return button */
+.save-return-btn {
+  width: auto;
+  min-width: 155px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.save-return-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+
+#progress-tasks-screen .nav-header,
+#progress-task-students-screen .nav-header {
+  flex-wrap: wrap;
+}
+
+#progress-tasks-screen .nav-header h2,
+#progress-task-students-screen .nav-header h2 {
+  flex: 1 1 0;
+}
+
+#progress-tasks-screen .nav-header .manual-refresh-btn,
+#progress-task-students-screen .nav-header .manual-refresh-btn {
+  margin-left: auto;
+}
+
+#progress-tasks-screen .nav-header .save-return-btn,
+#progress-task-students-screen .nav-header .save-return-btn {
+  order: 4;
+  flex: 0 1 240px;
+  margin: 8px auto 0;
+}
+
+/* Progress headers: stronger primary divider under the header */
+#progress-subjects-screen .nav-header,
+#progress-tasks-screen .nav-header,
+#progress-task-students-screen .nav-header {
+  border-bottom: 3px solid var(--primary);
+}
+
+
+/* Thin separator used instead of thick primary group rows */
+.group-separator-line {
+  height: 3px;
+  background: var(--primary);
+  border-radius: 999px;
+  margin: 18px 0 12px;
+}
+
+@media (max-width: 520px) {
+  .save-return-btn {
+    min-width: 145px;
+    padding: 9px 10px;
+    font-size: 0.78rem;
+  }
+}
+
+
+
+/* Student Progress native swipe/grid - V70.3 */
+#progress-subjects-screen.student-theme {
+  padding-inline: 12px;
+}
+
+#progress-subjects-screen.student-theme .nav-header {
+  display: none;
+}
+
+.student-progress-root {
+  width: 100%;
+  min-width: 0;
+}
+
+.student-progress-swipe-shell {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+/* Global actions only. Module headings/progress bars live inside each panel. */
+.student-progress-global-actions {
+  position: sticky;
+  top: 0;
+  z-index: 72;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.08);
+}
+
+body.has-user-band #progress-subjects-screen.student-theme .student-progress-global-actions {
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 8px);
+}
+
+.student-progress-global-save-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.student-progress-save-btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 92px;
+  min-height: 42px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--text-inverse);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.student-progress-save-btn:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.student-progress-swipe-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 20px;
+  padding: 1px 0 0;
+}
+
+.student-progress-swipe-dot {
+  width: 11px;
+  min-width: 11px;
+  height: 11px;
+  min-height: 11px;
+  padding: 0;
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.student-progress-swipe-dot.is-active {
+  background: var(--primary);
+}
+
+.student-progress-swipe-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.student-progress-swipe-track::-webkit-scrollbar {
+  display: none;
+}
+
+.student-progress-module-panel {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 12px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.student-progress-module-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(82px, 42%);
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 8px;
+  min-width: 0;
+}
+
+.student-progress-module-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: clamp(1.05rem, 5vw, 1.42rem);
+  font-weight: 800;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.student-progress-status-bar {
+  width: 100%;
+  min-width: 0;
+  align-self: center;
+}
+
+.student-progress-status-track {
+  display: block;
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--disabled);
+}
+
+.student-progress-status-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--complete);
+}
+
+.student-progress-task-scroll {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 220px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface-chip);
+  border-radius: 16px;
+  padding: 8px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.student-progress-task-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.student-progress-task-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.student-progress-task-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+.student-progress-task-scroll.has-vertical-scroll::after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  right: 4px;
+  width: 3px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--primary);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.student-progress-task-table {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
+.student-progress-task-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 86px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--primary);
+}
+
+.student-progress-task-row:last-child {
+  border-bottom: 0;
+}
+
+.student-progress-task-heading-row {
+  padding-top: 0;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--primary);
+}
+
+.student-progress-task-cell {
+  min-width: 0;
+}
+
+.student-progress-task-name {
+  color: var(--text-muted);
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.student-progress-status-heading {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.student-progress-status-heading--muted {
+  color: var(--disabled);
+}
+
+.student-progress-status-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-progress-status-control {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.student-progress-status-control--verify {
+  color: var(--disabled);
+  cursor: default;
+}
+
+.student-progress-status-control .task-status-icon,
+.student-progress-status-control .status-tick {
+  color: currentColor;
+}
+
+.student-progress-status-control .status-tick {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.student-progress-task-media-block {
+  margin-top: 8px;
+}
+
+.student-progress-task-media-block .resource-audio-control {
+  max-width: 100%;
+}
+
+.student-task-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.student-task-link-btn {
+  width: auto;
+  min-width: 40px;
+  min-height: 34px;
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--primary);
+  box-shadow: none;
+  font-size: 0.78rem;
+}
+
+.student-task-inline-player {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.student-task-media-control {
+  width: 100%;
+  display: block;
+  margin-top: 6px;
+  border-radius: 10px;
+  background: var(--surface-video);
+}
+
+@media (max-width: 520px) {
+  #progress-subjects-screen.student-theme {
+    padding-inline: 10px;
+  }
+
+  .student-progress-global-actions {
+    padding: 9px 10px;
+  }
+
+  .student-progress-save-btn {
+    min-width: 82px;
+    padding-inline: 12px;
+  }
+
+  .student-progress-module-panel {
+    padding: 10px;
+  }
+
+  .student-progress-task-scroll {
+    padding: 7px 9px;
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 210px);
+  }
+
+  .student-progress-task-row {
+    grid-template-columns: minmax(0, 1fr) 54px 74px;
+    gap: 6px;
+  }
+
+  .student-progress-task-name {
+    font-size: 0.92rem;
+  }
+
+  .student-progress-status-control {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .student-progress-status-heading {
+    font-size: 0.72rem;
+  }
+}
+
+/* Match the Home/Attendance large-screen behaviour: swipe on smaller widths,
+   responsive grid on large desktop only. */
+@media (min-width: 1180px) {
+  body.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-actions {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 18px);
+  }
+
+  .student-progress-swipe-dots {
+    display: none;
+  }
+
+  .student-progress-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 18px;
+    overflow: visible;
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+
+  .student-progress-module-panel {
+    flex: initial;
+    width: auto;
+    max-width: none;
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+
+  .student-progress-task-scroll {
+    max-height: none;
+  }
+}
+
+/* Resources / Library ribbon - V65.4.2 */
+.library-resource-browser {
+  --library-ribbon-gap: 10px;
+  --library-card-width: 148px;
+  --library-card-min-height: 135px;
+  --library-glass-card-border: rgba(var(--white-rgb), 0.64);
+  --library-glass-card-shadow: 0 8px 22px rgba(var(--black-rgb), 0.10);
+  --library-glass-card-blur: 12px;
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+.library-module-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  background:
+    radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.28), transparent 42%),
+    radial-gradient(circle at bottom right, var(--surface-track), transparent 48%),
+    linear-gradient(135deg, var(--surface-soft), var(--surface-track));
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.library-module-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.library-resource-row {
+  display: flex;
+  gap: var(--library-ribbon-gap);
+  width: 100%;
+  min-width: 0;
+  padding: 2px 36px 10px 1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.library-resource-card {
+  flex: 0 0 var(--library-card-width);
+  width: var(--library-card-width);
+  min-height: var(--library-card-min-height);
+  padding: 12px 11px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  justify-items: center;
+  gap: 10px;
+  scroll-snap-align: start;
+  text-align: center;
+  color: var(--text-muted);
+  background: rgba(var(--white-rgb), 0.52);
+  background: color-mix(in srgb, var(--surface-chip) 68%, transparent);
+  border: 1px solid var(--library-glass-card-border);
+  border-radius: 18px;
+  box-shadow: var(--library-glass-card-shadow);
+  backdrop-filter: blur(var(--library-glass-card-blur));
+  -webkit-backdrop-filter: blur(var(--library-glass-card-blur));
+}
+
+.library-resource-card:active {
+  transform: scale(0.98);
+}
+
+.library-resource-card:focus-visible {
+  outline: 3px solid rgba(var(--primary-rgb), 0.34);
+  outline-offset: 3px;
+}
+
+.library-resource-card--part-video {
+  background: rgba(var(--white-rgb), 0.46);
+  background: color-mix(in srgb, var(--banner-color) 72%, transparent);
+}
+
+.library-resource-card--part-video:focus-visible {
+  outline-color: rgba(var(--primary-rgb), 0.42);
+}
+
+.library-resource-icon-wrap {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.library-resource-icon {
+  width: 40px;
+  height: 40px;
+  display: block;
+  margin-inline: auto;
+  color: var(--text-muted);
+  background: currentColor;
+  -webkit-mask: var(--library-resource-icon-url) center / contain no-repeat;
+  mask: var(--library-resource-icon-url) center / contain no-repeat;
+}
+
+.library-resource-type-label {
+  display: block;
+  max-width: 100%;
+  color: currentColor;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.library-resource-title {
+  display: block;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.22;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.library-inline-preview {
+  width: 100%;
+  min-width: 0;
+  margin-top: 2px;
+  padding: 12px;
+  background: rgba(var(--white-rgb), 0.62);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 14px;
+}
+
+.library-inline-preview__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+.library-inline-preview__header strong {
+  min-width: 0;
+  color: var(--text-strong);
+  font-size: 0.92rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.library-inline-preview__header span {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.resource-audio-control {
+  width: 100%;
+  display: block;
+  margin-top: 8px;
+}
+
+.resource-video-control {
+  width: 100%;
+  display: block;
+  margin-top: 8px;
+  border-radius: 10px;
+  background: var(--surface-video);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .library-resource-card {
+    background: var(--surface-chip);
+  }
+
+  .library-resource-card--part-video {
+    background: var(--banner-color);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .library-resource-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(var(--white-rgb), 0.74);
+    box-shadow: 0 6px 12px rgba(var(--black-rgb), 0.13);
+  }
+}
+
+@media (max-width: 420px) {
+  .library-resource-browser {
+    --library-card-width: 142px;
+    --library-card-min-height: 132px;
+  }
+
+  .library-module-section {
+    padding: 12px;
+  }
+
+  .library-resource-row {
+    padding-right: 32px;
+  }
+
+  .library-resource-icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Student/Admin Home: timetable, Zoom and class duas panels */
+.student-home-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.student-home-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Home native scroll panels - V67.1 */
+.home-swipe-shell {
+  width: 100%;
+  min-width: 0;
+}
+
+.home-swipe-track {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  text-align: left;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-swipe-track::-webkit-scrollbar {
+  display: none;
+}
+
+.home-swipe-panel {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.home-swipe-panel {
+  background: var(--surface-app);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 8px 18px var(--shadow);
+}
+
+.home-swipe-panel--timetable .zoom-link-button {
+  margin-top: 0;
+}
+
+.home-swipe-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.home-swipe-panel--duas .class-duas-card {
+  margin-top: 0;
+}
+
+.home-swipe-dots,
+.attendance-panel-dots {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--swipe-dot-band-gap));
+  z-index: 108;
+  min-height: var(--swipe-dot-bar-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 0;
+  background: var(--surface-app);
+  pointer-events: none;
+}
+
+.attendance-panel-dots {
+  pointer-events: auto;
+}
+
+.home-swipe-dot,
+.attendance-panel-dot {
+  width: 12px;
+  min-width: 12px;
+  height: 12px;
+  min-height: 12px;
+  padding: 0;
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.home-swipe-dot.is-active,
+.attendance-panel-dot.is-active {
+  background: var(--primary);
+}
+
+.home-swipe-dot:active,
+.attendance-panel-dot:active {
+  transform: scale(0.92);
+}
+
+
+
+.student-home-card {
+  background: var(--surface-card);
+  border-left: 5px solid var(--primary);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.student-home-card-title {
+  display: block;
+  color: var(--primary);
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.student-home-card-text {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+
+.admin-home-panel {
+  margin-bottom: 18px;
+}
+
+.admin-home-panel + .card-grid,
+.admin-home-panel + .list-stack,
+#admin-home .staff-dashboard-grid {
+  margin-top: 18px;
+}
+
+/* Timetable and Zoom components */
+.timetable-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--surface-card);
+  border-left: 5px solid var(--primary);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.timetable-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.timetable-card-header h3,
+.timetable-card h3 {
+  margin-bottom: 0;
+}
+
+.zoom-link-button {
+  width: 50%;
+  max-width: 300px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  margin: 12px auto 0;
+  border-radius: 16px;
+  color: #FFFFFF;
+  background: var(--surface-tint);
+  border: 0;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.zoom-link-button__icon {
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
+  display: inline-block;
+  flex: 0 0 auto;
+  background: transparent;
+  object-fit: contain;
+}
+
+.zoom-link-button:disabled,
+.zoom-link-button.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.timetable-swipe-hint {
+  display: none;
+}
+
+.timetable-admin-form input {
+  margin-bottom: 10px;
+}
+
+.timetable-status-message {
+  min-height: 20px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 520px) {
+  .timetable-card {
+    padding: 11px;
+  }
+
+  .timetable-card-header {
+    gap: 8px;
+  }
+
+  .zoom-link-button {
+    min-height: 52px;
+    padding-inline: 12px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .zoom-link-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 7px 14px rgba(var(--black-rgb), 0.18);
+  }
+
+  button.m4l-timetable-subject:hover {
+    text-decoration: underline;
+    transform: none;
+  }
+}
+
+.class-duas-card {
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px 13px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  text-align: center;
+}
+
+.class-duas-card__title {
+  margin: 0 0 14px;
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: clamp(1.05rem, 4.6vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+.class-duas-card__list {
+  display: grid;
+  gap: 14px;
+}
+
+.class-duas-card__item {
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.14);
+}
+
+.class-duas-card__item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.class-duas-card__arabic {
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-family: "Geeza Pro", "Tahoma", "Arial", var(--font-main);
+  font-size: clamp(1.0rem, 5.2vw, 1.85rem);
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.class-duas-card__transliteration {
+  margin: 0 0 6px;
+  color: var(--text-strong);
+  font-size: clamp(0.88rem, 3.6vw, 1.03rem);
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.class-duas-card__translation {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.86rem, 3.5vw, 1rem);
+  line-height: 1.45;
+  text-align: center;
+}
+
+
+/* Home: compact timetable layout */
+#student-home .top-bar,
+#admin-home .top-bar {
+  display: none;
+}
+
+
+#student-home.screen,
+#admin-home.screen {
+  padding-inline: 12px;
+}
+
+#student-home .student-home-panel,
+#admin-home .student-home-panel {
+  margin-top: 0;
+  gap: 12px;
+}
+
+#student-home #student-zoom-link-btn,
+#admin-home #admin-home-zoom-link-btn {
+  order: -1;
+}
+
+#student-home .timetable-card,
+#admin-home .timetable-card {
+  overflow: visible;
+  background: transparent;
+  border-left: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+#student-home .timetable-card-header,
+#admin-home .timetable-card-header {
+  margin: 0 0 6px;
+  justify-content: flex-end;
+}
+
+#student-home .timetable-card-header h3,
+#admin-home .timetable-card-header h3 {
+  display: none;
+}
+
+
+@media (max-width: 767px) {
+  #student-home.screen,
+  #admin-home.screen,
+  #attendance-screen.screen {
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
+  }
+
+  .attendance-sticky-control-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 8px);
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: 980px;
+  }
+}
+
+/* Home stays native-scroll/swipe on mobile and tablet.
+   It only becomes side-by-side on large desktop, matching the Attendance model. */
+@media (min-width: 768px) and (max-width: 1179px),
+  (hover: hover) and (pointer: fine) and (max-width: 1179px) {
+  #student-home.screen,
+  #admin-home.screen {
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
+  }
+
+  .home-swipe-dots {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + var(--swipe-dot-band-gap));
+  }
+}
+
+@media (min-width: 1180px) {
+  .home-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .home-swipe-panel {
+    flex: initial;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    scroll-snap-align: none;
+  }
+
+  .home-swipe-dots {
+    display: none;
+  }
+}
+
+
+/* Timetable board - V69.2 clean styling */
+.m4l-timetable-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(8px, 2.2vw, 12px);
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+
+.m4l-timetable-board {
+  --m4l-timetable-time-column: clamp(42px, 13vw, 64px);
+  --m4l-timetable-column-gap: clamp(3px, 1.15vw, 8px);
+  --m4l-timetable-row-pad: clamp(10px, 2.8vw, 16px);
+  --m4l-timetable-text-size: clamp(0.62rem, 2.8vw, 0.9rem);
+  --m4l-timetable-pill-text-size: clamp(0.58rem, 2.3vw, 0.82rem);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 0;
+  padding: 0;
+  color: var(--text-strong);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  font-family: var(--font-main);
+  font-size: var(--m4l-timetable-text-size);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-transform: none;
+}
+
+.m4l-timetable-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, var(--m4l-timetable-time-column)) repeat(var(--timetable-day-count, 5), minmax(0, 1fr));
+  column-gap: var(--m4l-timetable-column-gap);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--m4l-timetable-row-pad) 0;
+  border-bottom: 1px solid var(--primary);
+}
+
+.m4l-timetable-row--head {
+  padding-top: 0;
+}
+
+.m4l-timetable-row:last-child {
+  border-bottom: 0;
+}
+
+.m4l-timetable-row:not(.m4l-timetable-row--head)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--m4l-timetable-time-column);
+  width: 1px;
+  background: var(--primary);
+  pointer-events: none;
+}
+
+
+.m4l-timetable-heading-pill,
+.m4l-timetable-break-pill {
+  min-width: 0;
+  min-height: clamp(26px, 7vw, 34px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(5px, 0.75vw, 8px) clamp(4px, 0.75vw, 9px);
+  color: var(--text-strong);
+  background: var(--primary-light);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  font-size: var(--m4l-timetable-pill-text-size);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.m4l-timetable-time-label,
+.m4l-timetable-subject {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: var(--m4l-timetable-text-size);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.m4l-timetable-subject-cell {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: clamp(34px, 10vw, 48px);
+  padding: 0 clamp(0.5px, 0.4vw, 5px);
+  color: var(--text-strong);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  text-align: center;
+  overflow: hidden;
+}
+
+.m4l-timetable-subject-cell--merged {
+  grid-column: span var(--timetable-day-count, 5);
+  min-height: clamp(36px, 10.8vw, 52px);
+  padding: clamp(7px, 2vw, 10px) clamp(8px, 2.6vw, 14px);
+  background: var(--primary-lighter);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.m4l-timetable-subject-cell--empty {
+  min-height: clamp(22px, 7vw, 34px);
+}
+
+button.m4l-timetable-subject {
+  min-height: 0;
+  padding: 0;
+  color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.m4l-timetable-break-pill {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  padding: 8px 12px;
+}
+
+#student-home .home-swipe-panel--timetable,
+#admin-home .home-swipe-panel--timetable {
+  background: var(--surface-card);
+}
+
+#student-home .timetable-card,
+#admin-home .timetable-card {
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#student-home .m4l-timetable-scroll,
+#admin-home .m4l-timetable-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface-soft);
+  border: 0;
+  border-radius: 18px;
+}
+
+#student-home .zoom-link-button,
+#admin-home .zoom-link-button {
+  background: var(--primary);
+  margin-bottom: 18px;
+}
+
+.class-duas-card {
+  background: var(--surface-soft);
+  border-radius: 18px;
+}
+
+
+@media (max-width: 520px) {
+  .m4l-timetable-board {
+    --m4l-timetable-time-column: clamp(36px, 12vw, 52px);
+    --m4l-timetable-column-gap: clamp(2px, 0.9vw, 5px);
+    --m4l-timetable-row-pad: clamp(9px, 2.7vw, 13px);
+    --m4l-timetable-text-size: clamp(0.58rem, 2.85vw, 0.78rem);
+    --m4l-timetable-pill-text-size: clamp(0.54rem, 2.35vw, 0.74rem);
+  }
+
+  .m4l-timetable-heading-pill {
+    min-height: 26px;
+    padding-inline: clamp(3px, 1vw, 6px);
+  }
+
+  .m4l-timetable-subject-cell {
+    min-height: clamp(30px, 9vw, 42px);
+    padding-inline: 1px;
+  }
+
+  .m4l-timetable-subject-cell--merged {
+    min-height: clamp(34px, 10vw, 46px);
+    padding-inline: clamp(6px, 2vw, 10px);
+  }
+}
+
+
+/* Attendance native scroll panels - V66.1 */
+#attendance-screen.screen {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+  padding: 18px 14px;
+}
+
+body.is-attendance-section .app-shell {
+  align-items: flex-start;
+  justify-content: center;
+  overflow: visible;
+}
+
+.attendance-swipe-track {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.attendance-swipe-track::-webkit-scrollbar {
+  display: none;
+}
+
+.attendance-swipe-panel {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  display: block;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 0 2px;
+}
+
+.attendance-swipe-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (min-width: 768px) and (max-width: 1179px), (hover: hover) and (pointer: fine) and (max-width: 1179px) {
+  body.is-attendance-section.has-bottom-nav .app-shell,
+  body.is-attendance-section.has-user-band.has-bottom-nav .app-shell {
+    padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + var(--swipe-dot-bar-height) + var(--swipe-dot-band-gap) + 26px);
+  }
+
+  body.is-attendance-section .attendance-panel-dots {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + var(--swipe-dot-band-gap));
+  }
+
+  body.is-attendance-section .attendance-sticky-control-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 8px);
+  }
+}
+
+@media (min-width: 1180px) {
+  body.is-attendance-section .app-shell {
+    max-width: 1280px;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .attendance-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(var(--attendance-panel-min-width), 1fr));
+    gap: 16px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .attendance-swipe-panel {
+    flex: initial;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    min-height: calc(100vh - var(--top-nav-height) - 36px);
+    padding: 0;
+    scroll-snap-align: none;
+  }
+
+  body.is-attendance-section .attendance-panel-dots {
+    display: none;
+  }
+
+  body.is-attendance-section .attendance-sticky-control-pane {
+    position: static;
+    top: auto;
+  }
+}
+
+
+/* Reusable responsive primary navigation */
+body.has-bottom-nav .app-shell {
+  padding-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area) + 12px);
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 4px;
+  min-height: calc(var(--bottom-nav-height) + var(--bottom-nav-safe-area));
+  padding: 8px 8px calc(8px + var(--bottom-nav-safe-area));
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: contain;
+  touch-action: pan-x;
+  pointer-events: auto;
+  isolation: isolate;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(var(--white-rgb), 0.96);
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: 0 -6px 18px rgba(var(--black-rgb), 0.13);
+  transform: translateZ(0);
+  scrollbar-width: none;
+}
+
+.bottom-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.bottom-nav.hidden {
+  display: none;
+}
+
+.bottom-nav__item {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 66px;
+  min-height: 58px;
+  margin: 0;
+  padding: 7px 8px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  box-shadow: none;
+  font-family: var(--font-main);
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-align: center;
+  touch-action: pan-x;
+}
+
+.bottom-nav__item:active {
+  transform: scale(0.97);
+}
+
+.bottom-nav__item.is-active {
+  color: var(--primary);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+.bottom-nav__icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: block;
+  margin-inline: auto;
+  align-self: center;
+  background: currentColor;
+  -webkit-mask: var(--bottom-nav-icon) center / contain no-repeat;
+  mask: var(--bottom-nav-icon) center / contain no-repeat;
+}
+
+.bottom-nav__label {
+  display: block;
+  color: currentColor;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (max-width: 360px) {
+  .bottom-nav__item {
+    min-width: 60px;
+    padding-inline: 6px;
+  }
+
+  .bottom-nav__label {
+    font-size: 0.64rem;
+  }
+}
+
+
+@media (min-width: 768px), (hover: hover) and (pointer: fine) {
+  body.has-bottom-nav .app-shell {
+    padding-bottom: 0;
+    padding-top: calc(var(--top-nav-height) + 16px);
+  }
+
+  body.has-user-band.has-bottom-nav .app-shell {
+    padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 22px);
+  }
+
+  .bottom-nav {
+    top: calc(var(--user-band-height, 0px) + var(--user-band-safe-area-top) + 10px);
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    width: min(860px, calc(100vw - 28px));
+    max-width: none;
+    min-height: var(--top-nav-height);
+    margin: 0;
+    padding: 8px 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    overflow-x: visible;
+    overflow-y: visible;
+    touch-action: manipulation;
+    border: 1px solid rgba(var(--primary-rgb), 0.16);
+    border-radius: 18px;
+    box-shadow: 0 7px 18px rgba(var(--black-rgb), 0.13);
+    transform: translateX(-50%);
+  }
+
+  .bottom-nav__item {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 54px;
+    padding: 8px 10px;
+    touch-action: manipulation;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .bottom-nav__item.is-active {
+    box-shadow: inset 0 -3px 0 var(--primary);
+  }
+
+  .bottom-nav__icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    transition: transform 160ms ease;
+  }
+
+  .bottom-nav__label {
+    font-size: 0.7rem;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav__item:hover {
+    color: var(--primary);
+    background: transparent;
+    border-color: transparent;
+    transform: translateY(-1px);
+  }
+
+  .bottom-nav__item:hover .bottom-nav__icon {
+    transform: scale(1.08);
+  }
+
+  .bottom-nav__item.is-active:hover {
+    background: transparent;
+  }
+}
+
+
+/* Top-level screen title simplification */
+#student-resources-subjects > .nav-header > h2,
+#progress-report > .nav-header > h2,
+#attendance-screen > .nav-header > h2 {
+  display: none;
+}
+
+#progress-report .dashboard-section:not(:last-of-type)::after {
+  content: "";
+  display: block;
+  height: 3px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+/* Attendance top alignment: the one active screen sits below fixed user band/nav and swipe dots. */
+body.is-attendance-section #attendance-screen.screen {
+  scroll-margin-top: calc(
+    var(--user-band-height) +
+    var(--user-band-safe-area-top) +
+    var(--swipe-dot-band-gap) +
+    var(--swipe-dot-bar-height) +
+    var(--attendance-panel-visible-gap)
+  );
+}
+
+@media (min-width: 768px) and (max-width: 1179px),
+  (hover: hover) and (pointer: fine) and (max-width: 1179px) {
+  body.is-attendance-section #attendance-screen.screen {
+    scroll-margin-top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--swipe-dot-band-gap) +
+      var(--swipe-dot-bar-height) +
+      var(--attendance-panel-visible-gap)
+    );
+  }
+}
+
+/* Admin Attendance */
+#attendance-screen,
+.student-admin-screen {
+  background: var(--surface-app);
+}
+
+#attendance-screen.screen {
+  padding: 18px 14px;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.attendance-sticky-control-pane {
+  position: sticky;
+  top: 0;
+  z-index: 55;
+  display: grid;
+  gap: 8px;
+  padding: 0 0 10px;
+  margin-bottom: 10px;
+  background: transparent;
+}
+
+.attendance-top-panel {
+  min-height: auto;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.05);
+}
+
+.attendance-top-content {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+}
+
+.attendance-subscreen-header {
+  text-align: left;
+}
+
+.attendance-panel-heading,
+.attendance-subscreen-header h3 {
+  margin: 0;
+  color: var(--primary);
+  font-size: clamp(1.05rem, 4.6vw, 1.35rem);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  font-family: var(--font-heading);
+  font-weight: 800;
+}
+
+.attendance-control-block,
+.attendance-filter-box,
+.attendance-filter-box-compact,
+.attendance-register-control-block {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  align-content: start;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.attendance-summary-card,
+.attendance-date-range-card {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  align-items: stretch;
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.attendance-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-align: left;
+}
+
+.attendance-summary-icon {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 1.05rem;
+}
+
+.attendance-summary-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.attendance-summary-label,
+.attendance-date-label {
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.attendance-summary-card input[type="date"],
+.attendance-date-range-card input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 1.02rem;
+  font-weight: 800;
+  text-align: left;
+  box-shadow: none;
+}
+
+.attendance-summary-divider {
+  width: 1px;
+  background: rgba(var(--black-rgb), 0.12);
+}
+
+.attendance-summary-card .attendance-absence-feedback {
+  margin: 0;
+  color: var(--primary);
+  font-size: 1.02rem;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.attendance-summary-subtext {
+  color: var(--text-subtle);
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+.attendance-action-btn,
+.attendance-filter-action-btn,
+.attendance-save-btn {
+  width: 50%;
+  max-width: 300px;
+  justify-self: center;
+  align-self: start;
+  min-height: 46px;
+  margin: 0 auto;
+  padding: 9px 14px;
+  border-radius: 14px;
+  color: #FFFFFF;
+  background: var(--surface-tint);
+  border: 0;
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.attendance-panel-dots .attendance-panel-dot {
+  pointer-events: auto;
+}
+
+@media (max-width: 520px) {
+  .attendance-top-panel {
+    min-height: auto;
+    padding: 14px;
+    border-radius: 16px;
+    gap: 10px;
+  }
+
+  .attendance-control-block,
+  .attendance-filter-box,
+  .attendance-filter-box-compact,
+  .attendance-register-control-block {
+    gap: 12px;
+  }
+
+  .attendance-action-btn,
+  .attendance-filter-action-btn,
+  .attendance-save-btn {
+    width: 50%;
+    max-width: 300px;
+    min-height: 48px;
+  }
+
+  .attendance-summary-card,
+  .attendance-date-range-card {
+    gap: 8px;
+  }
+
+  .attendance-summary-icon {
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .attendance-summary-label,
+  .attendance-date-label {
+    font-size: 0.62rem;
+  }
+
+  .attendance-summary-card input[type="date"],
+  .attendance-date-range-card input[type="date"],
+  .attendance-summary-card .attendance-absence-feedback {
+    font-size: 0.86rem;
+  }
+
+  .attendance-summary-subtext {
+    font-size: 0.72rem;
+  }
+}
+
+.attendance-empty-state {
+  margin: 14px 0 0;
+  text-align: center;
+}
+
+.attendance-group-heading {
+  background: var(--primary);
+  color: var(--text-inverse);
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+  margin: 16px 0 8px;
+}
+
+.attendance-group-container {
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-radius: 16px;
+  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.05);
+  padding: 6px 8px;
+  margin: 10px 0 12px;
+  text-align: left;
+}
+
+.attendance-group-line {
+  display: none;
+}
+
+.attendance-register-row,
+.attendance-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  margin-bottom: 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  text-align: left;
+}
+
+.attendance-report-row {
+  grid-template-columns: minmax(0, 1fr) 56px 66px;
+  cursor: pointer;
+}
+
+.attendance-report-row > div,
+.attendance-summary-text,
+.attendance-student-main {
+  min-width: 0;
+}
+
+.attendance-report-row > div:first-child {
+  overflow-wrap: anywhere;
+}
+
+.attendance-report-row div:nth-child(2),
+.attendance-report-row div:nth-child(3) {
+  text-align: center;
+  font-weight: 400;
+}
+
+.attendance-student-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.attendance-student-name {
+  color: var(--text);
+  font-size: 1.0rem;
+  font-weight: 400;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.attendance-toggle {
+  width: auto;
+  min-width: 108px;
+  min-height: 34px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-family: var(--font-main);
+  font-size: 0.76rem;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  box-shadow: none;
+}
+
+.attendance-toggle.is-present.is-present {
+  background: var(--surface-chip);
+  color: var(--text-subtle);
+}
+
+.attendance-toggle.is-absent.is-absent {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.attendance-report-header {
+  display: none;
+}
+
+.attendance-absent-dates {
+  display: none;
+  background: var(--surface-app);
+  color: var(--primary);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin: 0 4px 6px;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
+.attendance-absent-dates.is-open {
+  display: block;
+}
+
+.attendance-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.attendance-stat-card {
+  background: var(--surface-card);
+  color: var(--primary);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.06);
+}
+
+.attendance-stat-label {
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.attendance-stat-number {
+  font-size: 2.2rem;
+  font-weight: bold;
+  font-family: var(--font-main);
+}
+
+.attendance-breakdown-card {
+  background: var(--surface-card);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+  text-align: left;
+  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.06);
+}
+
+.attendance-breakdown-row {
+  margin-bottom: 12px;
+}
+
+.attendance-breakdown-label {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.attendance-bar-track {
+  height: 10px;
+  background: var(--surface-track);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.attendance-bar-fill {
+  height: 100%;
+  background: var(--complete);
+  border-radius: 999px;
+}
+
+.attendance-perfect-row {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--surface-chip);
+}
+
+
+@media (max-width: 520px) {
+  #attendance-screen.screen {
+    padding-inline: 12px;
+  }
+
+  .attendance-summary-card,
+  .attendance-date-range-card {
+    gap: 8px;
+  }
+
+  .attendance-summary-item {
+    gap: 7px;
+  }
+
+  .attendance-summary-icon {
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  .attendance-summary-card input[type="date"],
+  .attendance-date-range-card input[type="date"],
+  .attendance-summary-card .attendance-absence-feedback {
+    font-size: 0.86rem;
+  }
+
+  .attendance-summary-label,
+  .attendance-date-label {
+    font-size: 0.62rem;
+  }
+
+  .attendance-summary-subtext {
+    font-size: 0.72rem;
+  }
+
+  .attendance-register-row,
+  .attendance-report-row {
+    padding: 6px 4px;
+    gap: 7px;
+    margin-bottom: 3px;
+  }
+
+  .attendance-group-container {
+    padding: 5px 7px;
+    margin: 8px 0 10px;
+  }
+
+  .attendance-student-main {
+    gap: 8px;
+  }
+
+ .attendance-student-name,
+  #attendance-screen .attendance-student-name {
+    font-size: 0.94rem;
+  }
+
+  .attendance-toggle,
+  #attendance-screen .attendance-toggle {
+    min-width: 96px;
+    min-height: 32px;
+    padding: 5px 7px;
+    font-size: 0.68rem;
+  }
+
+  .attendance-action-btn,
+  .attendance-filter-action-btn,
+  .attendance-save-btn {
+    width: 50%;
+    max-width: 300px;
+    min-height: 48px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .attendance-summary-card,
+  .attendance-date-range-card {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-summary-divider {
+    width: 100%;
+    height: 1px;
+  }
+}
+
+/* PDF.js in-app viewer - V65.4.3 sticky app header */
+body.pdf-viewer-open {
+  padding: 0;
+  overflow: hidden;
+}
+
+body.pdf-viewer-open .app-shell {
+  max-width: none;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  align-items: stretch;
+  justify-content: stretch;
+  padding-bottom: 0;
+}
+
+body.pdf-viewer-open.has-user-band .app-shell {
+  padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+}
+
+body.pdf-viewer-open.has-bottom-nav .app-shell,
+body.pdf-viewer-open.has-user-band.has-bottom-nav .app-shell {
+  padding-bottom: 0;
+}
+
+#pdf-viewer-screen.screen {
+  padding: 0;
+}
+
+body.pdf-viewer-open #pdf-viewer-screen.screen {
+  min-height: 0;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--surface-app);
+  overflow: hidden;
+}
+
+body.pdf-viewer-open #pdf-viewer-screen.screen.active {
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer-header {
+  position: sticky;
+  top: 0;
+  z-index: 112;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--surface-app);
+  border-bottom: 2px solid rgba(var(--black-rgb), 0.18);
+}
+
+body.pdf-viewer-open.has-user-band .pdf-viewer-header {
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+}
+
+.pdf-viewer-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.pdf-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.pdf-viewer-actions .small-btn {
+  width: auto;
+  min-width: 64px;
+}
+
+.pdf-direct-btn {
+  opacity: 0.92;
+}
+
+.pdf-viewer-frame {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  border: 0;
+  background: var(--surface-soft);
+}
+
+@media (max-width: 520px) {
+  .pdf-viewer-header {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .pdf-viewer-header h2 {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pdf-viewer-actions {
+    gap: 6px;
+  }
+
+  .pdf-viewer-actions .small-btn {
+    min-width: 56px;
+    padding: 8px 9px;
+    font-size: 0.78rem;
+  }
+
+  .pdf-viewer-frame {
+    height: auto;
+  }
+}
+
+
+/* =========================
+   Manage Students - modern mobile UI
+========================= */
+
+.student-admin-screen {
+  background: var(--surface-tint);
+  padding: 18px 14px;
+}
+
+.student-admin-modern-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.student-admin-modern-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.student-admin-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 18px;
+  padding: 8px;
+  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.07);
+  margin-bottom: 14px;
+}
+
+.student-admin-mode-btn {
+  min-height: 46px;
+  border-radius: 14px;
+  box-shadow: none;
+  background: var(--surface-chip);
+  color: var(--text-muted);
+}
+
+.student-admin-mode-btn.is-active {
+  background: var(--primary);
+  color: var(--text-inverse);
+}
+
+.student-admin-card,
+.student-admin-result-card {
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 18px;
+  padding: 15px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 22px rgba(var(--black-rgb), 0.08);
+  text-align: left;
+}
+
+.student-admin-card-title {
+  color: var(--primary);
+  font-weight: 900;
+  font-size: 1.08rem;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.student-admin-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.student-admin-help,
+.student-admin-feedback {
+  color: var(--text-subtle);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  margin: 4px 0 0;
+  text-align: left;
+}
+
+.student-admin-feedback {
+  color: var(--primary);
+  font-weight: 800;
+  min-height: 20px;
+  margin: 10px 0;
+}
+
+/* Reusable form choice rows: radio buttons and checkboxes */
+.student-admin-radio-group,
+.student-edit-status-radio-group {
+  display: grid;
+  gap: 8px;
+}
+
+.student-admin-radio-row,
+.student-edit-status-radio,
+.student-subject-check-row,
+.student-module-check-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  color: var(--text);
+  font-weight: 750;
+  margin: 8px 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.student-admin-radio-row input[type="radio"],
+.student-edit-status-radio input[type="radio"] {
+  display: inline-block;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid rgba(var(--primary-rgb), 0.45);
+  border-radius: 50%;
+  background: var(--surface-card);
+  box-shadow: inset 0 0 0 4px var(--surface-card);
+  accent-color: var(--primary);
+}
+
+.student-admin-radio-row input[type="radio"]:checked,
+.student-edit-status-radio input[type="radio"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.student-subject-check-row input[type="checkbox"],
+.student-module-check-row input[type="checkbox"] {
+  display: inline-block;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid rgba(var(--primary-rgb), 0.45);
+  border-radius: 6px;
+  background: var(--surface-card);
+  accent-color: var(--primary);
+}
+
+.student-subject-check-row input[type="checkbox"]:checked,
+.student-module-check-row input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 4px var(--surface-card);
+}
+
+.student-admin-radio-row:has(input:checked),
+.student-admin-radio-row.is-selected,
+.student-edit-status-radio:has(input:checked),
+.student-edit-status-radio.is-selected,
+.student-subject-check-row:has(input:checked),
+.student-module-check-row:has(input:checked) {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.student-assignment-options {
+  margin-top: 12px;
+}
+
+.student-assignment-subject-card {
+  background: var(--surface-tint);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-left: 6px solid var(--primary);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.student-subject-check-row {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.student-module-check-list {
+  display: grid;
+  gap: 7px;
+  margin-left: 8px;
+}
+
+.student-module-check-row {
+  grid-template-columns: auto 1fr auto;
+  background: var(--surface-card);
+  border-radius: 12px;
+  padding: 9px;
+  margin: 0;
+  font-size: 0.94rem;
+  border: 1px solid rgba(var(--primary-rgb), 0.08);
+}
+
+.student-module-check-row small {
+  color: var(--text-muted);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.student-admin-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  margin: 12px 0 14px;
+}
+
+.student-admin-action-grid.two-col,
+.student-admin-action-grid.three-col {
+  grid-template-columns: 1fr 1fr;
+}
+
+.student-admin-action-grid.three-col button:last-child {
+  grid-column: 1 / -1;
+}
+
+.student-link-box {
+  background: var(--surface-chip);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  border-left: 5px solid var(--primary);
+}
+
+.student-message-preview {
+  margin-top: 12px;
+  background: var(--surface-tint);
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(var(--primary-rgb), 0.10);
+}
+
+.student-message-preview summary {
+  color: var(--primary);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.student-message-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-main);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 10px 0 0;
+}
+
+.student-search-results {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.student-search-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--surface-card);
+  color: var(--text);
+  text-align: left;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 17px;
+  padding: 12px;
+  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.06);
+}
+
+.student-search-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.student-search-main strong {
+  overflow-wrap: anywhere;
+}
+
+.student-search-main small {
+  color: var(--text-subtle);
+  font-weight: 700;
+}
+
+.student-status-badge {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.student-status-badge.is-active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.student-status-badge.is-inactive {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.selected-student-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-tint);
+  border-radius: 15px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.selected-student-heading div {
+  display: grid;
+  gap: 3px;
+}
+
+.selected-student-heading small {
+  color: var(--text-subtle);
+  font-weight: 700;
+}
+
+.student-active-toggle {
+  margin-top: 10px;
+  box-shadow: none;
+}
+
+.student-active-toggle.is-active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.student-active-toggle.is-inactive {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+@media (max-width: 520px) {
+  .student-admin-screen {
+    padding: 16px 12px;
+  }
+
+  .student-admin-modern-header h2 {
+    font-size: clamp(1.75rem, 8vw, 2.35rem);
+  }
+
+  .student-admin-modern-header .small-btn {
+    min-width: 82px;
+  }
+
+  .student-admin-card,
+  .student-admin-result-card {
+    padding: 13px;
+    border-radius: 17px;
+  }
+
+  .student-admin-action-grid.two-col,
+  .student-admin-action-grid.three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .student-admin-action-grid.three-col button:last-child {
+    grid-column: auto;
+  }
+
+  .student-search-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .student-status-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .student-module-check-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .student-module-check-row small {
+    grid-column: 2;
+  }
+}
+
+/* Manage Students: temporary disabled manual assignment + editable message */
+.student-admin-radio-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.student-admin-radio-row.is-disabled input,
+.student-admin-radio-row.is-disabled span {
+  cursor: not-allowed;
+}
+
+.student-admin-coming-soon {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-chip);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
+.student-message-textarea {
+  width: 100%;
+  min-height: 230px;
+  resize: vertical;
+  margin: 8px 0 6px;
+  padding: 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.25);
+  border-radius: 14px;
+  background: var(--surface-tint);
+  color: var(--text);
+  font-family: var(--font-main);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.student-message-textarea:focus {
+  outline: 2px solid rgba(var(--primary-rgb), 0.22);
+  border-color: var(--primary);
+}
+
+/* Manage Students result icons */
+.student-icon-field {
+  position: relative;
+  padding-right: 50px;
+}
+
+.student-link-text {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.student-message-box-wrap {
+  position: relative;
+}
+
+.student-icon-field-textarea {
+  padding-right: 50px;
+}
+
+.student-copy-icon-btn,
+.student-whatsapp-icon-btn {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: inherit;
+  min-height: 0;
+  padding: 0;
+}
+
+.student-copy-icon-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-copy-icon-btn:active,
+.student-whatsapp-icon-btn:active {
+  transform: scale(0.96);
+}
+
+.student-copy-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.student-whatsapp-icon-btn {
+  width: 86px;
+  min-width: 86px;
+  height: 86px;
+  margin: 14px auto 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-whatsapp-icon {
+  width: 76px;
+  height: 76px;
+  display: block;
+}
+
+@media (max-width: 420px) {
+  .student-copy-icon-btn {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .student-copy-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .student-whatsapp-icon-btn {
+    width: 78px;
+    min-width: 78px;
+    height: 78px;
+  }
+
+  .student-whatsapp-icon {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+/* Manage Students: scrollable full student list and prefilled edit fields */
+.student-admin-action-grid.compact-actions {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.student-list-card {
+  padding-bottom: 10px;
+}
+
+.managed-student-list {
+  display: grid;
+  gap: 9px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding: 2px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.managed-student-group-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.16), rgba(var(--primary-rgb), 0.04));
+  color: var(--primary);
+  border-left: 6px solid var(--primary);
+  border-radius: 12px;
+  padding: 9px 12px;
+  margin: 8px 0 2px;
+  font-weight: 900;
+  text-align: left;
+}
+
+.managed-student-list .student-search-card {
+  margin: 0;
+}
+
+.student-prefilled-input {
+  color: var(--text-subtle);
+  background: var(--surface-soft);
+  border-color: rgba(var(--primary-rgb), 0.22);
+  font-weight: 650;
+}
+
+.student-prefilled-input:focus {
+  color: var(--text);
+  background: var(--surface-card);
+  outline: 2px solid rgba(var(--primary-rgb), 0.18);
+  border-color: var(--primary);
+}
+
+@media (max-width: 520px) {
+  .managed-student-list {
+    max-height: 54vh;
+  }
+
+  .managed-student-group-heading {
+    padding: 8px 10px;
+    margin-top: 7px;
+  }
+}
+
+/* Manage Students: revised search dropdown and separate edit/result screens */
+.student-search-panel {
+  overflow: visible;
+}
+
+.student-search-dropdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 8px;
+  align-items: center;
+}
+
+.student-search-dropdown-row input {
+  margin: 0;
+}
+
+.student-search-arrow-btn {
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 14px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.student-search-dropdown {
+  display: none;
+  margin-top: 10px;
+}
+
+.student-search-dropdown.is-open {
+  display: block;
+}
+
+.student-search-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface-dark);
+  color: var(--text-inverse);
+  border-radius: 8px;
+  padding: 10px 11px;
+  margin-top: 3px;
+  text-align: left;
+  box-shadow: none;
+  min-height: 42px;
+}
+
+.student-search-row-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.student-search-row-number {
+  color: var(--surface-chip);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.managed-student-list {
+  gap: 3px;
+  max-height: min(56vh, 520px);
+  padding: 0 2px 8px;
+}
+
+.managed-student-group-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-chip);
+  color: var(--primary);
+  border-left: 0;
+  border-bottom: 3px solid var(--primary);
+  border-radius: 0;
+  padding: 8px 6px;
+  margin: 10px 0 4px;
+  font-size: 0.88rem;
+}
+
+.compact-selected-student-heading {
+  background: var(--surface-soft);
+  border-left: 5px solid var(--primary);
+}
+
+.compact-selected-student-heading strong {
+  color: var(--text);
+}
+
+.compact-selected-student-heading small {
+  color: var(--text-subtle);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+#manage-students-result-screen .student-admin-result-card,
+#manage-student-edit-screen .student-admin-card,
+#manage-student-edit-screen .student-admin-result-card {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 520px) {
+  .student-search-dropdown-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+  }
+
+  .student-search-arrow-btn {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+  }
+
+  .student-search-row {
+    padding: 9px 9px;
+    font-size: 0.9rem;
+  }
+
+  .student-search-row-number {
+    font-size: 0.82rem;
+  }
+}
+
+/* Manage Students: final modify-list refinements */
+#manage-students-screen .student-search-panel .student-admin-help {
+  margin-top: 8px;
+}
+
+.managed-student-group-heading {
+  display: none !important;
+}
+
+.managed-student-group-separator {
+  height: 8px;
+  background: var(--primary);
+  border-radius: 999px;
+  margin: 12px 0 7px;
+}
+
+.managed-student-list .managed-student-group-separator:first-child {
+  margin-top: 2px;
+}
+
+.student-search-row {
+  background: var(--surface-dark);
+  color: var(--text-inverse);
+  grid-template-columns: minmax(0, 1fr) 78px;
+  min-height: 38px;
+  padding: 8px 10px;
+  margin-top: 2px;
+  border-radius: 7px;
+}
+
+.student-search-row-name {
+  font-size: 0.92rem;
+  line-height: 1.12;
+}
+
+.student-search-row-number {
+  color: var(--surface-chip);
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+}
+
+.student-reset-pin-btn,
+.student-active-toggle.is-active,
+.student-active-toggle.is-inactive {
+  background: var(--surface-chip);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  box-shadow: none;
+}
+
+.student-active-toggle {
+  width: 100%;
+  margin: 8px 0 14px;
+  background: var(--surface-chip);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  box-shadow: none;
+}
+
+.student-active-toggle.is-inactive {
+  color: var(--text-subtle);
+  border-color: rgba(var(--black-rgb), 0.18);
+}
+
+.selected-student-edit-card {
+  margin-top: 12px;
+}
+
+#manage-student-edit-screen .student-reset-pin-btn {
+  margin-bottom: 10px;
+}
+
+#manage-student-edit-screen .student-prefilled-input {
+  color: var(--text-subtle);
+  background: var(--surface-soft);
+}
+
+#manage-student-edit-screen .student-prefilled-input:focus {
+  color: var(--text);
+  background: var(--surface-card);
+}
+
+@media (max-width: 520px) {
+  .managed-student-group-separator {
+    height: 8px;
+    margin: 10px 0 6px;
+  }
+
+  .student-search-row {
+    grid-template-columns: minmax(0, 1fr) 70px;
+    padding: 8px 9px;
+    min-height: 36px;
+  }
+}
+
+/* Manage Students: selected student edit layout fixes */
+
+.student-edit-two-column-row {
+  display: grid;
+  grid-template-columns: minmax(105px, 140px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin-top: 4px;
+}
+
+
+.student-edit-field-half {
+  min-width: 0;
+}
+
+.student-edit-field-half .student-admin-label {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.student-edit-field-half input:not([type="radio"]):not([type="checkbox"]),
+.student-edit-field-half button {
+  width: 100%;
+  margin: 0;
+}
+
+
+/* Manage Students: Active/Inactive uses the shared radio component */
+.student-edit-status-radio-group {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+}
+
+.student-edit-status-radio {
+  margin: 0;
+  min-height: 44px;
+  align-content: center;
+}
+
+@media (max-width: 360px) {
+  .student-edit-status-radio-group {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .student-edit-status-radio {
+    min-height: 36px;
+    font-size: 0.82rem;
+  }
+}
+
+#manage-student-edit-screen .student-reset-pin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  background: var(--surface-chip);
+  color: var(--primary) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow: none;
+}
+
+#manage-student-edit-screen .student-reset-pin-text {
+  color: var(--primary) !important;
+  display: inline-block;
+}
+
+@media (max-width: 360px) {
+  .student-edit-two-column-row {
+    gap: 8px;
+  }
+
+  .student-edit-field-half .student-admin-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.10em;
+  }
+}
+
+
+/* V66 final Attendance screen spacing override: keep native-swipe dots clear of content after base screen rules. */
+@media (max-width: 767px) {
+  #attendance-screen.screen {
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
+  }
+}
