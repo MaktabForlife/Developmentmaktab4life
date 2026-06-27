@@ -2376,28 +2376,10 @@ button.m4l-timetable-subject {
 }
 
 .class-duas-card {
-  background:
-    radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.20), transparent 42%),
-    radial-gradient(circle at bottom right, color-mix(in srgb, var(--banner-color) 34%, transparent), transparent 48%),
-    linear-gradient(135deg, var(--surface-soft), var(--surface-track));
-  border: 1px solid rgba(205, 180, 219, 0.45);
+  background: var(--surface-soft);
   border-radius: 18px;
 }
 
-@supports (border-color: color-mix(in srgb, red 50%, transparent)) {
-  .class-duas-card {
-    border-color: color-mix(in srgb, var(--surface-banner, var(--banner-color)) 45%, transparent);
-  }
-}
-
-@supports not (background: color-mix(in srgb, white 50%, transparent)) {
-  .class-duas-card {
-    background:
-      radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.20), transparent 42%),
-      radial-gradient(circle at bottom right, rgba(205, 180, 219, 0.34), transparent 48%),
-      linear-gradient(135deg, var(--surface-soft), var(--surface-track));
-  }
-}
 
 @media (max-width: 520px) {
   .m4l-timetable-board {
