@@ -1859,6 +1859,15 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   text-align: center;
 }
 
+.class-duas-card__title {
+  margin: 0 0 14px;
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: clamp(1.05rem, 4.6vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
 .class-duas-card__list {
   display: grid;
   gap: 14px;
