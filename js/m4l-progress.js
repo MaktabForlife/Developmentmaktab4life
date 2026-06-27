@@ -16,7 +16,7 @@ let progressUiGlobalHandlersBound = false;
 
 function bindProgressUiHandlers(containerOrId) {
   // Progress actions use one delegated handler so dynamically-rendered
-  // student/admin progress rows do not need inline onclaick strings.
+  // student/admin progress rows do not need inline onclick strings.
   if (progressUiGlobalHandlersBound === true) {
     return !!getDomElement(containerOrId);
   }
@@ -1237,7 +1237,36 @@ function normalizeProgressTask(task) {
 }
 
 function normalizeProgressStudentRow(row) {
-  return normalizeStudentTask(row);
+  const source = row || {};
+  const normalized = normalizeStudentTask(source);
+
+  return {
+    ...normalized,
+    studenttaskid: getStudentTaskField(source, [
+      "studenttaskid", "studentTaskId", "StudentTaskID", "StudentTaskId"
+    ], normalized.studenttaskid),
+    studentid: getStudentTaskField(source, [
+      "studentid", "studentID", "StudentID", "StudentId"
+    ], normalized.studentid || ""),
+    username: getStudentTaskField(source, [
+      "username", "userName", "Username", "StudentName", "studentName", "Name", "name"
+    ], normalized.username || "Student"),
+    classgroup: getStudentTaskField(source, [
+      "classgroup", "classGroup", "ClassGroup", "Group", "group", "GroupNo", "groupno"
+    ], normalized.classgroup || ""),
+    subjectid: getStudentTaskField(source, [
+      "subjectid", "subjectID", "SubjectID", "SubjectId"
+    ], normalized.subjectid || ""),
+    subjectname: getStudentTaskField(source, [
+      "subjectname", "subjectName", "SubjectName", "Subject"
+    ], normalized.subjectname || "Other"),
+    moduleid: getStudentTaskField(source, [
+      "moduleid", "moduleID", "ModuleID", "ModuleId"
+    ], normalized.moduleid || ""),
+    modulename: getStudentTaskField(source, [
+      "modulename", "moduleName", "ModuleName", "Module"
+    ], normalized.modulename || "General")
+  };
 }
 
 function sortProgressSubjects(a, b) {
@@ -1265,6 +1294,8 @@ const progressState = {
 let progressPendingUpdates = {};
 let currentProgressRows = [];
 let adminProgressDashboardModules = [];
+let adminProgressDashboardRows = [];
+let adminProgressActiveTaskRows = [];
 let adminProgressPopoutRows = [];
 
 async function showProgressReport() {
@@ -1284,6 +1315,8 @@ async function showProgressReport() {
   progressState.activePopoutStudentName = "";
   progressPendingUpdates = {};
   currentProgressRows = [];
+  adminProgressDashboardRows = [];
+  adminProgressActiveTaskRows = [];
   adminProgressPopoutRows = [];
 
   showScreen("progress-report");
@@ -1343,6 +1376,8 @@ async function loadAdminProgressDashboard() {
     const overviewRows = Array.isArray(overview.students)
       ? overview.students.map(normalizeProgressStudentRow)
       : [];
+
+    adminProgressDashboardRows = overviewRows;
 
     let tasks = Array.isArray(overview.tasks)
       ? overview.tasks.map(normalizeProgressTask)
@@ -1449,6 +1484,75 @@ function buildAdminTaskSummariesFromRows(rows) {
   });
 }
 
+function findAdminDashboardTask(subjectid, taskid, taskname) {
+  const targetSubject = String(subjectid || "");
+  const targetTaskId = String(taskid || "");
+  const targetTaskName = String(taskname || "");
+
+  for (const module of adminProgressDashboardModules || []) {
+    const moduleMatches = !targetSubject || targetSubject === "ALL" ||
+      String(module.subjectid || "") === targetSubject ||
+      String(module.moduleid || "") === targetSubject ||
+      String(module.subjectname || "") === targetSubject ||
+      String(module.modulename || "") === targetSubject;
+
+    const task = (module.tasks || []).find(item => {
+      const taskMatches = (targetTaskId && String(item.taskid || "") === targetTaskId) ||
+        (targetTaskName && String(item.taskname || "") === targetTaskName);
+      return taskMatches && (moduleMatches || !targetSubject || targetSubject === "ALL");
+    });
+
+    if (task) return task;
+  }
+
+  return null;
+}
+
+function getAdminCachedRowsForTask(taskid, taskname, subjectid) {
+  const targetTaskId = String(taskid || "");
+  const targetTaskName = String(taskname || "");
+  const targetSubject = String(subjectid || "");
+
+  return (adminProgressDashboardRows || [])
+    .map(normalizeProgressStudentRow)
+    .filter(row => {
+      const rowTaskId = String(row.taskid || "");
+      const rowTaskName = String(row.taskname || "");
+      const rowSubjectId = String(row.subjectid || "");
+      const rowSubjectName = String(row.subjectname || "");
+      const rowModuleId = String(row.moduleid || "");
+      const rowModuleName = String(row.modulename || "");
+
+      const taskMatches = (targetTaskId && rowTaskId === targetTaskId) ||
+        (targetTaskName && rowTaskName === targetTaskName);
+
+      if (!taskMatches) return false;
+
+      if (!targetSubject || targetSubject === "ALL") return true;
+
+      return rowSubjectId === targetSubject ||
+        rowSubjectName === targetSubject ||
+        rowModuleId === targetSubject ||
+        rowModuleName === targetSubject;
+    });
+}
+
+function getAdminFallbackRowsForActiveTask() {
+  const activeRows = Array.isArray(adminProgressActiveTaskRows)
+    ? adminProgressActiveTaskRows.map(normalizeProgressStudentRow)
+    : [];
+
+  if (activeRows.length > 0) {
+    return activeRows;
+  }
+
+  return getAdminCachedRowsForTask(
+    progressState.taskid,
+    progressState.taskname,
+    progressState.subjectid
+  );
+}
+
 function buildAdminProgressModules(tasks, rows) {
   const rowsByTask = {};
 
@@ -1499,6 +1603,7 @@ function buildAdminProgressModules(tasks, rows) {
         subjectname,
         moduleid: task.moduleid || moduleKey,
         modulename: moduleName,
+        rows: Array.isArray(summaryRows) ? summaryRows.map(normalizeProgressStudentRow) : [],
         completedPercent: completedPercentRaw !== undefined
           ? getProgressPercentValue(completedPercentRaw)
           : summary.completedPercent,
@@ -1559,7 +1664,7 @@ function renderAdminProgressTaskCard(task) {
       type="button"
       class="admin-progress-task-card"
       data-progress-action="open-admin-progress-task-card"
-      data-subjectid="${escapeForAttribute(task.subjectid || task.moduleid || "ALL")}"
+      data-subjectid="${escapeForAttribute(task.subjectid || "ALL")}"
       data-subjectname="${escapeForAttribute(task.subjectname || task.modulename || "Module")}"
       data-taskid="${escapeForAttribute(task.taskid)}"
       data-taskname="${escapeForAttribute(task.taskname)}"
@@ -1613,6 +1718,20 @@ async function openAdminProgressTaskCard(subjectid, subjectname, taskid, tasknam
   progressState.taskid = taskid;
   progressState.taskname = taskname || "Task";
   progressState.fromAdminDashboard = true;
+
+  const dashboardTask = findAdminDashboardTask(
+    progressState.subjectid,
+    progressState.taskid,
+    progressState.taskname
+  );
+
+  adminProgressActiveTaskRows = dashboardTask && Array.isArray(dashboardTask.rows)
+    ? dashboardTask.rows.map(normalizeProgressStudentRow)
+    : getAdminCachedRowsForTask(
+        progressState.taskid,
+        progressState.taskname,
+        progressState.subjectid
+      );
 
   setDomText("progress-task-students-title", progressState.taskname);
   await loadProgressTaskStudents();
@@ -1934,18 +2053,63 @@ async function loadProgressTaskStudents() {
     }, state.token);
 
     if (!result.success) {
+      const fallbackRows = getAdminFallbackRowsForActiveTask();
+
+      if (fallbackRows.length > 0) {
+        currentProgressRows = fallbackRows;
+        renderProgressTaskStudents(currentProgressRows);
+        return;
+      }
+
       setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(result.error || "Could not load students.")}</p>`);
       return;
     }
 
-    if (!result.students || result.students.length === 0) {
+    const apiRows = Array.isArray(result.students)
+      ? result.students.map(normalizeProgressStudentRow)
+      : [];
+
+    let allSubjectRows = [];
+
+    if (
+      apiRows.length === 0 &&
+      progressState.taskid &&
+      progressState.taskid !== "ALL" &&
+      progressState.subjectid &&
+      progressState.subjectid !== "ALL"
+    ) {
+      const allSubjectResult = await apiPost("/api/progress/task-detail", {
+        studentid: progressState.studentid,
+        classgroup: progressState.classgroup,
+        subjectid: "ALL",
+        taskid: progressState.taskid
+      }, state.token).catch(err => ({ success: false, error: err.message, students: [] }));
+
+      allSubjectRows = allSubjectResult && allSubjectResult.success && Array.isArray(allSubjectResult.students)
+        ? allSubjectResult.students.map(normalizeProgressStudentRow)
+        : [];
+    }
+
+    const rows = apiRows.length > 0
+      ? apiRows
+      : (allSubjectRows.length > 0 ? allSubjectRows : getAdminFallbackRowsForActiveTask());
+
+    if (rows.length === 0) {
       setDomHtml("progress-task-students-list", `<p class="helper-text">No student tasks found.</p>`);
       return;
     }
 
-    currentProgressRows = result.students.map(normalizeProgressStudentRow);
+    currentProgressRows = rows;
     renderProgressTaskStudents(currentProgressRows);
   } catch (err) {
+    const fallbackRows = getAdminFallbackRowsForActiveTask();
+
+    if (fallbackRows.length > 0) {
+      currentProgressRows = fallbackRows;
+      renderProgressTaskStudents(currentProgressRows);
+      return;
+    }
+
     console.error("Could not load student progress rows:", err);
     setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(err.message || "Could not load students.")}</p>`);
   }
