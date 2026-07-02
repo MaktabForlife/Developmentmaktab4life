@@ -1,4 +1,4 @@
-/* M4L v82.3 - Shell / Navigation / User Band module.
+/* M4L v82.3.1 - Shell / Navigation / User Band module.
    Owns Home native scroll dot binding, app browser-back history handling, and cover-home navigation.
    /js/m4l-swipe.js is no longer required. */
 
@@ -74,7 +74,7 @@ function showScreen(screenId) {
 ========================= */
 
 const M4L_APP_HISTORY_FLAG = "maktab4life";
-const M4L_APP_HISTORY_VERSION = 8211;
+const M4L_APP_HISTORY_VERSION = 8231;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
 
 let m4lAppHistoryBound = false;
@@ -1242,6 +1242,46 @@ function bindUserBandMenuDismissHandler() {
 }
 
 
+function openUserBandZoomLink() {
+  const confirmed = window.confirm("Do you want to open the Reboot Your Maktab Zoom link?");
+  if (!confirmed) return false;
+
+  if (typeof openTimetableZoomLink === "function") {
+    openTimetableZoomLink();
+    return true;
+  }
+
+  if (window.M4LTimetable && typeof window.M4LTimetable.openTimetableZoomLink === "function") {
+    window.M4LTimetable.openTimetableZoomLink();
+    return true;
+  }
+
+  const zoomButton = document.querySelector("[data-timetable-action='open-zoom'][data-zoom-link]:not(:disabled)");
+  if (zoomButton && typeof zoomButton.click === "function") {
+    zoomButton.click();
+    return true;
+  }
+
+  alert("Zoom link has not been added yet.");
+  return false;
+}
+
+function attachUserBandZoomHandler(band) {
+  if (!band) return false;
+
+  const zoomButton = band.querySelector("[data-user-band-zoom]");
+  if (!zoomButton) return false;
+
+  zoomButton.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeUserBandMenus();
+    openUserBandZoomLink();
+  });
+
+  return true;
+}
+
 function handleUserBandMenuAction(action, role) {
   const activeRole = String(role || getBottomNavRole() || "").trim();
 
@@ -1366,6 +1406,16 @@ function updateUserBand(screenId) {
         ${getUserBandProfileMarkup(username, role)}
       </div>
     </div>
+    <button
+      type="button"
+      class="app-user-band__zoom-btn"
+      data-user-band-zoom
+      aria-label="Open Zoom"
+      title="Open Zoom"
+    >
+      <span class="app-icon app-icon-zoom" aria-hidden="true"></span>
+      <span class="app-user-band__action-label">ZOOM</span>
+    </button>
     <div class="app-user-band__menu-shell">
       <button
         type="button"
@@ -1386,6 +1436,7 @@ function updateUserBand(screenId) {
   `;
 
   attachUserBandProfileHandler(band);
+  attachUserBandZoomHandler(band);
   attachUserBandMenuHandlers(band);
   return true;
 }
