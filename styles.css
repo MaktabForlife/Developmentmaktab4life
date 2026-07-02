@@ -1,6 +1,6 @@
-/* M4L v82.2.1 - User band font/Zoom icon cleanup + Admin Individual Progress baseline
-   Baseline: V82.2 Admin Individual Progress rebuild from Student Progress grid.
-   Scope: user band font weights, banner action icon cleanup, and clean Zoom icon support.
+/* M4L v82.3 - Remove centre banner Zoom control + Admin Individual Progress baseline
+   Baseline: V82.2.1 user band font cleanup plus V82.2 Admin Individual Progress rebuild.
+   Scope: remove only the centre Zoom icon/link/control from the user band banner.
    Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home.
 */
 
@@ -402,9 +402,6 @@ button:active {
   --app-icon-url: url('/icons/user.svg');
 }
 
-.app-icon-zoom {
-  --app-icon-url: url('/icons/zoom.svg');
-}
 
 .app-icon-menu {
   --app-icon-url: url('/icons/menu.svg');
@@ -489,7 +486,7 @@ button:active {
   }
 }
 
-/* Permanent authenticated user band - V82.1.1 */
+/* Permanent authenticated user band - V82.3 */
 .app-user-band {
   position: fixed;
   top: 0;
@@ -501,7 +498,7 @@ button:active {
   min-height: calc(var(--user-band-height) + var(--user-band-safe-area-top));
   padding: calc(7px + var(--user-band-safe-area-top)) max(14px, env(safe-area-inset-left, 0px)) 7px max(14px, env(safe-area-inset-right, 0px));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(48px, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: stretch;
   gap: 10px;
@@ -561,7 +558,6 @@ button:active {
   overflow-wrap: anywhere;
 }
 
-.app-user-band__zoom,
 .app-user-band__menu-btn {
   appearance: none;
   width: 48px;
@@ -583,33 +579,18 @@ button:active {
   letter-spacing: 0;
 }
 
-.app-user-band__zoom {
-  justify-self: center;
-  background: transparent;
-  background-color: transparent;
-  background-image: none;
-  box-shadow: none;
-}
-
-.app-user-band__zoom::before,
-.app-user-band__zoom::after,
 .app-user-band__menu-btn::before,
 .app-user-band__menu-btn::after {
   content: none;
   display: none;
 }
 
-.app-user-band__zoom .app-icon,
 .app-user-band__menu-btn .app-icon {
   width: 25px;
   height: 25px;
   border: 0;
   border-radius: 0;
   box-shadow: none;
-} 
-
-.app-user-band__zoom .app-icon-zoom {
-  background-color: currentColor;
 }
 
 .app-user-band__action-label {
@@ -736,7 +717,6 @@ button:active {
 }
 
 .app-user-band__profile-btn:active,
-.app-user-band__zoom:active,
 .app-user-band__menu-btn:active,
 .app-user-menu__item:active {
   transform: scale(0.98);
@@ -748,7 +728,6 @@ button:active {
 
 @media (hover: hover) and (pointer: fine) {
   .app-user-band__profile-btn:hover,
-  .app-user-band__zoom:hover,
   .app-user-band__menu-btn:hover,
   .app-user-menu__item:hover {
     color: var(--primary);
@@ -7357,7 +7336,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   }
 }
 
-/* M4L v82.2.1 - User band font/Zoom icon cleanup + Admin Individual Progress baseline */
+/* M4L v82.3 - Remove centre banner Zoom control + Admin Individual Progress baseline */
 .admin-individual-progress-shell {
   display: grid;
   gap: 12px;
