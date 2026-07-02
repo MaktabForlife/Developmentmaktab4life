@@ -1,6 +1,6 @@
-/* M4L v82.3 - Remove centre banner Zoom control + Admin Individual Progress baseline
-   Baseline: V82.2.1 user band font cleanup plus V82.2 Admin Individual Progress rebuild.
-   Scope: remove only the centre Zoom icon/link/control from the user band banner.
+/* M4L v82.3.1 - Centre banner Zoom restored with shared icon system + Admin Individual Progress baseline
+   Baseline: V82.3 remove centre banner Zoom control plus V82.2 Admin Individual Progress rebuild.
+   Scope: restore only the centre Zoom control using the same shared icon-mask pattern as user/menu icons.
    Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home.
 */
 
@@ -402,6 +402,9 @@ button:active {
   --app-icon-url: url('/icons/user.svg');
 }
 
+.app-icon-zoom {
+  --app-icon-url: url('/icons/zoom.svg');
+}
 
 .app-icon-menu {
   --app-icon-url: url('/icons/menu.svg');
@@ -486,7 +489,7 @@ button:active {
   }
 }
 
-/* Permanent authenticated user band - V82.3 */
+/* Permanent authenticated user band - V82.3.1 */
 .app-user-band {
   position: fixed;
   top: 0;
@@ -498,7 +501,7 @@ button:active {
   min-height: calc(var(--user-band-height) + var(--user-band-safe-area-top));
   padding: calc(7px + var(--user-band-safe-area-top)) max(14px, env(safe-area-inset-left, 0px)) 7px max(14px, env(safe-area-inset-right, 0px));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(48px, 1fr);
   align-items: center;
   justify-content: stretch;
   gap: 10px;
@@ -558,6 +561,7 @@ button:active {
   overflow-wrap: anywhere;
 }
 
+.app-user-band__zoom-btn,
 .app-user-band__menu-btn {
   appearance: none;
   width: 48px;
@@ -579,12 +583,19 @@ button:active {
   letter-spacing: 0;
 }
 
+.app-user-band__zoom-btn {
+  justify-self: center;
+}
+
+.app-user-band__zoom-btn::before,
+.app-user-band__zoom-btn::after,
 .app-user-band__menu-btn::before,
 .app-user-band__menu-btn::after {
   content: none;
   display: none;
 }
 
+.app-user-band__zoom-btn .app-icon,
 .app-user-band__menu-btn .app-icon {
   width: 25px;
   height: 25px;
@@ -717,6 +728,7 @@ button:active {
 }
 
 .app-user-band__profile-btn:active,
+.app-user-band__zoom-btn:active,
 .app-user-band__menu-btn:active,
 .app-user-menu__item:active {
   transform: scale(0.98);
@@ -728,6 +740,7 @@ button:active {
 
 @media (hover: hover) and (pointer: fine) {
   .app-user-band__profile-btn:hover,
+  .app-user-band__zoom-btn:hover,
   .app-user-band__menu-btn:hover,
   .app-user-menu__item:hover {
     color: var(--primary);
