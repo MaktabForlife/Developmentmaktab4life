@@ -1,4 +1,4 @@
-/* M4L v85 - Recorder integration + V84.1 Home compact dua stack
+/* M4L v85.1 - Recorder integration compact native picker + V84.1 Home compact dua stack
    Baseline: V84 Home vertical stack + Class Duas carousel.
    Scope: compact Class Duas layout, transparent icon section, Home vertical scroll correction, and Zoom colour update.
    Protected: active Student/Admin Progress layouts, Attendance, Library, timetable board, and menu grid structure.
@@ -8136,3 +8136,111 @@ body.m4l-recorder-picker-open {
   }
 }
 
+
+
+/* =========================
+   M4L v85.1 Recorder Corrections
+   - Remove in-screen Record Lesson heading/header.
+   - Use native select so iOS/Android show the wheel selector.
+   - Remove custom image-picker bottom sheet from the app integration.
+   - Start recorder page at "Select a page".
+========================= */
+#record-lesson-screen.m4l-recorder-screen > .nav-header {
+  display: none;
+}
+
+.m4l-recorder-root .recorder-header {
+  padding: 0 0 8px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.m4l-recorder-root .recorder-eyebrow {
+  display: none;
+}
+
+.m4l-recorder-root .recorder-header h3 {
+  color: var(--text-strong);
+  font-size: clamp(1.55rem, 7vw, 2rem);
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.m4l-recorder-root .page-action-pill {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.m4l-recorder-root .image-selector-card {
+  padding: 10px;
+}
+
+.m4l-recorder-root .recorder-native-picker-label {
+  width: min(100%, 430px);
+  margin: 0 auto;
+  display: grid;
+  gap: 6px;
+}
+
+.m4l-recorder-root .recorder-native-picker-wrap {
+  position: relative;
+  display: block;
+}
+
+.m4l-recorder-root .recorder-native-picker {
+  appearance: auto;
+  -webkit-appearance: menulist-button;
+  width: 100%;
+  min-height: 50px;
+  margin: 0;
+  padding: 10px 42px 10px 16px;
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-card) 72%, var(--surface-chip));
+  color: var(--text-strong);
+  box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.08);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 820;
+  line-height: 1.1;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+.m4l-recorder-root .recorder-native-picker-wrap .image-selector-chevron {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.m4l-recorder-root .image-selector-btn,
+.m4l-recorder-root .picker-sheet {
+  display: none !important;
+}
+
+body.m4l-recorder-picker-open {
+  overflow: auto;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  #record-lesson-screen.m4l-recorder-screen.active {
+    display: block;
+  }
+
+  #record-lesson-screen.m4l-recorder-screen {
+    overflow: hidden;
+  }
+
+  #record-lesson-screen.m4l-recorder-screen .m4l-recorder-root {
+    height: 100%;
+  }
+
+  #record-lesson-screen.m4l-recorder-screen .recorder-shell {
+    height: 100%;
+    padding-bottom: calc(12px + var(--recorder-safe-bottom));
+  }
+}
