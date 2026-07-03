@@ -1,5 +1,5 @@
-/* M4L v82.4.1 - Shell / Navigation / User Band module.
-   Owns Home native scroll dots, app browser-back history, cover-home navigation,
+/* M4L v84 - Shell / Navigation / User Band module.
+   Owns app browser-back history, cover-home navigation,
    banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
 
@@ -48,7 +48,7 @@ function showScreen(screenId) {
     hydrateCoverHomeNavigationButtons(document.getElementById(screenId) || document);
   }
 
-  if (typeof bindHomeNativeScrollControls === "function") {
+  if (typeof bindHomeNativeScrollControls === "function" && document.getElementById(screenId)?.querySelector("[data-home-swipe-track]")) {
     bindHomeNativeScrollControls(screenId);
   }
 
@@ -75,7 +75,7 @@ function showScreen(screenId) {
 ========================= */
 
 const M4L_APP_HISTORY_FLAG = "maktab4life";
-const M4L_APP_HISTORY_VERSION = 8241;
+const M4L_APP_HISTORY_VERSION = 84;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
 
 let m4lAppHistoryBound = false;
