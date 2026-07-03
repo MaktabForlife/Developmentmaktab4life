@@ -8244,3 +8244,53 @@ body.m4l-recorder-picker-open {
     padding-bottom: calc(12px + var(--recorder-safe-bottom));
   }
 }
+
+
+/* =========================
+   M4L v85.2 Recorder Corrections
+   - Keep standalone recorder unchanged, but make app selector load manifest books reliably.
+   - Native selector is now a simple full-width book picker.
+   - Remove visible Image Selector label from app recorder screen.
+========================= */
+.m4l-recorder-root .recorder-native-picker-label {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  display: block;
+}
+
+.m4l-recorder-root .recorder-native-picker-label .image-selector-kicker {
+  display: none;
+}
+
+.m4l-recorder-root .recorder-native-picker-wrap {
+  width: 100%;
+}
+
+.m4l-recorder-root .recorder-native-picker {
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 46px 12px 18px;
+  background: var(--surface-chip);
+  color: var(--text-strong);
+  border-color: rgba(var(--primary-rgb), 0.18);
+  border-radius: 999px;
+  font-size: clamp(1rem, 4.2vw, 1.16rem);
+  font-weight: 850;
+  text-align: left;
+  text-align-last: left;
+}
+
+.m4l-recorder-root .recorder-native-picker:disabled {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+.m4l-recorder-root .recorder-native-picker-wrap .image-selector-chevron {
+  right: 18px;
+  color: var(--text-muted);
+}
+
+.m4l-recorder-root .recorder-empty-state {
+  box-shadow: 0 8px 22px rgba(var(--black-rgb), 0.08);
+}
