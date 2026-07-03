@@ -7,7 +7,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-  <link rel="stylesheet" href="/styles.css?v=84.1" />
+  <link rel="stylesheet" href="/styles.css?v=85" />
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -370,18 +370,100 @@
 
 
     <!-- RECORD LESSON -->
-    <section id="record-lesson-screen" class="screen admin-theme">
-      <div class="nav-header">
-        <h2>Record Lesson</h2>
-        <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
-      </div>
+<section id="record-lesson-screen" class="screen admin-theme m4l-recorder-screen">
+  <div class="nav-header">
+    <h2>Record Lesson</h2>
+    <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
+  </div>
 
-      <div class="dashboard-section">
-        <p class="helper-text">Record Lesson will be connected next.</p>
-      </div>
-    </section>
+  <div class="m4l-recorder-root" data-m4l-recorder-root data-recorder-manifest-url="/recorder/pages/manifest.json" data-recorder-icons-base="/icons/">
+    <main class="recorder-shell" aria-label="Recorder workspace">
+      <header class="recorder-header">
+        <div class="recorder-header-text">
+          <p class="recorder-eyebrow">MAKTAB4LIFE RECORDER</p>
+          <h3 id="recorder-context-title">Select a page</h3>
+        </div>
+        <button id="page-pill" class="page-action-pill" type="button" aria-label="Go to page selection">Page ›</button>
+        <div id="status-pill" class="visually-hidden" aria-live="polite">Ready</div>
+      </header>
 
-    <!-- PDF VIEWER -->
+      <section id="page-select-screen" class="recorder-screen active" aria-labelledby="recorder-context-title">
+        <div class="image-selector-card">
+          <button id="image-selector-btn" class="image-selector-btn" type="button" aria-haspopup="dialog" aria-controls="image-picker-sheet">
+            <span class="image-selector-kicker">Image Selector</span>
+            <span id="image-selector-current" class="image-selector-current">Loading images...</span>
+            <span class="image-selector-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <input id="page-upload" class="visually-hidden" type="file" accept="image/*" multiple />
+        </div>
+
+        <div id="page-empty-state" class="recorder-empty-state">
+          <p>No pages loaded yet.</p>
+          <p class="recorder-muted">Choose an image set, or select your own image.</p>
+        </div>
+
+        <div id="page-grid" class="page-grid" aria-label="Available reader pages"></div>
+      </section>
+
+      <section id="record-screen" class="recorder-screen record-screen" aria-labelledby="recorder-context-title">
+        <p id="selected-page-label" class="visually-hidden">Selected page</p>
+
+        <div class="reader-frame">
+          <canvas id="reader-canvas" aria-label="Selected reader page"></canvas>
+        </div>
+
+        <div class="record-controls" aria-label="Recording controls">
+          <div class="control-row">
+            <button id="record-btn" class="record-icon-action" type="button" aria-label="Start recording">
+              <img class="record-control-icon" src="/icons/recorder-record.svg" alt="" aria-hidden="true" />
+              <span class="record-action-label">RECORD</span>
+            </button>
+            <button id="stop-btn" class="record-icon-action hidden" type="button" aria-label="Stop recording">
+              <img class="record-control-icon" src="/icons/recorder-stoprecord.svg" alt="" aria-hidden="true" />
+              <span class="record-action-meta">RECORDING : Time remaining <output id="countdown-timer" aria-live="polite">02:00</output></span>
+            </button>
+          </div>
+          <p id="record-helper" class="record-helper">Microphone permission will be requested when you tap Record.</p>
+        </div>
+      </section>
+
+      <section id="preview-screen" class="recorder-screen preview-screen" aria-labelledby="recorder-context-title">
+        <p id="recording-meta" class="visually-hidden">Review before sharing.</p>
+
+        <video id="preview-video" class="preview-video" controls playsinline></video>
+
+        <div class="preview-actions" aria-label="Recording actions">
+          <button id="rerecord-btn" class="preview-icon-action" type="button">
+            <span class="recorder-mask-icon recorder-mask-icon--redo" aria-hidden="true"></span>
+            <span>Redo</span>
+          </button>
+          <button id="share-btn" class="preview-icon-action" type="button">
+            <span class="recorder-mask-icon recorder-mask-icon--share" aria-hidden="true"></span>
+            <span>Share</span>
+          </button>
+          <a id="download-link" class="preview-icon-action download-link" href="#" download>
+            <span class="recorder-mask-icon recorder-mask-icon--download" aria-hidden="true"></span>
+            <span>Download</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <div id="image-picker-sheet" class="picker-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="image-picker-title">
+      <button id="image-picker-backdrop" class="picker-backdrop" type="button" aria-label="Close image selector"></button>
+      <div class="picker-panel">
+        <div class="picker-handle" aria-hidden="true"></div>
+        <div class="picker-header-row">
+          <h3 id="image-picker-title">Image Selector</h3>
+          <button id="image-picker-close" class="picker-close-btn" type="button" aria-label="Close image selector">×</button>
+        </div>
+        <div id="image-picker-options" class="picker-options" role="listbox" aria-label="Image sets"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PDF VIEWER -->
     <section id="pdf-viewer-screen" class="screen admin-theme">
       <div class="nav-header pdf-viewer-header">
         <h2 id="pdf-viewer-title">PDF Viewer</h2>
@@ -414,9 +496,10 @@
 
   </main>
 <script src="/js/m4l-dom.js?v=11"></script>
-<script src="/app.js?v=84"></script>
+<script src="/app.js?v=85"></script>
 <script src="/js/m4l-auth.js?v=55"></script>
-<script src="/js/m4l-shell.js?v=84"></script>
+<script src="/js/m4l-shell.js?v=85"></script>
+<script src="/js/m4l-recorder.js?v=85"></script>
 <script src="/js/m4l-attendance.js?v=76.7.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
 <script src="/js/m4l-timetable.js?v=84"></script>
