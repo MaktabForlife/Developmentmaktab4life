@@ -1,7 +1,8 @@
-/* M4L v72.1 - Library / Resources ribbon module with Progress-matched shared ribbon dots
-   Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-timetable.js.
-   This is a classic script, not type=module, so existing global function calls remain safe.
-   Owns the Library resource ribbons plus PDF/audio/video resource viewing.
+/* M4L v83.1 - Resources JS legacy compatibility quarantine
+   Baseline: V82.4 app styling with V65.4.2 direct Library ribbon model.
+   Scope: quarantine old Resources compatibility and legacy response-shape code only.
+   Protected: active direct Library ribbon cards, PDF viewer, inline audio/video preview, and resource opening.
+   Rule: legacy code is commented/marked first, not deleted. Delete only after testing confirms safe.
 */
 
 /* =========================
@@ -135,6 +136,9 @@ function removeLibraryHeaderActionButton() {
 async function fetchResourceCategories(apiPath, body = {}) {
   let result = await apiPost(apiPath, body, state.token);
 
+  /* V83_LEGACY_QUARANTINE_START: fetchResourceCategories fallback route probing
+     V83.1 reason: old multi-route API probing should not be needed once active resource routes are stable.
+     Original fallback preserved for rollback.
   // Compatibility fallback while routes are stabilised.
   if (!result.success && String(result.error || "").toLowerCase() === "not found") {
     const fallbackPaths = [
@@ -151,6 +155,7 @@ async function fetchResourceCategories(apiPath, body = {}) {
       }
     }
   }
+  V83_LEGACY_QUARANTINE_END: fetchResourceCategories fallback route probing */
 
   if (!result.success) {
     throw new Error(result.error || "Failed to load resources");
@@ -189,7 +194,22 @@ async function loadResourceCategories(apiPath, body = {}) {
 }
 
 // Compatibility wrapper for older callers. V65 always opens the full direct-resource Library.
+/* V83_LEGACY_QUARANTINE_START: openStudentResourceDirect
+   V83.1 reason: compatibility wrapper for older callers; active nav should call showStudentResources/showAdminResources directly.
+   Original implementation preserved for rollback.
+
 async function openStudentResourceDirect() {
+  if (studentResourceViewMode === "admin") {
+    await showAdminResources();
+    return;
+  }
+
+  await showStudentResources();
+}
+V83_LEGACY_QUARANTINE_END: openStudentResourceDirect */
+
+async function openStudentResourceDirect() {
+  console.warn("V83.1 legacy openStudentResourceDirect wrapper is quarantined; routing to the active Library screen.");
   if (studentResourceViewMode === "admin") {
     await showAdminResources();
     return;
@@ -372,6 +392,10 @@ function collectResourcesFromTypedGroups(result, subjectMap, seenResources) {
   });
 }
 
+/* V83_LEGACY_QUARANTINE_START: collectResourcesFromLegacySubjects
+   V83.1 reason: old Subject -> task/resource response-shape collector; active Library should be populated from typed resource groups.
+   Original implementation preserved for rollback.
+
 function collectResourcesFromLegacySubjects(subjects, subjectMap, seenResources) {
   getSortedResourceSubjects(subjects).forEach(subject => {
     getSubjectResourceArray(subject).forEach(resource => {
@@ -400,6 +424,15 @@ function collectResourcesFromLegacySubjects(subjects, subjectMap, seenResources)
       });
     });
   });
+}
+V83_LEGACY_QUARANTINE_END: collectResourcesFromLegacySubjects */
+
+function collectResourcesFromLegacySubjects(subjects, subjectMap, seenResources) {
+  console.warn("V83.1 legacy subject/task resource collector is quarantined.", {
+    subjects: Array.isArray(subjects) ? subjects.length : 0,
+    subjectMapSize: subjectMap && typeof subjectMap.size === "number" ? subjectMap.size : 0
+  });
+  return false;
 }
 
 function addLibraryResourceRecord({ subject, module, task, resource, fallbackType, subjectMap, seenResources }) {
@@ -540,11 +573,25 @@ function getExistingResourceId(resource) {
   ).trim();
 }
 
+/* V83_LEGACY_QUARANTINE_START: buildLegacyModuleGroup
+   V83.1 reason: helper used only by the quarantined legacy subject/task collector.
+   Original implementation preserved for rollback.
+
 function buildLegacyModuleGroup(resource, task, fallbackName) {
   return {
     moduleid: getResourceModuleId(resource) || getResourceModuleId(task),
     modulename: getResourceModuleName(resource) || getResourceModuleName(task) || fallbackName || "General",
     modulesortorder: Math.min(getResourceModuleSortOrder(resource), getResourceModuleSortOrder(task))
+  };
+}
+V83_LEGACY_QUARANTINE_END: buildLegacyModuleGroup */
+
+function buildLegacyModuleGroup(resource, task, fallbackName) {
+  console.warn("V83.1 legacy module group builder is quarantined.", resource, task, fallbackName);
+  return {
+    moduleid: "",
+    modulename: fallbackName || "General",
+    modulesortorder: Number.POSITIVE_INFINITY
   };
 }
 
@@ -1124,12 +1171,32 @@ function safeOpenExternalLink(link) {
   }
 }
 
+/* V83_LEGACY_QUARANTINE_START: toggleInlineResourcePreview
+   V83.1 reason: older inline-preview wrapper; active resource cards call openInlineResourcePreview/openLibraryResourceById.
+   Original implementation preserved for rollback.
+
 function toggleInlineResourcePreview(playerId, link, type) {
   return openInlineResourcePreview(playerId, `${playerId}-${link}`, link, type, getLibraryResourceTypeLabel(type));
 }
+V83_LEGACY_QUARANTINE_END: toggleInlineResourcePreview */
+
+function toggleInlineResourcePreview(playerId, link, type) {
+  console.warn("V83.1 legacy toggleInlineResourcePreview wrapper is quarantined; routing to active inline preview.");
+  return openInlineResourcePreview(playerId, `${playerId}-${link}`, link, type, getLibraryResourceTypeLabel(type));
+}
+
+/* V83_LEGACY_QUARANTINE_START: toggleInlineAudioPlayer
+   V83.1 reason: older audio-only wrapper; active resource cards call openInlineResourcePreview/openLibraryResourceById.
+   Original implementation preserved for rollback.
 
 function toggleInlineAudioPlayer(playerId, link) {
   return toggleInlineResourcePreview(playerId, link, "AUDIO");
+}
+V83_LEGACY_QUARANTINE_END: toggleInlineAudioPlayer */
+
+function toggleInlineAudioPlayer(playerId, link) {
+  console.warn("V83.1 legacy toggleInlineAudioPlayer wrapper is quarantined; routing to active inline preview.");
+  return openInlineResourcePreview(playerId, `${playerId}-${link}`, link, "AUDIO", getLibraryResourceTypeLabel("AUDIO"));
 }
 
 function openStudentResourceLink(link, type, title = "PDF Viewer") {
@@ -1326,6 +1393,10 @@ function getSortedResourceSubjects(subjects = studentResourceSubjects) {
   });
 }
 
+/* V83_LEGACY_QUARANTINE_START: getTaskGroups
+   V83.1 reason: helper used only by the quarantined legacy subject/task collector.
+   Original implementation preserved for rollback.
+
 function getTaskGroups(subject) {
   if (!subject || !Array.isArray(subject.tasks)) return [];
 
@@ -1337,6 +1408,16 @@ function getTaskGroups(subject) {
     return compareResourceIds(a && (a.taskid || a.TaskID), b && (b.taskid || b.TaskID));
   });
 }
+V83_LEGACY_QUARANTINE_END: getTaskGroups */
+
+function getTaskGroups(subject) {
+  console.warn("V83.1 legacy task group reader is quarantined.", subject);
+  return [];
+}
+
+/* V83_LEGACY_QUARANTINE_START: getSubjectResourceArray
+   V83.1 reason: helper used only by the quarantined legacy subject-level resource collector.
+   Original implementation preserved for rollback.
 
 function getSubjectResourceArray(subject) {
   if (!subject) return [];
@@ -1350,6 +1431,16 @@ function getSubjectResourceArray(subject) {
 
   return [];
 }
+V83_LEGACY_QUARANTINE_END: getSubjectResourceArray */
+
+function getSubjectResourceArray(subject) {
+  console.warn("V83.1 legacy subject resource array reader is quarantined.", subject);
+  return [];
+}
+
+/* V83_LEGACY_QUARANTINE_START: getTaskResourceArray
+   V83.1 reason: helper used only by the quarantined legacy task-level resource collector.
+   Original implementation preserved for rollback.
 
 function getTaskResourceArray(task) {
   if (!task) return [];
@@ -1360,6 +1451,12 @@ function getTaskResourceArray(task) {
   if (Array.isArray(task.task_resources)) return task.task_resources;
   if (Array.isArray(task.TaskResources)) return task.TaskResources;
 
+  return [];
+}
+V83_LEGACY_QUARANTINE_END: getTaskResourceArray */
+
+function getTaskResourceArray(task) {
+  console.warn("V83.1 legacy task resource array reader is quarantined.", task);
   return [];
 }
 
