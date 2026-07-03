@@ -1,4 +1,4 @@
-/* M4L v82.1.1 - Timetable board + bounded Home top stack
+/* M4L v82.4.1 - Timetable board + Home Zoom button cleanup
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -595,133 +595,35 @@ function handleTimetableUiClick(event) {
   }
 }
 
+function removeHomeStickyZoomAction(screenId, buttonId) {
+  const screen = document.getElementById(screenId);
+  if (!screen) return false;
+
+  const selectorParts = [
+    buttonId ? `#${buttonId}` : "",
+    ".home-sticky-action-bar[data-home-sticky-action='zoom']",
+    ".home-sticky-zoom-button",
+    ".zoom-link-button"
+  ].filter(Boolean);
+
+  screen.querySelectorAll(selectorParts.join(", ")).forEach(element => {
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+  });
+
+  scheduleHomeTopStackMetricsUpdate(screen);
+  return true;
+}
+
+/* V82.4.1 compatibility wrappers: Home Zoom is now banner-only. */
 function createHomeStickyZoomButton(buttonId) {
-  const button = document.createElement("button");
-  button.id = buttonId;
-  button.type = "button";
-  button.className = "zoom-link-button home-sticky-zoom-button is-disabled";
-  button.dataset.timetableAction = "open-zoom";
-  button.disabled = true;
-  button.setAttribute("aria-disabled", "true");
-  button.title = "Zoom link has not been added yet";
-  button.innerHTML = `
-    <img src="/icons/zoom.svg" alt="" class="zoom-link-button__icon" aria-hidden="true" />
-    <span>Join Zoom Class</span>
-  `;
-  button.dataset.zoomDecorated = "true";
-  return button;
+  return null;
 }
 
 function ensureHomeStickyZoomAction(screenId, buttonId, options = {}) {
-  const screen = document.getElementById(screenId);
-
-  if (!screen || !buttonId) {
-    return null;
-  }
-
-  let button = document.getElementById(buttonId);
-
-  if (!button && options.createIfMissing === true) {
-    button = createHomeStickyZoomButton(buttonId);
-  }
-
-  if (!button) {
-    return null;
-  }
-
-  button.classList.add("zoom-link-button", "home-sticky-zoom-button");
-  button.removeAttribute("onclick");
-  button.dataset.timetableAction = "open-zoom";
-
-  let actionBar = screen.querySelector(".home-sticky-action-bar");
-
-  if (!actionBar) {
-    actionBar = document.createElement("div");
-    actionBar.className = "home-sticky-action-bar";
-    actionBar.dataset.homeStickyAction = "zoom";
-    actionBar.setAttribute("aria-label", "Home Zoom action");
-  }
-
-  if (button.parentNode !== actionBar) {
-    actionBar.appendChild(button);
-  }
-
-  const shell = screen.querySelector("[data-home-swipe]") || screen.querySelector(".home-swipe-shell") || screen;
-  const track = screen.querySelector("[data-home-swipe-track]") || screen.querySelector(".home-swipe-track");
-  const dots = screen.querySelector("[data-home-swipe-dots]") || screen.querySelector(".home-swipe-dots");
-
-  if (shell && track && track.parentNode === shell) {
-    if (dots && dots.parentNode === shell) {
-      shell.insertBefore(dots, track);
-    }
-    shell.insertBefore(actionBar, track);
-  } else if (track && track.parentNode) {
-    track.parentNode.insertBefore(actionBar, track);
-  } else if (!actionBar.parentNode) {
-    screen.prepend(actionBar);
-  }
-
-  bindHomeTopStackMetricsResizeHandler();
-  scheduleHomeTopStackMetricsUpdate(screen);
-
-  return actionBar;
-}
-
-let homeTopStackResizeHandlerBound = false;
-
-function updateHomeTopStackMetrics(screenOrId) {
-  const screen = typeof screenOrId === "string"
-    ? document.getElementById(screenOrId)
-    : screenOrId;
-
-  if (!screen || typeof screen.querySelector !== "function") {
-    return false;
-  }
-
-  const actionBar = screen.querySelector(".home-sticky-action-bar");
-  if (!actionBar || typeof actionBar.getBoundingClientRect !== "function") {
-    return false;
-  }
-
-  const height = Math.ceil(actionBar.getBoundingClientRect().height || 0);
-  if (height > 0) {
-    screen.style.setProperty("--home-sticky-action-height", `${height}px`);
-  }
-
-  return height > 0;
-}
-
-function scheduleHomeTopStackMetricsUpdate(screenOrId) {
-  const runUpdate = () => updateHomeTopStackMetrics(screenOrId);
-
-  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-    window.requestAnimationFrame(runUpdate);
-  } else if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
-    window.setTimeout(runUpdate, 0);
-  } else {
-    runUpdate();
-  }
-
-  return true;
-}
-
-function bindHomeTopStackMetricsResizeHandler() {
-  if (homeTopStackResizeHandlerBound === true) {
-    return true;
-  }
-
-  if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
-    return false;
-  }
-
-  homeTopStackResizeHandlerBound = true;
-  window.addEventListener("resize", () => {
-    scheduleHomeTopStackMetricsUpdate("student-home");
-    resetHomeTopStackScroll("student-home");
-    scheduleHomeTopStackMetricsUpdate("admin-home");
-    resetHomeTopStackScroll("admin-home");
-  }, { passive: true });
-  return true;
+  removeHomeStickyZoomAction(screenId, buttonId);
+  return null;
 }
 
 function setTimetableZoomButtonState(buttonId, zoomLink) {
@@ -859,7 +761,7 @@ function ensureAdminHomePanel() {
     screen.prepend(panel);
   }
 
-  ensureHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn", { createIfMissing: true });
+  removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
 
   if (typeof bindHomeSwipePanels === "function") {
     bindHomeSwipePanels();
@@ -888,12 +790,12 @@ async function loadAdminHomeTimetable(force = false) {
   try {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
-    setTimetableZoomButtonState("admin-home-zoom-link-btn", globalTimetableZoomLink);
+    removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
     ensureClassDuasCardAfterTimetable("admin-home-timetable-content", "admin-home-class-duas-card", []);
     scheduleHomeTopStackMetricsUpdate("admin-home");
   } catch (err) {
     setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
-    setTimetableZoomButtonState("admin-home-zoom-link-btn", "");
+    removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
   }
 }
 
@@ -908,7 +810,7 @@ async function loadStudentHomeTimetable(force = false) {
   setHomeSectionBodyState("student-home");
   bindHomeSectionStateGuard();
   resetHomeTopStackScroll("student-home");
-  ensureHomeStickyZoomAction("student-home", "student-zoom-link-btn", { createIfMissing: true });
+  removeHomeStickyZoomAction("student-home", "student-zoom-link-btn");
   const container = document.getElementById("student-timetable-content");
 
   if (!container || !state.token || getBottomNavRole() !== "student") {
@@ -922,12 +824,12 @@ async function loadStudentHomeTimetable(force = false) {
   try {
     const result = await fetchTimetable({ force });
     renderTimetable(container, result, { showContentPanel: true });
-    setTimetableZoomButtonState("student-zoom-link-btn", globalTimetableZoomLink);
+    removeHomeStickyZoomAction("student-home", "student-zoom-link-btn");
     ensureClassDuasCardAfterTimetable("student-timetable-content", "student-home-class-duas-card", []);
     scheduleHomeTopStackMetricsUpdate("student-home");
   } catch (err) {
     setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
-    setTimetableZoomButtonState("student-zoom-link-btn", "");
+    removeHomeStickyZoomAction("student-home", "student-zoom-link-btn");
   }
 }
 
