@@ -1,4 +1,4 @@
-/* M4L v69 - Core bootstrap guards and Home Class Duas card.
+/* M4L v84 - Core bootstrap guards and Home Class Duas carousel.
    Load before m4l-auth, m4l-shell, and any optional feature modules.
    Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
 const API_BASE = "https://rebootworker.maktab4life.workers.dev";
@@ -402,7 +402,7 @@ function setAuthTheme(type) {
 ========================= */
 
 /* =========================
-   HOME CLASS DUAS CARD
+   HOME CLASS DUAS CAROUSEL - V84
 ========================= */
 
 /* M4L v40: Class duas is a home-page card, not part of the timetable module.
@@ -418,12 +418,24 @@ function createClassDuasCard(cardId) {
   title.className = "class-duas-card__title";
   title.textContent = "Class Duas";
 
-  const list = document.createElement("div");
-  list.className = "class-duas-card__list";
+  const viewport = document.createElement("div");
+  viewport.className = "class-duas-card__viewport";
 
-  CLASS_DUAS_ITEMS.forEach(dua => {
+  const track = document.createElement("div");
+  track.className = "class-duas-card__track";
+  track.dataset.classDuasTrack = "";
+  track.setAttribute("aria-label", "Class duas swipe panels");
+
+  const dots = document.createElement("div");
+  dots.className = "class-duas-card__dots";
+  dots.dataset.classDuasDots = "";
+  dots.setAttribute("aria-label", "Class dua panels");
+
+  CLASS_DUAS_ITEMS.forEach((dua, index) => {
     const item = document.createElement("article");
-    item.className = "class-duas-card__item";
+    item.className = "class-duas-card__panel";
+    item.dataset.classDuaPanelIndex = String(index);
+    item.setAttribute("aria-label", `Dua ${index + 1}`);
 
     const arabic = document.createElement("p");
     arabic.className = "class-duas-card__arabic";
@@ -446,11 +458,113 @@ function createClassDuasCard(cardId) {
     item.appendChild(arabic);
     item.appendChild(transliteration);
     item.appendChild(translation);
-    list.appendChild(item);
+    track.appendChild(item);
+
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = index === 0 ? "class-duas-card__dot is-active" : "class-duas-card__dot";
+    dot.dataset.classDuaPanelIndex = String(index);
+    dot.setAttribute("aria-label", `Show dua ${index + 1}`);
+    dot.setAttribute("aria-current", index === 0 ? "true" : "false");
+    dots.appendChild(dot);
   });
+
+  viewport.appendChild(track);
   card.appendChild(title);
-  card.appendChild(list);
+  card.appendChild(viewport);
+  card.appendChild(dots);
+  bindClassDuasCarousel(card);
   return card;
+}
+
+function getClassDuasCarouselActiveIndex(card) {
+  const track = card ? card.querySelector("[data-class-duas-track]") : null;
+  if (!track) return 0;
+
+  const panels = Array.from(track.querySelectorAll("[data-class-dua-panel-index]"));
+  if (panels.length <= 1) return 0;
+
+  const panelWidth = panels[0].getBoundingClientRect().width || track.clientWidth || 1;
+  const index = Math.round((track.scrollLeft || 0) / panelWidth);
+  return Math.max(0, Math.min(panels.length - 1, index));
+}
+
+function updateClassDuasCarouselDots(card) {
+  if (!card) return false;
+
+  const activeIndex = getClassDuasCarouselActiveIndex(card);
+  const dots = Array.from(card.querySelectorAll("[data-class-duas-dots] [data-class-dua-panel-index]"));
+
+  dots.forEach((dot, fallbackIndex) => {
+    const dotIndex = Number(dot.dataset.classDuaPanelIndex || fallbackIndex || 0);
+    const isActive = dotIndex === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+
+  return true;
+}
+
+function scrollClassDuasCarouselToPanel(card, index) {
+  const track = card ? card.querySelector("[data-class-duas-track]") : null;
+  const target = track ? track.querySelector(`[data-class-dua-panel-index="${Number(index || 0)}"]`) : null;
+
+  if (!track || !target) return false;
+
+  target.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest",
+    inline: "start"
+  });
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => updateClassDuasCarouselDots(card));
+  } else {
+    window.setTimeout(() => updateClassDuasCarouselDots(card), 0);
+  }
+
+  return true;
+}
+
+function bindClassDuasCarousel(card) {
+  if (!card || card.dataset.classDuasCarouselBound === "true") return false;
+
+  const track = card.querySelector("[data-class-duas-track]");
+  const dots = Array.from(card.querySelectorAll("[data-class-duas-dots] [data-class-dua-panel-index]"));
+
+  if (!track || !dots.length) return false;
+
+  card.dataset.classDuasCarouselBound = "true";
+
+  let pendingFrame = 0;
+  track.addEventListener("scroll", () => {
+    if (pendingFrame) return;
+
+    const schedule = typeof window.requestAnimationFrame === "function"
+      ? window.requestAnimationFrame
+      : callback => window.setTimeout(callback, 0);
+
+    pendingFrame = schedule(() => {
+      pendingFrame = 0;
+      updateClassDuasCarouselDots(card);
+    });
+  }, { passive: true });
+
+  dots.forEach(dot => {
+    dot.addEventListener("click", event => {
+      event.preventDefault();
+      scrollClassDuasCarouselToPanel(card, dot.dataset.classDuaPanelIndex || 0);
+    });
+  });
+
+  const update = () => updateClassDuasCarouselDots(card);
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(update);
+  } else {
+    window.setTimeout(update, 0);
+  }
+
+  return true;
 }
 
 function getHomeDuasPanelForTimetableContent(contentId) {
@@ -488,6 +602,8 @@ function ensureClassDuasCardAfterTimetable(contentId, cardId, imageCardIds = [])
   if (homeDuasPanel) {
     homeDuasPanel.innerHTML = "";
     homeDuasPanel.appendChild(card);
+    bindClassDuasCarousel(card);
+    updateClassDuasCarouselDots(card);
     return;
   }
 
@@ -495,11 +611,15 @@ function ensureClassDuasCardAfterTimetable(contentId, cardId, imageCardIds = [])
 
   if (timetableCard && timetableCard.parentNode) {
     timetableCard.insertAdjacentElement("afterend", card);
+    bindClassDuasCarousel(card);
+    updateClassDuasCarouselDots(card);
     return;
   }
 
   if (content.parentNode) {
     content.insertAdjacentElement("afterend", card);
+    bindClassDuasCarousel(card);
+    updateClassDuasCarouselDots(card);
   }
 }
 
