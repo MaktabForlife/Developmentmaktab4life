@@ -1,5 +1,6 @@
-/* M4L v82.3.1 - Shell / Navigation / User Band module.
-   Owns Home native scroll dot binding, app browser-back history handling, and cover-home navigation.
+/* M4L v82.4 - Shell / Navigation / User Band module.
+   Owns Home native scroll dots, app browser-back history, cover-home navigation,
+   banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
 
 function showScreen(screenId) {
@@ -937,11 +938,56 @@ function removeLegacyScreenRefreshButtons() {
 }
 
 let userBandRefreshInProgress = false;
+let userBandLoadingMessage = "";
+let userBandLoadingVisible = false;
+let userBandLoadingStatusTimer = 0;
+let userBandLoadingStatusKind = "";
+
+function syncUserBandLoadingIndicator() {
+  const loading = document.getElementById("app-user-band-loading");
+  if (!loading) return false;
+
+  const text = loading.querySelector("[data-user-band-loading-text]");
+  if (text) {
+    text.textContent = userBandLoadingMessage || (userBandLoadingVisible ? "Loading..." : "");
+  }
+
+  loading.setAttribute("aria-hidden", (userBandLoadingVisible || !!userBandLoadingMessage) ? "false" : "true");
+  return true;
+}
+
+function setUserBandLoadingState(isLoading, message = "", kind = "") {
+  userBandLoadingVisible = !!isLoading;
+  userBandLoadingMessage = String(message || "");
+  userBandLoadingStatusKind = String(kind || "");
+
+  if (document && document.body) {
+    document.body.classList.toggle("is-app-loading", userBandLoadingVisible);
+    document.body.classList.toggle("has-app-status", !userBandLoadingVisible && !!userBandLoadingMessage);
+    document.body.classList.toggle("app-status-error", userBandLoadingStatusKind === "error");
+  }
+
+  window.clearTimeout(userBandLoadingStatusTimer || 0);
+
+  if (!userBandLoadingVisible && userBandLoadingMessage) {
+    userBandLoadingStatusTimer = window.setTimeout(() => {
+      userBandLoadingMessage = "";
+      userBandLoadingStatusKind = "";
+      if (document && document.body) {
+        document.body.classList.remove("has-app-status", "app-status-error");
+      }
+      syncUserBandLoadingIndicator();
+    }, 1300);
+  }
+
+  syncUserBandLoadingIndicator();
+  return true;
+}
 
 function setUserBandRefreshState(isRefreshing, button) {
   userBandRefreshInProgress = !!isRefreshing;
 
-  const targetButton = button || document.querySelector("#app-user-band [data-user-band-refresh]");
+  const targetButton = button || document.querySelector("#app-user-band [data-user-band-refresh], #app-user-band [data-app-menu-action='refresh']");
   if (targetButton) {
     targetButton.disabled = !!isRefreshing;
     targetButton.classList.toggle("is-refreshing", !!isRefreshing);
@@ -977,17 +1023,20 @@ async function runUserBandRefresh(button, callback) {
   const minimumSpinMs = 450;
 
   setUserBandRefreshState(true, button);
+  setUserBandLoadingState(true, "Refreshing...");
 
   try {
-    // Let Safari/Chrome paint the spinning state before running quick synchronous refresh actions.
+    // Let Safari/Chrome paint the loading state before running quick synchronous refresh actions.
     await waitForUserBandRefreshFrame();
     await callback();
-  } finally {
     await waitForUserBandRefreshMinimumDuration(refreshStartedAt, minimumSpinMs);
-    setUserBandRefreshState(false, document.querySelector("#app-user-band [data-user-band-refresh]"));
-    if (typeof updateUserBand === "function") {
-      updateUserBand(getActiveScreenId());
-    }
+    setUserBandLoadingState(false, "Updated");
+  } catch (error) {
+    await waitForUserBandRefreshMinimumDuration(refreshStartedAt, minimumSpinMs);
+    setUserBandLoadingState(false, "Refresh failed", "error");
+    throw error;
+  } finally {
+    setUserBandRefreshState(false, document.querySelector("#app-user-band [data-user-band-refresh], #app-user-band [data-app-menu-action='refresh']"));
   }
 }
 
@@ -1129,29 +1178,66 @@ function attachUserBandRefreshHandler(band, refreshAction) {
   return true;
 }
 
-const USER_BAND_MENU_ITEMS = [
-  { action: "home", label: "Home", icon: "/icons/home.svg" },
-  { action: "record", label: "Recorder", icon: "/icons/navrecord.svg" },
-  { action: "library", label: "Library", icon: "/icons/resources.svg" },
-  { action: "progress", label: "Mark Progress", icon: "/icons/progress.svg" },
-  { action: "logout", label: "Logout", icon: "/icons/logout.svg" }
-];
+const USER_BAND_MENU_ITEMS = {
+  student: [
+    { action: "home", label: "Home", icon: "/icons/home.svg" },
+    { action: "record", label: "Record", icon: "/icons/navrecord.svg" },
+    { action: "library", label: "Library", icon: "/icons/resources.svg" },
+    { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
+    { action: "refresh", label: "Refresh", icon: "/icons/refresh.svg" },
+    { action: "logout", label: "Logout", icon: "/icons/logout.svg" }
+  ],
+  admin: [
+    { action: "home", label: "Home", icon: "/icons/home.svg" },
+    { action: "attendance", label: "Attendance", icon: "/icons/attendance.svg" },
+    { action: "record", label: "Record", icon: "/icons/navrecord.svg" },
+    { action: "library", label: "Library", icon: "/icons/resources.svg" },
+    { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
+    { action: "admin", label: "Admin", icon: "/icons/admin.svg" },
+    { action: "refresh", label: "Refresh", icon: "/icons/refresh.svg" },
+    { action: "logout", label: "Logout", icon: "/icons/logout.svg" }
+  ]
+};
+
+function getUserBandMenuItems(role) {
+  const key = String(role || getBottomNavRole() || "student").toLowerCase() === "admin" ? "admin" : "student";
+  return USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student;
+}
+
+function getUserBandMenuProfileMarkup(username, role) {
+  const detail = role === "student" ? getCurrentUserGroupLabel() : getCurrentUserRoleLabel();
+  const safeName = escapeHtml(username || (role === "admin" ? "Admin" : "Student"));
+  const safeDetail = escapeHtml(detail || (role === "admin" ? "Admin" : ""));
+
+  return `
+    <div class="app-user-menu__profile-tile" role="group" aria-label="User profile">
+      <span class="app-user-menu__tile-icon" style="--app-menu-icon: url('/icons/user.svg')" aria-hidden="true"></span>
+      <span class="app-user-menu__tile-label">${safeName}</span>
+      ${safeDetail ? `<span class="app-user-menu__tile-subtitle">${safeDetail}</span>` : ""}
+    </div>
+  `;
+}
+
+function getUserBandMenuMarkup(username, role) {
+  const items = getUserBandMenuItems(role);
+  return `
+    ${getUserBandMenuProfileMarkup(username, role)}
+    ${items.map(item => `
+      <button
+        type="button"
+        class="app-user-menu__tile"
+        data-app-menu-action="${escapeForAttribute(item.action)}"
+        role="menuitem"
+      >
+        <span class="app-user-menu__tile-icon" style="--app-menu-icon: url('${escapeForAttribute(item.icon)}')" aria-hidden="true"></span>
+        <span class="app-user-menu__tile-label">${escapeHtml(item.label)}</span>
+      </button>
+    `).join("")}
+  `;
+}
 
 let userBandMenuDismissHandlerBound = false;
 
-function getUserBandMenuMarkup() {
-  return USER_BAND_MENU_ITEMS.map(item => `
-    <button
-      type="button"
-      class="app-user-menu__item"
-      data-app-menu-action="${escapeForAttribute(item.action)}"
-      role="menuitem"
-    >
-      <span class="app-user-menu__item-icon" style="--app-menu-icon: url('${escapeForAttribute(item.icon)}')" aria-hidden="true"></span>
-      <span class="app-user-menu__item-label">${escapeHtml(item.label)}</span>
-    </button>
-  `).join("");
-}
 
 function closeUserBandMenu() {
   const menu = document.getElementById("app-user-band-menu");
@@ -1159,6 +1245,7 @@ function closeUserBandMenu() {
 
   if (menu) {
     menu.classList.add("hidden");
+    menu.setAttribute("aria-hidden", "true");
   }
 
   if (toggle) {
@@ -1200,6 +1287,7 @@ function setUserBandMenuOpen(isOpen) {
   }
 
   menu.classList.toggle("hidden", !isOpen);
+  menu.setAttribute("aria-hidden", isOpen ? "false" : "true");
   toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
   return true;
 }
@@ -1282,14 +1370,34 @@ function attachUserBandZoomHandler(band) {
   return true;
 }
 
-function handleUserBandMenuAction(action, role) {
+function handleUserBandMenuAction(action, role, triggerButton) {
   const activeRole = String(role || getBottomNavRole() || "").trim();
+  const actionKey = String(action || "").trim();
 
-  if (action === "home") {
+  if (actionKey === "home") {
     return showScreen(getM4LAppHomeScreenId(activeRole));
   }
 
-  if (action === "logout") {
+  if (actionKey === "refresh") {
+    if (userBandRefreshInProgress) return false;
+
+    const refreshAction = getUserBandRefreshAction(getActiveScreenId(), activeRole);
+
+    if (!refreshAction || typeof refreshAction.handler !== "function") {
+      setUserBandLoadingState(false, "Nothing to refresh");
+      return false;
+    }
+
+    runUserBandRefresh(triggerButton, async () => {
+      await refreshAction.handler(triggerButton);
+    }).catch(error => {
+      console.error("User band refresh failed:", error);
+    });
+
+    return true;
+  }
+
+  if (actionKey === "logout") {
     if (typeof logout === "function") {
       logout();
       return true;
@@ -1300,12 +1408,14 @@ function handleUserBandMenuAction(action, role) {
   }
 
   const actionKeyByMenuAction = {
+    attendance: "attendance",
     record: "record",
     library: "library",
-    progress: "progress"
+    progress: "progress",
+    admin: "admin"
   };
 
-  const navKey = actionKeyByMenuAction[action] || "";
+  const navKey = actionKeyByMenuAction[actionKey] || "";
   if (!navKey) return false;
 
   return handleBottomNavigationClick(activeRole, navKey);
@@ -1362,7 +1472,7 @@ function attachUserBandMenuHandlers(band) {
 
     const action = String(item.dataset.appMenuAction || "").trim();
     closeUserBandMenu();
-    handleUserBandMenuAction(action, getBottomNavRole());
+    handleUserBandMenuAction(action, getBottomNavRole(), item);
   });
 
   return true;
@@ -1387,24 +1497,10 @@ function updateUserBand(screenId) {
   const username = getCurrentUserName() || (role === "admin" ? "Admin" : "Student");
 
   band.innerHTML = `
-    <div class="app-user-band__identity-shell">
-      <button
-        type="button"
-        class="app-user-band__profile-btn"
-        data-user-profile-toggle
-        aria-label="Open profile menu"
-        title="Profile"
-        aria-expanded="false"
-        aria-controls="app-user-band-profile-menu"
-      >
-        <span class="app-icon app-icon-small app-icon-user app-user-band__identity-icon" aria-hidden="true"></span>
-        <span class="app-user-band__identity">
-          <span class="app-user-band__name">${escapeHtml(username)}</span>
-        </span>
-      </button>
-      <div id="app-user-band-profile-menu" class="app-user-profile-menu hidden" role="menu" aria-label="Profile menu">
-        ${getUserBandProfileMarkup(username, role)}
-      </div>
+    <div class="app-user-band__identity-shell" aria-label="Logged in user">
+      <span class="app-user-band__identity">
+        <span class="app-user-band__name">${escapeHtml(username)}</span>
+      </span>
     </div>
     <button
       type="button"
@@ -1429,13 +1525,17 @@ function updateUserBand(screenId) {
         <span class="app-icon app-icon-menu" aria-hidden="true"></span>
         <span class="app-user-band__action-label">MENU</span>
       </button>
-      <div id="app-user-band-menu" class="app-user-menu hidden" role="menu" aria-label="App menu">
-        ${getUserBandMenuMarkup()}
+      <div id="app-user-band-menu" class="app-user-menu hidden" role="menu" aria-label="App menu" aria-hidden="true">
+        ${getUserBandMenuMarkup(username, role)}
       </div>
+    </div>
+    <div id="app-user-band-loading" class="app-user-band__loading" role="status" aria-live="polite" aria-hidden="true">
+      <span class="app-user-band__loading-bar" aria-hidden="true"></span>
+      <span class="app-user-band__loading-text" data-user-band-loading-text></span>
     </div>
   `;
 
-  attachUserBandProfileHandler(band);
+  syncUserBandLoadingIndicator();
   attachUserBandZoomHandler(band);
   attachUserBandMenuHandlers(band);
   return true;
