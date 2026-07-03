@@ -1,10 +1,10 @@
-/* M4L v82.4.2 - Timetable board + Home page Zoom button quarantined
+/* M4L v84 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
    Class duas card helpers intentionally remain in app.js because the duas card is a home-page card,
    not timetable logic.
-   V82.4.2: legacy Home page Zoom button code is quarantined by comments; banner Zoom remains in shell.
+   V84: Home is a vertical stack; legacy Home page swipe and Home Zoom button remain quarantined.
 */
 
 /* =========================
@@ -732,7 +732,36 @@ function ensureAdminHomePanel() {
     panel.dataset.homeSwipeTrack = "";
     panel.setAttribute("aria-label", "Admin Home panels");
     panel.innerHTML = `
-      <section class="home-swipe-panel home-swipe-panel--timetable" aria-label="Timetable">
+      <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
+        <p class="helper-text">Loading class duas...</p>
+      </section>
+
+      <section class="home-section home-icons-section" aria-label="Admin home app icons">
+        <div class="home-cover-icon-grid" aria-label="Admin home app icons">
+          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="attendance">
+            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+            <span class="home-cover-icon-label">Attendance</span>
+          </button>
+          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="record">
+            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+            <span class="home-cover-icon-label">Record</span>
+          </button>
+          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="library">
+            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+            <span class="home-cover-icon-label">Library</span>
+          </button>
+          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="progress">
+            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+            <span class="home-cover-icon-label">Progress</span>
+          </button>
+          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="admin">
+            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+            <span class="home-cover-icon-label">Admin</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="home-section home-timetable-section" aria-label="Timetable">
         <section class="timetable-card">
           <div class="timetable-card-header">
             <h3>Reboot Your Maktab</h3>
@@ -742,27 +771,10 @@ function ensureAdminHomePanel() {
           </div>
         </section>
       </section>
-
-      <section
-        id="admin-home-duas-panel"
-        class="home-swipe-panel home-swipe-panel--duas"
-        aria-label="Class duas"
-      >
-        <p class="helper-text">Loading class duas...</p>
-      </section>
     `;
-
-    const dots = document.createElement("div");
-    dots.className = "home-swipe-dots";
-    dots.dataset.homeSwipeDots = "";
-    dots.setAttribute("aria-label", "Home panels");
-    dots.innerHTML = `
-      <button type="button" class="home-swipe-dot is-active" data-home-panel-index="0" aria-label="Show timetable panel" aria-current="true"></button>
-      <button type="button" class="home-swipe-dot" data-home-panel-index="1" aria-label="Show class duas panel" aria-current="false"></button>
-    `;
-
-    swipeShell.appendChild(dots);
-    swipeShell.appendChild(panel);
+    panel.className = "home-stack admin-home-panel student-home-panel";
+    panel.dataset.homeStack = "admin";
+    swipeShell = null;
   }
 
   if (swipeShell) {
@@ -773,8 +785,8 @@ function ensureAdminHomePanel() {
 
   // V82.4.2 QUARANTINED_HOME_ZOOM_BUTTON: removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
 
-  if (typeof bindHomeSwipePanels === "function") {
-    bindHomeSwipePanels();
+  if (typeof hydrateCoverHomeNavigationButtons === "function") {
+    hydrateCoverHomeNavigationButtons(panel);
   }
 
   removeLegacyScreenRefreshButtons();
