@@ -7,7 +7,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-  <link rel="stylesheet" href="/styles.css?v=82.4.1" />
+  <link rel="stylesheet" href="/styles.css?v=84" />
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -69,84 +69,60 @@
 
     <!-- ADMIN HOME -->
     <section id="admin-home" class="screen admin-theme">
-      <div class="home-swipe-shell" data-home-swipe="admin-home">
-        <div class="home-swipe-dots" data-home-swipe-dots aria-label="Home panels">
-          <button type="button" class="home-swipe-dot is-active" data-home-panel-index="0" aria-label="Show timetable panel" aria-current="true"></button>
-          <button type="button" class="home-swipe-dot" data-home-panel-index="1" aria-label="Show class duas panel" aria-current="false"></button>
-        </div>
-        <div
-          id="admin-home-panel"
-          class="student-home-panel admin-home-panel home-swipe-track"
-          data-home-swipe-track
-          aria-label="Admin Home panels"
-        >
-          <section class="home-swipe-panel home-swipe-panel--timetable" data-home-swipe-panel data-home-panel-index="0" aria-label="Home apps and timetable">
+      <div id="admin-home-panel" class="home-stack admin-home-panel student-home-panel" data-home-stack="admin" aria-label="Admin home content">
+        <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
+          <p class="helper-text">Loading class duas...</p>
+        </section>
 
-            <div class="home-cover-icon-grid" aria-label="Admin home app icons">
-              <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="attendance">
-                <span class="home-cover-icon-tile" aria-hidden="true">
-                  <span class="home-cover-icon-glyph"></span>
-                </span>
-                <span class="home-cover-icon-label">Attendance</span>
-              </button>
-              <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="record">
-                <span class="home-cover-icon-tile" aria-hidden="true">
-                  <span class="home-cover-icon-glyph"></span>
-                </span>
-                <span class="home-cover-icon-label">Record</span>
-              </button>
-              <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="library">
-                <span class="home-cover-icon-tile" aria-hidden="true">
-                  <span class="home-cover-icon-glyph"></span>
-                </span>
-                <span class="home-cover-icon-label">Library</span>
-              </button>
-              <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="progress">
-                <span class="home-cover-icon-tile" aria-hidden="true">
-                  <span class="home-cover-icon-glyph"></span>
-                </span>
-                <span class="home-cover-icon-label">Progress</span>
-              </button>
-              <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="admin">
-                <span class="home-cover-icon-tile" aria-hidden="true">
-                  <span class="home-cover-icon-glyph"></span>
-                </span>
-                <span class="home-cover-icon-label">Admin</span>
-              </button>
-            </div>
+        <section class="home-section home-icons-section" aria-label="Admin home app icons">
+          <div aria-label="Admin home app icons" class="home-cover-icon-grid">
+          <button class="home-cover-icon-btn" data-cover-home-nav="attendance" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Attendance</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="record" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Record</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="library" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Library</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="progress" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Progress</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="admin" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Admin</span>
+          </button>
+          </div>
+        </section>
 
-            <section class="timetable-card">
-              <div class="timetable-card-header">
-                <h3>Reboot Your Maktab</h3>
-                <button
-                  type="button"
-                  class="small-btn manual-refresh-btn"
-                  title="Refresh timetable"
-                  aria-label="Refresh timetable"
-                  onclick="refreshAdminHomeTimetable(this)"
-                >
-                  <span class="manual-refresh-btn__icon" aria-hidden="true"></span>
-                  <span class="visually-hidden">Refresh timetable</span>
-                </button>
-              </div>
-
-              <div id="admin-home-timetable-content">
-                <p class="helper-text">Loading timetable...</p>
-              </div>
-            </section>
+        <section class="home-section home-timetable-section" aria-label="Timetable">
+          <section class="timetable-card">
+          <div class="timetable-card-header">
+          <h3>Reboot Your Maktab</h3>
+          <button aria-label="Refresh timetable" class="small-btn manual-refresh-btn" onclick="refreshAdminHomeTimetable(this)" title="Refresh timetable" type="button">
+          <span aria-hidden="true" class="manual-refresh-btn__icon"></span>
+          <span class="visually-hidden">Refresh timetable</span>
+          </button>
+          </div>
+          <div id="admin-home-timetable-content">
+          <p class="helper-text">Loading timetable...</p>
+          </div>
           </section>
-
-          <section
-            id="admin-home-duas-panel"
-            class="home-swipe-panel home-swipe-panel--duas"
-            data-home-swipe-panel
-            data-home-panel-index="1"
-            aria-label="Class duas"
-          >
-            <p class="helper-text">Loading class duas...</p>
-          </section>
-        </div>
-
+        </section>
       </div>
     </section>
 
@@ -438,12 +414,12 @@
 
   </main>
 <script src="/js/m4l-dom.js?v=11"></script>
-<script src="/app.js?v=82.4"></script>
+<script src="/app.js?v=84"></script>
 <script src="/js/m4l-auth.js?v=55"></script>
-<script src="/js/m4l-shell.js?v=82.4.1"></script>
+<script src="/js/m4l-shell.js?v=84"></script>
 <script src="/js/m4l-attendance.js?v=76.7.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
-<script src="/js/m4l-timetable.js?v=82.4.1"></script>
+<script src="/js/m4l-timetable.js?v=84"></script>
 <script src="/js/m4l-resources.js?v=69"></script>
 <script src="/js/m4l-progress.js?v=82.2"></script>
 <script src="/js/m4l-manage-students.js?v=55"></script>
