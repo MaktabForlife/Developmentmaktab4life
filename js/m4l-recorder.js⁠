@@ -1,4 +1,4 @@
-/* M4L v85 - Integrated recorder module.
+/* M4L v85.2 - Integrated recorder module.
    Adapted from standalone /recorder/recorder.js.
    Standalone recorder remains untouched; this module runs only inside [data-m4l-recorder-root]. */
 (() => {
@@ -26,12 +26,8 @@
       pageSelectScreen: byId("page-select-screen"),
       recordScreen: byId("record-screen"),
       previewScreen: byId("preview-screen"),
-      imageSelectorBtn: byId("image-selector-btn"),
+      imageSelectorSelect: byId("image-selector-select"),
       imageSelectorCurrent: byId("image-selector-current"),
-      imagePickerSheet: byId("image-picker-sheet"),
-      imagePickerOptions: byId("image-picker-options"),
-      imagePickerBackdrop: byId("image-picker-backdrop"),
-      imagePickerClose: byId("image-picker-close"),
       pageUpload: byId("page-upload"),
       pageGrid: byId("page-grid"),
       pageEmptyState: byId("page-empty-state"),
@@ -53,8 +49,7 @@
   function hasRequiredElements(els) {
     const required = [
       "statusPill", "contextTitle", "pagePill", "pageSelectScreen", "recordScreen", "previewScreen",
-      "imageSelectorBtn", "imageSelectorCurrent", "imagePickerSheet", "imagePickerOptions",
-      "imagePickerBackdrop", "imagePickerClose", "pageUpload", "pageGrid", "pageEmptyState",
+      "imageSelectorSelect", "imageSelectorCurrent", "pageUpload", "pageGrid", "pageEmptyState",
       "selectedPageLabel", "readerCanvas", "countdownTimer", "recordBtn", "stopBtn", "recordHelper",
       "previewVideo", "rerecordBtn", "shareBtn", "downloadLink", "recordingMeta"
     ];
@@ -122,6 +117,11 @@
 
     function updateHeaderContext(screen) {
       if (!els.contextTitle) return;
+
+      const isPageSelect = screen === els.pageSelectScreen;
+      if (els.pagePill) {
+        els.pagePill.classList.toggle("hidden", isPageSelect);
+      }
 
       if (screen === els.recordScreen) {
         els.contextTitle.textContent = getSelectedPageTitle("Record");
@@ -202,6 +202,115 @@
       }
     }
 
+    function normalizeSelectorKey(value) {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\\/g, "/")
+        .replace(/\/+$/g, "")
+        .replace(/\s+/g, "-");
+    }
+
+    function stripTrailingSlash(value) {
+      return String(value || "").trim().replace(/\\/g, "/").replace(/\/+$/g, "");
+    }
+
+    function getBookIdCandidate(rawBook, bookTitle, fallbackId) {
+      return stripTrailingSlash(
+        rawBook.id ||
+        rawBook.bookId ||
+        rawBook.imageBasePath ||
+        rawBook.folder ||
+        bookTitle ||
+        fallbackId
+      );
+    }
+
+    function doesBookMatchDefault(book, defaultBook) {
+      const target = normalizeSelectorKey(defaultBook);
+      if (!target || !book) return false;
+
+      const candidates = [
+        book.id,
+        book.bookId,
+        book.bookTitle,
+        book.title,
+        book.folder,
+        book.imageBasePath
+      ].map(normalizeSelectorKey);
+
+      return candidates.some(candidate => candidate === target);
+    }
+
+    function setNativePickerMessage(message, disabled = true) {
+      const select = els.imageSelectorSelect;
+      if (!select) return false;
+
+      select.innerHTML = "";
+      const option = createNativePickerOption("", message || "Loading books");
+      option.disabled = true;
+      option.selected = true;
+      select.appendChild(option);
+      select.disabled = !!disabled;
+      setImageSelectorLabel(message || "Loading books");
+      return true;
+    }
+
+    function getManifestUrlCandidates() {
+      const candidates = [
+        manifestUrl,
+        "/recorder/pages/manifest.json",
+        "recorder/pages/manifest.json",
+        "../recorder/pages/manifest.json"
+      ];
+
+      const seen = new Set();
+      return candidates
+        .map(candidate => String(candidate || "").trim())
+        .filter(Boolean)
+        .map(candidate => {
+          try {
+            return new URL(candidate, window.location.origin).href;
+          } catch (error) {
+            return "";
+          }
+        })
+        .filter(url => {
+          if (!url || seen.has(url)) return false;
+          seen.add(url);
+          return true;
+        });
+    }
+
+    async function fetchManifestFromCandidates() {
+      const urls = getManifestUrlCandidates();
+      let lastError = null;
+
+      for (const url of urls) {
+        try {
+          const response = await fetch(`${url}${url.includes("?") ? "&" : "?"}v=85.2&t=${Date.now()}`, {
+            cache: "no-store"
+          });
+
+          if (!response.ok) {
+            lastError = new Error(`Manifest request failed: ${response.status} ${url}`);
+            continue;
+          }
+
+          const manifest = await response.json();
+          return {
+            manifest,
+            manifestUrl: url,
+            manifestDirectoryUrl: new URL("./", url).href
+          };
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError || new Error("Manifest could not be loaded.");
+    }
+
     function isAbsoluteAssetUrl(value) {
       return /^(https?:|blob:|data:|\/)/i.test(String(value || ""));
     }
@@ -260,7 +369,7 @@
     function normalizeBook(rawBook, index, manifestDirectoryUrl) {
       const bookTitle = String(rawBook.bookTitle || rawBook.title || rawBook.name || `Image Set ${index + 1}`);
       const pages = Array.isArray(rawBook.pages) ? rawBook.pages : [];
-      const id = String(rawBook.id || rawBook.bookId || rawBook.folder || bookTitle).trim() || `book-${index + 1}`;
+      const id = getBookIdCandidate(rawBook, bookTitle, `book-${index + 1}`) || `book-${index + 1}`;
       const normalizedBook = {
         ...rawBook,
         id,
@@ -294,83 +403,89 @@
     }
 
     function setImageSelectorLabel(text) {
-      els.imageSelectorCurrent.textContent = text || "Select image set";
-    }
-
-    async function loadStaticManifest() {
-      try {
-        const resolvedManifestUrl = new URL(manifestUrl, window.location.origin);
-        const manifestDirectoryUrl = new URL("./", resolvedManifestUrl).href;
-        const response = await fetch(resolvedManifestUrl.href, { cache: "no-store" });
-        if (!response.ok) {
-          setImageSelectorLabel("Select your own image");
-          renderImagePickerOptions();
-          return;
-        }
-
-        const manifest = await response.json();
-        state.books = normalizeManifest(manifest || {}, manifestDirectoryUrl);
-        renderImagePickerOptions();
-
-        if (state.books.length) {
-          const defaultBook = state.books.find(book => book.bookTitle === manifest.defaultBook || book.id === manifest.defaultBook) || state.books[0];
-          selectBook(defaultBook.id, { closePicker: false });
-        } else {
-          setImageSelectorLabel("Select your own image");
-          setStatus("Ready");
-        }
-      } catch (error) {
-        console.info("No static pages manifest loaded", error);
-        setImageSelectorLabel("Select your own image");
-        renderImagePickerOptions();
+      if (els.imageSelectorCurrent) {
+        els.imageSelectorCurrent.textContent = text || "Select image set";
       }
     }
 
+    async function loadStaticManifest() {
+      setNativePickerMessage("Loading books...", true);
+
+      try {
+        const result = await fetchManifestFromCandidates();
+        const manifest = result.manifest || {};
+        state.books = normalizeManifest(manifest, result.manifestDirectoryUrl);
+        renderImagePickerOptions();
+
+        if (state.books.length) {
+          const defaultBook = state.books.find(book => doesBookMatchDefault(book, manifest.defaultBook)) || state.books[0];
+          selectBook(defaultBook.id, { closePicker: false });
+          return;
+        }
+
+        setNativePickerMessage("No books found", false);
+        setStatus("Ready");
+      } catch (error) {
+        console.warn("Recorder manifest could not be loaded", error);
+        state.books = [];
+        state.pages = [];
+        renderImagePickerOptions();
+        setNativePickerMessage("Books not loaded", false);
+        setStatus("Manifest not loaded");
+      }
+    }
+
+    function createNativePickerOption(value, label, meta) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = meta ? `${label} — ${meta}` : label;
+      return option;
+    }
+
     function renderImagePickerOptions() {
-      els.imagePickerOptions.innerHTML = "";
+      const select = els.imageSelectorSelect;
+      if (!select) return false;
+
+      select.innerHTML = "";
+      select.disabled = false;
+
+      if (!state.books.length && state.selectedBookId !== "upload") {
+        const placeholder = createNativePickerOption("", "Books not loaded");
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.appendChild(placeholder);
+      }
 
       state.books.forEach(book => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `picker-option${book.id === state.selectedBookId ? " is-selected" : ""}`;
-        button.dataset.bookId = book.id;
-        button.setAttribute("role", "option");
-        button.setAttribute("aria-selected", book.id === state.selectedBookId ? "true" : "false");
-        button.innerHTML = `
-          <span>
-            <span class="picker-option-title">${escapeHtml(book.bookTitle)}</span>
-            <span class="picker-option-meta">${book.pages.length} pages</span>
-          </span>
-          <span class="picker-option-check" aria-hidden="true">${book.id === state.selectedBookId ? "✓" : "›"}</span>
-        `;
-        els.imagePickerOptions.appendChild(button);
+        select.appendChild(createNativePickerOption(book.id, book.bookTitle));
       });
 
-      const ownButton = document.createElement("button");
-      ownButton.type = "button";
-      ownButton.className = `picker-option${state.selectedBookId === "upload" ? " is-selected" : ""}`;
-      ownButton.dataset.action = "upload";
-      ownButton.setAttribute("role", "option");
-      ownButton.setAttribute("aria-selected", state.selectedBookId === "upload" ? "true" : "false");
-      ownButton.innerHTML = `
-        <span>
-          <span class="picker-option-title">Select your own image</span>
-          <span class="picker-option-meta">Choose image files from this device</span>
-        </span>
-        <span class="picker-option-check" aria-hidden="true">${state.selectedBookId === "upload" ? "✓" : "›"}</span>
-      `;
-      els.imagePickerOptions.appendChild(ownButton);
+      select.appendChild(createNativePickerOption("upload", "Select your own image"));
+
+      if (state.selectedBookId) {
+        select.value = state.selectedBookId;
+      }
+
+      return true;
     }
 
     function openImagePicker() {
       renderImagePickerOptions();
-      els.imagePickerSheet.classList.remove("hidden");
-      document.body.classList.add("m4l-recorder-picker-open");
+      if (els.imageSelectorSelect && typeof els.imageSelectorSelect.showPicker === "function") {
+        try {
+          els.imageSelectorSelect.showPicker();
+        } catch (error) {
+          // Some browsers only allow showPicker from trusted user actions.
+        }
+      }
+      return true;
     }
 
     function closeImagePicker() {
-      els.imagePickerSheet.classList.add("hidden");
-      document.body.classList.remove("m4l-recorder-picker-open");
+      if (document && document.body) {
+        document.body.classList.remove("m4l-recorder-picker-open");
+      }
+      return true;
     }
 
     function selectBook(bookId, options = {}) {
@@ -743,7 +858,7 @@
     }
 
     function handleDocumentKeydown(event) {
-      if (event.key === "Escape" && !els.imagePickerSheet.classList.contains("hidden")) {
+      if (event.key === "Escape") {
         closeImagePicker();
       }
     }
@@ -778,22 +893,17 @@
 
     function bindEvents() {
       if (els.pagePill) els.pagePill.addEventListener("click", goToPageSelection);
-      els.imageSelectorBtn.addEventListener("click", openImagePicker);
-      els.imagePickerBackdrop.addEventListener("click", closeImagePicker);
-      els.imagePickerClose.addEventListener("click", closeImagePicker);
 
-      els.imagePickerOptions.addEventListener("click", event => {
-        const option = event.target.closest(".picker-option");
-        if (!option) return;
+      els.imageSelectorSelect.addEventListener("change", event => {
+        const value = String(event.target.value || "").trim();
 
-        if (option.dataset.action === "upload") {
-          closeImagePicker();
+        if (value === "upload") {
           els.pageUpload.click();
           return;
         }
 
-        if (option.dataset.bookId) {
-          selectBook(option.dataset.bookId);
+        if (value) {
+          selectBook(value, { closePicker: false });
         }
       });
 
