@@ -7,7 +7,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-  <link rel="stylesheet" href="/styles.css?v=86" />
+  <link rel="stylesheet" href="/styles.css?v=86.2" />
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -389,9 +389,17 @@
     </section>
 
     <section id="m4l-recorder-record-view" class="m4l-recorder-view m4l-recorder-view--record" aria-labelledby="m4l-recorder-record-title">
-      <div class="m4l-recorder-view-header">
-        <button id="m4l-recorder-back-to-pages" class="m4l-recorder-back-btn" type="button">Pages</button>
+      <div class="m4l-recorder-view-header m4l-recorder-view-header--clean">
         <h2 id="m4l-recorder-record-title" class="m4l-recorder-view-title">Record</h2>
+        <button
+          id="m4l-recorder-back-to-pages"
+          class="m4l-recorder-back-icon-btn"
+          type="button"
+          aria-label="Back to page selection"
+          title="Back to page selection"
+        >
+          <span class="m4l-recorder-back-icon" aria-hidden="true"></span>
+        </button>
       </div>
 
       <div class="m4l-recorder-reader-frame">
@@ -403,7 +411,7 @@
           <img class="m4l-recorder-native-icon" src="/icons/record.svg" alt="" aria-hidden="true" />
           <span class="m4l-recorder-record-label">Record</span>
         </button>
-        <button id="m4l-recorder-stop-btn" class="m4l-recorder-record-action hidden" type="button" aria-label="Stop recording">
+        <button id="m4l-recorder-stop-btn" class="m4l-recorder-record-action" type="button" aria-label="Stop recording" hidden>
           <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg" alt="" aria-hidden="true" />
           <span class="m4l-recorder-record-meta">Recording · <output id="m4l-recorder-countdown" aria-live="polite">02:00</output></span>
         </button>
@@ -412,9 +420,17 @@
     </section>
 
     <section id="m4l-recorder-preview-view" class="m4l-recorder-view m4l-recorder-view--preview" aria-labelledby="m4l-recorder-preview-title">
-      <div class="m4l-recorder-view-header">
-        <button id="m4l-recorder-preview-pages" class="m4l-recorder-back-btn" type="button">Pages</button>
+      <div class="m4l-recorder-view-header m4l-recorder-view-header--clean">
         <h2 id="m4l-recorder-preview-title" class="m4l-recorder-view-title">Preview</h2>
+        <button
+          id="m4l-recorder-preview-pages"
+          class="m4l-recorder-back-icon-btn"
+          type="button"
+          aria-label="Back to page selection"
+          title="Back to page selection"
+        >
+          <span class="m4l-recorder-back-icon" aria-hidden="true"></span>
+        </button>
       </div>
 
       <video id="m4l-recorder-preview-video" class="m4l-recorder-preview-video" controls playsinline></video>
@@ -422,17 +438,13 @@
 
       <div class="m4l-recorder-preview-actions" aria-label="Recording actions">
         <button id="m4l-recorder-rerecord-btn" class="m4l-recorder-preview-action" type="button">
-          <span class="m4l-recorder-mask-icon m4l-recorder-icon-redo" aria-hidden="true"></span>
+          <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg" alt="" aria-hidden="true" />
           <span>Redo</span>
         </button>
         <button id="m4l-recorder-share-btn" class="m4l-recorder-preview-action" type="button">
-          <span class="m4l-recorder-mask-icon m4l-recorder-icon-share" aria-hidden="true"></span>
+          <img class="m4l-recorder-preview-icon" src="/icons/share.svg" alt="" aria-hidden="true" />
           <span>Share</span>
         </button>
-        <a id="m4l-recorder-download-link" class="m4l-recorder-preview-action m4l-recorder-download-link" href="#" download>
-          <span class="m4l-recorder-mask-icon m4l-recorder-icon-download" aria-hidden="true"></span>
-          <span>Download</span>
-        </a>
       </div>
     </section>
   </div>
@@ -476,7 +488,7 @@
 <script src="/js/m4l-auth.js?v=55"></script>
 <script src="/js/m4l-shell.js?v=86"></script>
   <script src="/js/m4l-timetable.js?v=84"></script>
-  <script src="/js/m4l-recorder.js?v=86b"></script>
+  <script src="/js/m4l-recorder.js?v=86.2"></script>
 <script src="/js/m4l-attendance.js?v=76.7.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
   <script src="/js/m4l-resources.js?v=69"></script>
