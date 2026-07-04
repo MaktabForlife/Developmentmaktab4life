@@ -8,7 +8,7 @@ const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "86a.Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim.",
+    transliteration: "86b.Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim.",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
