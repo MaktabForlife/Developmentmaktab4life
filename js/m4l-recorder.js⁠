@@ -1,9 +1,10 @@
-/* M4L v85.2 - Integrated recorder module.
+/* M4L v85.3 - Integrated recorder module.
    Adapted from standalone /recorder/recorder.js.
    Standalone recorder remains untouched; this module runs only inside [data-m4l-recorder-root]. */
 (() => {
   "use strict";
 
+  const MODULE_VERSION = "85.3";
   const MAX_RECORDING_MS = 2 * 60 * 1000;
   const CANVAS_FPS = 1;
   const OUTPUT_BASENAME = "reader-recording";
@@ -46,17 +47,42 @@
     };
   }
 
+  function setElementText(element, text) {
+    if (!element) return false;
+    element.textContent = text;
+    return true;
+  }
+
+  function setSelectSingleOption(select, message, disabled = true) {
+    if (!select) return false;
+    select.innerHTML = "";
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = message || "Loading";
+    option.disabled = !!disabled;
+    option.selected = true;
+    select.appendChild(option);
+    select.disabled = !!disabled;
+    return true;
+  }
+
+  function markRecorderModuleSeen(els, message) {
+    setSelectSingleOption(els.imageSelectorSelect, message || "Recorder loading...", true);
+    setElementText(els.imageSelectorCurrent, message || "Recorder loading...");
+  }
+
   function hasRequiredElements(els) {
     const required = [
-      "statusPill", "contextTitle", "pagePill", "pageSelectScreen", "recordScreen", "previewScreen",
-      "imageSelectorSelect", "imageSelectorCurrent", "pageUpload", "pageGrid", "pageEmptyState",
-      "selectedPageLabel", "readerCanvas", "countdownTimer", "recordBtn", "stopBtn", "recordHelper",
-      "previewVideo", "rerecordBtn", "shareBtn", "downloadLink", "recordingMeta"
+      "contextTitle", "pageSelectScreen", "recordScreen", "previewScreen",
+      "imageSelectorSelect", "pageUpload", "pageGrid", "pageEmptyState",
+      "readerCanvas", "countdownTimer", "recordBtn", "stopBtn",
+      "previewVideo", "rerecordBtn", "shareBtn", "downloadLink"
     ];
 
     const missing = required.filter(key => !els[key]);
     if (missing.length) {
       console.warn("Recorder could not initialise. Missing elements:", missing.join(", "));
+      markRecorderModuleSeen(els, "Recorder setup incomplete");
       return false;
     }
 
@@ -65,6 +91,7 @@
 
   function createRecorder(root, options = {}) {
     const els = getScopedElements(root);
+    markRecorderModuleSeen(els, `Recorder module v${MODULE_VERSION} loaded`);
     if (!hasRequiredElements(els)) return null;
 
     const manifestUrl = String(
@@ -97,8 +124,14 @@
     };
 
     function setStatus(text, isRecording = false) {
+      if (!els.statusPill) return false;
       els.statusPill.textContent = text;
       els.statusPill.classList.toggle("recording", isRecording);
+      return true;
+    }
+
+    function setRecordHelper(text) {
+      setElementText(els.recordHelper, text || "");
     }
 
     function showRecorderScreen(screen) {
@@ -243,17 +276,10 @@
     }
 
     function setNativePickerMessage(message, disabled = true) {
-      const select = els.imageSelectorSelect;
-      if (!select) return false;
-
-      select.innerHTML = "";
-      const option = createNativePickerOption("", message || "Loading books");
-      option.disabled = true;
-      option.selected = true;
-      select.appendChild(option);
-      select.disabled = !!disabled;
-      setImageSelectorLabel(message || "Loading books");
-      return true;
+      const label = message || "Loading books";
+      setSelectSingleOption(els.imageSelectorSelect, label, disabled);
+      setImageSelectorLabel(label);
+      return !!els.imageSelectorSelect;
     }
 
     function getManifestUrlCandidates() {
@@ -288,7 +314,7 @@
 
       for (const url of urls) {
         try {
-          const response = await fetch(`${url}${url.includes("?") ? "&" : "?"}v=85.2&t=${Date.now()}`, {
+          const response = await fetch(`${url}${url.includes("?") ? "&" : "?"}v=${MODULE_VERSION}&t=${Date.now()}`, {
             cache: "no-store"
           });
 
@@ -635,7 +661,7 @@
         drawSelectedPage();
 
         setStatus("Starting");
-        els.recordHelper.textContent = "Allow microphone access if prompted.";
+        setRecordHelper("Allow microphone access if prompted.");
 
         state.audioStream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -672,7 +698,7 @@
         state.startedAt = Date.now();
         els.recordBtn.classList.add("hidden");
         els.stopBtn.classList.remove("hidden");
-        els.recordHelper.textContent = "";
+        setRecordHelper("");
         setStatus("Recording", true);
         updateTimer();
         state.timerId = window.setInterval(updateTimer, 250);
@@ -694,7 +720,7 @@
       }
 
       els.stopBtn.disabled = true;
-      els.recordHelper.textContent = reason === "limit" ? "Two-minute limit reached." : "Preparing preview...";
+      setRecordHelper(reason === "limit" ? "Two-minute limit reached." : "Preparing preview...");
       setStatus("Saving");
 
       try {
@@ -810,7 +836,7 @@
       els.recordBtn.classList.remove("hidden");
       els.stopBtn.classList.add("hidden");
       els.stopBtn.disabled = false;
-      els.recordHelper.textContent = "Microphone permission will be requested when you tap Record.";
+      setRecordHelper("Microphone permission will be requested when you tap Record.");
       resetTimer();
     }
 
@@ -940,9 +966,11 @@
     function init() {
       if (state.isInitialised) return true;
       state.isInitialised = true;
+      console.info(`M4L Recorder integrated module initialising v${MODULE_VERSION}`);
+      markRecorderModuleSeen(els, "Loading books...");
 
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
-        els.recordHelper.textContent = "This browser cannot access the microphone for recording.";
+        setRecordHelper("This browser cannot access the microphone for recording.");
       }
 
       state.canvasContext = els.readerCanvas.getContext("2d", { alpha: false });
@@ -1005,11 +1033,60 @@
     cleanup
   };
 
-  if (typeof document !== "undefined") {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => initAll(), { once: true });
+  function scheduleInitAll() {
+    if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+      window.setTimeout(() => initAll(), 0);
     } else {
       initAll();
     }
+  }
+
+  function bindAutoInitObserver() {
+    if (typeof document === "undefined" || !document.body || typeof MutationObserver === "undefined") {
+      return false;
+    }
+
+    const observer = new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        const nodes = Array.from(mutation.addedNodes || []);
+        const hasRecorderRoot = nodes.some(node => {
+          if (!node || node.nodeType !== 1) return false;
+          if (node.matches && node.matches("[data-m4l-recorder-root]")) return true;
+          return !!(node.querySelector && node.querySelector("[data-m4l-recorder-root]"));
+        });
+
+        if (hasRecorderRoot) {
+          scheduleInitAll();
+          return;
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    return true;
+  }
+
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        initAll();
+        bindAutoInitObserver();
+      }, { once: true });
+    } else {
+      initAll();
+      bindAutoInitObserver();
+    }
+
+    document.addEventListener("click", event => {
+      const target = event && event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (target.closest('[data-cover-home-nav="record"], [data-bottom-nav="record"], [data-nav-target="record-lesson-screen"]')) {
+        scheduleInitAll();
+      }
+    }, true);
+  }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("pageshow", scheduleInitAll);
   }
 })();
