@@ -1,4 +1,4 @@
-/* M4L v86 - Integrated Recorder module.
+/* M4L v86.2 - Integrated Recorder module.
    Clean app-native recorder; standalone /recorder remains untouched. */
 (() => {
   "use strict";
@@ -58,7 +58,6 @@
     els.previewVideo = $("m4l-recorder-preview-video");
     els.rerecordBtn = $("m4l-recorder-rerecord-btn");
     els.shareBtn = $("m4l-recorder-share-btn");
-    els.downloadLink = $("m4l-recorder-download-link");
     els.recordingMeta = $("m4l-recorder-recording-meta");
     els.backToPages = $("m4l-recorder-back-to-pages");
     els.previewPages = $("m4l-recorder-preview-pages");
@@ -529,8 +528,11 @@
 
       state.mediaRecorder.start(1000);
       state.startedAt = Date.now();
-      els.recordBtn.classList.add("hidden");
-      els.stopBtn.classList.remove("hidden");
+      if (els.recordBtn) els.recordBtn.hidden = true;
+      if (els.stopBtn) {
+        els.stopBtn.hidden = false;
+        els.stopBtn.disabled = false;
+      }
       if (els.helper) els.helper.textContent = "";
       updateTimer();
       state.timerId = window.setInterval(updateTimer, 250);
@@ -572,9 +574,11 @@
     state.combinedStream = null;
     state.mediaRecorder = null;
 
-    els.recordBtn.classList.remove("hidden");
-    els.stopBtn.classList.add("hidden");
-    els.stopBtn.disabled = false;
+    if (els.recordBtn) els.recordBtn.hidden = false;
+    if (els.stopBtn) {
+      els.stopBtn.hidden = true;
+      els.stopBtn.disabled = false;
+    }
     resetTimer();
 
     const mimeType = state.selectedMimeType || "video/webm";
@@ -591,8 +595,6 @@
     state.recordingFile = new File([state.recordingBlob], fileName, { type: mimeType });
 
     els.previewVideo.src = state.recordingUrl;
-    els.downloadLink.href = state.recordingUrl;
-    els.downloadLink.download = fileName;
     if (els.recordingMeta) {
       els.recordingMeta.textContent = `${state.selectedPage ? state.selectedPage.title : "Selected page"} · ${Math.min(120, Math.round(durationMs / 1000))} seconds · ${extension.toUpperCase()}`;
     }
@@ -622,10 +624,6 @@
         els.previewVideo.removeAttribute("src");
         els.previewVideo.load();
       }
-      if (els.downloadLink) {
-        els.downloadLink.href = "#";
-        els.downloadLink.removeAttribute("download");
-      }
     }
 
     if (!options.keepSelectedPage) {
@@ -633,9 +631,9 @@
       state.selectedImage = null;
     }
 
-    if (els.recordBtn) els.recordBtn.classList.remove("hidden");
+    if (els.recordBtn) els.recordBtn.hidden = false;
     if (els.stopBtn) {
-      els.stopBtn.classList.add("hidden");
+      els.stopBtn.hidden = true;
       els.stopBtn.disabled = false;
     }
     if (els.helper) els.helper.textContent = "Microphone permission will be requested when you tap Record.";
