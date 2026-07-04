@@ -7898,15 +7898,15 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 }
 
 .m4l-recorder-icon-redo {
-  --m4l-recorder-action-icon: url('/icons/recorder-cancelredo.svg');
+  --m4l-recorder-action-icon: url('/icons/cancelredo.svg');
 }
 
 .m4l-recorder-icon-share {
-  --m4l-recorder-action-icon: url('/icons/recorder-share.svg');
+  --m4l-recorder-action-icon: url('/icons/share.svg');
 }
 
 .m4l-recorder-icon-download {
-  --m4l-recorder-action-icon: url('/icons/recorder-download.svg');
+  --m4l-recorder-action-icon: url('/icons/download.svg');
 }
 
 .m4l-recorder-page-card:focus-visible,
