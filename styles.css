@@ -1,4 +1,4 @@
-/* M4L v85.1 - Recorder integration compact native picker + V84.1 Home compact dua stack
+/* M4L v86 - Home compact stack + integrated recorder
    Baseline: V84 Home vertical stack + Class Duas carousel.
    Scope: compact Class Duas layout, transparent icon section, Home vertical scroll correction, and Zoom colour update.
    Protected: active Student/Admin Progress layouts, Attendance, Library, timetable board, and menu grid structure.
@@ -7571,356 +7571,309 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   }
 }
 
-/* =========================
-   M4L v85 Recorder Integration
-   Scoped recorder styles only. Standalone /recorder remains untouched.
-========================= */
-.m4l-recorder-screen {
+/* ==========================================
+   M4L V86 Integrated Recorder
+   Native app screen. Standalone /recorder remains untouched.
+   ========================================== */
+#record-lesson-screen.m4l-recorder-screen {
   align-self: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 26px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px;
   text-align: left;
+}
+
+body.has-user-band #record-lesson-screen.m4l-recorder-screen {
+  margin-top: 0;
 }
 
 .m4l-recorder-root {
-  --recorder-radius-lg: 24px;
-  --recorder-radius-md: 18px;
-  --recorder-radius-sm: 12px;
-  --recorder-safe-bottom: env(safe-area-inset-bottom, 0px);
   width: 100%;
-  min-width: 0;
-  color: var(--text);
-  font-family: var(--font-main);
-}
-
-.m4l-recorder-root *,
-.m4l-recorder-root *::before,
-.m4l-recorder-root *::after {
-  box-sizing: border-box;
-}
-
-.m4l-recorder-root button,
-.m4l-recorder-root input,
-.m4l-recorder-root a {
-  font: inherit;
-}
-
-.m4l-recorder-root button,
-.m4l-recorder-root a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-body.m4l-recorder-picker-open {
-  overflow: hidden;
-}
-
-.m4l-recorder-root .recorder-shell {
-  width: min(100%, 760px);
-  min-height: 0;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 0 0 calc(10px + var(--recorder-safe-bottom));
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.m4l-recorder-root .recorder-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--recorder-radius-lg);
-  background: var(--surface-card);
-  box-shadow: 0 8px 22px rgba(var(--black-rgb), 0.12);
+  color: var(--text);
 }
 
-.m4l-recorder-root .recorder-header-text {
-  min-width: 0;
+.m4l-recorder-view {
+  display: none;
 }
 
-.m4l-recorder-root .recorder-eyebrow {
-  margin: 0 0 4px;
-  color: var(--text-subtle);
-  font-size: 0.78rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.m4l-recorder-view.active {
+  display: grid;
+  gap: 12px;
 }
 
-.m4l-recorder-root .recorder-header h3,
-.m4l-recorder-root .picker-header-row h3 {
+.m4l-recorder-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: clamp(1.08rem, 4vw, 1.45rem);
-  font-weight: 700;
-  line-height: 1.12;
+  font-size: clamp(2.05rem, 9.5vw, 3.1rem);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
 }
 
-.m4l-recorder-root .page-action-pill {
-  flex: 0 0 auto;
-  width: auto;
-  min-height: 42px;
-  border: 0;
-  border-radius: 999px;
-  padding: 9px 14px;
-  background: var(--surface-chip);
-  color: var(--text-strong);
-  box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.03);
-  font-weight: 850;
-  font-size: 0.94rem;
-  cursor: pointer;
-}
-
-.m4l-recorder-root .recorder-screen {
-  display: none;
-  min-height: 0;
-}
-
-.m4l-recorder-root .recorder-screen.active {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.m4l-recorder-root .image-selector-card,
-.m4l-recorder-root .recorder-empty-state,
-.m4l-recorder-root .reader-frame {
-  border-radius: var(--recorder-radius-lg);
+.m4l-recorder-book-card,
+.m4l-recorder-empty-card,
+.m4l-recorder-reader-frame {
+  border-radius: 28px;
   background: var(--surface-card);
-  box-shadow: 0 10px 28px var(--shadow);
+  box-shadow: 0 10px 28px rgba(var(--black-rgb), 0.10);
 }
 
-.m4l-recorder-root .image-selector-card {
-  padding: 10px;
+.m4l-recorder-book-card {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 18px 18px 16px;
 }
 
-.m4l-recorder-root .image-selector-btn {
+.m4l-recorder-book-select {
   width: 100%;
-  min-height: 62px;
-  border: 0;
+  min-height: 58px;
+  margin: 0;
+  padding: 12px 54px 12px 18px;
+  border: 1px solid rgba(var(--black-rgb), 0.07);
   border-radius: 999px;
-  padding: 9px 18px;
   background: var(--surface-chip);
   color: var(--text-strong);
-  box-shadow: none;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "kicker chevron"
-    "current chevron";
-  gap: 2px 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.m4l-recorder-root .image-selector-kicker {
-  grid-area: kicker;
-  color: var(--text-subtle);
-  font-size: 0.76rem;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.m4l-recorder-root .image-selector-current {
-  grid-area: current;
-  min-width: 0;
-  font-size: clamp(1.02rem, 4.1vw, 1.25rem);
+  box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.02);
+  font-size: clamp(1.05rem, 4.4vw, 1.35rem);
   font-weight: 850;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  text-align: left;
+  text-align-last: left;
+  cursor: pointer;
 }
 
-.m4l-recorder-root .image-selector-chevron {
-  grid-area: chevron;
-  align-self: center;
-  color: var(--text-muted);
-  font-size: 1.55rem;
-  line-height: 1;
+.m4l-recorder-selector-label {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: right;
 }
 
-.m4l-recorder-root .recorder-empty-state {
-  padding: 18px;
+.m4l-recorder-status {
+  min-height: 1.2em;
+  margin: -2px 2px 0;
   color: var(--text-muted);
   text-align: center;
 }
 
-.m4l-recorder-root .recorder-empty-state p,
-.m4l-recorder-root .record-helper,
-.m4l-recorder-root .recorder-muted {
-  margin: 0;
+.m4l-recorder-status.is-error {
+  color: var(--danger);
+  font-weight: 750;
 }
 
-.m4l-recorder-root .recorder-muted {
-  color: var(--text-subtle);
-  font-size: 0.9rem;
-}
-
-.m4l-recorder-root .page-grid {
+.m4l-recorder-page-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.m4l-recorder-root .page-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.m4l-recorder-empty-card {
+  grid-column: 1 / -1;
+  padding: 22px 18px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: clamp(1rem, 4.2vw, 1.22rem);
+  line-height: 1.28;
+}
+
+.m4l-recorder-page-card {
+  appearance: none;
   width: 100%;
   min-height: 0;
-  border: 0;
-  border-radius: var(--recorder-radius-md);
+  margin: 0;
   padding: 10px;
+  display: grid;
+  gap: 8px;
+  border: 0;
+  border-radius: 22px;
   background: var(--surface-card);
-  box-shadow: 0 8px 22px rgba(var(--black-rgb), 0.10);
   color: var(--text);
+  box-shadow: 0 8px 22px rgba(var(--black-rgb), 0.10);
+  font: inherit;
+  letter-spacing: 0;
   text-align: left;
-  cursor: pointer;
 }
 
-.m4l-recorder-root .page-card:focus-visible,
-.m4l-recorder-root .page-action-pill:focus-visible,
-.m4l-recorder-root .preview-icon-action:focus-visible,
-.m4l-recorder-root .image-selector-btn:focus-visible,
-.m4l-recorder-root .record-icon-action:focus-visible,
-.m4l-recorder-root .picker-option:focus-visible,
-.m4l-recorder-root .picker-close-btn:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--primary) 75%, black 10%);
-  outline-offset: 3px;
+.m4l-recorder-page-card:active {
+  transform: scale(0.985);
 }
 
-.m4l-recorder-root .page-thumb-wrap {
+.m4l-recorder-page-thumb {
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  border-radius: var(--recorder-radius-sm);
+  border-radius: 16px;
   background: var(--surface-soft);
   display: grid;
   place-items: center;
 }
 
-.m4l-recorder-root .page-card img {
+.m4l-recorder-page-thumb img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
 
-.m4l-recorder-root .page-title {
+.m4l-recorder-page-title {
   color: var(--text-strong);
-  font-weight: 750;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
-.m4l-recorder-root .page-subtitle {
+.m4l-recorder-page-subtitle {
   color: var(--text-subtle);
-  font-size: 0.82rem;
-  font-weight: 650;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.12;
 }
 
-.m4l-recorder-root .reader-frame {
+.m4l-recorder-view-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.m4l-recorder-back-btn {
+  width: auto;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-chip);
+  color: var(--text-strong);
+  box-shadow: none;
+  font-size: 0.9rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.m4l-recorder-view-title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: clamp(1.25rem, 5.8vw, 1.9rem);
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.m4l-recorder-reader-frame {
   min-height: 0;
   padding: 8px;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--surface-soft) 80%, var(--surface-card));
+  background: color-mix(in srgb, var(--surface-soft) 82%, var(--surface-card));
 }
 
-.m4l-recorder-root #reader-canvas {
+#m4l-recorder-canvas {
   width: 100%;
   max-height: min(58dvh, 720px);
   object-fit: contain;
   display: block;
-  border-radius: var(--recorder-radius-md);
+  border-radius: 20px;
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.06);
 }
 
-.m4l-recorder-root .record-controls {
-  padding: 0 0 4px;
-  display: grid;
-  gap: 2px;
-  background: transparent;
-  box-shadow: none;
-  text-align: center;
-}
-
-.m4l-recorder-root .control-row {
+.m4l-recorder-controls {
   display: grid;
   justify-items: center;
   gap: 4px;
+  text-align: center;
 }
 
-.m4l-recorder-root .record-icon-action {
+.m4l-recorder-record-action {
+  appearance: none;
   width: auto;
-  min-width: 0;
-  min-height: 104px;
-  border: 0;
-  border-radius: var(--recorder-radius-lg);
-  padding: 2px 12px 4px;
-  background: transparent;
-  color: var(--text-strong);
-  box-shadow: none;
+  min-width: 112px;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 14px 6px;
   display: inline-grid;
   justify-items: center;
   align-items: center;
   gap: 2px;
-  cursor: pointer;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--text-strong);
+  box-shadow: none;
+  font: inherit;
+  letter-spacing: 0;
 }
 
-/* Keep record.svg and stoprecord.svg as native artwork; do not mask or recolour them. */
-.m4l-recorder-root .record-control-icon {
+.m4l-recorder-native-icon {
   width: 86px;
   height: 86px;
   object-fit: contain;
   display: block;
 }
 
-.m4l-recorder-root .record-action-label {
+.m4l-recorder-record-label {
   color: var(--text-strong);
   font-size: 0.92rem;
-  font-weight: 850;
+  font-weight: 900;
   letter-spacing: 0.08em;
-  line-height: 1.05;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
-.m4l-recorder-root .record-action-meta {
+.m4l-recorder-record-meta {
   color: var(--text-muted);
   font-size: 0.86rem;
-  font-weight: 450;
+  font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
 }
 
-.m4l-recorder-root #countdown-timer {
+#m4l-recorder-countdown {
   color: var(--text-strong);
   font: inherit;
   font-variant-numeric: tabular-nums;
 }
 
-.m4l-recorder-root .record-helper {
-  min-height: 1em;
-  color: var(--text-subtle);
-  font-size: 0.78rem;
+.m4l-recorder-helper {
+  margin: 0;
+  text-align: center;
 }
 
-.m4l-recorder-root .preview-video {
+.m4l-recorder-preview-video {
   width: 100%;
-  max-height: 62dvh;
-  border-radius: var(--recorder-radius-lg);
+  max-height: min(62dvh, 720px);
+  border-radius: 24px;
   background: #000;
-  box-shadow: 0 10px 28px var(--shadow);
+  box-shadow: 0 10px 28px rgba(var(--black-rgb), 0.14);
 }
 
-.m4l-recorder-root .preview-actions {
+.m4l-recorder-preview-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 2px 0 0;
 }
 
-.m4l-recorder-root .preview-icon-action {
-  min-height: 58px;
+.m4l-recorder-preview-action {
+  appearance: none;
+  min-height: 60px;
+  margin: 0;
+  padding: 8px 6px;
   border: 0;
   border-radius: 18px;
-  padding: 8px 6px;
   background: var(--surface-card);
   color: var(--text-strong);
   box-shadow: 0 8px 20px rgba(var(--black-rgb), 0.10);
@@ -7928,369 +7881,73 @@ body.m4l-recorder-picker-open {
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 3px;
-  font-weight: 760;
+  gap: 4px;
   font-size: 0.78rem;
-  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: center;
 }
 
-.m4l-recorder-root .recorder-mask-icon {
+.m4l-recorder-mask-icon {
   width: 24px;
   height: 24px;
   display: block;
   background: currentColor;
-  -webkit-mask: var(--recorder-icon-url) center / contain no-repeat;
-  mask: var(--recorder-icon-url) center / contain no-repeat;
+  -webkit-mask: var(--m4l-recorder-action-icon) center / contain no-repeat;
+  mask: var(--m4l-recorder-action-icon) center / contain no-repeat;
 }
 
-.m4l-recorder-root .recorder-mask-icon--redo {
-  --recorder-icon-url: url('/icons/recorder-cancelredo.svg');
+.m4l-recorder-icon-redo {
+  --m4l-recorder-action-icon: url('/icons/recorder-cancelredo.svg');
 }
 
-.m4l-recorder-root .recorder-mask-icon--share {
-  --recorder-icon-url: url('/icons/recorder-share.svg');
+.m4l-recorder-icon-share {
+  --m4l-recorder-action-icon: url('/icons/recorder-share.svg');
 }
 
-.m4l-recorder-root .recorder-mask-icon--download {
-  --recorder-icon-url: url('/icons/recorder-download.svg');
+.m4l-recorder-icon-download {
+  --m4l-recorder-action-icon: url('/icons/recorder-download.svg');
 }
 
-.m4l-recorder-root .picker-sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  align-items: end;
-}
-
-.m4l-recorder-root .picker-backdrop {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  min-height: 0;
-  border: 0;
-  background: rgba(var(--black-rgb), 0.34);
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.m4l-recorder-root .picker-panel {
-  position: relative;
-  width: min(100%, 760px);
-  max-height: min(78dvh, 620px);
-  margin: 0 auto;
-  border-radius: 28px 28px 0 0;
-  padding: 10px 14px calc(18px + var(--recorder-safe-bottom));
-  background: var(--surface-card);
-  box-shadow: 0 -14px 34px rgba(var(--black-rgb), 0.18);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.m4l-recorder-root .picker-handle {
-  width: 48px;
-  height: 5px;
-  border-radius: 999px;
-  margin: 0 auto 4px;
-  background: color-mix(in srgb, var(--text-subtle) 28%, transparent);
-}
-
-.m4l-recorder-root .picker-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.m4l-recorder-root .picker-close-btn {
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  min-height: 42px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0;
-  background: var(--surface-chip);
-  color: var(--text-strong);
-  box-shadow: none;
-  font-size: 1.55rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.m4l-recorder-root .picker-options {
-  display: grid;
-  gap: 8px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 2px 0 6px;
-}
-
-.m4l-recorder-root .picker-option {
-  width: 100%;
-  min-height: 0;
-  border: 0;
-  border-radius: 18px;
-  padding: 14px 16px;
-  background: var(--surface-soft);
-  color: var(--text-strong);
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.m4l-recorder-root .picker-option.is-selected {
-  background: var(--primary);
-}
-
-.m4l-recorder-root .picker-option-title {
-  font-weight: 850;
-}
-
-.m4l-recorder-root .picker-option-meta {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 650;
-}
-
-.m4l-recorder-root .picker-option-check {
-  color: var(--text-strong);
-  font-weight: 900;
+.m4l-recorder-page-card:focus-visible,
+.m4l-recorder-book-select:focus-visible,
+.m4l-recorder-back-btn:focus-visible,
+.m4l-recorder-record-action:focus-visible,
+.m4l-recorder-preview-action:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 75%, black 10%);
+  outline-offset: 3px;
 }
 
 @media (min-width: 640px) {
-  .m4l-recorder-root .page-grid {
+  .m4l-recorder-page-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .m4l-recorder-root .record-control-icon {
+  .m4l-recorder-native-icon {
     width: 94px;
     height: 94px;
   }
-
-  .m4l-recorder-root .preview-icon-action {
-    min-height: 66px;
-  }
 }
 
 @media (max-width: 767px), (max-device-width: 767px) {
   #record-lesson-screen.m4l-recorder-screen {
-    align-self: flex-start;
-    height: calc(
-      100dvh -
-      var(--user-band-height) -
-      var(--user-band-safe-area-top) -
-      var(--bottom-nav-height) -
-      var(--bottom-nav-safe-area) -
-      24px
-    );
-    max-height: calc(
-      100dvh -
-      var(--user-band-height) -
-      var(--user-band-safe-area-top) -
-      var(--bottom-nav-height) -
-      var(--bottom-nav-safe-area) -
-      24px
-    );
-    min-height: 0;
-    overflow: hidden;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--surface-app);
+    padding: 12px max(12px, env(safe-area-inset-left, 0px)) 12px max(12px, env(safe-area-inset-right, 0px));
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 12px);
   }
 
-  #record-lesson-screen.m4l-recorder-screen.active {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+  .m4l-recorder-root {
+    gap: 10px;
   }
 
-  #record-lesson-screen.m4l-recorder-screen .nav-header {
-    margin-bottom: 10px;
+  .m4l-recorder-book-card {
+    padding: 16px 16px 14px;
   }
 
-  #record-lesson-screen.m4l-recorder-screen .m4l-recorder-root {
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  #record-lesson-screen.m4l-recorder-screen .recorder-shell {
-    height: 100%;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(12px + var(--recorder-safe-bottom));
-  }
-
-  .m4l-recorder-root .recorder-header {
-    padding: 10px 12px;
-  }
-
-  .m4l-recorder-root .record-action-meta {
-    white-space: normal;
+  .m4l-recorder-page-grid {
+    gap: 10px;
   }
 }
 
-
-
-/* =========================
-   M4L v85.1 Recorder Corrections
-   - Remove in-screen Record Lesson heading/header.
-   - Use native select so iOS/Android show the wheel selector.
-   - Remove custom image-picker bottom sheet from the app integration.
-   - Start recorder page at "Select a page".
-========================= */
-#record-lesson-screen.m4l-recorder-screen > .nav-header {
-  display: none;
-}
-
-.m4l-recorder-root .recorder-header {
-  padding: 0 0 8px;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.m4l-recorder-root .recorder-eyebrow {
-  display: none;
-}
-
-.m4l-recorder-root .recorder-header h3 {
-  color: var(--text-strong);
-  font-size: clamp(1.55rem, 7vw, 2rem);
-  font-weight: 850;
-  line-height: 1.1;
-}
-
-.m4l-recorder-root .page-action-pill {
-  min-height: 40px;
-  padding: 8px 14px;
-}
-
-.m4l-recorder-root .image-selector-card {
-  padding: 10px;
-}
-
-.m4l-recorder-root .recorder-native-picker-label {
-  width: min(100%, 430px);
-  margin: 0 auto;
-  display: grid;
-  gap: 6px;
-}
-
-.m4l-recorder-root .recorder-native-picker-wrap {
-  position: relative;
-  display: block;
-}
-
-.m4l-recorder-root .recorder-native-picker {
-  appearance: auto;
-  -webkit-appearance: menulist-button;
-  width: 100%;
-  min-height: 50px;
-  margin: 0;
-  padding: 10px 42px 10px 16px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-card) 72%, var(--surface-chip));
-  color: var(--text-strong);
-  box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.08);
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 820;
-  line-height: 1.1;
-  text-align: center;
-  text-align-last: center;
-  cursor: pointer;
-}
-
-.m4l-recorder-root .recorder-native-picker-wrap .image-selector-chevron {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.m4l-recorder-root .image-selector-btn,
-.m4l-recorder-root .picker-sheet {
-  display: none !important;
-}
-
-body.m4l-recorder-picker-open {
-  overflow: auto;
-}
-
-@media (max-width: 767px), (max-device-width: 767px) {
-  #record-lesson-screen.m4l-recorder-screen.active {
-    display: block;
-  }
-
-  #record-lesson-screen.m4l-recorder-screen {
-    overflow: hidden;
-  }
-
-  #record-lesson-screen.m4l-recorder-screen .m4l-recorder-root {
-    height: 100%;
-  }
-
-  #record-lesson-screen.m4l-recorder-screen .recorder-shell {
-    height: 100%;
-    padding-bottom: calc(12px + var(--recorder-safe-bottom));
-  }
-}
-
-
-/* =========================
-   M4L v85.2 Recorder Corrections
-   - Keep standalone recorder unchanged, but make app selector load manifest books reliably.
-   - Native selector is now a simple full-width book picker.
-   - Remove visible Image Selector label from app recorder screen.
-========================= */
-.m4l-recorder-root .recorder-native-picker-label {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  display: block;
-}
-
-.m4l-recorder-root .recorder-native-picker-label .image-selector-kicker {
-  display: none;
-}
-
-.m4l-recorder-root .recorder-native-picker-wrap {
-  width: 100%;
-}
-
-.m4l-recorder-root .recorder-native-picker {
-  width: 100%;
-  min-height: 56px;
-  padding: 12px 46px 12px 18px;
-  background: var(--surface-chip);
-  color: var(--text-strong);
-  border-color: rgba(var(--primary-rgb), 0.18);
-  border-radius: 999px;
-  font-size: clamp(1rem, 4.2vw, 1.16rem);
-  font-weight: 850;
-  text-align: left;
-  text-align-last: left;
-}
-
-.m4l-recorder-root .recorder-native-picker:disabled {
-  opacity: 0.72;
-  cursor: progress;
-}
-
-.m4l-recorder-root .recorder-native-picker-wrap .image-selector-chevron {
-  right: 18px;
-  color: var(--text-muted);
-}
-
-.m4l-recorder-root .recorder-empty-state {
-  box-shadow: 0 8px 22px rgba(var(--black-rgb), 0.08);
-}
