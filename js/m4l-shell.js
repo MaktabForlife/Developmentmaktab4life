@@ -1,4 +1,4 @@
-/* M4L v84 - Shell / Navigation / User Band module.
+/* M4L v86 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation,
    banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
@@ -40,6 +40,15 @@ function showScreen(screenId) {
     updateBottomNavigation(screenId);
   }
 
+
+  if (previousScreenId === "record-lesson-screen" && screenId !== "record-lesson-screen" && window.M4LRecorder && typeof window.M4LRecorder.cleanup === "function") {
+    window.M4LRecorder.cleanup({ keepPages: true });
+  }
+
+  if (screenId === "record-lesson-screen" && window.M4LRecorder && typeof window.M4LRecorder.open === "function") {
+    window.M4LRecorder.open();
+  }
+
   if (typeof bindCoverHomeNavigation === "function") {
     bindCoverHomeNavigation();
   }
@@ -75,7 +84,7 @@ function showScreen(screenId) {
 ========================= */
 
 const M4L_APP_HISTORY_FLAG = "maktab4life";
-const M4L_APP_HISTORY_VERSION = 84;
+const M4L_APP_HISTORY_VERSION = 86;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
 
 let m4lAppHistoryBound = false;
