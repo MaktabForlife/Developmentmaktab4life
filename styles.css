@@ -1,4 +1,4 @@
-/* M4L v86 - Home compact stack + integrated recorder
+/* M4L v86.2 - Home compact stack + integrated recorder
    Baseline: V84 Home vertical stack + Class Duas carousel.
    Scope: compact Class Duas layout, transparent icon section, Home vertical scroll correction, and Zoom colour update.
    Protected: active Student/Admin Progress layouts, Attendance, Library, timetable board, and menu grid structure.
@@ -7572,7 +7572,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 /* ==========================================
-   M4L V86 Integrated Recorder
+   M4L V86.2 Integrated Recorder
    Native app screen. Standalone /recorder remains untouched.
    ========================================== */
 #record-lesson-screen.m4l-recorder-screen {
@@ -7743,9 +7743,14 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
 .m4l-recorder-view-header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+}
+
+.m4l-recorder-view-header--clean {
+  min-height: 36px;
+  margin-bottom: 0;
 }
 
 .m4l-recorder-back-btn {
@@ -7764,12 +7769,42 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   letter-spacing: 0;
 }
 
+.m4l-recorder-back-icon-btn {
+  appearance: none;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.m4l-recorder-back-icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+  background: currentColor;
+  -webkit-mask: url('/icons/back.svg') center / contain no-repeat;
+  mask: url('/icons/back.svg') center / contain no-repeat;
+}
+
 .m4l-recorder-view-title {
   margin: 0;
-  color: var(--text-strong);
-  font-size: clamp(1.25rem, 5.8vw, 1.9rem);
-  font-weight: 900;
-  line-height: 1.1;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.95rem, 3.4vw, 1.14rem);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
@@ -7805,7 +7840,6 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   min-height: 0;
   margin: 0;
   padding: 4px 14px 6px;
-  display: inline-grid;
   justify-items: center;
   align-items: center;
   gap: 2px;
@@ -7816,6 +7850,14 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   box-shadow: none;
   font: inherit;
   letter-spacing: 0;
+}
+
+.m4l-recorder-record-action:not([hidden]) {
+  display: inline-grid;
+}
+
+.m4l-recorder-record-action[hidden] {
+  display: none;
 }
 
 .m4l-recorder-native-icon {
@@ -7863,34 +7905,48 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
 .m4l-recorder-preview-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  width: min(100%, 320px);
+  margin: 8px auto 0;
+  justify-items: center;
 }
 
 .m4l-recorder-preview-action {
   appearance: none;
-  min-height: 60px;
+  width: auto;
+  min-width: 72px;
+  min-height: 64px;
   margin: 0;
-  padding: 8px 6px;
+  padding: 0;
   border: 0;
-  border-radius: 18px;
-  background: var(--surface-card);
-  color: var(--text-strong);
-  box-shadow: 0 8px 20px rgba(var(--black-rgb), 0.10);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
   text-decoration: none;
-  display: grid;
+  display: inline-grid;
   justify-items: center;
   align-content: center;
-  gap: 4px;
+  gap: 6px;
+  font: inherit;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0;
   text-align: center;
 }
 
+.m4l-recorder-preview-icon {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: contain;
+}
+
+/* Legacy mask classes retained in case older cached HTML loads briefly. */
 .m4l-recorder-mask-icon {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   display: block;
   background: currentColor;
   -webkit-mask: var(--m4l-recorder-action-icon) center / contain no-repeat;
@@ -7905,13 +7961,10 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   --m4l-recorder-action-icon: url('/icons/share.svg');
 }
 
-.m4l-recorder-icon-download {
-  --m4l-recorder-action-icon: url('/icons/download.svg');
-}
-
 .m4l-recorder-page-card:focus-visible,
 .m4l-recorder-book-select:focus-visible,
 .m4l-recorder-back-btn:focus-visible,
+.m4l-recorder-back-icon-btn:focus-visible,
 .m4l-recorder-record-action:focus-visible,
 .m4l-recorder-preview-action:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--primary) 75%, black 10%);
