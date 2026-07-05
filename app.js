@@ -1,4 +1,5 @@
-/* M4L v84 - Core bootstrap guards and Home Class Duas carousel.
+/* M4L v86 - config
+ - Core bootstrap guards and Home Class Duas carousel.
    Load before m4l-auth, m4l-shell, and any optional feature modules.
    Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
 const M4L_CONFIG = window.M4L_CONFIG || {};
