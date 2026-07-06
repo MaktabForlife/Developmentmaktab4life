@@ -1,7 +1,7 @@
-/* M4L v86.2 - Home compact stack + integrated recorder
-   Baseline: V84 Home vertical stack + Class Duas carousel.
-   Scope: compact Class Duas layout, transparent icon section, Home vertical scroll correction, and Zoom colour update.
-   Protected: active Student/Admin Progress layouts, Attendance, Library, timetable board, and menu grid structure.
+/* M4L v87.1 - Bottom nav Home + admin mobile nav scroll
+   Baseline: V86.2 Home compact stack + integrated recorder
+   Scope: adds Home to Student/Admin bottom nav; keeps Admin mobile nav horizontally scrollable with Admin last.
+   Protected: active Student/Admin Progress layouts, Attendance, Library, timetable board, recorder, Home compact stack, and menu grid structure.
 */
 
 :root {
@@ -4109,6 +4109,23 @@ body.has-bottom-nav .app-shell {
   }
 }
 
+
+
+/* V87.1: Admin mobile bottom nav has 6 items.
+   Keep item widths usable, start the rail at Home, and allow Admin to sit off-screen/right until swiped. */
+@media (max-width: 767px) {
+  .bottom-nav.bottom-nav--mobile-bottom[data-role="admin"] {
+    justify-content: flex-start;
+    scroll-padding-inline: 8px;
+  }
+
+  .bottom-nav.bottom-nav--mobile-bottom[data-role="admin"] .bottom-nav__item {
+    flex: 0 0 78px;
+    width: 78px;
+    min-width: 78px;
+    max-width: 78px;
+  }
+}
 
 @media (min-width: 768px), (hover: hover) and (pointer: fine) {
   body.has-bottom-nav .app-shell {
