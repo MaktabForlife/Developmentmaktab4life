@@ -1,7 +1,144 @@
-/* M4L v87.1 - Shell / Navigation / User Band module.
+/* M4L v87.1.1 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation,
    banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
+
+/* =========================
+   BOTTOM NAV GESTURE BOUNDARY - V87.1.1
+   A swipe that starts inside the fixed bottom nav belongs to the nav only.
+   This prevents document/screen-level swipe handlers from moving the
+   underlying Attendance, Progress, Home, or carousel panels at the same time.
+========================= */
+let bottomNavigationGestureActive = false;
+let bottomNavigationGestureResetTimer = 0;
+let bottomNavigationGestureBoundaryInstalled = false;
+
+function isBottomNavNode(node) {
+  if (!node) return false;
+
+  if (node.nodeType !== 1) {
+    node = node.parentElement;
+  }
+
+  return !!(
+    node &&
+    typeof node.closest === "function" &&
+    node.closest("#bottom-nav, .bottom-nav")
+  );
+}
+
+function isBottomNavGestureTarget(event) {
+  if (!event) return false;
+
+  if (typeof event.composedPath === "function") {
+    const path = event.composedPath();
+    if (Array.isArray(path) && path.some(isBottomNavNode)) {
+      return true;
+    }
+  }
+
+  return isBottomNavNode(event.target);
+}
+
+function setBottomNavGestureActive(isActive) {
+  bottomNavigationGestureActive = isActive === true;
+
+  if (typeof window !== "undefined" && bottomNavigationGestureResetTimer) {
+    window.clearTimeout(bottomNavigationGestureResetTimer);
+    bottomNavigationGestureResetTimer = 0;
+  }
+
+  if (document && document.body) {
+    document.body.classList.toggle("is-bottom-nav-gesture", bottomNavigationGestureActive);
+  }
+
+  return bottomNavigationGestureActive;
+}
+
+function clearBottomNavGestureActiveSoon() {
+  if (typeof window === "undefined" || typeof window.setTimeout !== "function") {
+    return setBottomNavGestureActive(false);
+  }
+
+  if (bottomNavigationGestureResetTimer) {
+    window.clearTimeout(bottomNavigationGestureResetTimer);
+  }
+
+  bottomNavigationGestureResetTimer = window.setTimeout(() => {
+    setBottomNavGestureActive(false);
+  }, 80);
+
+  return true;
+}
+
+function isBottomNavGestureActive() {
+  return bottomNavigationGestureActive === true;
+}
+
+function stopBottomNavGesturePropagation(event) {
+  if (!event) return false;
+
+  if (typeof event.stopImmediatePropagation === "function") {
+    event.stopImmediatePropagation();
+  } else if (typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+
+  return true;
+}
+
+function handleGlobalBottomNavGestureStart(event) {
+  if (!isBottomNavGestureTarget(event)) return;
+
+  setBottomNavGestureActive(true);
+  stopBottomNavGesturePropagation(event);
+}
+
+function handleGlobalBottomNavGestureMove(event) {
+  if (!isBottomNavGestureActive() && !isBottomNavGestureTarget(event)) return;
+
+  setBottomNavGestureActive(true);
+  stopBottomNavGesturePropagation(event);
+}
+
+function handleGlobalBottomNavGestureEnd(event) {
+  if (!isBottomNavGestureActive() && !isBottomNavGestureTarget(event)) return;
+
+  stopBottomNavGesturePropagation(event);
+  clearBottomNavGestureActiveSoon();
+}
+
+function installGlobalBottomNavigationGestureBoundary() {
+  if (bottomNavigationGestureBoundaryInstalled === true) return true;
+  if (typeof document === "undefined" || typeof document.addEventListener !== "function") return false;
+
+  bottomNavigationGestureBoundaryInstalled = true;
+
+  ["touchstart", "pointerdown"].forEach(eventName => {
+    document.addEventListener(eventName, handleGlobalBottomNavGestureStart, {
+      capture: true,
+      passive: true
+    });
+  });
+
+  ["touchmove", "pointermove", "wheel"].forEach(eventName => {
+    document.addEventListener(eventName, handleGlobalBottomNavGestureMove, {
+      capture: true,
+      passive: true
+    });
+  });
+
+  ["touchend", "touchcancel", "pointerup", "pointercancel"].forEach(eventName => {
+    document.addEventListener(eventName, handleGlobalBottomNavGestureEnd, {
+      capture: true,
+      passive: true
+    });
+  });
+
+  return true;
+}
+
+installGlobalBottomNavigationGestureBoundary();
 
 function showScreen(screenId) {
   const previousScreenId = typeof getActiveScreenId === "function" ? getActiveScreenId() : "";
@@ -1865,6 +2002,7 @@ function getBottomNavElement() {
     document.body.appendChild(nav);
   }
 
+  installGlobalBottomNavigationGestureBoundary();
   installBottomNavigationGestureGuard(nav);
   bindBottomNavigationViewportHandler(nav);
   placeBottomNavigationForViewport(nav);
@@ -2161,6 +2299,9 @@ window.M4LShell = {
   updateUserBand: typeof updateUserBand === "function" ? updateUserBand : undefined,
   setTextActionButton: typeof setTextActionButton === "function" ? setTextActionButton : undefined,
   getBottomNavRole: typeof getBottomNavRole === "function" ? getBottomNavRole : undefined,
+  isBottomNavGestureTarget: typeof isBottomNavGestureTarget === "function" ? isBottomNavGestureTarget : undefined,
+  isBottomNavGestureActive: typeof isBottomNavGestureActive === "function" ? isBottomNavGestureActive : undefined,
+  installGlobalBottomNavigationGestureBoundary: typeof installGlobalBottomNavigationGestureBoundary === "function" ? installGlobalBottomNavigationGestureBoundary : undefined,
   updateBottomNavigation: typeof updateBottomNavigation === "function" ? updateBottomNavigation : undefined,
   bindCoverHomeNavigation: typeof bindCoverHomeNavigation === "function" ? bindCoverHomeNavigation : undefined,
   bindHomeSwipeControls: typeof bindHomeSwipeControls === "function" ? bindHomeSwipeControls : undefined,
