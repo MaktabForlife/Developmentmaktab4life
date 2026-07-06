@@ -1,7 +1,7 @@
-/* M4L v87.4.1 - Student Progress close icon and compact header correction
-   Baseline: V87.4 Student Progress compact header and responsive panels.
-   Scope: Student Progress only; move close.svg to the header container top-left corner, remove close background styling, use global icon sizing, and tighten the dots/header spacing.
-   Protected: banner appearance, Admin Progress behaviour, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
+/* M4L v87.5 - Admin Progress module-card UI unification
+   Baseline: V87.4.1 Student Progress close icon and compact header correction.
+   Scope: Admin Progress UI; Class/Group module-card matrix, compact Individual Progress selector/header, arrow-controlled module navigation, and shared progress card sizing.
+   Protected: Student Progress V87.4.1 corrections, banner appearance, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
 */
 
 :root {
@@ -90,6 +90,7 @@
   --icon-size-large: 34px;
   --task-status-icon-size: 30px;
   --status-muted: #9a9a9a;
+  --m4l-single-card-max-width: 400px;
 }
 
 
@@ -406,6 +407,14 @@ button:active {
 
 .app-icon-close {
   --app-icon-url: url('/icons/close.svg');
+}
+
+.app-icon-left {
+  --app-icon-url: url('/icons/left.svg');
+}
+
+.app-icon-right {
+  --app-icon-url: url('/icons/right.svg');
 }
 
 .student-edit-icon {
@@ -8101,3 +8110,446 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   }
 }
 
+
+
+/* M4L v87.5 - Admin Progress module-card UI unification
+   Active Admin Progress model: Class/Group use arrow-controlled module cards.
+   Task columns own horizontal swipe; student rows own vertical scroll.
+*/
+.admin-progress-module-card-overview {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-progress-module-card-shelf {
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.admin-progress-module-card-rail {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  gap: 0;
+  overflow-x: hidden;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.admin-progress-module-card-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-progress-module-matrix-card {
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border-radius: 20px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  cursor: default;
+}
+
+.admin-progress-module-matrix-card:active {
+  transform: none;
+}
+
+.admin-progress-module-card-header {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  padding: 2px 2px 4px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-progress-module-card-nav-row {
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-progress-module-card-arrow {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  color: var(--text-muted);
+}
+
+.admin-progress-module-card-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.admin-progress-module-card-arrow:disabled:active {
+  transform: none;
+}
+
+.admin-progress-module-card-dots {
+  min-height: 20px;
+  align-self: center;
+}
+
+.admin-progress-module-card-title-row {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-progress-module-card-title {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: clamp(1rem, 4.2vw, 1.26rem);
+  font-weight: 650;
+  line-height: 1.1;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-module-card-title-row .admin-progress-matrix-edit-toggle {
+  justify-self: end;
+  color: var(--primary);
+}
+
+.admin-progress-module-matrix-card-body {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 16px;
+  background: var(--surface-card);
+}
+
+.admin-progress-module-matrix-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  max-height: min(56dvh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.admin-progress-module-matrix-grid {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.admin-progress-module-matrix-corner,
+.admin-progress-module-matrix-student-cell {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: 128px;
+  min-width: 128px;
+  max-width: 128px;
+  background: var(--surface-card);
+  border-right: 1px solid rgba(var(--primary-rgb), 0.18);
+}
+
+.admin-progress-module-matrix-corner {
+  top: 0;
+  z-index: 6;
+  height: 104px;
+  vertical-align: bottom;
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.18);
+}
+
+.admin-progress-module-matrix-task-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  height: 104px;
+  padding: 3px 2px;
+  vertical-align: bottom;
+  background: var(--surface-soft);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.18);
+  border-right: 1px solid rgba(var(--primary-rgb), 0.12);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.admin-progress-module-matrix-task-title-wrap {
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: visible;
+}
+
+.admin-progress-module-matrix-task-title {
+  width: 86px;
+  max-height: 86px;
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transform: rotate(-72deg);
+  transform-origin: center bottom;
+}
+
+.admin-progress-module-matrix-student-cell {
+  height: 42px;
+  padding: 0;
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-module-matrix-student-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  height: 42px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.1;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-module-matrix-status-cell {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  height: 42px;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  background: var(--surface-card);
+  border-right: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.10);
+}
+
+.admin-progress-module-matrix-status-cell.is-pending {
+  background: rgba(var(--primary-rgb), 0.08);
+}
+
+.admin-progress-module-matrix-status-button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.admin-progress-module-card-overview.is-editing .admin-progress-module-matrix-status-button:not(:disabled) {
+  cursor: pointer;
+}
+
+.admin-progress-module-card-overview.is-viewing .admin-progress-module-matrix-status-button:not(:disabled) {
+  cursor: default;
+}
+
+.admin-progress-module-card-overview.is-viewing .admin-progress-matrix-blank-icon {
+  opacity: 0;
+}
+
+.admin-progress-module-card-overview.is-editing .admin-progress-matrix-blank-icon {
+  opacity: 0.68;
+}
+
+.admin-progress-matrix-corner-content {
+  min-height: 100%;
+  padding: 7px 5px 6px;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-progress-matrix-corner-content .admin-progress-matrix-edit-toggle {
+  justify-self: start;
+  margin-top: 3px;
+  color: var(--primary);
+}
+
+.admin-progress-matrix-key-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-progress-matrix-save-status {
+  min-height: 0.8rem;
+  color: var(--text-subtle);
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.admin-progress-student-picker-screen--compact {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-progress-student-picker-header--compact {
+  padding: 4px 4px 2px;
+  margin: 0;
+  display: block;
+}
+
+.admin-progress-student-picker-header--compact .admin-progress-student-picker-search {
+  margin: 0;
+}
+
+.admin-progress-individual-selected-view .admin-individual-progress-swipe-shell {
+  gap: 8px;
+}
+
+.admin-progress-compact-detail-header,
+.admin-individual-progress-active-header {
+  position: sticky;
+  top: 66px;
+  z-index: 85;
+  display: grid;
+  gap: 3px;
+  padding: 6px 8px 7px;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.08);
+}
+
+.admin-progress-individual-student-close {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  z-index: 2;
+  color: var(--primary);
+}
+
+.admin-individual-progress-header-dots {
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 44px;
+}
+
+.admin-individual-progress-title-row {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  padding-left: 30px;
+}
+
+.admin-individual-progress-title-row .admin-individual-progress-edit-toggle {
+  justify-self: end;
+  color: var(--primary);
+}
+
+.admin-individual-progress-student-name {
+  min-width: 0;
+  padding: 0;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: clamp(1.02rem, 4.6vw, 1.32rem);
+  font-weight: 650;
+  line-height: 1.12;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.admin-individual-progress-swipe-shell > .admin-individual-progress-track {
+  margin-top: 0;
+}
+
+@media (min-width: 760px) {
+  .admin-progress-module-matrix-card {
+    max-width: var(--m4l-single-card-max-width, 400px);
+    margin-inline: auto;
+  }
+
+  .admin-progress-module-card-rail {
+    justify-items: center;
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-module-matrix-card {
+    max-width: var(--m4l-single-card-max-width, 400px);
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-progress-module-matrix-card {
+    padding: 8px;
+  }
+
+  .admin-progress-module-matrix-corner,
+  .admin-progress-module-matrix-student-cell {
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+  }
+
+  .admin-progress-module-matrix-task-header,
+  .admin-progress-module-matrix-status-cell {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+  }
+
+  .admin-progress-module-matrix-status-button {
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .admin-progress-module-matrix-scroll {
+    max-height: min(58dvh, 460px);
+  }
+}
