@@ -1,6 +1,6 @@
-/* M4L v87.5 - Admin Progress module-card UI unification
-   Baseline: V87.4.1 Student Progress close icon and compact header correction.
-   Scope: Admin Progress UI; Class/Group module-card matrix, compact Individual Progress selector/header, arrow-controlled module navigation, and shared progress card sizing.
+/* M4L v87.5.1 - Admin Progress module-card UI corrections
+   Baseline: V87.5 Admin Progress module-card UI unification.
+   Scope: Admin Class/Group header and matrix-cell styling corrections, global no-background icon styling for edit/save controls, 90-degree task headers, and active Individual Progress quarantine cleanup.
    Protected: Student Progress V87.4.1 corrections, banner appearance, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
 */
 
@@ -1324,9 +1324,8 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   gap: 0;
 }
 
-/* M4L FUTURE QUARANTINE:
-   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
-   Student Progress has the scoped no-background icon-only state above. */
+/* Active shared edit/save state retained for Admin Individual Progress.
+   Student Progress keeps its scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -3288,9 +3287,8 @@ body.is-student-progress-section .app-shell {
   gap: 0;
 }
 
-/* M4L FUTURE QUARANTINE:
-   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
-   Student Progress has the scoped no-background icon-only state above. */
+/* Active shared edit/save state retained for Admin Individual Progress.
+   Student Progress keeps its scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -5483,9 +5481,8 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   gap: 0;
 }
 
-/* M4L FUTURE QUARANTINE:
-   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
-   Student Progress has the scoped no-background icon-only state above. */
+/* Active shared edit/save state retained for Admin Individual Progress.
+   Student Progress keeps its scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -6369,26 +6366,24 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 .admin-progress-matrix-edit-toggle {
-  width: 42px;
-  min-width: 42px;
-  height: auto;
-  min-height: 38px;
-  padding: 3px 2px 2px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
-  border-radius: 999px;
-  background: var(--surface-card);
-  color: var(--text-muted);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
   box-shadow: none;
 }
 
 .admin-progress-matrix-edit-toggle.is-editing {
-  background: var(--primary);
-  color: var(--text-inverse);
+  background: transparent;
+  color: var(--primary);
 }
 
 .admin-progress-matrix-edit-toggle.is-saving {
@@ -6396,11 +6391,15 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 .admin-progress-matrix-edit-label {
-  display: block;
-  color: currentColor;
-  font-size: 0.5rem;
-  font-weight: 820;
-  line-height: 1;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .admin-progress-matrix-key-line {
@@ -6782,10 +6781,8 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   color: var(--danger);
 }
 
-/* M4L FUTURE QUARANTINE:
-   Legacy visible edit/save label styling is not used by active Student Progress
-   after V87.4 icon-only controls. It is retained temporarily because Admin
-   Individual Progress still references the shared label class. */
+/* Active visible edit/save label styling for Admin Individual Progress.
+   Student Progress uses scoped icon-only controls. */
 .student-progress-module-edit-label {
   display: block;
   max-width: 100%;
@@ -6982,9 +6979,8 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   gap: 0;
 }
 
-/* M4L FUTURE QUARANTINE:
-   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
-   Student Progress has the scoped no-background icon-only state above. */
+/* Active shared edit/save state retained for Admin Individual Progress.
+   Student Progress keeps its scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -8112,7 +8108,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
 
 
-/* M4L v87.5 - Admin Progress module-card UI unification
+/* M4L v87.5.1 - Admin Progress module-card UI corrections
    Active Admin Progress model: Class/Group use arrow-controlled module cards.
    Task columns own horizontal swipe; student rows own vertical scroll.
 */
@@ -8173,15 +8169,15 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .admin-progress-module-card-header {
   position: relative;
   display: grid;
-  gap: 3px;
-  padding: 2px 2px 4px;
+  gap: 0;
+  padding: 0 2px 2px;
   border: 0;
   background: transparent;
   box-shadow: none;
 }
 
 .admin-progress-module-card-nav-row {
-  min-height: 28px;
+  min-height: 26px;
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 40px;
   align-items: center;
@@ -8211,26 +8207,42 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 }
 
 .admin-progress-module-card-title-row {
-  min-height: 36px;
+  min-height: 30px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  justify-items: center;
+  gap: 0;
+  margin-top: -2px;
 }
 
 .admin-progress-module-card-title {
   margin: 0;
   min-width: 0;
   color: var(--text-muted);
-  font-size: clamp(1rem, 4.2vw, 1.26rem);
-  font-weight: 650;
-  line-height: 1.1;
-  text-align: left;
+  font-size: clamp(1.06rem, 4.4vw, 1.34rem);
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 
 .admin-progress-module-card-title-row .admin-progress-matrix-edit-toggle {
   justify-self: end;
+  color: var(--primary);
+}
+
+.admin-progress-module-card-overview .icon-action-btn,
+.admin-progress-module-card-overview .admin-progress-matrix-edit-toggle {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-progress-module-card-overview .admin-progress-matrix-edit-toggle.is-editing,
+.admin-progress-module-card-overview .admin-progress-matrix-edit-toggle.is-saving {
+  background: transparent;
   color: var(--primary);
 }
 
@@ -8301,16 +8313,18 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 }
 
 .admin-progress-module-matrix-task-title-wrap {
+  position: relative;
   height: 96px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  display: block;
   overflow: visible;
 }
 
 .admin-progress-module-matrix-task-title {
-  width: 86px;
-  max-height: 86px;
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 92px;
+  max-height: 92px;
   display: block;
   color: var(--text-muted);
   font-size: 0.67rem;
@@ -8319,8 +8333,8 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
-  transform: rotate(-72deg);
-  transform-origin: center bottom;
+  transform: translateX(-50%) rotate(-90deg);
+  transform-origin: center center;
 }
 
 .admin-progress-module-matrix-student-cell {
@@ -8399,34 +8413,62 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
 .admin-progress-matrix-corner-content {
   min-height: 100%;
-  padding: 7px 5px 6px;
+  padding: 6px 5px 6px;
   display: grid;
-  align-content: end;
-  justify-items: start;
-  gap: 4px;
+  grid-template-rows: auto auto minmax(8px, 1fr) auto auto;
+  align-content: stretch;
+  justify-items: center;
+  gap: 3px;
   color: var(--text-muted);
   font-size: 0.64rem;
   font-weight: 700;
   line-height: 1;
 }
 
+.admin-progress-matrix-edit-row {
+  min-height: 26px;
+  display: grid;
+  place-items: center;
+}
+
 .admin-progress-matrix-corner-content .admin-progress-matrix-edit-toggle {
-  justify-self: start;
-  margin-top: 3px;
+  justify-self: center;
+  margin: 0;
   color: var(--primary);
+}
+
+.admin-progress-matrix-corner-content .admin-progress-matrix-edit-toggle,
+.admin-progress-module-card-title-row .admin-progress-matrix-edit-toggle {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-progress-matrix-edit-text {
+  color: var(--text-muted);
+  font-size: 0.53rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.admin-progress-matrix-key-spacer {
+  display: block;
+  width: 100%;
+  min-height: 8px;
 }
 
 .admin-progress-matrix-key-line {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 
 .admin-progress-matrix-save-status {
-  min-height: 0.8rem;
-  color: var(--text-subtle);
-  font-size: 0.58rem;
-  line-height: 1;
+  min-height: 0;
 }
 
 .admin-progress-student-picker-screen--compact {
