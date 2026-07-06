@@ -1,4 +1,4 @@
-/* M4L v87.1.1 - Shell / Navigation / User Band module.
+/* M4L v87.2 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation,
    banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
@@ -1088,6 +1088,8 @@ let userBandLoadingMessage = "";
 let userBandLoadingVisible = false;
 let userBandLoadingStatusTimer = 0;
 let userBandLoadingStatusKind = "";
+let m4lAppStatusTokenCounter = 0;
+const m4lAppStatusTokens = new Map();
 
 function syncUserBandLoadingIndicator() {
   const loading = document.getElementById("app-user-band-loading");
@@ -1130,6 +1132,94 @@ function setUserBandLoadingState(isLoading, message = "", kind = "") {
   return true;
 }
 
+function getM4LAppStatusFallbackMessage(kind) {
+  if (kind === "saving") return "Saving...";
+  if (kind === "refresh") return "Refreshing...";
+  return "Loading...";
+}
+
+function renderM4LAppStatusTokens() {
+  if (!m4lAppStatusTokens || m4lAppStatusTokens.size === 0) {
+    return false;
+  }
+
+  const activeStatuses = Array.from(m4lAppStatusTokens.values());
+  const latestStatus = activeStatuses[activeStatuses.length - 1] || {};
+  const message = latestStatus.message || getM4LAppStatusFallbackMessage(latestStatus.kind || "");
+  setUserBandLoadingState(true, message, latestStatus.kind || "");
+  return true;
+}
+
+function beginAppStatus(message = "Loading...", options = {}) {
+  const statusKind = String(options.kind || "").trim();
+  const token = `m4l-status-${Date.now()}-${++m4lAppStatusTokenCounter}`;
+
+  m4lAppStatusTokens.set(token, {
+    message: String(message || getM4LAppStatusFallbackMessage(statusKind)),
+    kind: statusKind,
+    startedAt: Date.now()
+  });
+
+  renderM4LAppStatusTokens();
+  return token;
+}
+
+function updateAppStatus(token, message = "", options = {}) {
+  if (!token || !m4lAppStatusTokens.has(token)) {
+    return false;
+  }
+
+  const status = m4lAppStatusTokens.get(token) || {};
+  status.message = String(message || status.message || getM4LAppStatusFallbackMessage(status.kind || ""));
+  if (options.kind !== undefined) {
+    status.kind = String(options.kind || "").trim();
+  }
+  m4lAppStatusTokens.set(token, status);
+  renderM4LAppStatusTokens();
+  return true;
+}
+
+function endAppStatus(token, message = "", options = {}) {
+  if (token && m4lAppStatusTokens.has(token)) {
+    m4lAppStatusTokens.delete(token);
+  }
+
+  if (renderM4LAppStatusTokens()) {
+    return true;
+  }
+
+  const finalMessage = String(message || "");
+  const finalKind = String(options.kind || "").trim();
+  setUserBandLoadingState(false, finalMessage, finalKind);
+  return true;
+}
+
+function failAppStatus(token, message = "Action failed") {
+  if (token && m4lAppStatusTokens.has(token)) {
+    m4lAppStatusTokens.delete(token);
+  }
+
+  if (renderM4LAppStatusTokens()) {
+    return true;
+  }
+
+  setUserBandLoadingState(false, String(message || "Action failed"), "error");
+  return true;
+}
+
+async function withAppStatus(message, callback, options = {}) {
+  const token = beginAppStatus(message, options);
+
+  try {
+    const result = await callback(token);
+    endAppStatus(token, options.successMessage || "");
+    return result;
+  } catch (error) {
+    failAppStatus(token, options.errorMessage || "Action failed");
+    throw error;
+  }
+}
+
 function setUserBandRefreshState(isRefreshing, button) {
   userBandRefreshInProgress = !!isRefreshing;
 
@@ -1167,19 +1257,19 @@ function waitForUserBandRefreshMinimumDuration(startTime, minimumMs) {
 async function runUserBandRefresh(button, callback) {
   const refreshStartedAt = Date.now();
   const minimumSpinMs = 450;
+  const statusToken = beginAppStatus("Refreshing...", { kind: "refresh" });
 
   setUserBandRefreshState(true, button);
-  setUserBandLoadingState(true, "Refreshing...");
 
   try {
     // Let Safari/Chrome paint the loading state before running quick synchronous refresh actions.
     await waitForUserBandRefreshFrame();
     await callback();
     await waitForUserBandRefreshMinimumDuration(refreshStartedAt, minimumSpinMs);
-    setUserBandLoadingState(false, "Updated");
+    endAppStatus(statusToken, "Updated");
   } catch (error) {
     await waitForUserBandRefreshMinimumDuration(refreshStartedAt, minimumSpinMs);
-    setUserBandLoadingState(false, "Refresh failed", "error");
+    failAppStatus(statusToken, "Refresh failed");
     throw error;
   } finally {
     setUserBandRefreshState(false, document.querySelector("#app-user-band [data-user-band-refresh], #app-user-band [data-app-menu-action='refresh']"));
@@ -2311,6 +2401,11 @@ window.M4LShell = {
   scrollHomeNativeScrollToPanel: typeof scrollHomeNativeScrollToPanel === "function" ? scrollHomeNativeScrollToPanel : undefined,
   bindHomeSwipePanels: typeof bindHomeSwipePanels === "function" ? bindHomeSwipePanels : undefined,
   placeBottomNavigationForViewport: typeof placeBottomNavigationForViewport === "function" ? placeBottomNavigationForViewport : undefined,
+  beginAppStatus: typeof beginAppStatus === "function" ? beginAppStatus : undefined,
+  updateAppStatus: typeof updateAppStatus === "function" ? updateAppStatus : undefined,
+  endAppStatus: typeof endAppStatus === "function" ? endAppStatus : undefined,
+  failAppStatus: typeof failAppStatus === "function" ? failAppStatus : undefined,
+  withAppStatus: typeof withAppStatus === "function" ? withAppStatus : undefined,
   runUserBandRefresh: typeof runUserBandRefresh === "function" ? runUserBandRefresh : undefined,
   refreshCurrentResourceView: typeof refreshCurrentResourceView === "function" ? refreshCurrentResourceView : undefined,
   getStudentResourceViewModeSafe: typeof getStudentResourceViewModeSafe === "function" ? getStudentResourceViewModeSafe : undefined,
