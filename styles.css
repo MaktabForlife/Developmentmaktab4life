@@ -1,6 +1,6 @@
-/* M4L v87.4 - Student Progress compact header and responsive panels
-   Baseline: V87.3 Progress global status strip cleanup.
-   Scope: compact Student Progress module header, replace text close with close.svg, use icon-only edit/save actions, prevent mobile row stretching, and add shared responsive swipe-panel primitives.
+/* M4L v87.4.1 - Student Progress close icon and compact header correction
+   Baseline: V87.4 Student Progress compact header and responsive panels.
+   Scope: Student Progress only; move close.svg to the header container top-left corner, remove close background styling, use global icon sizing, and tighten the dots/header spacing.
    Protected: banner appearance, Admin Progress behaviour, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
 */
 
@@ -1315,6 +1315,9 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   gap: 0;
 }
 
+/* M4L FUTURE QUARANTINE:
+   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
+   Student Progress has the scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -2561,7 +2564,7 @@ body.is-admin-progress-section.has-user-band .app-shell {
   min-width: 0;
   overflow-x: hidden;
   padding-inline: 12px;
-  padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 6px);
+  padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 2px);
 }
 
 #progress-subjects-screen.student-theme .nav-header {
@@ -2582,7 +2585,7 @@ body.is-student-progress-section .app-shell {
 }
 
 #progress-subjects-screen.student-theme .student-progress-swipe-shell {
-  --m4l-progress-swipe-shell-gap: 8px;
+  --m4l-progress-swipe-shell-gap: 6px;
 }
 
 /* First standalone sticky component: Progress swipe dots. */
@@ -2599,7 +2602,7 @@ body.is-student-progress-section .app-shell {
   justify-content: center;
   align-items: center;
   margin: 0;
-  padding: 6px 0;
+  padding: 3px 0;
   background: var(--surface-app);
   border: 0;
   border-radius: 0;
@@ -2626,7 +2629,7 @@ body.is-student-progress-section .app-shell {
     var(--user-band-safe-area-top) +
     var(--swipe-dot-band-gap) +
     var(--swipe-dot-bar-height) +
-    2px
+    0px
   );
   z-index: 96;
   width: 100%;
@@ -2634,9 +2637,9 @@ body.is-student-progress-section .app-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   justify-content: stretch;
-  padding: 10px 12px 8px;
+  padding: 6px 10px 6px 42px;
   border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 18px;
   background: var(--surface-card);
@@ -2654,7 +2657,7 @@ body.is-student-progress-section .app-shell {
 #progress-subjects-screen.student-theme .student-progress-active-module-title {
   margin: 0;
   min-width: 0;
-  padding-inline: 34px 0;
+  padding-inline: 0;
   color: var(--text-muted);
   font-family: var(--font-heading);
   font-size: clamp(1.16rem, 5vw, 1.48rem);
@@ -2666,24 +2669,24 @@ body.is-student-progress-section .app-shell {
 
 #progress-subjects-screen.student-theme .student-progress-active-module-header .student-progress-close-btn {
   position: absolute;
-  top: 6px;
-  left: 7px;
+  top: 0;
+  left: 2px;
   z-index: 2;
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  min-height: 34px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--disabled);
-  color: var(--text-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
   box-shadow: none;
 }
 
 #progress-subjects-screen.student-theme .student-progress-active-module-header .student-progress-close-btn .app-icon {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
 }
 
 #progress-subjects-screen.student-theme .student-progress-module-edit-toggle {
@@ -3012,7 +3015,7 @@ body.is-student-progress-section .app-shell {
     max-width: 100%;
     overflow-x: hidden;
     padding-inline: 10px;
-    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 6px);
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 2px);
   }
 
   #progress-subjects-screen.student-theme .student-progress-active-module-header {
@@ -3276,6 +3279,9 @@ body.is-student-progress-section .app-shell {
   gap: 0;
 }
 
+/* M4L FUTURE QUARANTINE:
+   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
+   Student Progress has the scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -5468,6 +5474,9 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   gap: 0;
 }
 
+/* M4L FUTURE QUARANTINE:
+   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
+   Student Progress has the scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -6764,6 +6773,10 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   color: var(--danger);
 }
 
+/* M4L FUTURE QUARANTINE:
+   Legacy visible edit/save label styling is not used by active Student Progress
+   after V87.4 icon-only controls. It is retained temporarily because Admin
+   Individual Progress still references the shared label class. */
 .student-progress-module-edit-label {
   display: block;
   max-width: 100%;
@@ -6960,6 +6973,9 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   gap: 0;
 }
 
+/* M4L FUTURE QUARANTINE:
+   Legacy broad edit/save state retained for Admin Individual Progress until V87.5.
+   Student Progress has the scoped no-background icon-only state above. */
 .student-progress-module-edit-toggle.is-editing,
 .student-progress-module-edit-toggle.is-saving {
   background: var(--surface-card);
@@ -6969,7 +6985,8 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 
 @media (max-width: 420px) {
   #progress-subjects-screen.student-theme .student-progress-active-module-header {
-    grid-template-columns: minmax(0, 1fr) 104px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-left: 40px;
   }
 
   #progress-subjects-screen.student-theme .student-progress-active-module-title {
