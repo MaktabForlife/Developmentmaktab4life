@@ -1,4 +1,4 @@
-/* M4L v86 - Shell / Navigation / User Band module.
+/* M4L v87.1 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation,
    banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
@@ -84,7 +84,7 @@ function showScreen(screenId) {
 ========================= */
 
 const M4L_APP_HISTORY_FLAG = "maktab4life";
-const M4L_APP_HISTORY_VERSION = 86;
+const M4L_APP_HISTORY_VERSION = 87;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
 
 let m4lAppHistoryBound = false;
@@ -1571,6 +1571,12 @@ function setTextActionButton(button, text, actionValue) {
 const BOTTOM_NAV_ITEMS = {
   student: [
     {
+      key: "home",
+      label: "Home",
+      icon: "/icons/home.svg",
+      targetScreen: "student-home"
+    },
+    {
       key: "record",
       label: "Record",
       icon: "/icons/navrecord.svg",
@@ -1593,17 +1599,23 @@ const BOTTOM_NAV_ITEMS = {
   ],
   admin: [
     {
-      key: "attendance",
-      label: "Attendance",
-      icon: "/icons/attendance.svg",
-      targetScreen: "attendance-screen",
-      actionName: "openMarkRegister"
+      key: "home",
+      label: "Home",
+      icon: "/icons/home.svg",
+      targetScreen: "admin-home"
     },
     {
       key: "record",
       label: "Record",
       icon: "/icons/navrecord.svg",
       targetScreen: "record-lesson-screen"
+    },
+    {
+      key: "attendance",
+      label: "Attendance",
+      icon: "/icons/attendance.svg",
+      targetScreen: "attendance-screen",
+      actionName: "openMarkRegister"
     },
     {
       key: "library",
@@ -2017,6 +2029,8 @@ function getBottomNavActiveKey(screenId, role) {
   const id = String(screenId || "");
 
   if (role === "student") {
+    if (id === "student-home") return "home";
+
     if (id === "record-lesson-screen") return "record";
 
     if (["progress-subjects-screen", "progress-tasks-screen"].includes(id)) {
@@ -2031,9 +2045,11 @@ function getBottomNavActiveKey(screenId, role) {
   }
 
   if (role === "admin") {
-    if (id.startsWith("attendance")) return "attendance";
+    if (id === "admin-home") return "home";
 
     if (id === "record-lesson-screen") return "record";
+
+    if (id.startsWith("attendance")) return "attendance";
 
     if (id.startsWith("student-resources")) return "library";
 
