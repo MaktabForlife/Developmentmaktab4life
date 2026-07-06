@@ -1,14 +1,16 @@
-/* M4L v84 - Core bootstrap guards and Home Class Duas carousel.
+/* M4L v86 - config
+ - Core bootstrap guards and Home Class Duas carousel.
    Load before m4l-auth, m4l-shell, and any optional feature modules.
    Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
-const API_BASE = "https://rebootworker.maktab4life.workers.dev";
-const STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktab4life.org/student/";
+const M4L_CONFIG = window.M4L_CONFIG || {};
+const API_BASE = String(M4L_CONFIG.API_BASE || "https://rebootworker.maktab4life.workers.dev").replace(/\/$/, "");
+const STUDENT_LOGIN_BASE = String(M4L_CONFIG.STUDENT_LOGIN_BASE || "https://rebootyourmaktab.maktab4life.org/student/");
 const DEFAULT_STUDENT_GROUP = 1;
 const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
     arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
-    transliteration: "86c.Allahumma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim.",
+    transliteration: "Alla - humma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim.",
     translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
