@@ -1,6 +1,6 @@
-/* M4L v87.2 - Admin Individual Progress rebuild from Student Progress grid
+/* M4L v87.2.1 - Progress global loading UX refinement
    Baseline: V79.7 Progress cleanup plus V82.1.1 shell/style refinements.
-   Scope: rebuild Admin Individual Progress using the proven Student Progress module-grid sheet.
+   Scope: route first-open/progress-loading activity through the global user-band status strip and remove temporary in-screen loading cards.
    Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -390,22 +390,26 @@ async function showStudentTasks(options = {}) {
   resetStudentProgressViewportScroll();  
   setDomText("progress-subjects-title", "Progress");  
   
-  if (!setDomHtml("progress-subjects-list", `<p class="helper-text">Loading tasks...</p>`)) {  
+  if (!setDomHtml("progress-subjects-list", "")) {  
     console.warn("Missing progress-subjects-list container.");  
     return;  
   }  
   
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const result = await apiPost("/api/tasks/student", {  
       subjectid: "ALL"  
     }, state.token);  
   
     if (!result.success) {  
+      failProgressLoadStatus(statusToken, "Progress load failed");
       setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(result.error || "Failed to load tasks")}</p>`);  
       return;  
     }  
   
     if (!result.tasks || result.tasks.length === 0) {  
+      endProgressLoadStatus(statusToken, "Progress loaded");
       setDomHtml("progress-subjects-list", `<p class="helper-text">No tasks assigned yet.</p>`);  
       return;  
     }  
@@ -413,13 +417,16 @@ async function showStudentTasks(options = {}) {
     const normalizedTasks = result.tasks.map(normalizeStudentTask);  
     studentSubjectTaskGroups = buildStudentSubjectTaskGroups(normalizedTasks);  
     renderStudentSubjectProgress(options);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
   
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load student tasks:", err);  
     setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(err.message || "Failed to load tasks")}</p>`);  
   }  
 }  
   
+
 function setProgressScreensForStudent() {  
   ["progress-subjects-screen", "progress-tasks-screen"].forEach(id => {  
     const screen = document.getElementById(id);  
@@ -2313,11 +2320,12 @@ async function showProgressReport() {
   adminProgressActiveTaskRows = [];  
   adminProgressPopoutRows = [];  
   
-  setDomHtml("admin-progress-dashboard", renderAdminProgressLoadingState("Loading class progress..."));  
+  setDomHtml("admin-progress-dashboard", "");  
   showScreen("progress-report");  
   await loadAdminProgressDashboard();  
 }  
   
+
 function prepareAdminProgressMonitor() {  
   const screen = document.getElementById("progress-report");  
   if (!screen) return;  
@@ -2343,13 +2351,12 @@ function prepareAdminProgressMonitor() {
   
   if (!document.getElementById("admin-progress-dashboard")) {  
     screen.insertAdjacentHTML("beforeend", `  
-      <div id="admin-progress-dashboard" class="admin-progress-dashboard">  
-        ${renderAdminProgressLoadingState("Loading progress...")}  
-      </div>  
+      <div id="admin-progress-dashboard" class="admin-progress-dashboard"></div>  
     `);  
   }  
 }  
   
+
 async function fetchAdminProgressDashboardData() {  
   const overview = await apiPost("/api/progress/task-detail", {  
     studentid: "ALL",  
@@ -2495,7 +2502,7 @@ async function showAdminScopedGroupProgress(view) {
   
   if (!dashboard) return false;  
   
-  setDomHtml(dashboard, renderAdminProgressLoadingState(`Loading Group ${group} progress...`));  
+  setDomHtml(dashboard, "");  
   showScreen("progress-report");  
   
   const cached = readAdminProgressDashboardCache();  
@@ -2506,19 +2513,24 @@ async function showAdminScopedGroupProgress(view) {
     return true;  
   }  
   
+  const statusToken = beginProgressLoadStatus(`Loading Group ${group} progress...`);
+
   try {  
     const fresh = await fetchAdminProgressDashboardData();  
     adminProgressDashboardRows = fresh.rows;  
     writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
     renderAdminProgressDashboardForScope(group);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
     return true;  
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error(`Could not load Group ${group} progress:`, err);  
     setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || `Could not load Group ${group} progress.`)}</p>`);  
     return false;  
   }  
 }  
   
+
 async function loadAdminProgressDashboard() {  
   const dashboard = getDomElement("admin-progress-dashboard");  
   if (!dashboard) {  
@@ -2537,8 +2549,9 @@ async function loadAdminProgressDashboard() {
     return;  
   }  
   
-  setDomHtml(dashboard, renderAdminProgressLoadingState("Loading class progress..."));  
-  
+  setDomHtml(dashboard, "");  
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const fresh = await fetchAdminProgressDashboardData();  
     adminProgressDashboardRows = fresh.rows;  
@@ -2546,12 +2559,15 @@ async function loadAdminProgressDashboard() {
     adminProgressSelectedGroup = "ALL";  
     writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
     renderAdminProgressDashboardForScope("ALL");  
+    endProgressLoadStatus(statusToken, "Progress loaded");
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load admin progress dashboard:", err);  
     setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load class progress.")}</p>`);  
   }  
 }  
   
+
 function getProgressPercentValue(value) {  
   const number = Number(value);  
   if (!Number.isFinite(number)) return 0;  
@@ -4116,7 +4132,7 @@ async function showAdminIndividualProgressLanding() {
   const dashboard = getDomElement("admin-progress-dashboard");  
   if (!dashboard) return false;  
   
-  setDomHtml(dashboard, renderAdminProgressLoadingState("Loading individual progress..."));  
+  setDomHtml(dashboard, "");  
   showScreen("progress-report");  
   
   const cached = readAdminProgressDashboardCache();  
@@ -4128,6 +4144,8 @@ async function showAdminIndividualProgressLanding() {
     return true;  
   }  
   
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const fresh = await fetchAdminProgressDashboardData();  
     adminProgressDashboardRows = fresh.rows;  
@@ -4135,14 +4153,17 @@ async function showAdminIndividualProgressLanding() {
     adminProgressIndividualRows = fresh.rows.map(normalizeProgressStudentRow);  
     writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
     renderAdminIndividualProgressDashboard(adminProgressIndividualRows);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
     return true;  
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load individual progress:", err);  
     setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load individual progress.")}</p>`);  
     return false;  
   }  
 }  
   
+
 async function refreshAdminIndividualProgressLandingInBackground() {  
   try {  
     const fresh = await fetchAdminProgressDashboardData();  
@@ -4394,10 +4415,11 @@ async function loadAdminIndividualSelectedStudentProgress(studentid, username) {
   setDomHtml(dashboard, `  
     <div class="admin-progress-individual-selected-view">  
       ${renderAdminIndividualStudentSticky(username || "Student")}  
-      ${renderAdminProgressLoadingState("Loading student modules...")}  
     </div>  
   `);  
   
+  const statusToken = beginProgressLoadStatus("Loading student modules...");
+
   try {  
     const result = await apiPost("/api/progress/task-detail", {  
       studentid,  
@@ -4412,9 +4434,11 @@ async function loadAdminIndividualSelectedStudentProgress(studentid, username) {
       if (fallbackRows.length > 0) {  
         currentProgressRows = fallbackRows;  
         renderAdminIndividualSelectedStudentModules(fallbackRows, username);  
+        endProgressLoadStatus(statusToken, "Progress loaded");
         return true;  
       }  
   
+      failProgressLoadStatus(statusToken, "Progress load failed");
       setDomHtml(dashboard, `<p class="error-message">${escapeHtml(result.error || "Could not load student progress.")}</p>`);  
       return false;  
     }  
@@ -4429,6 +4453,7 @@ async function loadAdminIndividualSelectedStudentProgress(studentid, username) {
   
     currentProgressRows = rows;  
     renderAdminIndividualSelectedStudentModules(rows, username);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
     return true;  
   } catch (err) {  
     const fallbackRows = getAdminCachedRowsForStudent(studentid, username);  
@@ -4436,15 +4461,18 @@ async function loadAdminIndividualSelectedStudentProgress(studentid, username) {
     if (fallbackRows.length > 0) {  
       currentProgressRows = fallbackRows;  
       renderAdminIndividualSelectedStudentModules(fallbackRows, username);  
+      endProgressLoadStatus(statusToken, "Progress loaded");
       return true;  
     }  
   
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load selected student progress:", err);  
     setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load student progress.")}</p>`);  
     return false;  
   }  
 }  
   
+
 async function openAdminIndividualStudentCard(studentid, username) {  
   if (!studentid) {  
     alert("Student details are missing.");  
@@ -4686,11 +4714,13 @@ async function loadProgressSubjects() {
     return;  
   }  
   
-  if (!setDomHtml("progress-subjects-list", `<p class="helper-text">Loading subjects...</p>`)) {  
+  if (!setDomHtml("progress-subjects-list", "")) {  
     console.warn("Missing progress-subjects-list container.");  
     return;  
   }  
   
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const result = await apiPost("/api/progress/task-detail", {  
       studentid: progressState.studentid,  
@@ -4700,11 +4730,13 @@ async function loadProgressSubjects() {
     }, state.token);  
   
     if (!result.success) {  
+      failProgressLoadStatus(statusToken, "Progress load failed");
       setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(result.error || "Could not load modules.")}</p>`);  
       return;  
     }  
   
     if (!result.subjects || result.subjects.length === 0) {  
+      endProgressLoadStatus(statusToken, "Progress loaded");
       setDomHtml("progress-subjects-list", `<p class="helper-text">No assigned modules found.</p>`);  
       return;  
     }  
@@ -4725,12 +4757,15 @@ async function loadProgressSubjects() {
       </button>  
     `).join(""));  
     bindProgressUiHandlers(subjectsList);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load progress modules:", err);  
     setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(err.message || "Could not load modules.")}</p>`);  
   }  
 }  
   
+
 async function openProgressSubject(subjectid, subjectname) {  
   progressState.subjectid = subjectid;  
   progressState.subjectname = subjectname;  
@@ -4756,11 +4791,13 @@ async function loadProgressTasks() {
     return;  
   }  
   
-  if (!setDomHtml("progress-tasks-list", `<p class="helper-text">Loading tasks...</p>`)) {  
+  if (!setDomHtml("progress-tasks-list", "")) {  
     console.warn("Missing progress-tasks-list container.");  
     return;  
   }  
   
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const result = await apiPost("/api/progress/task-detail", {  
       studentid: progressState.studentid,  
@@ -4770,6 +4807,7 @@ async function loadProgressTasks() {
     }, state.token);  
   
     if (!result.success) {  
+      failProgressLoadStatus(statusToken, "Progress load failed");
       setDomHtml("progress-tasks-list", `<p class="error-message">${escapeHtml(result.error || "Could not load tasks.")}</p>`);  
       return;  
     }  
@@ -4795,7 +4833,9 @@ async function loadProgressTasks() {
       </button>  
     `).join(""));  
     bindProgressUiHandlers(tasksList);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load progress tasks:", err);  
     setDomHtml("progress-tasks-list", `<p class="error-message">${escapeHtml(err.message || "Could not load tasks.")}</p>`);  
   }  
@@ -4825,11 +4865,13 @@ async function loadProgressTaskStudents() {
   
   progressPendingUpdates = {};  
   
-  if (!setDomHtml("progress-task-students-list", renderAdminProgressLoadingState("Loading students..."))) {  
+  if (!setDomHtml("progress-task-students-list", "")) {  
     console.warn("Missing progress-task-students-list container.");  
     return;  
   }  
   
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const result = await apiPost("/api/progress/task-detail", {  
       studentid: progressState.studentid,  
@@ -4844,9 +4886,11 @@ async function loadProgressTaskStudents() {
       if (fallbackRows.length > 0) {  
         currentProgressRows = fallbackRows;  
         renderProgressTaskStudents(currentProgressRows);  
+        endProgressLoadStatus(statusToken, "Progress loaded");
         return;  
       }  
   
+      failProgressLoadStatus(statusToken, "Progress load failed");
       setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(result.error || "Could not load students.")}</p>`);  
       return;  
     }  
@@ -4881,21 +4925,25 @@ async function loadProgressTaskStudents() {
       : (allSubjectRows.length > 0 ? allSubjectRows : getAdminFallbackRowsForActiveTask());  
   
     if (rows.length === 0) {  
+      endProgressLoadStatus(statusToken, "Progress loaded");
       setDomHtml("progress-task-students-list", `<p class="helper-text">No student tasks found.</p>`);  
       return;  
     }  
   
     currentProgressRows = rows;  
-    renderProgressTaskStudents(currentProgressRows);  
+    renderProgressTaskStudents(currentProgressRows);
+    endProgressLoadStatus(statusToken, "Progress loaded");  
   } catch (err) {  
     const fallbackRows = getAdminFallbackRowsForActiveTask();  
   
     if (fallbackRows.length > 0) {  
       currentProgressRows = fallbackRows;  
       renderProgressTaskStudents(currentProgressRows);  
+      endProgressLoadStatus(statusToken, "Progress loaded");
       return;  
     }  
   
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load student progress rows:", err);  
     setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(err.message || "Could not load students.")}</p>`);  
   }  
@@ -5408,11 +5456,13 @@ async function loadIndividualStudentTaskList() {
   
   progressPendingUpdates = {};  
   
-  if (!setDomHtml("progress-task-students-list", `<p class="helper-text">Loading student tasks...</p>`)) {  
+  if (!setDomHtml("progress-task-students-list", "")) {  
     console.warn("Missing progress-task-students-list container.");  
     return;  
   }  
   
+  const statusToken = beginProgressLoadStatus("Loading progress...");
+
   try {  
     const result = await apiPost("/api/progress/task-detail", {  
       studentid: progressState.studentid,  
@@ -5422,18 +5472,22 @@ async function loadIndividualStudentTaskList() {
     }, state.token);  
   
     if (!result.success) {  
+      failProgressLoadStatus(statusToken, "Progress load failed");
       setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(result.error || "Could not load student tasks.")}</p>`);  
       return;  
     }  
   
     if (!result.students || result.students.length === 0) {  
+      endProgressLoadStatus(statusToken, "Progress loaded");
       setDomHtml("progress-task-students-list", `<p class="helper-text">No tasks assigned to this student.</p>`);  
       return;  
     }  
   
     currentProgressRows = result.students.map(normalizeProgressStudentRow);  
     renderIndividualStudentTaskList(currentProgressRows);  
+    endProgressLoadStatus(statusToken, "Progress loaded");
   } catch (err) {  
+    failProgressLoadStatus(statusToken, "Progress load failed");
     console.error("Could not load individual student task list:", err);  
     setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(err.message || "Could not load student tasks.")}</p>`);  
   }  
@@ -5576,9 +5630,12 @@ function toggleProgressPending(studenttaskid, field, value) {
   }  
 }  
   
-function beginProgressGlobalStatus(message) {
+function beginProgressGlobalStatus(message, options = {}) {
+  const kind = String(options.kind || "saving").trim() || "saving";
+  const fallbackMessage = kind === "loading" ? "Loading progress..." : "Saving progress...";
+
   if (window.M4LShell && typeof window.M4LShell.beginAppStatus === "function") {
-    return window.M4LShell.beginAppStatus(message || "Saving progress...", { kind: "saving" });
+    return window.M4LShell.beginAppStatus(message || fallbackMessage, { kind });
   }
 
   return null;
@@ -5596,6 +5653,28 @@ function endProgressGlobalStatus(token, message) {
 function failProgressGlobalStatus(token, message) {
   if (token && window.M4LShell && typeof window.M4LShell.failAppStatus === "function") {
     window.M4LShell.failAppStatus(token, message || "Progress save failed");
+    return true;
+  }
+
+  return false;
+}
+
+function beginProgressLoadStatus(message) {
+  return beginProgressGlobalStatus(message || "Loading progress...", { kind: "loading" });
+}
+
+function endProgressLoadStatus(token, message) {
+  if (token && window.M4LShell && typeof window.M4LShell.endAppStatus === "function") {
+    window.M4LShell.endAppStatus(token, message || "Progress loaded");
+    return true;
+  }
+
+  return false;
+}
+
+function failProgressLoadStatus(token, message) {
+  if (token && window.M4LShell && typeof window.M4LShell.failAppStatus === "function") {
+    window.M4LShell.failAppStatus(token, message || "Progress load failed");
     return true;
   }
 
