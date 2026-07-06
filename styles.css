@@ -1,6 +1,6 @@
-/* M4L v87.5.1 - Admin Progress module-card UI corrections
-   Baseline: V87.5 Admin Progress module-card UI unification.
-   Scope: Admin Class/Group header and matrix-cell styling corrections, global no-background icon styling for edit/save controls, 90-degree task headers, and active Individual Progress quarantine cleanup.
+/* M4L v87.5.2 - Admin Progress matrix scroll and edit-state corrections
+   Baseline: V87.5.1 Admin Progress module-card UI corrections.
+   Scope: freeze Admin Class/Group student-name column outside the task-column scroller, keep rotated task labels wrapped inside the existing header height, fill editable cells in edit mode, and remove active legacy-warning wording.
    Protected: Student Progress V87.4.1 corrections, banner appearance, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
 */
 
@@ -8261,50 +8261,97 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   max-width: 100%;
   min-width: 0;
   max-height: min(56dvh, 520px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
 }
 
-.admin-progress-module-matrix-grid {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: fixed;
+.admin-progress-module-matrix-layout {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: start;
 }
 
-.admin-progress-module-matrix-corner,
-.admin-progress-module-matrix-student-cell {
+.admin-progress-module-matrix-frozen-column {
   position: sticky;
   left: 0;
-  z-index: 4;
-  width: 128px;
-  min-width: 128px;
-  max-width: 128px;
+  z-index: 5;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 104px;
   background: var(--surface-card);
   border-right: 1px solid rgba(var(--primary-rgb), 0.18);
 }
 
+.admin-progress-module-matrix-task-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  scrollbar-width: thin;
+}
+
+.admin-progress-module-matrix-task-grid {
+  width: max-content;
+  min-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--admin-progress-module-task-count, 1), 48px);
+  grid-auto-rows: auto;
+}
+
+.admin-progress-module-matrix-task-heading-row,
+.admin-progress-module-matrix-status-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(var(--admin-progress-module-task-count, 1), 48px);
+  min-width: max-content;
+}
+
+.admin-progress-module-matrix-corner,
+.admin-progress-module-matrix-student-cell,
+.admin-progress-module-matrix-task-header,
+.admin-progress-module-matrix-status-cell {
+  position: static;
+  left: auto;
+  top: auto;
+  z-index: auto;
+  box-sizing: border-box;
+}
+
+.admin-progress-module-matrix-corner,
+.admin-progress-module-matrix-student-cell {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  background: var(--surface-card);
+}
+
 .admin-progress-module-matrix-corner {
-  top: 0;
-  z-index: 6;
   height: 104px;
-  vertical-align: bottom;
+  min-height: 104px;
+  display: grid;
+  place-items: stretch;
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.18);
 }
 
 .admin-progress-module-matrix-task-header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
   width: 48px;
   min-width: 48px;
   max-width: 48px;
   height: 104px;
+  min-height: 104px;
   padding: 3px 2px;
-  vertical-align: bottom;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   background: var(--surface-soft);
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.18);
   border-right: 1px solid rgba(var(--primary-rgb), 0.12);
@@ -8314,7 +8361,9 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
 .admin-progress-module-matrix-task-title-wrap {
   position: relative;
-  height: 96px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: block;
   overflow: visible;
 }
@@ -8323,23 +8372,24 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   position: absolute;
   left: 50%;
   bottom: 4px;
-  width: 92px;
-  max-height: 92px;
+  width: 96px;
+  max-height: 42px;
   display: block;
   color: var(--text-muted);
-  font-size: 0.67rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.02;
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
+  word-break: normal;
   transform: translateX(-50%) rotate(-90deg);
   transform-origin: center center;
 }
 
 .admin-progress-module-matrix-student-cell {
   height: 42px;
-  padding: 0;
+  min-height: 42px;
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
 }
 
@@ -8370,9 +8420,10 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   min-width: 48px;
   max-width: 48px;
   height: 42px;
+  min-height: 42px;
   padding: 0;
-  text-align: center;
-  vertical-align: middle;
+  display: grid;
+  place-items: center;
   background: var(--surface-card);
   border-right: 1px solid rgba(var(--primary-rgb), 0.10);
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.10);
@@ -8383,13 +8434,16 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 }
 
 .admin-progress-module-matrix-status-button {
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
   min-height: 42px;
   padding: 0;
   border: 0;
   border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -8407,8 +8461,26 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   opacity: 0;
 }
 
-.admin-progress-module-card-overview.is-editing .admin-progress-matrix-blank-icon {
-  opacity: 0.68;
+.admin-progress-module-card-overview.is-editing .admin-progress-matrix-blank-icon,
+.admin-progress-class-overview.is-editing .admin-progress-matrix-blank-icon,
+.admin-progress-group-overview.is-editing .admin-progress-matrix-blank-icon,
+.admin-individual-progress-shell.is-editing .admin-progress-status-edit-icon,
+.student-progress-module-panel.is-editing .student-edit-icon {
+  opacity: 0.9;
+  display: inline-block;
+}
+
+.admin-progress-matrix-corner-content .admin-progress-matrix-edit-toggle .app-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol.admin-progress-matrix-blank-icon,
+.admin-progress-group-grid-status-button--blank .admin-progress-class-grid-status-symbol.admin-progress-matrix-blank-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  background: currentColor;
 }
 
 .admin-progress-matrix-corner-content {
@@ -8572,11 +8644,14 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
     padding: 8px;
   }
 
-  .admin-progress-module-matrix-corner,
-  .admin-progress-module-matrix-student-cell {
-    width: 112px;
-    min-width: 112px;
-    max-width: 112px;
+  .admin-progress-module-matrix-layout {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .admin-progress-module-matrix-task-grid,
+  .admin-progress-module-matrix-task-heading-row,
+  .admin-progress-module-matrix-status-row {
+    grid-template-columns: repeat(var(--admin-progress-module-task-count, 1), 44px);
   }
 
   .admin-progress-module-matrix-task-header,
@@ -8586,9 +8661,10 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
     max-width: 44px;
   }
 
-  .admin-progress-module-matrix-status-button {
-    width: 40px;
-    min-width: 40px;
+  .admin-progress-module-matrix-task-title {
+    width: 96px;
+    max-height: 40px;
+    font-size: 0.6rem;
   }
 
   .admin-progress-module-matrix-scroll {
