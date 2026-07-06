@@ -1,4 +1,4 @@
-/* M4L v82.2 - Admin Individual Progress rebuild from Student Progress grid
+/* M4L v87.2 - Admin Individual Progress rebuild from Student Progress grid
    Baseline: V79.7 Progress cleanup plus V82.1.1 shell/style refinements.
    Scope: rebuild Admin Individual Progress using the proven Student Progress module-grid sheet.
    Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home.
@@ -5576,66 +5576,105 @@ function toggleProgressPending(studenttaskid, field, value) {
   }  
 }  
   
-async function saveProgressPendingChanges(options = {}) {  
-  const shouldReload = options.reload !== false;  
-  const shouldAlert = options.alert !== false;  
-  
-  const updates = Object.values(progressPendingUpdates);  
-  
-  if (updates.length === 0) {  
-    if (shouldAlert) {  
-      alert("No changes to save.");  
-    }  
-    return false;  
-  }  
-  
-  for (const update of updates) {  
-    if (update.completeStatus !== undefined) {  
-      const completeResult = await apiPost("/api/tasks/update-complete", {  
-        studenttaskid: update.studenttaskid,  
-        complete: update.completeStatus !== ""  
-      }, state.token);  
-  
-      if (!completeResult.success) {  
-        if (shouldAlert) {  
-          alert(completeResult.error || "Could not save completion update.");  
-        }  
-        return false;  
-      }  
-    }  
-  
-    if (update.verifyStatus !== undefined) {  
-      const verifyResult = await apiPost("/api/admin/tasks/verify", {  
-        studenttaskid: update.studenttaskid,  
-        verified: update.verifyStatus !== ""  
-      }, state.token);  
-  
-      if (!verifyResult.success) {  
-        if (shouldAlert) {  
-          alert(verifyResult.error || "Could not save verification update.");  
-        }  
-        return false;  
-      }  
-    }  
-  }  
-  
-  progressPendingUpdates = {};  
-  
-  if (shouldAlert) {  
-    alert("Changes saved.");  
-  }  
-  
-  if (shouldReload) {  
-    if (progressState.contextType === "student" && adminProgressActiveView === "individual" && progressState.fromAdminDashboard === true) {  
-      await loadAdminIndividualSelectedStudentProgress(progressState.studentid, progressState.studentName);  
-    } else if (progressState.contextType === "student") {  
-      await loadIndividualStudentTaskList();  
-    } else {  
-      await loadProgressTaskStudents();  
-    }  
-  }  
-  
-  return true;  
+function beginProgressGlobalStatus(message) {
+  if (window.M4LShell && typeof window.M4LShell.beginAppStatus === "function") {
+    return window.M4LShell.beginAppStatus(message || "Saving progress...", { kind: "saving" });
+  }
+
+  return null;
+}
+
+function endProgressGlobalStatus(token, message) {
+  if (token && window.M4LShell && typeof window.M4LShell.endAppStatus === "function") {
+    window.M4LShell.endAppStatus(token, message || "Progress saved");
+    return true;
+  }
+
+  return false;
+}
+
+function failProgressGlobalStatus(token, message) {
+  if (token && window.M4LShell && typeof window.M4LShell.failAppStatus === "function") {
+    window.M4LShell.failAppStatus(token, message || "Progress save failed");
+    return true;
+  }
+
+  return false;
+}
+
+async function saveProgressPendingChanges(options = {}) {
+  const shouldReload = options.reload !== false;
+  const shouldAlert = options.alert !== false;
+  const shouldUseGlobalStatus = options.globalStatus !== false;
+
+  const updates = Object.values(progressPendingUpdates);
+
+  if (updates.length === 0) {
+    if (shouldAlert) {
+      alert("No changes to save.");
+    }
+    return false;
+  }
+
+  const statusToken = shouldUseGlobalStatus
+    ? beginProgressGlobalStatus("Saving progress...")
+    : null;
+
+  try {
+    for (const update of updates) {
+      if (update.completeStatus !== undefined) {
+        const completeResult = await apiPost("/api/tasks/update-complete", {
+          studenttaskid: update.studenttaskid,
+          complete: update.completeStatus !== ""
+        }, state.token);
+
+        if (!completeResult.success) {
+          failProgressGlobalStatus(statusToken, "Progress save failed");
+          if (shouldAlert) {
+            alert(completeResult.error || "Could not save completion update.");
+          }
+          return false;
+        }
+      }
+
+      if (update.verifyStatus !== undefined) {
+        const verifyResult = await apiPost("/api/admin/tasks/verify", {
+          studenttaskid: update.studenttaskid,
+          verified: update.verifyStatus !== ""
+        }, state.token);
+
+        if (!verifyResult.success) {
+          failProgressGlobalStatus(statusToken, "Progress save failed");
+          if (shouldAlert) {
+            alert(verifyResult.error || "Could not save verification update.");
+          }
+          return false;
+        }
+      }
+    }
+
+    progressPendingUpdates = {};
+
+    if (shouldAlert) {
+      alert("Changes saved.");
+    }
+
+    if (shouldReload) {
+      if (progressState.fromAdminDashboard === true) {
+        await showAdminIndividualSelectedStudent(progressState.studentid, progressState.studentName);
+      } else if (progressState.contextType === "student") {
+        await loadIndividualStudentTaskList();
+      } else {
+        await loadProgressTaskStudents();
+      }
+    }
+
+    endProgressGlobalStatus(statusToken, "Progress saved");
+    return true;
+  } catch (error) {
+    failProgressGlobalStatus(statusToken, "Progress save failed");
+    throw error;
+  }
 }  
   
 async function saveProgressPendingChangesAndReturn() {  
