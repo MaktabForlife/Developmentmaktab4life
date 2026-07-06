@@ -1,8 +1,8 @@
-/* M4L v87.5 - Admin Progress module-card UI unification
-   Baseline: V87.4.1 Student Progress close icon and compact header correction.
-   Scope: Admin Progress UI; convert Class/Group Progress to module cards with arrow-controlled module navigation and sticky student/task grids; compact Individual Progress selector and selected-student header.
-   Protected: Student Progress V87.4.1 corrections, global banner/loading strip, Attendance, Library, Home, Recorder, bottom navigation, and backend.
-   Note: legacy Progress snippets that are not safe to remove before the V86 cleanup exercise are marked as M4L FUTURE QUARANTINE.
+/* M4L v87.5.1 - Admin Progress module-card UI corrections
+   Baseline: V87.5 Admin Progress module-card UI unification.
+   Scope: Admin Class/Group module header and matrix-cell corrections; keep icons using the global no-background mask style; remove helper captions; undo Individual Progress quarantine labelling.
+   Protected: Student Progress V87.4.1 corrections, Individual Progress active behaviour, global banner/loading strip, Attendance, Library, Home, Recorder, bottom navigation, and backend.
+   Note: only clearly legacy fallback Progress routes remain marked for the V86 cleanup exercise.
 */  
   
 /* =========================  
@@ -2951,7 +2951,6 @@ function renderAdminProgressModuleCardHeader(module, index = 0, modules = [], op
       </div>
       <div class="admin-progress-module-card-title-row">
         <h2 class="admin-progress-module-card-title">${escapeHtml(moduleName)}</h2>
-        ${renderAdminProgressMatrixEditIconButton()}
       </div>
     </header>
   `;
@@ -3085,8 +3084,16 @@ function getAdminProgressMatrixPendingCount() {
 }  
   
 function renderAdminProgressMatrixEditKeyBlock() {
+  const isEditing = adminProgressMatrixEditMode === true;
+  const visibleLabel = isEditing ? "SAVE CHANGES" : "CLICK TO EDIT";
+
   return `
     <div class="admin-progress-matrix-corner-content">
+      <div class="admin-progress-matrix-edit-row">
+        ${renderAdminProgressMatrixEditIconButton()}
+      </div>
+      <span class="admin-progress-matrix-edit-text" data-admin-progress-matrix-edit-visible-label>${visibleLabel}</span>
+      <span class="admin-progress-matrix-key-spacer" aria-hidden="true"></span>
       <span class="admin-progress-matrix-key-line">
         <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--student" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
         <span>STUDENT</span>
@@ -3095,8 +3102,7 @@ function renderAdminProgressMatrixEditKeyBlock() {
         <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--teacher" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
         <span>TEACHER</span>
       </span>
-      ${renderAdminProgressMatrixEditIconButton()}
-      <span class="admin-progress-matrix-save-status" data-admin-progress-matrix-save-status aria-live="polite"></span>
+      <span class="visually-hidden admin-progress-matrix-save-status" data-admin-progress-matrix-save-status aria-live="polite"></span>
     </div>
   `;
 }
@@ -3125,6 +3131,10 @@ function updateAdminProgressMatrixEditControls() {
       <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "edit-mode-icon"}" aria-hidden="true"></span>
       <span class="visually-hidden admin-progress-matrix-edit-label">${isEditing ? "Save" : "Edit"}</span>
     `;
+  });
+
+  document.querySelectorAll("[data-admin-progress-matrix-edit-visible-label]").forEach(label => {
+    label.textContent = isEditing ? "SAVE CHANGES" : "CLICK TO EDIT";
   });
 
   if (isEditing) {
@@ -3344,7 +3354,6 @@ function renderAdminProgressClassOverview(modules) {
           ${model.modules.map((module, index) => renderAdminProgressClassModuleCard(module, model.students, index, model.modules, "class")).join("")}
         </div>
       </section>
-      <p class="admin-progress-class-grid-caption">Use the edit icon to unlock changes. Use the arrow icons to move between modules. Swipe the task columns inside each card when needed.</p>
     </section>
   `;
 }
@@ -3667,7 +3676,6 @@ function renderAdminProgressGroupGridOverview(modules) {
           ${model.modules.map((module, index) => renderAdminProgressClassModuleCard(module, model.students, index, model.modules, "group")).join("")}
         </div>
       </section>
-      <p class="admin-progress-group-grid-caption">Use the edit icon to unlock changes. Use the arrow icons to move between modules. Swipe the task columns inside each card when needed.</p>
     </section>
   `;
 }
