@@ -9,10 +9,10 @@ const DEFAULT_STUDENT_GROUP = 1;
 const APP_VERSION_STORAGE_KEY = "maktab_app_version";
 const CLASS_DUAS_ITEMS = [
   {
-   translation: "Development",
+ 
    arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
     transliteration: "ALLAHUMMA salli ala muhammadew wa ala aali muhammadew wa baarik wassallim.",
-    translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
+    translation: "DEVELOPMENT Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
   },
   {
     arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
