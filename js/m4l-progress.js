@@ -1,7 +1,7 @@
-/* M4L v87.4 - Student Progress compact header and responsive panels
-   Baseline: V87.3 Progress global status strip consolidation.
-   Scope: compact Student Progress module header, replace text close with close.svg, use icon-only edit/save actions, stop mobile task rows stretching, and opt Student Progress into the shared responsive swipe-panel pattern.
-   Protected: global banner/loading strip, Admin Progress behaviour, Attendance, Library, Home, Recorder, bottom navigation, and backend.
+/* M4L v87.4.1 - Student Progress close icon and compact header correction
+   Baseline: V87.4 Student Progress compact header and responsive panels.
+   Scope: Student Progress only; move the close.svg control to the top-left corner as a larger no-background global icon, and tighten the module header spacing.
+   Protected: Admin Progress behaviour, global banner/loading strip, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -900,7 +900,7 @@ function renderStudentProgressCloseButton() {
       aria-label="Save and close Student Progress"  
       title="Save and close"  
     >  
-      <span class="app-icon app-icon-small app-icon-close" aria-hidden="true"></span>  
+      <span class="app-icon app-icon-large app-icon-close" aria-hidden="true"></span>  
       <span class="visually-hidden">Save and close Student Progress</span>  
     </button>  
   `;  
@@ -975,9 +975,10 @@ function renderStudentProgressGlobalActions(modules, activeModuleKey) {
   `;  
 }  
   
-/* Compatibility wrapper retained for older calls. The V70.2 layout no longer  
-   uses a global frozen module heading/progress bar; each module panel owns its  
-   own heading and progress indicator. */  
+/* M4L FUTURE QUARANTINE:
+   Legacy compatibility wrapper retained temporarily for older calls.
+   The active V87.4+ Student Progress UI uses renderStudentProgressGlobalActions
+   directly for the dots-only global action row. Review during the cleanup exercise. */  
 function renderStudentProgressFrozenHeader(modules, activeModuleKey) {  
   return renderStudentProgressGlobalActions(modules, activeModuleKey);  
 }  
