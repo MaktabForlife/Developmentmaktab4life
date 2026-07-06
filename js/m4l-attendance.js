@@ -1,4 +1,4 @@
-/* M4L v76.7.4 - Attendance module + bounded sticky top panel scroll
+/* M4L v87.2 - Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
 
@@ -1007,6 +1007,32 @@ function toggleAttendanceStatus(studentid) {
   renderAttendanceRegister(getAttendanceRegisterDateValue());
 }
 
+function beginAttendanceGlobalStatus(message) {
+  if (window.M4LShell && typeof window.M4LShell.beginAppStatus === "function") {
+    return window.M4LShell.beginAppStatus(message || "Saving attendance...", { kind: "saving" });
+  }
+
+  return null;
+}
+
+function endAttendanceGlobalStatus(token, message) {
+  if (token && window.M4LShell && typeof window.M4LShell.endAppStatus === "function") {
+    window.M4LShell.endAppStatus(token, message || "Attendance saved");
+    return true;
+  }
+
+  return false;
+}
+
+function failAttendanceGlobalStatus(token, message) {
+  if (token && window.M4LShell && typeof window.M4LShell.failAppStatus === "function") {
+    window.M4LShell.failAppStatus(token, message || "Attendance save failed");
+    return true;
+  }
+
+  return false;
+}
+
 async function submitAttendanceRegister() {
   if (attendanceRegisterSaveInProgress) return;
 
@@ -1027,6 +1053,7 @@ async function submitAttendanceRegister() {
 
   attendanceRegisterSaveInProgress = true;
   setAttendanceSaveButtonState(true);
+  const statusToken = beginAttendanceGlobalStatus("Saving attendance...");
 
   let result;
   try {
@@ -1042,6 +1069,7 @@ async function submitAttendanceRegister() {
   if (!result || !result.success) {
     attendanceRegisterSaveInProgress = false;
     setAttendanceSaveButtonState(false);
+    failAttendanceGlobalStatus(statusToken, "Attendance save failed");
     alert(result?.error || result?.message || "Failed to save attendance.");
     return;
   }
@@ -1051,6 +1079,7 @@ async function submitAttendanceRegister() {
   invalidateAttendanceComputedPanels();
   renderAttendanceInactivePanelShells();
   hydrateAttendanceInactivePanelsQuietly(true);
+  endAttendanceGlobalStatus(statusToken, "Attendance saved");
   alert(`Attendance saved successfully. ${absentStudents.length} student${absentStudents.length === 1 ? "" : "s"} marked absent.`);
 }
 
