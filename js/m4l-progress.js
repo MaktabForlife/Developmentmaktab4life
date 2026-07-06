@@ -1,8 +1,8 @@
-/* M4L v87.5.1 - Admin Progress module-card UI corrections
-   Baseline: V87.5 Admin Progress module-card UI unification.
-   Scope: Admin Class/Group module header and matrix-cell corrections; keep icons using the global no-background mask style; remove helper captions; undo Individual Progress quarantine labelling.
-   Protected: Student Progress V87.4.1 corrections, Individual Progress active behaviour, global banner/loading strip, Attendance, Library, Home, Recorder, bottom navigation, and backend.
-   Note: only clearly legacy fallback Progress routes remain marked for the V86 cleanup exercise.
+/* M4L v87.5.2 - Admin Progress matrix scroll and edit-state corrections
+   Baseline: V87.5.1 Admin Progress module-card UI corrections.
+   Scope: keep Admin Class/Group student names frozen while task columns scroll, improve fixed-height rotated task labels, fill editable Progress cells in edit mode, and remove active legacy-warning wording from Individual/legacy Progress paths.
+   Protected: Student Progress V87.4.1 corrections, global banner/loading strip, Attendance, Library, Home, Recorder, bottom navigation, and backend.
+   Note: Individual Progress active render path is preserved; legacy fallback wording is neutral until the V86 cleanup exercise.
 */  
   
 /* =========================  
@@ -975,7 +975,7 @@ function renderStudentProgressGlobalActions(modules, activeModuleKey) {
   `;  
 }  
   
-/* M4L FUTURE QUARANTINE:
+/* M4L V86 CLEANUP REVIEW:
    Legacy compatibility wrapper retained temporarily for older calls.
    The active V87.4+ Student Progress UI uses renderStudentProgressGlobalActions
    directly for the dots-only global action row. Review during the cleanup exercise. */  
@@ -2968,7 +2968,7 @@ function renderAdminProgressMatrixEditIconButton() {
       aria-pressed="${isEditing ? "true" : "false"}"
       title="${isEditing ? "Save" : "Edit progress"}"
     >
-      <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "edit-mode-icon"}" aria-hidden="true"></span>
+      <span class="app-icon ${isEditing ? "save-mode-icon" : "edit-mode-icon"}" aria-hidden="true"></span>
       <span class="visually-hidden admin-progress-matrix-edit-label">${isEditing ? "Save" : "Edit"}</span>
     </button>
   `;
@@ -2990,19 +2990,26 @@ function renderAdminProgressClassModuleCard(module, students, index = 0, modules
       ${renderAdminProgressModuleCardHeader(module, index, modules, { dotsLabel: groupMode ? "Group progress modules" : "Class progress modules" })}
       <section class="admin-progress-module-matrix-card-body" aria-label="${escapeForAttribute(moduleName)} tasks by student">
         <div class="admin-progress-module-matrix-scroll" tabindex="0" role="region" aria-label="Scrollable ${escapeForAttribute(moduleName)} task grid">
-          <table class="admin-progress-module-matrix-grid ${groupMode ? "admin-progress-group-grid" : "admin-progress-class-grid"}">
-            <thead>
-              <tr>
-                <th class="admin-progress-module-matrix-corner" scope="col">
-                  ${renderAdminProgressMatrixEditKeyBlock()}
-                </th>
-                ${tasks.map((task, taskIndex) => renderAdminProgressModuleMatrixTaskHeader(task, module, taskIndex)).join("")}
-              </tr>
-            </thead>
-            <tbody>
-              ${safeStudents.map(student => renderAdminProgressModuleMatrixStudentRow(student, module, tasks, groupMode)).join("")}
-            </tbody>
-          </table>
+          <div class="admin-progress-module-matrix-layout ${groupMode ? "admin-progress-group-grid" : "admin-progress-class-grid"}" role="table" aria-label="${escapeForAttribute(moduleName)} task grid">
+            <div class="admin-progress-module-matrix-frozen-column" role="rowgroup" aria-label="Students">
+              <div class="admin-progress-module-matrix-corner" role="columnheader">
+                ${renderAdminProgressMatrixEditKeyBlock()}
+              </div>
+              ${safeStudents.map(student => renderAdminProgressModuleMatrixFrozenStudent(student, groupMode)).join("")}
+            </div>
+            <div class="admin-progress-module-matrix-task-scroll" tabindex="0" role="region" aria-label="Swipe task columns for ${escapeForAttribute(moduleName)}">
+              <div
+                class="admin-progress-module-matrix-task-grid"
+                role="rowgroup"
+                style="--admin-progress-module-task-count: ${Math.max(1, tasks.length)};"
+              >
+                <div class="admin-progress-module-matrix-task-heading-row" role="row">
+                  ${tasks.map((task, taskIndex) => renderAdminProgressModuleMatrixTaskHeader(task, module, taskIndex)).join("")}
+                </div>
+                ${safeStudents.map(student => renderAdminProgressModuleMatrixStatusRow(student, module, tasks, groupMode)).join("")}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </section>
@@ -3014,37 +3021,43 @@ function renderAdminProgressModuleMatrixTaskHeader(task, module, taskIndex = 0) 
   const moduleName = module.modulename || module.subjectname || "Module";
 
   return `
-    <th class="admin-progress-module-matrix-task-header" scope="col" aria-label="${escapeForAttribute(moduleName)}: ${escapeForAttribute(taskName)}">
+    <div class="admin-progress-module-matrix-task-header" role="columnheader" aria-label="${escapeForAttribute(moduleName)}: ${escapeForAttribute(taskName)}">
       <span class="admin-progress-module-matrix-task-title-wrap">
         <span class="admin-progress-module-matrix-task-title">${escapeHtml(taskName)}</span>
       </span>
-    </th>
+    </div>
   `;
 }
 
-function renderAdminProgressModuleMatrixStudentRow(student, module, tasks, groupMode = false) {
+function renderAdminProgressModuleMatrixFrozenStudent(student, groupMode = false) {
   const name = student.username || "Student";
   const groupPrefix = getAdminProgressClassGroupPrefix(student.classgroup);
   const accessibleName = groupPrefix ? `${groupPrefix} ${name}` : name;
+
+  return `
+    <div class="admin-progress-module-matrix-student-cell" role="rowheader">
+      <button
+        type="button"
+        class="admin-progress-module-matrix-student-button"
+        data-progress-action="open-admin-individual-student-card"
+        data-studentid="${escapeForAttribute(student.studentid || "")}" 
+        data-username="${escapeForAttribute(name)}"
+        aria-label="Open Individual Progress for ${escapeForAttribute(accessibleName)}"
+      >
+        ${groupPrefix && !groupMode ? `<span class="admin-progress-class-grid-student-prefix" aria-hidden="true">${escapeHtml(groupPrefix)}</span>` : ""}
+        <span class="admin-progress-module-matrix-student-name">${escapeHtml(name)}</span>
+      </button>
+    </div>
+  `;
+}
+
+function renderAdminProgressModuleMatrixStatusRow(student, module, tasks, groupMode = false) {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
 
   return `
-    <tr>
-      <th class="admin-progress-module-matrix-student-cell" scope="row">
-        <button
-          type="button"
-          class="admin-progress-module-matrix-student-button"
-          data-progress-action="open-admin-individual-student-card"
-          data-studentid="${escapeForAttribute(student.studentid || "")}" 
-          data-username="${escapeForAttribute(name)}"
-          aria-label="Open Individual Progress for ${escapeForAttribute(accessibleName)}"
-        >
-          ${groupPrefix && !groupMode ? `<span class="admin-progress-class-grid-student-prefix" aria-hidden="true">${escapeHtml(groupPrefix)}</span>` : ""}
-          <span class="admin-progress-module-matrix-student-name">${escapeHtml(name)}</span>
-        </button>
-      </th>
+    <div class="admin-progress-module-matrix-status-row" role="row">
       ${safeTasks.map(task => renderAdminProgressModuleMatrixStatusCell(student, module, task, groupMode)).join("")}
-    </tr>
+    </div>
   `;
 }
 
@@ -3059,7 +3072,7 @@ function renderAdminProgressModuleMatrixStatusCell(student, module, task, groupM
   const studentTaskId = row ? String(row.studenttaskid || "") : "";
 
   return `
-    <td class="admin-progress-module-matrix-status-cell">
+    <div class="admin-progress-module-matrix-status-cell" role="cell">
       <button
         type="button"
         class="admin-progress-module-matrix-status-button admin-progress-class-grid-status-button admin-progress-class-grid-status-button--${escapeForAttribute(state)}${groupMode ? " admin-progress-group-grid-status-button" : ""}"
@@ -3071,7 +3084,7 @@ function renderAdminProgressModuleMatrixStatusCell(student, module, task, groupM
       >
         ${renderAdminProgressClassGridStatusSymbol(state)}
       </button>
-    </td>
+    </div>
   `;
 }
 
@@ -3128,7 +3141,7 @@ function updateAdminProgressMatrixEditControls() {
     button.setAttribute("aria-label", isEditing ? "Save progress changes" : "Edit progress");
     button.setAttribute("title", isEditing ? "Save" : "Edit progress");
     button.innerHTML = `
-      <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "edit-mode-icon"}" aria-hidden="true"></span>
+      <span class="app-icon ${isEditing ? "save-mode-icon" : "edit-mode-icon"}" aria-hidden="true"></span>
       <span class="visually-hidden admin-progress-matrix-edit-label">${isEditing ? "Save" : "Edit"}</span>
     `;
   });
@@ -3587,7 +3600,7 @@ function cycleAdminProgressClassMatrixCell(button) {
   
   applyAdminProgressClassMatrixStateToRow(studentTaskId, nextState);  
   updateAdminProgressClassMatrixCellButton(button, nextState);  
-  button.closest("td")?.classList.add("is-pending");  
+  button.closest("td, .admin-progress-module-matrix-status-cell")?.classList.add("is-pending");  
   updateAdminProgressMatrixSaveStatus(`${getAdminProgressMatrixPendingCount()} pending`);  
   
   return true;  
@@ -3857,10 +3870,6 @@ function renderAdminProgressDashboard(modules) {
     return;
   }
 
-  /* M4L FUTURE QUARANTINE:
-     Legacy admin module shelf renderer retained temporarily for non-class/non-group
-     fallback routes. Candidate for removal after V87.5 Admin Progress model is confirmed.
-  */
   const html = list.map(renderAdminProgressModuleShelf).join("");
 
   setDomHtml(dashboard, html);
@@ -3870,25 +3879,25 @@ function renderAdminProgressDashboard(modules) {
   
 
 function renderAdminProgressModuleShelf(module, moduleIndex = 0) {
-  console.warn("V79.4 legacy admin module shelf route is quarantined.", moduleIndex, module);
+  console.warn("Legacy admin module shelf fallback route used.", moduleIndex, module);
   const moduleName = module && (module.modulename || module.subjectname) ? (module.modulename || module.subjectname) : "Progress";
   return `
-    <section class="admin-progress-placeholder-card" aria-label="${escapeForAttribute(moduleName)} legacy progress view quarantined">
+    <section class="admin-progress-placeholder-card" aria-label="${escapeForAttribute(moduleName)} legacy progress fallback">
       <h3>${escapeHtml(moduleName)}</h3>
-      <p class="helper-text">This old module shelf view has been quarantined. Use View All Progress, Group Progress, or Select a student.</p>
+      <p class="helper-text">Choose View All Progress, Group Progress, or Select a student from the Progress selector.</p>
     </section>
   `;
 }
 
 
 function renderAdminProgressModuleBars(module) {
-  console.warn("V79.4 legacy admin module progress bars are quarantined.", module);
+  console.warn("Legacy admin module progress bars fallback route used.", module);
   return "";
 }
 
 
 function renderAdminProgressDashboardTaskDots(tasks, moduleName) {
-  console.warn("V79.4 legacy admin task-card dots are quarantined.", moduleName, tasks);
+  console.warn("Legacy admin task-card dots fallback route used.", moduleName, tasks);
   return "";
 }
 
@@ -4033,7 +4042,7 @@ function bindAdminProgressDashboardRailControls(container) {
   
 
 function renderAdminProgressTaskCard(task) {
-  console.warn("V79.4 legacy admin task card renderer is quarantined.", task);
+  console.warn("Legacy admin task card fallback route used.", task);
   return "";
 }
 
@@ -5400,13 +5409,13 @@ function renderAdminProgressStudentTaskRow(row) {
   
 
 function ensureAdminProgressStudentPopout() {
-  console.warn("V79.4 legacy admin student popout is quarantined.");
+  console.warn("Legacy admin student popout route closed.");
   return null;
 }
 
 
 async function openAdminProgressStudentPopout(studentid, username) {
-  console.warn("V79.4 legacy admin student popout route is quarantined; opening full student view instead.", studentid, username);
+  console.warn("Legacy admin student popout route redirected to full student view.", studentid, username);
   if (!studentid) {
     alert("Student details are missing.");
     return false;
@@ -5421,13 +5430,13 @@ async function openAdminProgressStudentPopout(studentid, username) {
 
 
 async function loadAdminStudentProgressPopout(studentid, username) {
-  console.warn("V79.4 legacy admin popout loader is quarantined.", studentid, username);
+  console.warn("Legacy admin popout loader fallback route used.", studentid, username);
   return false;
 }
 
 
 function renderAdminStudentProgressPopout(rows, username) {
-  console.warn("V79.4 legacy admin popout renderer is quarantined.", username, rows);
+  console.warn("Legacy admin popout renderer fallback route used.", username, rows);
   return false;
 }
 
@@ -5453,7 +5462,7 @@ function updateAdminProgressPopoutModuleSwipeDots(track) {
 
 
 function scrollAdminProgressPopoutModuleToIndex(moduleIndex, options = {}) {
-  console.warn("V79.4 legacy admin popout swipe route is quarantined.", moduleIndex, options);
+  console.warn("Legacy admin popout swipe fallback route used.", moduleIndex, options);
   return false;
 }
 
@@ -5469,13 +5478,13 @@ function bindAdminProgressPopoutModuleSwipeControls() {
 
 
 function renderAdminStudentProgressPopoutRow(row) {
-  console.warn("V79.4 legacy admin popout row renderer is quarantined.", row);
+  console.warn("Legacy admin popout row fallback route used.", row);
   return "";
 }
 
 
 function toggleProgressPendingForAdminPopout(studenttaskid, field, value) {
-  console.warn("V79.4 legacy admin popout toggle route is quarantined.", studenttaskid, field, value);
+  console.warn("Legacy admin popout toggle fallback route used.", studenttaskid, field, value);
   return false;
 }
 
@@ -5499,7 +5508,7 @@ function closeAdminProgressStudentPopout(options = {}) {
 
 
 async function saveAdminProgressPopoutChanges(button) {
-  console.warn("V79.4 legacy admin popout save route is quarantined.");
+  console.warn("Legacy admin popout save fallback route used.");
   return saveProgressPendingChanges({ reload: false, alert: true });
 }
 
