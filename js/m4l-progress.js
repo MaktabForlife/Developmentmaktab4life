@@ -1,7 +1,7 @@
-/* M4L v87.3 - Progress global status strip consolidation
-   Baseline: V87.2.1 Progress global loading UX refinement.
-   Scope: keep Progress first-load and save activity routed through the global user-band status strip; remove the unused in-screen Progress loading-card renderer.
-   Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home, Recorder, and bottom navigation.
+/* M4L v87.4 - Student Progress compact header and responsive panels
+   Baseline: V87.3 Progress global status strip consolidation.
+   Scope: compact Student Progress module header, replace text close with close.svg, use icon-only edit/save actions, stop mobile task rows stretching, and opt Student Progress into the shared responsive swipe-panel pattern.
+   Protected: global banner/loading strip, Admin Progress behaviour, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -895,11 +895,14 @@ function renderStudentProgressCloseButton() {
   return `  
     <button  
       type="button"  
-      class="small-btn admin-progress-close-btn student-progress-close-btn"  
+      class="icon-action-btn student-progress-close-btn"  
       data-progress-action="close-student-progress"  
       aria-label="Save and close Student Progress"  
       title="Save and close"  
-    >X</button>  
+    >  
+      <span class="app-icon app-icon-small app-icon-close" aria-hidden="true"></span>  
+      <span class="visually-hidden">Save and close Student Progress</span>  
+    </button>  
   `;  
 }  
   
@@ -907,18 +910,19 @@ function renderStudentProgressModuleEditToggle(module) {
   if (!module) return "";  
   const moduleKey = String(module.subjectid || "");  
   const isEditing = isStudentProgressModuleEditing(moduleKey);  
+  const label = isEditing ? "Save completed changes" : "Click to edit";  
   return `  
     <button  
       type="button"  
-      class="student-progress-module-edit-toggle${isEditing ? " is-editing" : ""}"  
+      class="icon-action-btn student-progress-module-edit-toggle${isEditing ? " is-editing" : ""}"  
       data-progress-action="toggle-student-progress-module-edit"  
       data-progress-module-key="${escapeForAttribute(moduleKey)}"  
-      aria-label="${isEditing ? "Save completed changes" : "Click to edit"}"  
+      aria-label="${label}"  
       aria-pressed="${isEditing ? "true" : "false"}"  
       title="${isEditing ? "Save" : "Click to edit"}"  
     >  
       <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>  
-      <span class="student-progress-module-edit-label">${isEditing ? "Save" : "Click to edit"}</span>  
+      <span class="visually-hidden">${label}</span>  
     </button>  
   `;  
 }  
@@ -1283,15 +1287,16 @@ function setStudentProgressModuleEditState(moduleKey, isEditing) {
 function updateStudentProgressModuleEditButton(button, isEditing) {  
   if (!button) return false;  
   
+  const label = isEditing ? "Save completed changes" : "Click to edit";  
   button.disabled = false;  
   button.classList.toggle("is-editing", !!isEditing);  
   button.classList.remove("is-saving", "has-save-error");  
   button.setAttribute("aria-pressed", isEditing ? "true" : "false");  
-  button.setAttribute("aria-label", isEditing ? "Save completed changes" : "Click to edit");  
+  button.setAttribute("aria-label", label);  
   button.setAttribute("title", isEditing ? "Save" : "Click to edit");  
   button.innerHTML = `  
     <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>  
-    <span class="student-progress-module-edit-label">${isEditing ? "Save" : "Click to edit"}</span>  
+    <span class="visually-hidden">${label}</span>  
   `;  
   return true;  
 }  
@@ -1307,7 +1312,7 @@ function setStudentProgressModuleEditButtonSaving(button, label = "Saving...") {
   button.setAttribute("title", label);  
   button.innerHTML = `  
     <span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span>  
-    <span class="student-progress-module-edit-label">${escapeHtml(label)}</span>  
+    <span class="visually-hidden">${escapeHtml(label)}</span>  
   `;  
   return true;  
 }  
@@ -1323,7 +1328,7 @@ function setStudentProgressModuleEditButtonError(button, label = "Save failed") 
   button.setAttribute("title", label);  
   button.innerHTML = `  
     <span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span>  
-    <span class="student-progress-module-edit-label">${escapeHtml(label)}</span>  
+    <span class="visually-hidden">${escapeHtml(label)}</span>  
   `;  
   return true;  
 }  
@@ -1465,7 +1470,7 @@ function renderStudentProgressModulePanel(module, index, moduleCount) {
   
   return `  
     <section  
-      class="m4l-progress-swipe-panel m4l-progress-swipe-panel--full student-progress-module-panel${isStudentProgressModuleEditing(moduleKey) ? " is-editing" : " is-viewing"}"  
+      class="m4l-progress-swipe-panel m4l-progress-swipe-panel--full m4l-responsive-swipe-panel student-progress-module-panel${isStudentProgressModuleEditing(moduleKey) ? " is-editing" : " is-viewing"}"  
       data-progress-swipe-panel  
       data-progress-panel-index="${index}"  
       data-progress-module-key="${escapeForAttribute(moduleKey)}"  
@@ -1509,7 +1514,7 @@ function renderStudentSubjectProgress(options = {}) {
       ${renderStudentProgressActiveModuleHeader(modules, preferredModuleKey)}  
       <div  
         id="student-progress-swipe-track"  
-        class="m4l-progress-swipe-track m4l-progress-swipe-track--full student-progress-swipe-track"  
+        class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"  
         data-progress-swipe-track  
         aria-label="Student progress modules"  
       >  
