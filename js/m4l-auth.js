@@ -1,4 +1,4 @@
-/* M4L v41 - Auth / PIN / API module
+/* M4L v87.2 - Auth / PIN / API module
    Load after /app.js and before the window load event fires.
    This is a classic script, not type=module, so functions remain globally available
    for the existing app while we split gradually.
@@ -298,6 +298,39 @@ async function submitSetupPin() {
   setError("");
 }
 
+function beginAuthInitialDataStatus() {
+  if (window.M4LShell && typeof window.M4LShell.beginAppStatus === "function") {
+    return window.M4LShell.beginAppStatus("Loading data...", { kind: "loading" });
+  }
+
+  return null;
+}
+
+function finishAuthInitialDataStatus(token, success = true) {
+  if (!token || !window.M4LShell) {
+    return false;
+  }
+
+  const finish = () => {
+    if (success && typeof window.M4LShell.endAppStatus === "function") {
+      window.M4LShell.endAppStatus(token, "Ready");
+      return;
+    }
+
+    if (!success && typeof window.M4LShell.failAppStatus === "function") {
+      window.M4LShell.failAppStatus(token, "Data loading failed");
+    }
+  };
+
+  if (typeof window.setTimeout === "function") {
+    window.setTimeout(finish, 950);
+  } else {
+    finish();
+  }
+
+  return true;
+}
+
 async function submitLogin() {
   if (state.loginSubmitting) return;
 
@@ -313,6 +346,7 @@ async function submitLogin() {
     : "/api/login";
 
   state.loginSubmitting = true;
+  let initialDataStatusToken = null;
 
   try {
     const result = await apiPost(path, {
@@ -337,6 +371,8 @@ async function submitLogin() {
     clearPinValue("login-pin");
     setError("");
 
+    initialDataStatusToken = beginAuthInitialDataStatus();
+
     if (state.portalType === "admin") {
       const adminWelcome = document.getElementById("admin-welcome");
       if (adminWelcome) {
@@ -356,7 +392,12 @@ async function submitLogin() {
 
       showScreen("student-home");
     }
+
+    finishAuthInitialDataStatus(initialDataStatusToken, true);
   } catch (err) {
+    if (initialDataStatusToken) {
+      finishAuthInitialDataStatus(initialDataStatusToken, false);
+    }
     setError("Unable to connect. Please try again.");
   } finally {
     state.loginSubmitting = false;
@@ -387,6 +428,8 @@ window.M4LAuth = {
   maybeAutoSubmitPin,
   updateAuthWelcomeBanner,
   updateAuthLoginLabel,
+  beginAuthInitialDataStatus,
+  finishAuthInitialDataStatus,
   checkStudent,
   checkAdmin,
   submitSetupPin,
