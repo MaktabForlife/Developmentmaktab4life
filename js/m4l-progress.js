@@ -1,7 +1,7 @@
-/* M4L v87.2.1 - Progress global loading UX refinement
-   Baseline: V79.7 Progress cleanup plus V82.1.1 shell/style refinements.
-   Scope: route first-open/progress-loading activity through the global user-band status strip and remove temporary in-screen loading cards.
-   Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home.
+/* M4L v87.3 - Progress global status strip consolidation
+   Baseline: V87.2.1 Progress global loading UX refinement.
+   Scope: keep Progress first-load and save activity routed through the global user-band status strip; remove the unused in-screen Progress loading-card renderer.
+   Protected: Student Progress, Admin All/Class dashboard, Group dashboard, Library, Attendance, Home, Recorder, and bottom navigation.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -2125,17 +2125,10 @@ function renderAdminProgressPlaceholderView(view) {
     </section>  
   `);  
   return true;  
-}  
-  
-function renderAdminProgressLoadingState(message = "Loading class progress...") {  
-  return `  
-    <section class="admin-progress-loading-card" role="status" aria-live="polite">  
-      <span class="admin-progress-loading-spinner" aria-hidden="true"></span>  
-      <span class="admin-progress-loading-text">${escapeHtml(message)}</span>  
-    </section>  
-  `;  
-}  
-  
+}
+
+/* V87.3: in-screen Progress loading cards removed. The global user-band status strip now owns Progress loading feedback. */
+
 function startAdminProgressBackgroundSave(options = {}) {  
   if (!hasProgressPendingUpdates()) {  
     return null;  
