@@ -1,6 +1,6 @@
-/* M4L v89.3 - Student Progress viewpanel positioning fix
-   Baseline: V89.2 Student Progress viewpanel/modulepanel layout.
-   Scope: top-centred compact GlobalSwipe, separated module HeaderPanel above TaskListPanel, stable viewpanel/rail positioning, and existing horizontal module swipe.
+/* M4L v89.4 - Student Progress GlobalSwipe grid and medium swipe hardening
+   Baseline: V89.3 Student Progress viewpanel positioning fix.
+   Scope: separate xclose/dots into a 90/210/90 GlobalSwipe row, keep GlobalSwipe top-centred in ViewPanel, and harden medium-screen rail swiping.
    Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -922,6 +922,66 @@ function bindStudentProgressSwipeDragControls(track) {
   return true;
 }
 
+function bindStudentProgressSwipeWheelControls(track) {
+  if (!track || track.dataset.progressSwipeWheelBound === "true") {
+    return !!track;
+  }
+
+  if (typeof track.addEventListener !== "function") {
+    return false;
+  }
+
+  track.dataset.progressSwipeWheelBound = "true";
+
+  track.addEventListener("wheel", event => {
+    if (!event || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const maxLeft = Math.max(0, (track.scrollWidth || 0) - (track.clientWidth || 0));
+
+    if (maxLeft <= 2) {
+      return;
+    }
+
+    const target = event.target;
+    const verticalScroller = target && typeof target.closest === "function"
+      ? target.closest(".student-progress-module-grid")
+      : null;
+
+    const deltaX = Number(event.deltaX || 0);
+    const deltaY = Number(event.deltaY || 0);
+    const isMostlyHorizontal = Math.abs(deltaX) >= Math.abs(deltaY);
+    const shouldUseVerticalAsHorizontal = event.shiftKey && Math.abs(deltaY) > 0;
+
+    if (!isMostlyHorizontal && !shouldUseVerticalAsHorizontal) {
+      return;
+    }
+
+    if (verticalScroller && !isMostlyHorizontal && !shouldUseVerticalAsHorizontal) {
+      return;
+    }
+
+    const scrollDelta = isMostlyHorizontal ? deltaX : deltaY;
+
+    if (!scrollDelta) {
+      return;
+    }
+
+    event.preventDefault();
+    track.scrollLeft = Math.max(0, Math.min(maxLeft, (track.scrollLeft || 0) + scrollDelta));
+
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(updateStudentProgressSwipeDots);
+    } else {
+      updateStudentProgressSwipeDots();
+    }
+  }, { passive: false });
+
+  return true;
+}
+
+
 function bindStudentProgressSwipeControls() {  
   const track = getStudentProgressSwipeTrack();  
   
@@ -931,6 +991,7 @@ function bindStudentProgressSwipeControls() {
   
   bindStudentProgressSwipeResizeHandler();  
   bindStudentProgressSwipeDragControls(track);
+  bindStudentProgressSwipeWheelControls(track);
   
   if (track.dataset.progressSwipeBound !== "true") {  
     track.dataset.progressSwipeBound = "true";  
