@@ -1,6 +1,6 @@
-/* M4L v89.1 - Compact Student Progress header/card cleanup
-   Baseline: V87.4 Student Progress compact header and responsive panels.
-   Scope: xclose top control row, per-card module headers, visible edit/save labels, compact task rows, and stable native horizontal module swipe.
+/* M4L v89.2 - Student Progress viewpanel/modulepanel layout
+   Baseline: V89.1 Student Progress header/card cleanup.
+   Scope: transparent global swipe row, surface-app view panel, surface-card module panels, compact header container, task-list panel, and stable horizontal module swipe.
    Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -1042,7 +1042,7 @@ function renderStudentProgressGlobalActions(modules, activeModuleKey) {
   const dotsMarkup = renderStudentProgressSwipeDots(modules, activeModuleKey);
 
   return `
-    <div class="student-progress-global-actions" data-progress-global-actions>
+    <div class="student-progress-global-actions student-progress-global-swipe" data-progress-global-actions data-student-progress-global-swipe>
       <div class="student-progress-top-control-row">
         ${renderStudentProgressCloseButton()}
         <div class="student-progress-top-control-dots">
@@ -1536,7 +1536,7 @@ function renderStudentProgressTaskTable(module) {
     .join("");  
   
   return `  
-    <section class="admin-progress-task-card admin-progress-individual-module-card student-progress-module-task-card student-progress-module-grid-card" aria-label="${escapeForAttribute(title)} progress tasks">  
+    <section class="admin-progress-task-card admin-progress-individual-module-card student-progress-module-task-card student-progress-module-grid-card student-progress-task-list-panel" aria-label="${escapeForAttribute(title)} progress tasks">  
       <div class="student-progress-module-grid" role="table" aria-label="${escapeForAttribute(title)} progress tasks">  
         ${renderStudentProgressTaskTableHeader()}  
         ${taskRowsHtml}  
@@ -1591,7 +1591,7 @@ function renderStudentSubjectProgress(options = {}) {
 
   setDomHtml(container, `
     <div class="m4l-progress-swipe-shell student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
-      <div class="student-progress-compact-stack" data-student-progress-compact-stack>
+      <div class="student-progress-view-panel student-progress-compact-stack" data-student-progress-view-panel data-student-progress-compact-stack>
         ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
         <div
           id="student-progress-swipe-track"
