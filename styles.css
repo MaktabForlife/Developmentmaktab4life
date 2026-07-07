@@ -1,11 +1,10 @@
-/* M4L v89.6.4.1 - Student Progress mobile equal-height restore
-   Baseline: V89.6.3.1 confirmed working strict viewport stepper.
-   Baseline: V89.6.4 CSS consolidation.
-   Scope: CSS-only mobile repair to restore equal-height Student Progress module
-   cards after introducing the JS-rendered PaneViewport wrapper. Preserve the
-   V89.6.4 consolidated cascade and medium/large strict viewport/track model.
-   Protected: JS behaviour, mobile swipe, editable grid behaviour, Admin Progress,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
+/* M4L v89.6.5 - Student Progress tablet/PC stepper number width
+   Baseline: V89.6.4.1 mobile equal-height restore.
+   Scope: CSS-only medium/large stepper number-strip width adjustment so the
+   numbered module navigation can show all 12 modules where space allows.
+   Protected: mobile stepper, mobile swipe, medium/large 3-slot/5-slot module
+   viewport, JS behaviour, editable grid behaviour, Admin Progress, Attendance,
+   Library, Home, Recorder, bottom navigation, auth banner, and backend.
 */
 
 :root {
@@ -8577,6 +8576,8 @@ body.is-student-progress-section .app-shell {
   );
 }
 
+/* V89.6.5: medium/large only — widen the Stepper number strip.
+   This does not change the module PaneViewport or the 3-slot/5-slot card layout. */
 @media (min-width: 768px) {
   body.is-student-progress-section {
     overflow-x: hidden;
@@ -8617,6 +8618,10 @@ body.is-student-progress-section .app-shell {
   }
 
   #progress-subjects-screen.student-theme {
+    --student-progress-global-swipe-left-width: 44px;
+    --student-progress-global-swipe-dots-width: min(420px, calc(100vw - 126px));
+    --student-progress-global-swipe-right-width: 44px;
+    --student-progress-global-swipe-max-width: 520px;
     --m4l-responsive-panel-gap: 14px;
     --student-progress-visible-slots: 3;
     --m4l-responsive-panel-basis: calc((100% - 28px) / 3);
@@ -8741,6 +8746,8 @@ body.is-student-progress-section .app-shell {
   }
 
   #progress-subjects-screen.student-theme {
+    --student-progress-global-swipe-dots-width: min(460px, calc(100vw - 126px));
+    --student-progress-global-swipe-max-width: 560px;
     --m4l-responsive-panel-gap: 16px;
     --student-progress-visible-slots: 5;
     --m4l-responsive-panel-basis: calc((100% - 64px) / 5);
