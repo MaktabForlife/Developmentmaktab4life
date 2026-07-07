@@ -1,6 +1,6 @@
-/* M4L v89.4 - Student Progress GlobalSwipe grid and medium swipe hardening
-   Baseline: V89.3 Student Progress viewpanel positioning fix.
-   Scope: separate xclose/dots into a 90/210/90 GlobalSwipe row, keep GlobalSwipe top-centred in ViewPanel, and harden medium-screen rail swiping.
+/* M4L v89.5 - Student Progress compact GlobalSwipe + module-framed rail
+   Baseline: V89.4 Student Progress GlobalSwipe grid and medium swipe hardening.
+   Scope: remove the ViewPanel wrapper, keep GlobalSwipe positioned by the proven app-level swipe-dot system, and let ModulePanel frame HeaderPanel + TaskListPanel inside the swipe rail.
    Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -1652,16 +1652,14 @@ function renderStudentSubjectProgress(options = {}) {
 
   setDomHtml(container, `
     <div class="m4l-progress-swipe-shell student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
-      <div class="student-progress-view-panel student-progress-compact-stack" data-student-progress-view-panel data-student-progress-compact-stack>
-        ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
-        <div
-          id="student-progress-swipe-track"
-          class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"
-          data-progress-swipe-track
-          aria-label="Student progress modules"
-        >
-          ${modules.map((module, index) => renderStudentProgressModulePanel(module, index, modules.length)).join("")}
-        </div>
+      ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
+      <div
+        id="student-progress-swipe-track"
+        class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"
+        data-progress-swipe-track
+        aria-label="Student progress modules"
+      >
+        ${modules.map((module, index) => renderStudentProgressModulePanel(module, index, modules.length)).join("")}
       </div>
     </div>
   `);
