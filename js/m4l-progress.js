@@ -1,7 +1,7 @@
-/* M4L v87.4 - Student Progress compact header and responsive panels
-   Baseline: V87.3 Progress global status strip consolidation.
-   Scope: compact Student Progress module header, replace text close with close.svg, use icon-only edit/save actions, stop mobile task rows stretching, and opt Student Progress into the shared responsive swipe-panel pattern.
-   Protected: global banner/loading strip, Admin Progress behaviour, Attendance, Library, Home, Recorder, bottom navigation, and backend.
+/* M4L v89 - Compact Student Progress UI
+   Baseline: V87.4 Student Progress compact header and responsive panels.
+   Scope: compact Student Progress rows/header stack, close.svg as normal app icon, visible edit/save labels, and stable native horizontal module swipe.
+   Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -891,40 +891,42 @@ function getStudentProgressModuleByKey(modules, moduleKey) {
   
   
   
-function renderStudentProgressCloseButton() {  
-  return `  
-    <button  
-      type="button"  
-      class="icon-action-btn student-progress-close-btn"  
-      data-progress-action="close-student-progress"  
-      aria-label="Save and close Student Progress"  
-      title="Save and close"  
-    >  
-      <span class="app-icon app-icon-small app-icon-close" aria-hidden="true"></span>  
-      <span class="visually-hidden">Save and close Student Progress</span>  
-    </button>  
-  `;  
+function renderStudentProgressCloseButton() {
+  return `
+    <button
+      type="button"
+      class="student-progress-close-btn"
+      data-progress-action="close-student-progress"
+      aria-label="Save and close Student Progress"
+      title="Save and close"
+    >
+      <span class="app-icon app-icon-close" aria-hidden="true"></span>
+      <span class="visually-hidden">Save and close Student Progress</span>
+    </button>
+  `;
 }  
   
-function renderStudentProgressModuleEditToggle(module) {  
-  if (!module) return "";  
-  const moduleKey = String(module.subjectid || "");  
-  const isEditing = isStudentProgressModuleEditing(moduleKey);  
-  const label = isEditing ? "Save completed changes" : "Click to edit";  
-  return `  
-    <button  
-      type="button"  
-      class="icon-action-btn student-progress-module-edit-toggle${isEditing ? " is-editing" : ""}"  
-      data-progress-action="toggle-student-progress-module-edit"  
-      data-progress-module-key="${escapeForAttribute(moduleKey)}"  
-      aria-label="${label}"  
-      aria-pressed="${isEditing ? "true" : "false"}"  
-      title="${isEditing ? "Save" : "Click to edit"}"  
-    >  
-      <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>  
-      <span class="visually-hidden">${label}</span>  
-    </button>  
-  `;  
+function renderStudentProgressModuleEditToggle(module) {
+  if (!module) return "";
+  const moduleKey = String(module.subjectid || "");
+  const isEditing = isStudentProgressModuleEditing(moduleKey);
+  const label = isEditing ? "Save completed changes" : "Click to edit";
+  const visibleLabel = isEditing ? "SAVE" : "CLICK TO EDIT";
+
+  return `
+    <button
+      type="button"
+      class="student-progress-module-edit-toggle${isEditing ? " is-editing" : ""}"
+      data-progress-action="toggle-student-progress-module-edit"
+      data-progress-module-key="${escapeForAttribute(moduleKey)}"
+      aria-label="${label}"
+      aria-pressed="${isEditing ? "true" : "false"}"
+      title="${isEditing ? "Save" : "Click to edit"}"
+    >
+      <span class="app-icon ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>
+      <span class="student-progress-module-edit-label" aria-hidden="true">${visibleLabel}</span>
+    </button>
+  `;
 }  
   
 function renderStudentProgressActiveModuleHeaderContent(module) {  
@@ -1284,53 +1286,55 @@ function setStudentProgressModuleEditState(moduleKey, isEditing) {
   return true;  
 }  
   
-function updateStudentProgressModuleEditButton(button, isEditing) {  
-  if (!button) return false;  
-  
-  const label = isEditing ? "Save completed changes" : "Click to edit";  
-  button.disabled = false;  
-  button.classList.toggle("is-editing", !!isEditing);  
-  button.classList.remove("is-saving", "has-save-error");  
-  button.setAttribute("aria-pressed", isEditing ? "true" : "false");  
-  button.setAttribute("aria-label", label);  
-  button.setAttribute("title", isEditing ? "Save" : "Click to edit");  
-  button.innerHTML = `  
-    <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>  
-    <span class="visually-hidden">${label}</span>  
-  `;  
-  return true;  
+function updateStudentProgressModuleEditButton(button, isEditing) {
+  if (!button) return false;
+
+  const label = isEditing ? "Save completed changes" : "Click to edit";
+  const visibleLabel = isEditing ? "SAVE" : "CLICK TO EDIT";
+
+  button.disabled = false;
+  button.classList.toggle("is-editing", !!isEditing);
+  button.classList.remove("is-saving", "has-save-error");
+  button.setAttribute("aria-pressed", isEditing ? "true" : "false");
+  button.setAttribute("aria-label", label);
+  button.setAttribute("title", isEditing ? "Save" : "Click to edit");
+  button.innerHTML = `
+    <span class="app-icon ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>
+    <span class="student-progress-module-edit-label" aria-hidden="true">${visibleLabel}</span>
+  `;
+  return true;
 }  
   
-function setStudentProgressModuleEditButtonSaving(button, label = "Saving...") {  
-  if (!button) return false;  
-  
-  button.disabled = true;  
-  button.classList.add("is-editing", "is-saving");  
-  button.classList.remove("has-save-error");  
-  button.setAttribute("aria-pressed", "true");  
-  button.setAttribute("aria-label", label);  
-  button.setAttribute("title", label);  
-  button.innerHTML = `  
-    <span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span>  
-    <span class="visually-hidden">${escapeHtml(label)}</span>  
-  `;  
-  return true;  
+function setStudentProgressModuleEditButtonSaving(button, label = "Saving...") {
+  if (!button) return false;
+
+  button.disabled = true;
+  button.classList.add("is-editing", "is-saving");
+  button.classList.remove("has-save-error");
+  button.setAttribute("aria-pressed", "true");
+  button.setAttribute("aria-label", label);
+  button.setAttribute("title", label);
+  button.innerHTML = `
+    <span class="app-icon save-mode-icon" aria-hidden="true"></span>
+    <span class="student-progress-module-edit-label" aria-hidden="true">SAVING</span>
+  `;
+  return true;
 }  
   
-function setStudentProgressModuleEditButtonError(button, label = "Save failed") {  
-  if (!button) return false;  
-  
-  button.disabled = false;  
-  button.classList.add("is-editing", "has-save-error");  
-  button.classList.remove("is-saving");  
-  button.setAttribute("aria-pressed", "true");  
-  button.setAttribute("aria-label", label);  
-  button.setAttribute("title", label);  
-  button.innerHTML = `  
-    <span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span>  
-    <span class="visually-hidden">${escapeHtml(label)}</span>  
-  `;  
-  return true;  
+function setStudentProgressModuleEditButtonError(button, label = "Save failed") {
+  if (!button) return false;
+
+  button.disabled = false;
+  button.classList.add("is-editing", "has-save-error");
+  button.classList.remove("is-saving");
+  button.setAttribute("aria-pressed", "true");
+  button.setAttribute("aria-label", label);
+  button.setAttribute("title", label);
+  button.innerHTML = `
+    <span class="app-icon save-mode-icon" aria-hidden="true"></span>
+    <span class="student-progress-module-edit-label" aria-hidden="true">RETRY</span>
+  `;
+  return true;
 }  
   
 async function finishStudentProgressModuleEdit(button, key) {  
@@ -1482,63 +1486,65 @@ function renderStudentProgressModulePanel(module, index, moduleCount) {
   `;  
 }  
   
-function renderStudentSubjectProgress(options = {}) {  
-  const container = getDomElement("progress-subjects-list");  
-  if (!container) {  
-    console.warn("Missing progress-subjects-list container.");  
-    return;  
-  }  
-  
-  const modules = getStudentProgressModules();  
-  
-  if (modules.length === 0) {  
-    setDomHtml(container, `<p class="helper-text">No tasks assigned yet.</p>`);  
-    return;  
-  }  
-  
-  const preferredModuleKey = String(  
-    options.moduleKey ||  
-    getStudentProgressSwipeActiveModuleKey() ||  
-    currentStudentSubjectKey ||  
-    modules[0].subjectid ||  
-    ""  
-  );  
-  
-  if (!currentStudentSubjectKey) {  
-    currentStudentSubjectKey = preferredModuleKey;  
-  }  
-  
-  setDomHtml(container, `  
-    <div class="m4l-progress-swipe-shell student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">  
-      ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}  
-      ${renderStudentProgressActiveModuleHeader(modules, preferredModuleKey)}  
-      <div  
-        id="student-progress-swipe-track"  
-        class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"  
-        data-progress-swipe-track  
-        aria-label="Student progress modules"  
-      >  
-        ${modules.map((module, index) => renderStudentProgressModulePanel(module, index, modules.length)).join("")}  
-      </div>  
-    </div>  
-  `);  
-  
-  bindProgressUiHandlers(container);  
-  bindStudentProgressSwipeControls();  
-  updateStudentProgressFrozenHeader();  
-  scheduleStudentProgressHeaderMetricsUpdate();  
-  window.setTimeout(() => {  
-    updateStudentProgressHeaderMetrics();  
-    updateStudentProgressTaskScrollState();  
-  }, 0);  
-  
-  if (preferredModuleKey && preferredModuleKey !== String(modules[0].subjectid || "")) {  
-    scrollStudentProgressSwipeToModule(preferredModuleKey, {  
-      behavior: options.scrollBehavior || "auto"  
-    });  
-  } else {  
-    updateStudentProgressSwipeDots();  
-  }  
+function renderStudentSubjectProgress(options = {}) {
+  const container = getDomElement("progress-subjects-list");
+  if (!container) {
+    console.warn("Missing progress-subjects-list container.");
+    return;
+  }
+
+  const modules = getStudentProgressModules();
+
+  if (modules.length === 0) {
+    setDomHtml(container, `<p class="helper-text">No tasks assigned yet.</p>`);
+    return;
+  }
+
+  const preferredModuleKey = String(
+    options.moduleKey ||
+    getStudentProgressSwipeActiveModuleKey() ||
+    currentStudentSubjectKey ||
+    modules[0].subjectid ||
+    ""
+  );
+
+  if (!currentStudentSubjectKey) {
+    currentStudentSubjectKey = preferredModuleKey;
+  }
+
+  setDomHtml(container, `
+    <div class="m4l-progress-swipe-shell student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
+      <div class="student-progress-compact-stack" data-student-progress-compact-stack>
+        ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
+        ${renderStudentProgressActiveModuleHeader(modules, preferredModuleKey)}
+        <div
+          id="student-progress-swipe-track"
+          class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"
+          data-progress-swipe-track
+          aria-label="Student progress modules"
+        >
+          ${modules.map((module, index) => renderStudentProgressModulePanel(module, index, modules.length)).join("")}
+        </div>
+      </div>
+    </div>
+  `);
+
+  bindProgressUiHandlers(container);
+  bindStudentProgressSwipeControls();
+  updateStudentProgressFrozenHeader();
+  scheduleStudentProgressHeaderMetricsUpdate();
+  window.setTimeout(() => {
+    updateStudentProgressHeaderMetrics();
+    updateStudentProgressTaskScrollState();
+  }, 0);
+
+  if (preferredModuleKey && preferredModuleKey !== String(modules[0].subjectid || "")) {
+    scrollStudentProgressSwipeToModule(preferredModuleKey, {
+      behavior: options.scrollBehavior || "auto"
+    });
+  } else {
+    updateStudentProgressSwipeDots();
+  }
 }  
   
   
