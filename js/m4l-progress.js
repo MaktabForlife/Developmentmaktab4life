@@ -1,7 +1,7 @@
-/* M4L v89.6.1.1 - Student Progress module stepper repair
-   Baseline: V89.6.1 Student Progress module stepper.
-   Scope: repair medium/large stepper navigation, keep mobile swipe behaviour, keep larger-screen manual swiping disabled, and restore larger-screen content clearance below the top nav.
-   Protected: editable grid behaviour, mobile card behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, banner styling, and backend.
+/* M4L v89.6.2 - Student Progress centre-focused module panes
+   Baseline: V89.6.1.1 Student Progress stepper repair.
+   Scope: keep the working module stepper, repair medium/large pane clearance, centre the active module pane, add safe side spacing, fixed pane heights, and visual focus classes.
+   Protected: mobile swipe behaviour, editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -974,7 +974,15 @@ function bindStudentProgressSwipeResizeHandler() {
   
   studentProgressSwipeResizeHandlerBound = true;  
   window.addEventListener("resize", () => {  
-    updateStudentProgressSwipeDots();  
+    const track = getStudentProgressSwipeTrack();
+    const activeIndex = getStudentProgressSwipeActiveIndex(track);
+
+    if (track && !isStudentProgressMobileSwipeViewport()) {
+      scrollStudentProgressSwipeToIndex(activeIndex, { behavior: "auto" });
+    } else {
+      updateStudentProgressSwipeDots();
+    }
+
     scheduleStudentProgressHeaderMetricsUpdate();  
     updateStudentProgressTaskScrollState();  
   }, { passive: true });  
@@ -1852,17 +1860,32 @@ function renderStudentSubjectProgress(options = {}) {
   bindStudentProgressSwipeControls();
   updateStudentProgressFrozenHeader();
   scheduleStudentProgressHeaderMetricsUpdate();
-  window.setTimeout(() => {
+
+  const preferredIndex = getStudentProgressModuleIndexFromKey(modules, preferredModuleKey);
+  const settleProgressPaneLayout = () => {
     updateStudentProgressHeaderMetrics();
     updateStudentProgressTaskScrollState();
-  }, 0);
 
-  if (preferredModuleKey && preferredModuleKey !== String(modules[0].subjectid || "")) {
-    scrollStudentProgressSwipeToModule(preferredModuleKey, {
-      behavior: options.scrollBehavior || "auto"
-    });
+    if (!isStudentProgressMobileSwipeViewport()) {
+      scrollStudentProgressSwipeToIndex(preferredIndex, {
+        behavior: options.scrollBehavior || "auto"
+      });
+      return;
+    }
+
+    if (preferredModuleKey && preferredModuleKey !== String(modules[0].subjectid || "")) {
+      scrollStudentProgressSwipeToModule(preferredModuleKey, {
+        behavior: options.scrollBehavior || "auto"
+      });
+    } else {
+      updateStudentProgressSwipeDots();
+    }
+  };
+
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => window.setTimeout(settleProgressPaneLayout, 0));
   } else {
-    updateStudentProgressSwipeDots();
+    window.setTimeout(settleProgressPaneLayout, 0);
   }
 }  
   
