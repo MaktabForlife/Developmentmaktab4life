@@ -1,8 +1,7 @@
-/* M4L v83.1 - Resources JS legacy compatibility quarantine
-   Baseline: V82.4 app styling with V65.4.2 direct Library ribbon model.
-   Scope: quarantine old Resources compatibility and legacy response-shape code only.
-   Protected: active direct Library ribbon cards, PDF viewer, inline audio/video preview, and resource opening.
-   Rule: legacy code is commented/marked first, not deleted. Delete only after testing confirms safe.
+/* M4L v89.1 - Resources order: eBooks first
+   Baseline: V83.1 Resources JS legacy compatibility quarantine.
+   Scope: change Library module rail resource order to eBook → Video → Audio → Printable → Other.
+   Protected: active direct Library ribbon cards, PDF viewer, inline audio/video preview, resource opening, and V83 quarantine markers.
 */
 
 /* =========================
@@ -22,16 +21,16 @@ let currentPdfDirectLink = "";
 
 const LIBRARY_RESOURCE_TYPES = [
   {
-    key: "VIDEO",
-    label: "Video",
-    icon: "/icons/video.svg",
-    className: "video"
-  },
-  {
     key: "EBOOK",
     label: "eBook",
     icon: "/icons/ebook.svg",
     className: "ebook"
+  },
+  {
+    key: "VIDEO",
+    label: "Video",
+    icon: "/icons/video.svg",
+    className: "video"
   },
   {
     key: "AUDIO",
