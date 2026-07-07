@@ -1,6 +1,6 @@
-/* M4L v89.2 - Student Progress viewpanel/modulepanel layout
-   Baseline: V89.1 Student Progress header/card cleanup.
-   Scope: transparent global swipe row, surface-app view panel, surface-card module panels, compact header container, task-list panel, and stable horizontal module swipe.
+/* M4L v89.3 - Student Progress viewpanel positioning fix
+   Baseline: V89.2 Student Progress viewpanel/modulepanel layout.
+   Scope: top-centred compact GlobalSwipe, separated module HeaderPanel above TaskListPanel, stable viewpanel/rail positioning, and existing horizontal module swipe.
    Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -1029,7 +1029,7 @@ function renderStudentProgressPanelModuleHeader(module) {
   
   return `  
     <div  
-      class="student-progress-panel-module-header admin-progress-detail-header"  
+      class="student-progress-panel-module-header student-progress-header-panel"  
       data-student-progress-panel-module-header="${escapeForAttribute(moduleKey)}"  
       aria-label="${escapeForAttribute(title)} module progress"  
     >  
