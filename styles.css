@@ -1,7 +1,7 @@
-/* M4L v89.6.1.1 - Student Progress module stepper repair
-   Baseline: V89.6.1 Student Progress module stepper.
-   Scope: repair medium/large stepper navigation, keep mobile swipe behaviour, keep larger-screen manual swiping disabled, and restore larger-screen content clearance below the top nav.
-   Protected: editable grid behaviour, mobile card behaviour, banner appearance, Admin Progress behaviour, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
+/* M4L v89.6.2 - Student Progress centre-focused module panes
+   Baseline: V89.6.1.1 Student Progress stepper repair.
+   Scope: keep the working module stepper, repair medium/large pane clearance, centre the active module pane, add safe side spacing, fixed pane heights, and visual focus styling.
+   Protected: mobile swipe behaviour, editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
 */
 
 :root {
@@ -8737,11 +8737,13 @@ body.is-student-progress-section .app-shell {
   }
 }
 
-/* M4L v89.6.1.1 - Student Progress module stepper repair
-   Repairs: medium/large arrows/numbers can programmatically navigate the hidden rail,
-   mobile stepper drops slightly lower, and larger cards clear the top nav/stepper. */
+/* M4L v89.6.2 - Student Progress centre-focused module panes
+   Keeps the working V89.6.1.1 module stepper, then gives the module rail
+   enough medium/large clearance and centres the active pane in a 3/5-card view. */
 #progress-subjects-screen.student-theme {
   --student-progress-global-swipe-drop: 16px;
+  --student-progress-pane-top-clearance: 10px;
+  --student-progress-centre-panel-height: auto;
   padding-top: calc(
     var(--swipe-dot-band-gap) +
     var(--student-progress-global-swipe-height) +
@@ -8763,6 +8765,8 @@ body.is-student-progress-section .app-shell {
 @media (min-width: 768px) {
   body.is-student-progress-section.has-user-band .app-shell,
   body.is-student-progress-section.has-user-band.has-bottom-nav .app-shell {
+    align-items: flex-start;
+    justify-content: center;
     padding-top: calc(
       var(--user-band-height) +
       var(--user-band-safe-area-top) +
@@ -8770,7 +8774,7 @@ body.is-student-progress-section .app-shell {
       var(--swipe-dot-band-gap) +
       var(--student-progress-global-swipe-height) +
       var(--student-progress-global-swipe-drop) +
-      34px
+      48px
     );
   }
 
@@ -8787,13 +8791,53 @@ body.is-student-progress-section .app-shell {
     );
   }
 
+  body.is-student-progress-section .app-shell {
+    max-width: 1040px;
+  }
+
   #progress-subjects-screen.student-theme {
-    padding-top: 18px;
+    --m4l-responsive-panel-gap: 14px;
+    --m4l-responsive-panel-basis: clamp(300px, calc((100% - 28px) / 3), 380px);
+    --student-progress-edge-space: calc(var(--m4l-responsive-panel-basis) + var(--m4l-responsive-panel-gap));
+    --student-progress-centre-panel-height: clamp(
+      420px,
+      calc(
+        100dvh -
+        var(--user-band-height) -
+        var(--user-band-safe-area-top) -
+        var(--top-nav-height) -
+        var(--student-progress-global-swipe-height) -
+        var(--student-progress-global-swipe-drop) -
+        150px
+      ),
+      660px
+    );
+    width: 100%;
+    max-width: 100%;
+    align-self: flex-start;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding-inline: 14px;
+    padding-top: 0;
+    text-align: left;
+    overflow: visible;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-shell {
+    height: auto;
+    min-height: 0;
+    padding-top: var(--student-progress-pane-top-clearance);
+    overflow: visible;
   }
 
   #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    gap: var(--m4l-responsive-panel-gap);
+    padding-inline: var(--student-progress-edge-space);
     overflow-x: auto;
     overflow-y: hidden;
+    align-items: stretch;
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
     -webkit-overflow-scrolling: auto;
     touch-action: pan-y;
@@ -8802,6 +8846,109 @@ body.is-student-progress-section .app-shell {
 
   #progress-subjects-screen.student-theme .student-progress-swipe-track::-webkit-scrollbar {
     display: none;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track.is-pointer-dragging {
+    cursor: default;
+    user-select: auto;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
+    flex: 0 0 var(--m4l-responsive-panel-basis);
+    width: var(--m4l-responsive-panel-basis);
+    min-width: var(--m4l-responsive-panel-basis);
+    max-width: var(--m4l-responsive-panel-basis);
+    height: var(--student-progress-centre-panel-height);
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: stretch;
+    scroll-snap-align: center;
+    scroll-snap-stop: normal;
+    transform: scale(0.965);
+    opacity: 0.82;
+    box-shadow: 0 7px 16px rgba(var(--black-rgb), 0.10);
+    transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel.is-active,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel.is-active {
+    z-index: 3;
+    transform: scale(1);
+    opacity: 1;
+    outline: 2px solid rgba(var(--primary-rgb), 0.32);
+    outline-offset: 2px;
+    box-shadow: 0 14px 30px rgba(var(--black-rgb), 0.18);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel.is-adjacent,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel.is-adjacent {
+    z-index: 2;
+    transform: scale(0.975);
+    opacity: 0.9;
+    box-shadow: 0 9px 20px rgba(var(--black-rgb), 0.12);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel.is-far,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel.is-far {
+    z-index: 1;
+    transform: scale(0.94);
+    opacity: 0.66;
+    box-shadow: 0 5px 12px rgba(var(--black-rgb), 0.08);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-task-card,
+  #progress-subjects-screen.student-theme .student-progress-task-list-panel {
+    height: 100%;
+    min-height: 0;
+    padding: 9px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-grid {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 1180px) {
+  body.is-student-progress-section .app-shell {
+    max-width: 1560px;
+  }
+
+  #progress-subjects-screen.student-theme {
+    --m4l-responsive-panel-gap: 16px;
+    --m4l-responsive-panel-basis: clamp(230px, calc((100% - 64px) / 5), 340px);
+    --student-progress-edge-space: calc(
+      var(--m4l-responsive-panel-basis) +
+      var(--m4l-responsive-panel-basis) +
+      var(--m4l-responsive-panel-gap) +
+      var(--m4l-responsive-panel-gap)
+    );
+    --student-progress-centre-panel-height: clamp(
+      430px,
+      calc(
+        100dvh -
+        var(--user-band-height) -
+        var(--user-band-safe-area-top) -
+        var(--top-nav-height) -
+        var(--student-progress-global-swipe-height) -
+        var(--student-progress-global-swipe-drop) -
+        150px
+      ),
+      700px
+    );
+    padding-inline: 18px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #progress-subjects-screen.student-theme .student-progress-stepper-arrow:not(:disabled):hover,
+  #progress-subjects-screen.student-theme .student-progress-module-number:hover {
+    color: var(--text-strong);
+    transform: translateY(-1px);
+    box-shadow: none;
   }
 }
 
