@@ -1,7 +1,10 @@
-/* M4L v89.6.3.1 - Student Progress viewport + moving track repair
-   Baseline: V89.6.3 Student Progress outer panel viewport stepper.
-   Scope: preserve the working mobile swipe and module stepper, add a real PaneViewport wrapper, and move the medium/large PaneTrack by active index using measured fixed slot widths.
-   Protected: mobile swipe behaviour, editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
+/* M4L v89.6.4 - Student Progress CSS consolidation
+   Baseline: V89.6.3.1 confirmed working strict viewport stepper.
+   Scope: CSS-only cleanup of Student Progress cascade. Preserve the working
+   mobile swipe and medium/large strict viewport/track model while removing
+   outdated duplicate medium/large rail rules and panel-sizing overrides.
+   Protected: JS behaviour, mobile swipe, editable grid behaviour, Admin Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
 */
 
 :root {
@@ -2564,10 +2567,9 @@ body.is-admin-progress-section.has-user-band .app-shell {
   }
 }
 
-/* Student Progress mobile-first responsive swipe layout - V87.4
-   Mobile keeps one full-width module panel.
-   Medium/large panel counts use the shared responsive swipe-panel primitive.
-   Student-specific rules below compact the header and keep task rows natural-height. */
+/* Student Progress mobile-first base layout.
+   Mobile keeps one full-width swipeable module panel.
+   Medium/large are controlled later by the strict Stepper + PaneViewport model. */
 #progress-subjects-screen.student-theme {
   width: 100%;
   max-width: 100%;
@@ -2904,116 +2906,10 @@ body.is-student-progress-section .app-shell {
   }
 }
 
-/* Medium screens: keep Student Progress swipeable, but show wider columns. */
-@media (min-width: 768px) {
-  body.is-student-progress-section.has-user-band.has-bottom-nav .app-shell {
-    padding-top: calc(
-      var(--user-band-height) +
-      var(--user-band-safe-area-top) +
-      var(--top-nav-height) +
-      var(--swipe-dot-band-gap) +
-      var(--swipe-dot-bar-height) +
-      24px
-    );
-  }
+/* V89.6.4 cleanup: removed old medium/large Student Progress swipe-column rules.
+   Medium/large are now governed only by the strict Stepper + PaneViewport model below. */
 
-  body.is-student-progress-section.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-actions {
-    top: calc(
-      var(--user-band-height) +
-      var(--user-band-safe-area-top) +
-      var(--top-nav-height) +
-      var(--swipe-dot-band-gap) +
-      var(--student-progress-global-swipe-drop)
-    );
-  }
-
-  body.is-student-progress-section .app-shell {
-    max-width: 980px;
-  }
-
-  #progress-subjects-screen.student-theme {
-    width: 100%;
-    max-width: 100%;
-    align-self: flex-start;
-    background: transparent;
-    border-radius: 0;
-    box-shadow: none;
-    padding-inline: 14px;
-    padding-top: 0;
-    text-align: left;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-active-module-header {
-    display: none;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-panel-module-header {
-    position: relative;
-    top: auto;
-    z-index: auto;
-    width: 100%;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px;
-    justify-content: stretch;
-    padding: 10px 12px 8px;
-    border: 1px solid rgba(var(--primary-rgb), 0.14);
-    border-radius: 18px;
-    background: var(--surface-card);
-    box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.08);
-    text-align: center;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-swipe-track {
-    display: flex;
-    gap: var(--m4l-responsive-panel-gap, 14px);
-    overflow-x: auto;
-    overflow-y: visible;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    padding: 0 0 16px;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-module-panel,
-  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
-    flex: 0 0 var(--m4l-responsive-panel-basis, calc((100% - 28px) / 3));
-    width: var(--m4l-responsive-panel-basis, calc((100% - 28px) / 3));
-    min-width: var(--m4l-responsive-panel-basis, calc((100% - 28px) / 3));
-    max-width: var(--m4l-responsive-panel-basis, calc((100% - 28px) / 3));
-    scroll-snap-align: start;
-    scroll-snap-stop: normal;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-module-task-card {
-    flex: 0 0 100%;
-    width: 100%;
-    max-width: 100%;
-    margin-inline: 0;
-  }
-}
-
-/* Large screens remain a swipeable column rail, not a static grid. */
-@media (min-width: 1180px) {
-  body.is-student-progress-section .app-shell {
-    max-width: 1560px;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-swipe-track {
-    gap: var(--m4l-responsive-panel-gap, 16px);
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-module-panel,
-  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
-    flex: 0 0 var(--m4l-responsive-panel-basis, calc((100% - 48px) / 4));
-    width: var(--m4l-responsive-panel-basis, calc((100% - 48px) / 4));
-    min-width: var(--m4l-responsive-panel-basis, calc((100% - 48px) / 4));
-    max-width: var(--m4l-responsive-panel-basis, calc((100% - 48px) / 4));
-  }
-}
-
-/* Final mobile no-gap lock: placed after medium/large rules so phones cannot inherit column widths or column gaps. */
+/* Final mobile no-gap lock: protects phones from medium/large slot rules. */
 @media (max-width: 767px), (max-device-width: 767px) {
   body.is-student-progress-section,
   body.is-student-progress-section .app-shell {
@@ -8148,7 +8044,8 @@ body.is-student-progress-section .app-shell {
   overflow: visible;
 }
 
-/* GlobalSwipe remains a global/fixed control band, separate from the content rail. */
+/* Mobile keeps the stepper in the fixed top control band.
+   Medium/large move the same stepper into the outer Progress panel. */
 #progress-subjects-screen.student-theme .student-progress-global-actions,
 #progress-subjects-screen.student-theme .student-progress-global-swipe {
   position: fixed;
@@ -8636,98 +8533,12 @@ body.is-student-progress-section .app-shell {
   }
 }
 
-@media (min-width: 768px) {
-  body.is-student-progress-section.has-user-band.has-bottom-nav .app-shell {
-    padding-top: calc(
-      var(--user-band-height) +
-      var(--user-band-safe-area-top) +
-      var(--top-nav-height) +
-      var(--swipe-dot-band-gap) +
-      var(--student-progress-global-swipe-height) +
-      var(--student-progress-global-swipe-drop) +
-      18px
-    );
-  }
-
-  body.is-student-progress-section.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-actions,
-  body.is-student-progress-section.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-swipe {
-    top: calc(
-      var(--user-band-height) +
-      var(--user-band-safe-area-top) +
-      var(--top-nav-height) +
-      var(--swipe-dot-band-gap)
-    );
-  }
-
-  body.is-student-progress-section .app-shell {
-    max-width: 980px;
-  }
-
-  #progress-subjects-screen.student-theme {
-    width: 100%;
-    max-width: 100%;
-    align-self: flex-start;
-    background: transparent;
-    border-radius: 0;
-    box-shadow: none;
-    padding-inline: 14px;
-    padding-top: 0;
-    text-align: left;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-swipe-track {
-    --m4l-responsive-panel-gap: 14px;
-    --m4l-responsive-panel-basis: calc((100% - 28px) / 3);
-    overflow-x: hidden;
-    overflow-y: hidden;
-    align-items: flex-start;
-    scroll-snap-type: x proximity;
-    touch-action: pan-y;
-    cursor: default;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-module-panel,
-  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
-    flex: 0 0 var(--m4l-responsive-panel-basis);
-    width: var(--m4l-responsive-panel-basis);
-    min-width: var(--m4l-responsive-panel-basis);
-    max-width: var(--m4l-responsive-panel-basis);
-    height: auto;
-    scroll-snap-stop: normal;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-module-task-card,
-  #progress-subjects-screen.student-theme .student-progress-task-list-panel {
-    min-height: 0;
-    padding: 9px;
-  }
-}
-
-@media (min-width: 1180px) {
-  body.is-student-progress-section .app-shell {
-    max-width: 1560px;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-swipe-track {
-    --m4l-responsive-panel-gap: 16px;
-    --m4l-responsive-panel-basis: calc((100% - 48px) / 4);
-  }
-}
-
-
+/* V89.6.4 cleanup: removed superseded V89.6.1.1 medium/large scrollLeft repair rules.
+   The active medium/large layout is the strict transform-based PaneViewport model below. */
 
 /* M4L v89.6.1 - Student Progress module stepper refinements */
 #progress-subjects-screen.student-theme .student-progress-module-panel.is-active {
   z-index: 2;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  #progress-subjects-screen.student-theme .student-progress-stepper-arrow:not(:disabled):hover,
-  #progress-subjects-screen.student-theme .student-progress-module-number:hover {
-    color: var(--text-strong);
-    transform: translateY(-1px);
-    box-shadow: none;
-  }
 }
 
 @media (min-width: 768px) {
@@ -8738,11 +8549,13 @@ body.is-student-progress-section .app-shell {
 }
 
 
-/* M4L v89.6.3.1 - Student Progress viewport + moving track repair
-   Mobile keeps the proven native swipe rail. Medium/large uses:
-   OuterPanel -> Stepper -> PaneViewport (clips) -> PaneTrack (moves by active index). */
+/* Student Progress strict outer-panel layout - V89.6.4 consolidated
+   Medium/large mirror the successful mobile structure:
+   one outer Progress panel, Stepper at the top, PaneViewport below, moving PaneTrack inside.
+   Mobile remains governed by the existing 100%-width swipe rules above. */
 #progress-subjects-screen.student-theme {
   --student-progress-global-swipe-drop: 16px;
+  --student-progress-pane-top-clearance: 10px;
   --student-progress-centre-panel-height: auto;
   --student-progress-stepper-panel-gap: 14px;
   padding-top: calc(
@@ -8761,25 +8574,6 @@ body.is-student-progress-section .app-shell {
     var(--swipe-dot-band-gap) +
     var(--student-progress-global-swipe-drop)
   );
-}
-
-#progress-subjects-screen.student-theme .student-progress-pane-viewport {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-@media (max-width: 767px), (max-device-width: 767px) {
-  #progress-subjects-screen.student-theme .student-progress-pane-viewport {
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-pane-track {
-    height: 100%;
-    min-height: 0;
-  }
 }
 
 @media (min-width: 768px) {
@@ -8802,6 +8596,7 @@ body.is-student-progress-section .app-shell {
     );
   }
 
+  /* On medium/large the Stepper belongs to the same outer panel as the module viewport. */
   body.is-student-progress-section.has-user-band #progress-subjects-screen.student-theme .student-progress-global-actions,
   body.is-student-progress-section.has-user-band #progress-subjects-screen.student-theme .student-progress-global-swipe,
   body.is-student-progress-section.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-actions,
@@ -8822,6 +8617,9 @@ body.is-student-progress-section .app-shell {
 
   #progress-subjects-screen.student-theme {
     --m4l-responsive-panel-gap: 14px;
+    --student-progress-visible-slots: 3;
+    --m4l-responsive-panel-basis: calc((100% - 28px) / 3);
+    --student-progress-edge-space: calc(var(--m4l-responsive-panel-basis) + var(--m4l-responsive-panel-gap));
     --student-progress-centre-panel-height: clamp(
       420px,
       calc(
@@ -8871,68 +8669,15 @@ body.is-student-progress-section .app-shell {
     max-width: min(var(--student-progress-global-swipe-max-width), 100%);
   }
 
-  /* Real viewport: clips everything outside the 3/5 visible slots. */
-  #progress-subjects-screen.student-theme .student-progress-pane-viewport {
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    height: var(--student-progress-centre-panel-height);
-    min-height: 0;
-    overflow: hidden;
-    contain: layout paint;
-  }
-
-  /* Moving track: JS sets card width, edge space, and active-index offset in px. */
-  #progress-subjects-screen.student-theme .student-progress-swipe-track,
-  #progress-subjects-screen.student-theme .student-progress-pane-track {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: var(--m4l-responsive-panel-gap);
-    width: max-content;
-    max-width: none;
-    min-width: max-content;
-    height: 100%;
-    min-height: 0;
-    margin: 0;
-    padding-inline: var(--student-progress-edge-space, 0px);
-    text-align: left;
-    overflow: visible;
-    scroll-snap-type: none;
-    scroll-padding-inline: 0;
-    scroll-behavior: auto;
-    overscroll-behavior: none;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: auto;
-    touch-action: pan-y;
-    cursor: default;
-    align-items: stretch;
-    box-sizing: content-box;
-    transform: translate3d(var(--student-progress-track-offset, 0px), 0, 0);
-    transition: transform 220ms ease;
-    will-change: transform;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-pane-track.is-layout-jump {
-    transition: none;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-swipe-track::-webkit-scrollbar {
-    display: none;
-  }
-
+  /* Visual focus only. Slot sizing is owned by the strict PaneViewport block below. */
   #progress-subjects-screen.student-theme .student-progress-module-panel,
   #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
-    flex: 0 0 var(--student-progress-card-width, 300px);
-    width: var(--student-progress-card-width, 300px);
-    min-width: var(--student-progress-card-width, 300px);
-    max-width: var(--student-progress-card-width, 300px);
     height: 100%;
     min-height: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     align-content: stretch;
-    scroll-snap-align: none;
+    scroll-snap-align: center;
     scroll-snap-stop: normal;
     transform: scale(0.965);
     opacity: 0.82;
@@ -8996,6 +8741,14 @@ body.is-student-progress-section .app-shell {
 
   #progress-subjects-screen.student-theme {
     --m4l-responsive-panel-gap: 16px;
+    --student-progress-visible-slots: 5;
+    --m4l-responsive-panel-basis: calc((100% - 64px) / 5);
+    --student-progress-edge-space: calc(
+      var(--m4l-responsive-panel-basis) +
+      var(--m4l-responsive-panel-basis) +
+      var(--m4l-responsive-panel-gap) +
+      var(--m4l-responsive-panel-gap)
+    );
     --student-progress-centre-panel-height: clamp(
       430px,
       calc(
@@ -9019,5 +8772,83 @@ body.is-student-progress-section .app-shell {
     color: var(--text-strong);
     transform: translateY(-1px);
     box-shadow: none;
+  }
+}
+
+/* Strict PaneViewport / moving PaneTrack model.
+   This is the single source of truth for medium/large Student Progress geometry. */
+#progress-subjects-screen.student-theme .student-progress-pane-viewport {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+@media (min-width: 768px) {
+  #progress-subjects-screen.student-theme {
+    --student-progress-card-gap: 14px;
+    --student-progress-track-offset: 0px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-pane-viewport {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: var(--student-progress-centre-panel-height);
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    --m4l-responsive-panel-gap: var(--student-progress-card-gap, 14px);
+    --m4l-responsive-panel-basis: var(--student-progress-card-width, calc((100% - 28px) / 3));
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--student-progress-card-gap, 14px);
+    width: max-content;
+    max-width: none;
+    min-width: max-content;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0 var(--student-progress-edge-space, calc((100% - var(--m4l-responsive-panel-basis)) / 2));
+    overflow: visible;
+    scroll-snap-type: none;
+    scroll-padding-inline: 0;
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: auto;
+    touch-action: pan-y;
+    transform: translate3d(var(--student-progress-track-offset, 0px), 0, 0);
+    transition: transform 190ms ease;
+    will-change: transform;
+    box-sizing: border-box;
+    align-items: stretch;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track.is-stepper-jump {
+    transition: none;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
+    flex: 0 0 var(--student-progress-card-width, var(--m4l-responsive-panel-basis));
+    width: var(--student-progress-card-width, var(--m4l-responsive-panel-basis));
+    min-width: var(--student-progress-card-width, var(--m4l-responsive-panel-basis));
+    max-width: var(--student-progress-card-width, var(--m4l-responsive-panel-basis));
+    flex-shrink: 0;
+    height: 100%;
+  }
+}
+
+@media (min-width: 1180px) {
+  #progress-subjects-screen.student-theme {
+    --student-progress-card-gap: 16px;
+  }
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  #progress-subjects-screen.student-theme .student-progress-pane-viewport {
+    overflow: visible;
   }
 }
