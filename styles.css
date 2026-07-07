@@ -1,6 +1,6 @@
-/* M4L v89 - Compact Student Progress UI
+/* M4L v89.1 - Compact Student Progress header/card cleanup
    Baseline: V87.4 Student Progress compact header and responsive panels.
-   Scope: compact Student Progress rows/header stack, close.svg as a normal app icon, visible edit/save labels, and stable native horizontal module swipe.
+   Scope: xclose top control row, per-card module headers, compact task rows, and stable native horizontal module swipe.
    Protected: editable grid behaviour, banner appearance, Admin Progress behaviour, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
 */
 
@@ -407,6 +407,10 @@ button:active {
 
 .app-icon-close {
   --app-icon-url: url('/icons/close.svg');
+}
+
+.app-icon-xclose {
+  --app-icon-url: url('/icons/xclose.svg');
 }
 
 .student-edit-icon {
@@ -8399,5 +8403,332 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
   #progress-subjects-screen.student-theme .student-progress-grid-status-cell {
     min-height: var(--student-progress-task-row-height);
+  }
+}
+
+/* M4L v89.1 - Student Progress header/card cleanup
+   Uses one top control row for xclose + dots.
+   Each module panel/card owns its own header label + edit/save action.
+   Medium rail keeps the 3-card view and remains horizontally scrollable. */
+#progress-subjects-screen.student-theme {
+  --student-progress-task-row-height: var(--admin-progress-class-row-height, 40px);
+  --student-progress-active-header-height: 0px;
+  --student-progress-top-stack-extra-gap: 4px;
+  padding-top: 4px;
+}
+
+#progress-subjects-screen.student-theme .student-progress-compact-stack {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  align-content: start;
+}
+
+#progress-subjects-screen.student-theme .student-progress-active-module-header {
+  display: none;
+}
+
+#progress-subjects-screen.student-theme .student-progress-global-actions {
+  position: relative;
+  inset: auto;
+  z-index: 3;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  display: block;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: auto;
+  transform: none;
+}
+
+#progress-subjects-screen.student-theme .student-progress-top-control-row {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--icon-size);
+  display: grid;
+  grid-template-columns: var(--icon-size) minmax(0, 1fr) var(--icon-size);
+  align-items: center;
+  gap: 6px;
+}
+
+#progress-subjects-screen.student-theme .student-progress-top-control-dots {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#progress-subjects-screen.student-theme .student-progress-top-control-spacer {
+  display: block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+#progress-subjects-screen.student-theme .student-progress-close-btn {
+  appearance: none;
+  width: var(--icon-size);
+  min-width: var(--icon-size);
+  max-width: var(--icon-size);
+  height: var(--icon-size);
+  min-height: var(--icon-size);
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+#progress-subjects-screen.student-theme .student-progress-close-btn .app-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+#progress-subjects-screen.student-theme .student-progress-swipe-dots {
+  --m4l-progress-swipe-dot-gap: 6px;
+  --m4l-progress-swipe-dot-band-height: 18px;
+  --m4l-progress-swipe-dot-size: 7px;
+  min-height: 18px;
+}
+
+#progress-subjects-screen.student-theme .student-progress-panel-module-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 2px 5px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+#progress-subjects-screen.student-theme .student-progress-panel-module-title-block {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0;
+}
+
+#progress-subjects-screen.student-theme .student-progress-panel-module-title {
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: clamp(1.04rem, 2.3vw, 1.24rem);
+  font-weight: 850;
+  line-height: 1.12;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-edit-toggle {
+  appearance: none;
+  width: auto;
+  min-width: 52px;
+  max-width: 74px;
+  min-height: 38px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  justify-self: end;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-edit-toggle .app-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-edit-toggle.is-editing,
+#progress-subjects-screen.student-theme .student-progress-module-edit-toggle.is-saving {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-edit-toggle.has-save-error {
+  background: transparent;
+  color: var(--danger);
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-edit-label {
+  display: block;
+  max-width: 68px;
+  color: currentColor;
+  font-size: 0.52rem;
+  font-weight: 800;
+  line-height: 0.95;
+  text-align: center;
+  letter-spacing: 0.03em;
+  white-space: normal;
+}
+
+#progress-subjects-screen.student-theme .student-progress-swipe-track {
+  margin-top: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  touch-action: pan-x;
+  cursor: grab;
+}
+
+#progress-subjects-screen.student-theme .student-progress-swipe-track.is-pointer-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-panel,
+#progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 5px;
+  align-content: start;
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-task-card {
+  margin: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: start;
+  overflow: hidden;
+}
+
+#progress-subjects-screen.student-theme .student-progress-module-grid {
+  display: grid;
+  align-content: start;
+  grid-auto-rows: minmax(var(--student-progress-task-row-height), auto);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  #progress-subjects-screen.student-theme {
+    --student-progress-task-row-height: 38px;
+    padding-top: 4px;
+  }
+
+  #progress-subjects-screen.student-theme.active {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-shell {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-compact-stack {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-panel-module-header {
+    min-height: 40px;
+    padding-bottom: 4px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-panel-module-title {
+    font-size: clamp(1.12rem, 5.1vw, 1.42rem);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: stretch;
+    overflow: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-task-card {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 9px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-grid {
+    height: 100%;
+    max-height: none;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-grid-row {
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1179px) {
+  #progress-subjects-screen.student-theme .student-progress-compact-stack {
+    gap: 6px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    --m4l-responsive-panel-gap: 14px;
+    --m4l-responsive-panel-basis: calc((100% - 28px) / 3);
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
+    flex: 0 0 var(--m4l-responsive-panel-basis);
+    width: var(--m4l-responsive-panel-basis);
+    min-width: var(--m4l-responsive-panel-basis);
+    max-width: var(--m4l-responsive-panel-basis);
+  }
+}
+
+@media (min-width: 1180px) {
+  #progress-subjects-screen.student-theme .student-progress-compact-stack {
+    gap: 7px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    --m4l-responsive-panel-gap: 16px;
+    --m4l-responsive-panel-basis: calc((100% - 48px) / 4);
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
   }
 }
