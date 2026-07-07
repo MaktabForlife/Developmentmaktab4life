@@ -1,6 +1,6 @@
-/* M4L v89.6.2 - Student Progress centre-focused module panes
-   Baseline: V89.6.1.1 Student Progress stepper repair.
-   Scope: keep the working module stepper, repair medium/large pane clearance, centre the active module pane, add safe side spacing, fixed pane heights, and visual focus classes.
+/* M4L v89.6.3 - Student Progress outer panel viewport stepper
+   Baseline: V89.6.2 Student Progress centre-focused module panes.
+   Scope: preserve the working module stepper and mobile swipe, while medium/large panes are controlled by CSS as an outer-panel + clipped-viewport slot system.
    Protected: mobile swipe behaviour, editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
