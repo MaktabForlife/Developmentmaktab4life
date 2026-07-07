@@ -1,6 +1,6 @@
-/* M4L v89 - Compact Student Progress UI
+/* M4L v89.1 - Compact Student Progress header/card cleanup
    Baseline: V87.4 Student Progress compact header and responsive panels.
-   Scope: compact Student Progress rows/header stack, close.svg as normal app icon, visible edit/save labels, and stable native horizontal module swipe.
+   Scope: xclose top control row, per-card module headers, visible edit/save labels, compact task rows, and stable native horizontal module swipe.
    Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -850,6 +850,78 @@ function bindStudentProgressSwipeResizeHandler() {
   return true;  
 }  
   
+function bindStudentProgressSwipeDragControls(track) {
+  if (!track || track.dataset.progressSwipeDragBound === "true") {
+    return !!track;
+  }
+
+  if (typeof window === "undefined" || typeof track.addEventListener !== "function") {
+    return false;
+  }
+
+  track.dataset.progressSwipeDragBound = "true";
+
+  let pointerId = null;
+  let startX = 0;
+  let startLeft = 0;
+  let didMove = false;
+
+  const endDrag = () => {
+    pointerId = null;
+    track.classList.remove("is-pointer-dragging");
+
+    if (didMove) {
+      didMove = false;
+      updateStudentProgressSwipeDots();
+    }
+  };
+
+  track.addEventListener("pointerdown", event => {
+    if (!event || event.pointerType === "touch") {
+      return;
+    }
+
+    const target = event.target;
+    if (target && typeof target.closest === "function" && target.closest("button, a, input, select, textarea, [data-progress-action]")) {
+      return;
+    }
+
+    pointerId = event.pointerId;
+    startX = event.clientX || 0;
+    startLeft = track.scrollLeft || 0;
+    didMove = false;
+    track.classList.add("is-pointer-dragging");
+
+    if (typeof track.setPointerCapture === "function") {
+      try {
+        track.setPointerCapture(pointerId);
+      } catch (error) {
+        // Pointer capture is only a convenience for desktop dragging.
+      }
+    }
+  });
+
+  track.addEventListener("pointermove", event => {
+    if (pointerId === null || event.pointerId !== pointerId) {
+      return;
+    }
+
+    const deltaX = (event.clientX || 0) - startX;
+
+    if (Math.abs(deltaX) > 2) {
+      didMove = true;
+      track.scrollLeft = startLeft - deltaX;
+      event.preventDefault();
+    }
+  });
+
+  track.addEventListener("pointerup", endDrag);
+  track.addEventListener("pointercancel", endDrag);
+  track.addEventListener("lostpointercapture", endDrag);
+
+  return true;
+}
+
 function bindStudentProgressSwipeControls() {  
   const track = getStudentProgressSwipeTrack();  
   
@@ -858,6 +930,7 @@ function bindStudentProgressSwipeControls() {
   }  
   
   bindStudentProgressSwipeResizeHandler();  
+  bindStudentProgressSwipeDragControls(track);
   
   if (track.dataset.progressSwipeBound !== "true") {  
     track.dataset.progressSwipeBound = "true";  
@@ -900,7 +973,7 @@ function renderStudentProgressCloseButton() {
       aria-label="Save and close Student Progress"
       title="Save and close"
     >
-      <span class="app-icon app-icon-close" aria-hidden="true"></span>
+      <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
       <span class="visually-hidden">Save and close Student Progress</span>
     </button>
   `;
@@ -929,27 +1002,23 @@ function renderStudentProgressModuleEditToggle(module) {
   `;
 }  
   
-function renderStudentProgressActiveModuleHeaderContent(module) {  
-  if (!module) return "";  
-  const title = module.subjectname || module.modulename || "Progress";  
-  return `  
-    <div class="student-progress-active-module-title-block">  
-      <h2 class="student-progress-active-module-title">${escapeHtml(title)}</h2>  
-    </div>  
-    ${renderStudentProgressModuleEditToggle(module)}  
-  `;  
+function renderStudentProgressActiveModuleHeaderContent(module) {
+  if (!module) return "";
+  const title = module.subjectname || module.modulename || "Progress";
+  return `
+    <div class="student-progress-panel-module-title-block">
+      <h2 class="student-progress-panel-module-title">${escapeHtml(title)}</h2>
+    </div>
+    ${renderStudentProgressModuleEditToggle(module)}
+  `;
 }  
   
   
-function renderStudentProgressActiveModuleHeader(modules, activeModuleKey) {  
-  const module = getStudentProgressModuleByKey(modules, activeModuleKey);  
-  
-  return `  
-    <div class="student-progress-active-module-header admin-progress-detail-header" data-student-progress-active-module-header>  
-      ${renderStudentProgressCloseButton()}  
-      ${renderStudentProgressActiveModuleHeaderContent(module)}  
-    </div>  
-  `;  
+function renderStudentProgressActiveModuleHeader(modules, activeModuleKey) {
+  // V89.1: Student Progress no longer renders a separate global active-module header.
+  // Each module panel carries its own header/card label so mobile, medium, and large
+  // screens use the same card structure.
+  return "";
 }  
   
 function renderStudentProgressPanelModuleHeader(module) {  
@@ -969,12 +1038,20 @@ function renderStudentProgressPanelModuleHeader(module) {
   `;  
 }  
   
-function renderStudentProgressGlobalActions(modules, activeModuleKey) {  
-  return `  
-    <div class="student-progress-global-actions" data-progress-global-actions>  
-      ${renderStudentProgressSwipeDots(modules, activeModuleKey)}  
-    </div>  
-  `;  
+function renderStudentProgressGlobalActions(modules, activeModuleKey) {
+  const dotsMarkup = renderStudentProgressSwipeDots(modules, activeModuleKey);
+
+  return `
+    <div class="student-progress-global-actions" data-progress-global-actions>
+      <div class="student-progress-top-control-row">
+        ${renderStudentProgressCloseButton()}
+        <div class="student-progress-top-control-dots">
+          ${dotsMarkup}
+        </div>
+        <span class="student-progress-top-control-spacer" aria-hidden="true"></span>
+      </div>
+    </div>
+  `;
 }  
   
 /* Compatibility wrapper retained for older calls. The V70.2 layout no longer  
@@ -1516,7 +1593,6 @@ function renderStudentSubjectProgress(options = {}) {
     <div class="m4l-progress-swipe-shell student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
       <div class="student-progress-compact-stack" data-student-progress-compact-stack>
         ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
-        ${renderStudentProgressActiveModuleHeader(modules, preferredModuleKey)}
         <div
           id="student-progress-swipe-track"
           class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"
