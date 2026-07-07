@@ -1,8 +1,9 @@
-/* M4L v89.6.4 - Student Progress CSS consolidation
+/* M4L v89.6.4.1 - Student Progress mobile equal-height restore
    Baseline: V89.6.3.1 confirmed working strict viewport stepper.
-   Scope: CSS-only cleanup of Student Progress cascade. Preserve the working
-   mobile swipe and medium/large strict viewport/track model while removing
-   outdated duplicate medium/large rail rules and panel-sizing overrides.
+   Baseline: V89.6.4 CSS consolidation.
+   Scope: CSS-only mobile repair to restore equal-height Student Progress module
+   cards after introducing the JS-rendered PaneViewport wrapper. Preserve the
+   V89.6.4 consolidated cascade and medium/large strict viewport/track model.
    Protected: JS behaviour, mobile swipe, editable grid behaviour, Admin Progress,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
 */
@@ -8847,8 +8848,47 @@ body.is-student-progress-section .app-shell {
   }
 }
 
+/* V89.6.4.1 mobile equal-height restore.
+   The JS-rendered PaneViewport sits between the swipe shell and swipe track.
+   On phones it must fill the bounded Progress viewport so every ModulePanel
+   inherits the same height while the task grid scrolls internally. */
 @media (max-width: 767px), (max-device-width: 767px) {
+  #progress-subjects-screen.student-theme #progress-subjects-list {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
   #progress-subjects-screen.student-theme .student-progress-pane-viewport {
-    overflow: visible;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    display: block;
+    overflow: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel,
+  #progress-subjects-screen.student-theme .m4l-progress-swipe-panel--full.student-progress-module-panel {
+    height: 100%;
+    min-height: 0;
+    align-content: stretch;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-task-card,
+  #progress-subjects-screen.student-theme .student-progress-task-list-panel {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
   }
 }
