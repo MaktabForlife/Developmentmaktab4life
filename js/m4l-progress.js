@@ -1,6 +1,6 @@
-/* M4L v89.6.1 - Student Progress module stepper
-   Baseline: V89.5 Student Progress compact GlobalSwipe + module-framed rail.
-   Scope: replace Student Progress GlobalSwipe dots/xclose with left/right module arrows and numbered module navigation; keep mobile swipe behaviour and remove manual larger-screen rail swiping.
+/* M4L v89.6.1.1 - Student Progress module stepper repair
+   Baseline: V89.6.1 Student Progress module stepper.
+   Scope: repair medium/large stepper navigation, keep mobile swipe behaviour, keep larger-screen manual swiping disabled, and restore larger-screen content clearance below the top nav.
    Protected: editable grid behaviour, mobile card behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, banner styling, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -666,6 +666,32 @@ function getStudentProgressSwipeActiveIndex(track) {
   if (panelCount <= 1) {  
     return 0;  
   }  
+
+  const clampIndex = value => {
+    const numberValue = Number(value);
+    return Math.max(0, Math.min(panelCount - 1, Number.isFinite(numberValue) ? numberValue : 0));
+  };
+
+  // V89.6.1.1: On medium/large screens manual horizontal swiping is disabled,
+  // so the stepper-owned active index is the source of truth. Mobile keeps
+  // the original scroll-position based active-index behaviour.
+  if (!isStudentProgressMobileSwipeViewport()) {
+    const storedIndex = Number(targetTrack.dataset.progressActiveIndex || "");
+    if (Number.isFinite(storedIndex)) {
+      return clampIndex(storedIndex);
+    }
+
+    const activeKey = String(currentStudentSubjectKey || targetTrack.dataset.progressActiveModuleKey || "");
+    if (activeKey) {
+      const selectedIndex = panels.findIndex(panel => {
+        return String(panel.dataset.progressModuleKey || "") === activeKey;
+      });
+
+      if (selectedIndex >= 0) {
+        return clampIndex(selectedIndex);
+      }
+    }
+  }
   
   // Responsive grid layouts have no meaningful horizontal scroll. In that mode,  
   // the selected dot/module becomes the active module for the sticky header.  
@@ -833,20 +859,28 @@ function scrollStudentProgressSwipeToIndex(panelIndex, options = {}) {
   
   const behavior = options.behavior || "smooth";  
   const panel = panels[index];  
+  const isMobile = isStudentProgressMobileSwipeViewport();
   
   currentStudentSubjectKey = String(panel.dataset.progressModuleKey || currentStudentSubjectKey || "");  
-  track.dataset.progressActiveModuleKey = currentStudentSubjectKey;  
+  track.dataset.progressActiveModuleKey = currentStudentSubjectKey;
+  track.dataset.progressActiveIndex = String(index);
+  track.style.setProperty("--student-progress-active-index", String(index));
   
-  // V76.7.2: scroll only the Student Progress rail.  
-  // Avoid panel.scrollIntoView(), because iOS Safari can satisfy it by  
-  // horizontally scrolling the page/body instead of only the nested rail.  
+  // V76.7.2: scroll only the Student Progress rail. Avoid panel.scrollIntoView(),
+  // because iOS Safari can satisfy it by horizontally scrolling the page/body.
+  // V89.6.1.1: mobile keeps the existing left-aligned card focus; medium/large
+  // uses the same safe scrollLeft method, but centres the selected card in the
+  // controlled stepper viewport.
   const trackRect = track.getBoundingClientRect ? track.getBoundingClientRect() : null;  
   const panelRect = panel.getBoundingClientRect ? panel.getBoundingClientRect() : null;  
   const rawLeft = trackRect && panelRect  
     ? (panelRect.left - trackRect.left + (track.scrollLeft || 0))  
     : (panel.offsetLeft - track.offsetLeft);  
+  const panelWidth = panelRect && panelRect.width ? panelRect.width : (panel.offsetWidth || 0);
+  const trackWidth = trackRect && trackRect.width ? trackRect.width : (track.clientWidth || 0);
   const maxLeft = Math.max(0, (track.scrollWidth || 0) - (track.clientWidth || 0));  
-  const targetLeft = Math.max(0, Math.min(maxLeft, rawLeft || 0));  
+  const centredLeft = rawLeft - Math.max(0, (trackWidth - panelWidth) / 2);
+  const targetLeft = Math.max(0, Math.min(maxLeft, isMobile ? (rawLeft || 0) : (centredLeft || 0)));  
   
   if (typeof track.scrollTo === "function") {  
     track.scrollTo({  
@@ -864,10 +898,20 @@ function scrollStudentProgressSwipeToIndex(panelIndex, options = {}) {
   
   updateStudentProgressSwipeDots();  
   
+  const finishUpdate = () => {
+    // Some desktop Safari/WebKit builds are conservative with programmatic
+    // scrolling when overflow is visually hidden. Keep the rail's stored active
+    // index authoritative and nudge the scroll position once if needed.
+    if (!isMobile && Math.abs((track.scrollLeft || 0) - targetLeft) > 2) {
+      track.scrollLeft = targetLeft;
+    }
+    updateStudentProgressSwipeDots();
+  };
+
   if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {  
-    window.requestAnimationFrame(updateStudentProgressSwipeDots);  
+    window.requestAnimationFrame(finishUpdate);  
   } else {  
-    window.setTimeout(updateStudentProgressSwipeDots, 0);  
+    window.setTimeout(finishUpdate, 0);  
   }  
   
   return true;  
@@ -1021,7 +1065,22 @@ function bindStudentProgressSwipeWheelControls(track) {
   track.dataset.progressSwipeWheelBound = "true";
 
   track.addEventListener("wheel", event => {
-    if (!event || event.ctrlKey || event.metaKey || !isStudentProgressMobileSwipeViewport()) {
+    if (!event || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const deltaX = Number(event.deltaX || 0);
+    const deltaY = Number(event.deltaY || 0);
+    const isMostlyHorizontal = Math.abs(deltaX) >= Math.abs(deltaY);
+    const shouldUseVerticalAsHorizontal = event.shiftKey && Math.abs(deltaY) > 0;
+
+    // V89.6.1.1: medium/large Progress is a controlled stepper. Prevent
+    // trackpad/wheel horizontal rail movement there; arrows/numbers remain the
+    // only larger-screen navigation. Mobile keeps the existing swipe behaviour.
+    if (!isStudentProgressMobileSwipeViewport()) {
+      if (isMostlyHorizontal || shouldUseVerticalAsHorizontal) {
+        event.preventDefault();
+      }
       return;
     }
 
@@ -1035,11 +1094,6 @@ function bindStudentProgressSwipeWheelControls(track) {
     const verticalScroller = target && typeof target.closest === "function"
       ? target.closest(".student-progress-module-grid")
       : null;
-
-    const deltaX = Number(event.deltaX || 0);
-    const deltaY = Number(event.deltaY || 0);
-    const isMostlyHorizontal = Math.abs(deltaX) >= Math.abs(deltaY);
-    const shouldUseVerticalAsHorizontal = event.shiftKey && Math.abs(deltaY) > 0;
 
     if (!isMostlyHorizontal && !shouldUseVerticalAsHorizontal) {
       return;
@@ -1786,6 +1840,7 @@ function renderStudentSubjectProgress(options = {}) {
         id="student-progress-swipe-track"
         class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"
         data-progress-swipe-track
+        data-progress-active-index="${getStudentProgressModuleIndexFromKey(modules, preferredModuleKey)}"
         aria-label="Student progress modules"
       >
         ${modules.map((module, index) => renderStudentProgressModulePanel(module, index, modules.length)).join("")}
