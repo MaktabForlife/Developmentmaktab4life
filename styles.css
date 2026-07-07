@@ -1,6 +1,6 @@
-/* M4L v89.6.1 - Student Progress module stepper
-   Baseline: V89.5 Student Progress compact GlobalSwipe + module-framed rail.
-   Scope: replace Student Progress GlobalSwipe dots/xclose with left/right module arrows and numbered module navigation; keep mobile swipe behaviour and remove manual larger-screen rail swiping.
+/* M4L v89.6.1.1 - Student Progress module stepper repair
+   Baseline: V89.6.1 Student Progress module stepper.
+   Scope: repair medium/large stepper navigation, keep mobile swipe behaviour, keep larger-screen manual swiping disabled, and restore larger-screen content clearance below the top nav.
    Protected: editable grid behaviour, mobile card behaviour, banner appearance, Admin Progress behaviour, Attendance, Library, timetable board, recorder, Home compact stack, menu grid, bottom navigation, and backend.
 */
 
@@ -8736,3 +8736,72 @@ body.is-student-progress-section .app-shell {
     user-select: auto;
   }
 }
+
+/* M4L v89.6.1.1 - Student Progress module stepper repair
+   Repairs: medium/large arrows/numbers can programmatically navigate the hidden rail,
+   mobile stepper drops slightly lower, and larger cards clear the top nav/stepper. */
+#progress-subjects-screen.student-theme {
+  --student-progress-global-swipe-drop: 16px;
+  padding-top: calc(
+    var(--swipe-dot-band-gap) +
+    var(--student-progress-global-swipe-height) +
+    var(--student-progress-global-swipe-drop) +
+    10px
+  );
+}
+
+#progress-subjects-screen.student-theme .student-progress-global-actions,
+#progress-subjects-screen.student-theme .student-progress-global-swipe {
+  top: calc(
+    var(--user-band-height) +
+    var(--user-band-safe-area-top) +
+    var(--swipe-dot-band-gap) +
+    var(--student-progress-global-swipe-drop)
+  );
+}
+
+@media (min-width: 768px) {
+  body.is-student-progress-section.has-user-band .app-shell,
+  body.is-student-progress-section.has-user-band.has-bottom-nav .app-shell {
+    padding-top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--swipe-dot-band-gap) +
+      var(--student-progress-global-swipe-height) +
+      var(--student-progress-global-swipe-drop) +
+      34px
+    );
+  }
+
+  body.is-student-progress-section.has-user-band #progress-subjects-screen.student-theme .student-progress-global-actions,
+  body.is-student-progress-section.has-user-band #progress-subjects-screen.student-theme .student-progress-global-swipe,
+  body.is-student-progress-section.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-actions,
+  body.is-student-progress-section.has-user-band.has-bottom-nav #progress-subjects-screen.student-theme .student-progress-global-swipe {
+    top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--swipe-dot-band-gap) +
+      var(--student-progress-global-swipe-drop)
+    );
+  }
+
+  #progress-subjects-screen.student-theme {
+    padding-top: 18px;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: auto;
+    touch-action: pan-y;
+    cursor: default;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track::-webkit-scrollbar {
+    display: none;
+  }
+}
+
