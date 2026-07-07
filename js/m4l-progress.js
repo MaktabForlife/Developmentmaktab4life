@@ -1,7 +1,7 @@
-/* M4L v89.5 - Student Progress compact GlobalSwipe + module-framed rail
-   Baseline: V89.4 Student Progress GlobalSwipe grid and medium swipe hardening.
-   Scope: remove the ViewPanel wrapper, keep GlobalSwipe positioned by the proven app-level swipe-dot system, and let ModulePanel frame HeaderPanel + TaskListPanel inside the swipe rail.
-   Protected: editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, and backend.
+/* M4L v89.6.1 - Student Progress module stepper
+   Baseline: V89.5 Student Progress compact GlobalSwipe + module-framed rail.
+   Scope: replace Student Progress GlobalSwipe dots/xclose with left/right module arrows and numbered module navigation; keep mobile swipe behaviour and remove manual larger-screen rail swiping.
+   Protected: editable grid behaviour, mobile card behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, banner styling, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -225,6 +225,12 @@ function handleProgressUiClick(event) {
         Number(actionEl.dataset.progressPanelIndex || 0)  
       );  
       break;  
+
+    case "step-student-progress-module":
+      stepStudentProgressSwipeBy(
+        Number(actionEl.dataset.progressStep || 0)
+      );
+      break;
   
     case "toggle-student-progress-module-edit":  
       toggleStudentProgressModuleEdit(actionEl);  
@@ -726,6 +732,27 @@ function scheduleStudentProgressHeaderMetricsUpdate() {
   return true;  
 }  
   
+function centerStudentProgressActiveNumber(numberButton) {
+  if (!numberButton || typeof numberButton.closest !== "function") {
+    return false;
+  }
+
+  const nav = numberButton.closest("[data-progress-number-nav], [data-progress-swipe-dots]");
+
+  if (!nav || typeof nav.scrollTo !== "function" || typeof nav.getBoundingClientRect !== "function" || typeof numberButton.getBoundingClientRect !== "function") {
+    return false;
+  }
+
+  const navRect = nav.getBoundingClientRect();
+  const buttonRect = numberButton.getBoundingClientRect();
+  const targetLeft = (buttonRect.left - navRect.left + (nav.scrollLeft || 0)) - ((nav.clientWidth || 0) - (buttonRect.width || 0)) / 2;
+  const maxLeft = Math.max(0, (nav.scrollWidth || 0) - (nav.clientWidth || 0));
+  const left = Math.max(0, Math.min(maxLeft, targetLeft || 0));
+
+  nav.scrollTo({ left, top: 0, behavior: "smooth" });
+  return true;
+}
+
 function updateStudentProgressSwipeDots() {  
   const screen = document.getElementById("progress-subjects-screen");  
   const track = getStudentProgressSwipeTrack();  
@@ -741,6 +768,7 @@ function updateStudentProgressSwipeDots() {
   
   const activeIndex = getStudentProgressSwipeActiveIndex(track);  
   const panels = getStudentProgressSwipePanels(track);  
+  const panelCount = panels.length;
   const activePanel = panels[activeIndex];  
   
   if (activePanel) {  
@@ -748,12 +776,43 @@ function updateStudentProgressSwipeDots() {
     track.dataset.progressActiveModuleKey = currentStudentSubjectKey;  
   }  
   
+  let activeNumberButton = null;
+
   dots.forEach((dot, fallbackIndex) => {  
     const dotIndex = Number(dot.dataset.progressPanelIndex || fallbackIndex || 0);  
     const isActive = dotIndex === activeIndex;  
     dot.classList.toggle("is-active", isActive);  
     dot.setAttribute("aria-current", isActive ? "true" : "false");  
-  });  
+    if (isActive) {
+      activeNumberButton = dot;
+    }
+  });
+
+  screen.querySelectorAll("[data-progress-step-direction]").forEach(button => {
+    const direction = button.dataset.progressStepDirection || "";
+    const shouldDisable = panelCount <= 1 ||
+      (direction === "previous" && activeIndex <= 0) ||
+      (direction === "next" && activeIndex >= panelCount - 1);
+
+    button.disabled = shouldDisable;
+    button.setAttribute("aria-disabled", shouldDisable ? "true" : "false");
+  });
+
+  panels.forEach((panel, index) => {
+    const distance = Math.abs(index - activeIndex);
+    panel.classList.toggle("is-active", distance === 0);
+    panel.classList.toggle("is-adjacent", distance === 1);
+    panel.classList.toggle("is-far", distance > 1);
+    panel.setAttribute("aria-current", distance === 0 ? "true" : "false");
+  });
+
+  if (activeNumberButton) {
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => centerStudentProgressActiveNumber(activeNumberButton));
+    } else {
+      centerStudentProgressActiveNumber(activeNumberButton);
+    }
+  }
   
   updateStudentProgressFrozenHeader();  
   scheduleStudentProgressHeaderMetricsUpdate();  
@@ -829,6 +888,34 @@ function scrollStudentProgressSwipeToModule(moduleKey, options = {}) {
   
   return scrollStudentProgressSwipeToIndex(index, options);  
 }  
+
+function stepStudentProgressSwipeBy(delta, options = {}) {
+  const track = getStudentProgressSwipeTrack();
+  const panels = getStudentProgressSwipePanels(track);
+  const step = Number(delta || 0);
+
+  if (!track || !panels.length || !Number.isFinite(step) || step === 0) {
+    return false;
+  }
+
+  const activeIndex = getStudentProgressSwipeActiveIndex(track);
+  const nextIndex = Math.max(0, Math.min(panels.length - 1, activeIndex + step));
+
+  if (nextIndex === activeIndex) {
+    updateStudentProgressSwipeDots();
+    return false;
+  }
+
+  return scrollStudentProgressSwipeToIndex(nextIndex, options);
+}
+
+function isStudentProgressMobileSwipeViewport() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return true;
+  }
+
+  return window.matchMedia("(max-width: 767px)").matches;
+}
   
 let studentProgressSwipeResizeHandlerBound = false;  
   
@@ -877,7 +964,7 @@ function bindStudentProgressSwipeDragControls(track) {
   };
 
   track.addEventListener("pointerdown", event => {
-    if (!event || event.pointerType === "touch") {
+    if (!event || event.pointerType === "touch" || !isStudentProgressMobileSwipeViewport()) {
       return;
     }
 
@@ -934,7 +1021,7 @@ function bindStudentProgressSwipeWheelControls(track) {
   track.dataset.progressSwipeWheelBound = "true";
 
   track.addEventListener("wheel", event => {
-    if (!event || event.ctrlKey || event.metaKey) {
+    if (!event || event.ctrlKey || event.metaKey || !isStudentProgressMobileSwipeViewport()) {
       return;
     }
 
@@ -1099,17 +1186,58 @@ function renderStudentProgressPanelModuleHeader(module) {
   `;  
 }  
   
+function renderStudentProgressStepperArrow(direction, isDisabled) {
+  const normalizedDirection = Number(direction || 0) < 0 ? -1 : 1;
+  const isPrevious = normalizedDirection < 0;
+  const label = isPrevious ? "Previous module" : "Next module";
+  const iconClass = isPrevious ? "app-icon-left" : "app-icon-right";
+
+  return `
+    <button
+      type="button"
+      class="student-progress-stepper-arrow student-progress-stepper-arrow--${isPrevious ? "previous" : "next"}"
+      data-progress-action="step-student-progress-module"
+      data-progress-step="${normalizedDirection}"
+      data-progress-step-direction="${isPrevious ? "previous" : "next"}"
+      aria-label="${label}"
+      title="${label}"
+      ${isDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'}
+    >
+      <span class="app-icon ${iconClass}" aria-hidden="true"></span>
+      <span class="visually-hidden">${label}</span>
+    </button>
+  `;
+}
+
+function getStudentProgressModuleIndexFromKey(modules, activeModuleKey) {
+  const list = Array.isArray(modules) ? modules : [];
+  const activeKey = String(activeModuleKey || "");
+
+  if (!list.length) {
+    return 0;
+  }
+
+  const index = activeKey
+    ? list.findIndex(module => String(module.subjectid || "") === activeKey)
+    : 0;
+
+  return index >= 0 ? index : 0;
+}
+
 function renderStudentProgressGlobalActions(modules, activeModuleKey) {
-  const dotsMarkup = renderStudentProgressSwipeDots(modules, activeModuleKey);
+  const list = Array.isArray(modules) ? modules : [];
+  const activeIndex = getStudentProgressModuleIndexFromKey(list, activeModuleKey || (list[0] && list[0].subjectid));
+  const numbersMarkup = renderStudentProgressSwipeDots(list, activeModuleKey);
+  const hasMultipleModules = list.length > 1;
 
   return `
     <div class="student-progress-global-actions student-progress-global-swipe" data-progress-global-actions data-student-progress-global-swipe>
-      <div class="student-progress-top-control-row">
-        ${renderStudentProgressCloseButton()}
-        <div class="student-progress-top-control-dots">
-          ${dotsMarkup}
+      <div class="student-progress-top-control-row student-progress-stepper-row">
+        ${renderStudentProgressStepperArrow(-1, !hasMultipleModules || activeIndex <= 0)}
+        <div class="student-progress-top-control-dots student-progress-stepper-number-strip" data-progress-number-nav>
+          ${numbersMarkup}
         </div>
-        <span class="student-progress-top-control-spacer" aria-hidden="true"></span>
+        ${renderStudentProgressStepperArrow(1, !hasMultipleModules || activeIndex >= list.length - 1)}
       </div>
     </div>
   `;
@@ -1190,27 +1318,28 @@ function updateStudentProgressTaskScrollState() {
 }  
   
 function renderStudentProgressSwipeDots(modules, activeModuleKey) {  
-  if (!modules || modules.length <= 1) {  
+  if (!modules || modules.length < 1) {  
     return "";  
   }  
   
   const activeKey = String(activeModuleKey || modules[0].subjectid || "");  
   
   return `  
-    <div class="m4l-progress-swipe-dots student-progress-swipe-dots" data-progress-swipe-dots aria-label="Progress modules">  
+    <div class="m4l-progress-swipe-dots student-progress-swipe-dots student-progress-module-numbers" data-progress-swipe-dots aria-label="Progress modules">  
       ${modules.map((module, index) => {  
         const moduleKey = String(module.subjectid || "");  
         const isActive = moduleKey === activeKey || (!activeKey && index === 0);  
+        const numberLabel = String(index + 1);
   
         return `  
           <button  
             type="button"  
-            class="m4l-progress-swipe-dot student-progress-swipe-dot${isActive ? " is-active" : ""}"  
+            class="m4l-progress-swipe-dot student-progress-swipe-dot student-progress-module-number${isActive ? " is-active" : ""}"  
             data-progress-action="scroll-student-progress-module"  
             data-progress-panel-index="${index}"  
-            aria-label="Show ${escapeForAttribute(module.subjectname || `module ${index + 1}`)}"  
+            aria-label="Show module ${numberLabel}: ${escapeForAttribute(module.subjectname || `module ${numberLabel}`)}"  
             aria-current="${isActive ? "true" : "false"}"  
-          ></button>  
+          >${escapeHtml(numberLabel)}</button>  
         `;  
       }).join("")}  
     </div>  
