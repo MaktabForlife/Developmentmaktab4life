@@ -1,11 +1,10 @@
-/* M4L v89.6.6 - Student Progress controlled swipe gesture trial
-   Baseline: V89.6.5 tablet/PC stepper number width.
-   JS baseline: V89.6.3.1 Student Progress strict viewport stepper repair.
-   Scope: keep the medium/large Stepper number width and add CSS support for
-   controlled swipe gestures on the PaneViewport. Preserve mobile swipe,
-   medium/large 3-slot/5-slot module viewport, editable grid behaviour, Admin
-   Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner,
-   and backend.
+/* M4L v89.6.6.1 - Student Progress native scroll-snap swipe trial
+   Baseline: V89.6.6 controlled swipe gesture trial.
+   Scope: replace medium/large pointer-drag gesture simulation with true native
+   scroll-snap on the PaneViewport. Preserve the confirmed 3-slot medium layout,
+   5-slot large layout, V89.6.5 widened Stepper number strip, mobile native swipe,
+   editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder,
+   bottom navigation, auth banner, and backend.
 */
 
 :root {
@@ -8784,8 +8783,8 @@ body.is-student-progress-section .app-shell {
   }
 }
 
-/* Strict PaneViewport / moving PaneTrack model.
-   This is the single source of truth for medium/large Student Progress geometry. */
+/* Strict PaneViewport / native scroll-snap PaneTrack model.
+   Medium/large keep fixed 3/5 slot geometry while the PaneViewport owns native horizontal swipe. */
 #progress-subjects-screen.student-theme .student-progress-pane-viewport {
   width: 100%;
   max-width: 100%;
@@ -8804,21 +8803,21 @@ body.is-student-progress-section .app-shell {
     max-width: 100%;
     min-width: 0;
     height: var(--student-progress-centre-panel-height);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     position: relative;
     box-sizing: border-box;
-    touch-action: pan-y;
-    cursor: grab;
+    touch-action: pan-x pan-y;
     overscroll-behavior-inline: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
 
-  #progress-subjects-screen.student-theme .student-progress-pane-viewport.is-pointer-dragging {
-    cursor: grabbing;
-    user-select: none;
-  }
-
-  #progress-subjects-screen.student-theme .student-progress-pane-viewport.is-pointer-dragging .student-progress-swipe-track {
-    pointer-events: none;
+  #progress-subjects-screen.student-theme .student-progress-pane-viewport::-webkit-scrollbar {
+    display: none;
   }
 
   #progress-subjects-screen.student-theme .student-progress-swipe-track {
@@ -8839,10 +8838,10 @@ body.is-student-progress-section .app-shell {
     scroll-padding-inline: 0;
     scroll-behavior: auto;
     -webkit-overflow-scrolling: auto;
-    touch-action: pan-y;
-    transform: translate3d(var(--student-progress-track-offset, 0px), 0, 0);
-    transition: transform 190ms ease;
-    will-change: transform;
+    touch-action: pan-x pan-y;
+    transform: none;
+    transition: none;
+    will-change: auto;
     box-sizing: border-box;
     align-items: stretch;
   }
@@ -8859,6 +8858,8 @@ body.is-student-progress-section .app-shell {
     max-width: var(--student-progress-card-width, var(--m4l-responsive-panel-basis));
     flex-shrink: 0;
     height: 100%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
 }
 
