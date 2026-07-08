@@ -1,10 +1,12 @@
-/* M4L v90.2 - Admin Class Progress anchored student column
-   Baseline: V90.1 Admin Class Progress Student-shell rebuild.
-   CSS baseline: V90.1 Admin Class Progress Student-shell rebuild.
-   Scope: refactor Admin Class / All Progress so the student-name column and A1
-   key are global once, while the Stepper attaches module panes immediately to
-   the right of that fixed student column. Module panes contain their own module
-   header plus task columns only. FillEditCell remains in edit mode.
+/* M4L v90.3 - Admin Class Progress GUI refinements
+   Baseline: V90.2 Admin Class Progress anchored student column.
+   CSS baseline: V90.2 Admin Class Progress anchored student column.
+   Scope: keep the stable global student-column architecture, refine the GUI,
+   widen the mobile viewport, move the edit/save control to global A1, put the
+   Student/Teacher key in A2, add subtle module numbers to module headers,
+   make the Stepper active cell clearer, centre module content, compact header
+   spacing, set the progress selector pill to surface-card, and complete the
+   FillEditCell visual rule in edit mode.
    Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
@@ -4093,6 +4095,9 @@ function renderAdminProgressClassStudentColumn(students) {
 
   return `
     <aside class="admin-progress-class-student-column" aria-label="Students">
+      <div class="admin-progress-class-student-column-action" aria-label="Progress edit control">
+        ${renderAdminProgressClassMatrixActionBlock()}
+      </div>
       <div class="admin-progress-class-student-column-key" aria-label="Progress key">
         ${renderAdminProgressClassMatrixKeyOnlyBlock()}
       </div>
@@ -4155,33 +4160,40 @@ function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, a
 
 function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0) {
   const moduleName = getAdminModuleName(module) || "Module";
+  const moduleNumber = Number(moduleIndex || 0) + 1;
 
   return `
     <header class="admin-progress-class-module-header" data-admin-class-progress-module-header>
       <div class="admin-progress-class-module-header-text">
         <h3 class="admin-progress-class-module-title">${escapeHtml(moduleName)}</h3>
       </div>
-      <div class="admin-progress-class-module-actions">
-        <span class="admin-progress-matrix-save-status" data-admin-progress-matrix-save-status aria-live="polite"></span>
-        <button
-          type="button"
-          class="admin-progress-matrix-edit-toggle admin-progress-class-module-edit-toggle"
-          data-progress-action="toggle-admin-progress-grid-edit"
-          aria-label="Click to edit progress"
-          aria-pressed="false"
-          title="Click to edit"
-        >
-          <span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span>
-          <span class="admin-progress-matrix-edit-label">Click to edit</span>
-        </button>
-      </div>
+      <span class="admin-progress-class-module-index-badge" aria-label="Module ${moduleNumber}">${moduleNumber}</span>
     </header>
+  `;
+}
+
+function renderAdminProgressClassMatrixActionBlock() {
+  return `
+    <div class="admin-progress-matrix-action-block admin-progress-matrix-action-block--a1" aria-label="Progress edit control">
+      <button
+        type="button"
+        class="admin-progress-matrix-edit-toggle admin-progress-class-global-edit-toggle"
+        data-progress-action="toggle-admin-progress-grid-edit"
+        aria-label="Click to edit progress"
+        aria-pressed="false"
+        title="Click to edit"
+      >
+        <span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span>
+        <span class="admin-progress-matrix-edit-label">Click to edit</span>
+      </button>
+      <span class="admin-progress-matrix-save-status" data-admin-progress-matrix-save-status aria-live="polite"></span>
+    </div>
   `;
 }
 
 function renderAdminProgressClassMatrixKeyOnlyBlock() {
   return `
-    <div class="admin-progress-matrix-key-block admin-progress-matrix-key-block--a1" aria-label="Progress key">
+    <div class="admin-progress-matrix-key-block admin-progress-matrix-key-block--a2" aria-label="Progress key">
       <span class="admin-progress-matrix-key-line">
         <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--student" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
         <span>STUDENT</span>
@@ -4224,6 +4236,7 @@ function renderAdminProgressClassModuleTaskCell(student, module, task, moduleInd
         data-progress-action="cycle-admin-progress-class-cell"
         data-studenttaskid="${escapeForAttribute(studentTaskId)}"
         data-status="${escapeForAttribute(state)}"
+        data-state="${escapeForAttribute(state === "blank" ? "empty" : state)}"
         aria-label="${escapeForAttribute(label)}"
         ${studentTaskId ? "" : "disabled"}
       >
@@ -4594,7 +4607,8 @@ function updateAdminProgressClassMatrixCellButton(button, nextState) {
   });  
   
   button.classList.add(`admin-progress-class-grid-status-button--${nextState}`);  
-  button.dataset.status = nextState;  
+  button.dataset.status = nextState;
+  button.dataset.state = nextState === "blank" ? "empty" : nextState;  
   button.innerHTML = renderAdminProgressClassGridStatusSymbol(nextState);  
   
   const existingLabel = button.getAttribute("aria-label") || "Progress cell";  
@@ -4680,7 +4694,8 @@ function cycleAdminProgressClassMatrixCell(button) {
   
   applyAdminProgressClassMatrixStateToRow(studentTaskId, nextState);  
   updateAdminProgressClassMatrixCellButton(button, nextState);  
-  button.closest("td")?.classList.add("is-pending");  
+  const cell = button.closest(".admin-progress-class-grid-task-cell");
+  if (cell) cell.classList.add("is-pending");  
   updateAdminProgressMatrixSaveStatus(`${getAdminProgressMatrixPendingCount()} pending`);  
   
   return true;  
