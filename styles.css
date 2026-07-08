@@ -1,7 +1,8 @@
-/* M4L v89.6.6.2 - Student Progress native swipe right sync repair
-   Baseline: V89.6.6.1 native scroll-snap swipe trial.
-   Scope: CSS layout unchanged from V89.6.6.1. Keep true native scroll-snap on
-   the PaneViewport while JS repairs right/backward swipe active-index syncing.
+/* M4L v89.7 - Student Progress boundary guard + centred Stepper
+   Baseline: V89.6.6.2 native swipe right sync repair.
+   Scope: keep true native scroll-snap on the medium/large PaneViewport, add
+   boundary containment so first/last-module overscroll cannot escape Progress,
+   and centre the Stepper numbers between the left/right arrows on medium/large.
    Preserve the confirmed 3-slot medium layout, 5-slot large layout, V89.6.5
    widened Stepper number strip, mobile native swipe, editable grid behaviour,
    Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth
@@ -8809,6 +8810,8 @@ body.is-student-progress-section .app-shell {
     position: relative;
     box-sizing: border-box;
     touch-action: pan-x pan-y;
+    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
     overscroll-behavior-inline: contain;
     scroll-snap-type: x mandatory;
     scroll-padding-inline: 0;
@@ -8863,6 +8866,46 @@ body.is-student-progress-section .app-shell {
     scroll-snap-stop: always;
   }
 }
+
+/* V89.7: medium/large Stepper centring and boundary containment.
+   The number strip is visually centred between the left/right arrows without
+   changing the module PaneViewport 3-slot/5-slot layout. */
+@media (min-width: 768px) {
+  #progress-subjects-screen.student-theme .student-progress-top-control-row {
+    grid-template-columns:
+      var(--student-progress-global-swipe-left-width, 44px)
+      minmax(0, var(--student-progress-global-swipe-dots-width, 420px))
+      var(--student-progress-global-swipe-right-width, 44px);
+    width: min(
+      calc(
+        var(--student-progress-global-swipe-left-width, 44px) +
+        var(--student-progress-global-swipe-dots-width, 420px) +
+        var(--student-progress-global-swipe-right-width, 44px)
+      ),
+      100%
+    );
+    max-width: min(
+      calc(
+        var(--student-progress-global-swipe-left-width, 44px) +
+        var(--student-progress-global-swipe-dots-width, 420px) +
+        var(--student-progress-global-swipe-right-width, 44px)
+      ),
+      100%
+    );
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-stepper-number-strip {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-dots,
+  #progress-subjects-screen.student-theme .student-progress-module-numbers {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
 
 @media (min-width: 1180px) {
   #progress-subjects-screen.student-theme {
