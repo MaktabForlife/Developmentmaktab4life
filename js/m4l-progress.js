@@ -1,12 +1,12 @@
-/* M4L v90 - Admin Class Progress module panes + FillEditCell
-   Baseline: V89.7 Student Progress native swipe boundary guard + centred Stepper.
-   CSS baseline: V89.7 Student Progress boundary guard + centred Stepper.
-   Scope: rebuild Admin Class / All Progress landing as stepper-controlled module
-   panes. Each module pane owns one compact sticky grid table. Preserve the
-   existing rotated/wrapped task header style, keep the selector below the auth
-   banner, remove the edit control from A1, keep A1 as the Student/Teacher tick
-   key, and apply the FillEditCell rule to Class Progress body cells in edit mode.
-   Protected: Student Progress, Admin Individual Progress, Group Progress,
+/* M4L v90.1 - Admin Class Progress Student-shell rebuild
+   Baseline: V90 Admin Class Progress module panes + FillEditCell.
+   CSS baseline: V90 Admin Class Progress module panes + FillEditCell.
+   Scope: rebuild the Admin Class / All Progress landing around the proven
+   Student Progress shell: selector remains above, Stepper sits clearly inside a
+   surface-card view panel, module panes use a 1/3/5 viewport model, module
+   headers remove percentages, edit/save icons are normal transparent controls,
+   A1 remains only the Student/Teacher key, and FillEditCell remains in edit mode.
+   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
@@ -337,6 +337,10 @@ function handleProgressUiClick(event) {
       scrollAdminProgressClassModuleToIndex(
         Number(actionEl.dataset.progressClassModuleIndex || 0)
       );
+      break;
+
+    case "cycle-admin-progress-class-cell":
+      cycleAdminProgressClassMatrixCell(actionEl);
       break;
   
     case "scroll-admin-dashboard-task":  
@@ -3792,17 +3796,17 @@ function updateAdminProgressMatrixEditControls() {
   document.querySelectorAll(".admin-progress-matrix-edit-toggle").forEach(button => {  
     button.classList.toggle("is-editing", isEditing);  
     button.setAttribute("aria-pressed", isEditing ? "true" : "false");  
-    button.setAttribute("aria-label", isEditing ? "Save changes and finish editing" : "Turn edit mode on");  
-    button.setAttribute("title", isEditing ? "Save changes" : "Edit progress");  
+    button.setAttribute("aria-label", isEditing ? "Save changes and finish editing" : "Click to edit progress");  
+    button.setAttribute("title", isEditing ? "Save changes" : "Click to edit");  
     button.innerHTML = `  
       <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "edit-mode-icon"}" aria-hidden="true"></span>  
-      <span class="admin-progress-matrix-edit-label">${isEditing ? "Save" : "Edit"}</span>  
+      <span class="admin-progress-matrix-edit-label">${isEditing ? "Save" : "Click to edit"}</span>  
     `;  
   });  
   
   if (isEditing) {  
     const pendingCount = getAdminProgressMatrixPendingCount();  
-    updateAdminProgressMatrixSaveStatus(pendingCount ? `${pendingCount} pending` : "Editing");  
+    updateAdminProgressMatrixSaveStatus(pendingCount ? `${pendingCount} pending` : "");  
   } else {  
     updateAdminProgressMatrixSaveStatus("");  
   }  
@@ -4009,17 +4013,19 @@ function renderAdminProgressClassOverview(modules) {
 
   return `
     <section
-      class="admin-progress-class-overview admin-progress-class-overview--module-panes is-viewing"
+      class="admin-progress-class-overview admin-progress-class-overview--module-panes admin-progress-class-overview--student-shell is-viewing"
       aria-label="Class progress overview"
       data-admin-class-progress-overview
       data-active-module-index="${safeActiveIndex}"
+      style="--admin-progress-class-active-index: ${safeActiveIndex};"
     >
       <section class="admin-progress-class-view-panel" aria-label="All students by module">
         ${renderAdminProgressClassModuleStepper(model.modules, safeActiveIndex)}
-        <div class="admin-progress-class-pane-stack" data-admin-class-progress-pane-stack>
-          ${model.modules.map((module, moduleIndex) => renderAdminProgressClassModulePane(module, model.students, moduleIndex, safeActiveIndex)).join("")}
+        <div class="admin-progress-class-pane-viewport" data-admin-class-progress-pane-viewport>
+          <div class="admin-progress-class-pane-stack" data-admin-class-progress-pane-stack>
+            ${model.modules.map((module, moduleIndex) => renderAdminProgressClassModulePane(module, model.students, moduleIndex, safeActiveIndex)).join("")}
+          </div>
         </div>
-        <p class="admin-progress-class-grid-caption">Use the module stepper to move between modules. Scroll inside the grid to view tasks and students.</p>
       </section>
     </section>
   `;
@@ -4091,7 +4097,6 @@ function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, a
       data-admin-class-progress-module-pane
       data-progress-class-module-index="${moduleIndex}"
       aria-label="${escapeForAttribute(moduleName)} class progress"
-      ${isActive ? "" : "hidden"}
     >
       ${renderAdminProgressClassModulePaneHeader(module, moduleIndex)}
       <section class="admin-progress-class-grid-card" aria-label="${escapeForAttribute(moduleName)} tasks by student">
@@ -4126,7 +4131,6 @@ function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0) {
     <header class="admin-progress-class-module-header" data-admin-class-progress-module-header>
       <div class="admin-progress-class-module-header-text">
         <h3 class="admin-progress-class-module-title">${escapeHtml(moduleName)}</h3>
-        ${renderAdminProgressClassGridModulePercentages(module)}
       </div>
       <div class="admin-progress-class-module-actions">
         <span class="admin-progress-matrix-save-status" data-admin-progress-matrix-save-status aria-live="polite"></span>
@@ -4134,12 +4138,12 @@ function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0) {
           type="button"
           class="admin-progress-matrix-edit-toggle admin-progress-class-module-edit-toggle"
           data-progress-action="toggle-admin-progress-grid-edit"
-          aria-label="Turn edit mode on"
+          aria-label="Click to edit progress"
           aria-pressed="false"
-          title="Edit progress"
+          title="Click to edit"
         >
           <span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span>
-          <span class="admin-progress-matrix-edit-label">Edit</span>
+          <span class="admin-progress-matrix-edit-label">Click to edit</span>
         </button>
       </div>
     </header>
@@ -4192,6 +4196,98 @@ function getAdminProgressClassOverviewElement() {
   return document.querySelector("[data-admin-class-progress-overview], .admin-progress-class-overview");
 }
 
+function getAdminProgressClassVisibleSlots() {
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    if (window.matchMedia("(min-width: 1180px)").matches) {
+      return 5;
+    }
+
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      return 3;
+    }
+  }
+
+  return 1;
+}
+
+function syncAdminProgressClassPaneLayout(overview) {
+  const root = overview || getAdminProgressClassOverviewElement();
+
+  if (!root) return false;
+
+  const viewport = root.querySelector("[data-admin-class-progress-pane-viewport]");
+  const track = root.querySelector("[data-admin-class-progress-pane-stack]");
+  const panels = Array.from(root.querySelectorAll("[data-admin-class-progress-module-pane]"));
+
+  if (!viewport || !track || !panels.length) {
+    return false;
+  }
+
+  const requestedIndex = Number(root.dataset.activeModuleIndex || adminProgressClassActiveModuleIndex || 0);
+  const activeIndex = Math.max(0, Math.min(panels.length - 1, Number.isFinite(requestedIndex) ? requestedIndex : 0));
+  const viewportWidth = Math.max(1, viewport.clientWidth || root.clientWidth || 1);
+  const slots = Math.min(getAdminProgressClassVisibleSlots(), panels.length);
+  const gap = slots >= 5 ? 16 : (slots >= 3 ? 14 : 12);
+  const paneWidth = Math.max(1, Math.floor((viewportWidth - ((slots - 1) * gap)) / slots));
+  const paneStep = paneWidth + gap;
+  const edgeSpace = slots > 1 ? Math.max(0, (viewportWidth - paneWidth) / 2) : 0;
+  const offset = edgeSpace - (activeIndex * paneStep);
+
+  root.style.setProperty("--admin-progress-class-visible-slots", String(slots));
+  root.style.setProperty("--admin-progress-class-pane-gap", `${gap}px`);
+  root.style.setProperty("--admin-progress-class-pane-width", `${paneWidth}px`);
+  root.style.setProperty("--admin-progress-class-pane-step", `${paneStep}px`);
+  root.style.setProperty("--admin-progress-class-edge-space", `${edgeSpace}px`);
+  root.style.setProperty("--admin-progress-class-track-offset", `${offset}px`);
+  root.style.setProperty("--admin-progress-class-active-index", String(activeIndex));
+  track.style.setProperty("--admin-progress-class-track-offset", `${offset}px`);
+
+  return true;
+}
+
+function resetAdminProgressClassPaneGridScroll(overview, index) {
+  const root = overview || getAdminProgressClassOverviewElement();
+
+  if (!root) return false;
+
+  const panels = Array.from(root.querySelectorAll("[data-admin-class-progress-module-pane]"));
+  const requestedIndex = Number(index !== undefined ? index : root.dataset.activeModuleIndex || adminProgressClassActiveModuleIndex || 0);
+  const safeIndex = Math.max(0, Math.min(panels.length - 1, Number.isFinite(requestedIndex) ? requestedIndex : 0));
+  const activePane = panels[safeIndex];
+  const gridScroll = activePane ? activePane.querySelector(".admin-progress-class-grid-scroll") : null;
+
+  if (!gridScroll) return false;
+
+  if (typeof gridScroll.scrollTo === "function") {
+    gridScroll.scrollTo({ left: 0, top: 0, behavior: "auto" });
+  } else {
+    gridScroll.scrollLeft = 0;
+    gridScroll.scrollTop = 0;
+  }
+
+  return true;
+}
+
+function bindAdminProgressClassPaneResize() {
+  if (typeof window === "undefined" || window.__m4lAdminProgressClassPaneResizeBound === true) {
+    return false;
+  }
+
+  window.__m4lAdminProgressClassPaneResizeBound = true;
+  window.addEventListener("resize", () => {
+    const root = getAdminProgressClassOverviewElement();
+    if (!root) return;
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => syncAdminProgressClassPaneLayout(root));
+    } else {
+      syncAdminProgressClassPaneLayout(root);
+    }
+  }, { passive: true });
+
+  return true;
+}
+
 function updateAdminProgressClassModuleStepper(overview) {
   const root = overview || getAdminProgressClassOverviewElement();
 
@@ -4204,11 +4300,16 @@ function updateAdminProgressClassModuleStepper(overview) {
   const activeIndex = Math.max(0, Math.min(panels.length - 1, Number.isFinite(requestedIndex) ? requestedIndex : 0));
   adminProgressClassActiveModuleIndex = activeIndex;
   root.dataset.activeModuleIndex = String(activeIndex);
+  root.style.setProperty("--admin-progress-class-active-index", String(activeIndex));
 
   panels.forEach((panel, index) => {
+    const distance = Math.abs(index - activeIndex);
     const isActive = index === activeIndex;
+    panel.hidden = false;
     panel.classList.toggle("is-active", isActive);
-    panel.hidden = !isActive;
+    panel.classList.toggle("is-adjacent", distance === 1);
+    panel.classList.toggle("is-far", distance > 1);
+    panel.setAttribute("aria-current", isActive ? "true" : "false");
   });
 
   const numberButtons = Array.from(root.querySelectorAll(".admin-progress-class-module-number"));
@@ -4232,6 +4333,8 @@ function updateAdminProgressClassModuleStepper(overview) {
     nextButton.dataset.progressClassModuleIndex = String(Math.min(panels.length - 1, activeIndex + 1));
   }
 
+  syncAdminProgressClassPaneLayout(root);
+
   const activeNumber = numberButtons.find(button => Number(button.dataset.progressClassModuleIndex || 0) === activeIndex);
   if (activeNumber && typeof activeNumber.scrollIntoView === "function") {
     activeNumber.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
@@ -4254,11 +4357,7 @@ function scrollAdminProgressClassModuleToIndex(index) {
   root.dataset.activeModuleIndex = String(activeIndex);
 
   const updated = updateAdminProgressClassModuleStepper(root);
-  const activePane = panels[activeIndex];
-
-  if (activePane && typeof activePane.scrollIntoView === "function") {
-    activePane.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-  }
+  resetAdminProgressClassPaneGridScroll(root, activeIndex);
 
   return updated;
 }
@@ -4755,7 +4854,14 @@ function renderAdminProgressDashboard(modules) {
   
   if (shouldRenderAdminProgressClassOverview() && (list.length > 0 || (adminProgressDashboardRows || []).length > 0)) {  
     setDomHtml(dashboard, renderAdminProgressClassOverview(list));  
-    bindProgressUiHandlers(dashboard);  
+    bindProgressUiHandlers(dashboard);
+    bindAdminProgressClassPaneResize();
+    const classOverview = dashboard.querySelector("[data-admin-class-progress-overview]");
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => updateAdminProgressClassModuleStepper(classOverview));
+    } else {
+      updateAdminProgressClassModuleStepper(classOverview);
+    }
     return;  
   }  
   
