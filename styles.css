@@ -1,8 +1,11 @@
-/* M4L v90.2 - Admin Class Progress anchored student column
-   Baseline: V90.1 Admin Class Progress Student-shell rebuild.
-   Scope: keep the V90.1 selector/Stepper/header shell, but refactor the class
-   grid so the student column and A1 key are global while module panes attach to
-   the right and contain their own module header plus task columns only.
+/* M4L v90.3 - Admin Class Progress GUI refinements
+   Baseline: V90.2 Admin Class Progress anchored student column.
+   Scope: preserve the stable global student-column + module-pane rail model,
+   refine the GUI, widen the mobile viewport, move edit/save to global A1,
+   place the Student/Teacher key in A2, add subtle module numbers, improve the
+   Stepper active indicator, centre module content, compact the module header,
+   set the Progress selector pill to surface-card, and complete FillEditCell in
+   edit mode.
    Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
 */
@@ -9664,5 +9667,247 @@ body.is-student-progress-section .app-shell {
     height: 100%;
     min-height: 0;
     max-height: none;
+  }
+}
+
+
+/* M4L v90.3 - Admin Class Progress GUI refinements
+   Build on the stable V90.2 global student-column architecture. */
+.admin-progress-view-picker {
+  background: var(--surface-card);
+}
+
+.admin-progress-class-overview--module-panes,
+.admin-progress-class-overview--attached {
+  --admin-progress-class-module-header-height: 56px;
+  --admin-progress-class-task-header-height: 88px;
+  --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 252px);
+  margin-top: 5px;
+  gap: 5px;
+}
+
+.admin-progress-class-view-panel {
+  padding: 6px 5px 8px;
+  gap: 6px;
+}
+
+.admin-progress-class-module-number.is-active {
+  background: var(--surface-chip);
+  color: var(--text-strong);
+  box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.13);
+}
+
+.admin-progress-class-student-column {
+  grid-template-rows:
+    var(--admin-progress-class-module-header-height)
+    var(--admin-progress-class-task-header-height)
+    minmax(0, 1fr);
+}
+
+.admin-progress-class-student-column-action {
+  min-height: var(--admin-progress-class-module-header-height);
+  display: grid;
+  place-items: center;
+  padding: 2px 4px;
+  background: var(--admin-progress-class-grid-header-surface);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-class-student-column-action .admin-progress-matrix-action-block--a1 {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  gap: 0;
+}
+
+.admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle,
+.admin-progress-class-global-edit-toggle {
+  appearance: none;
+  width: 58px;
+  min-width: 58px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  gap: 1px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.admin-progress-class-global-edit-toggle.is-editing,
+.admin-progress-class-global-edit-toggle.is-saving {
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.admin-progress-class-global-edit-toggle .app-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label {
+  max-width: 62px;
+  font-size: 0.52rem;
+  font-weight: 820;
+  line-height: 1.03;
+  text-align: center;
+  white-space: normal;
+}
+
+.admin-progress-class-student-column-action .admin-progress-matrix-save-status {
+  min-height: 0;
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 0.52rem;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.admin-progress-class-student-column-key {
+  min-height: var(--admin-progress-class-task-header-height);
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+}
+
+.admin-progress-class-student-column-key .admin-progress-matrix-key-block--a2 {
+  width: min(100%, 96px);
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  justify-items: start;
+  padding: 8px 9px;
+  border-radius: 13px;
+  background: var(--surface-app);
+}
+
+.admin-progress-class-student-column-key .admin-progress-matrix-key-line {
+  justify-content: flex-start;
+  font-size: 0.64rem;
+  line-height: 1;
+}
+
+.admin-progress-class-module-header {
+  position: relative;
+  padding: 4px 26px 4px 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+}
+
+.admin-progress-class-module-header-text {
+  width: 100%;
+  justify-content: center;
+}
+
+.admin-progress-class-module-title {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(0.98rem, 4vw, 1.22rem);
+  line-height: 1.03;
+}
+
+.admin-progress-class-module-index-badge {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  color: var(--surface-chip);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.admin-progress-class-module-actions,
+.admin-progress-class-module-edit-toggle {
+  display: none;
+}
+
+.admin-progress-class-module-task-header-row,
+.admin-progress-class-module-task-row {
+  justify-content: center;
+}
+
+.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit {
+  opacity: 1;
+}
+
+.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) {
+  cursor: pointer;
+}
+
+.admin-progress-class-overview--attached.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit {
+  opacity: 0;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  #progress-report.admin-progress-screen {
+    padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
+  }
+
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-module-header-height: 54px;
+    --admin-progress-class-task-header-height: 84px;
+    --admin-progress-class-student-col-width: 104px;
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 242px);
+    margin-top: 4px;
+  }
+
+  .admin-progress-class-view-panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px;
+    padding: 6px 4px 8px;
+    gap: 6px;
+  }
+
+  .admin-progress-class-module-stepper {
+    width: min(100%, 420px);
+  }
+
+  .admin-progress-class-module-number-strip {
+    justify-content: center;
+  }
+
+  .admin-progress-class-module-header {
+    padding-block: 3px;
+  }
+
+  .admin-progress-class-module-title {
+    font-size: clamp(0.96rem, 4.6vw, 1.16rem);
+  }
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-progress-screen {
+    padding-inline: 10px;
+  }
+
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-module-header-height: 52px;
+    --admin-progress-class-task-header-height: 86px;
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 214px);
+  }
+
+  .admin-progress-class-view-panel {
+    padding: 7px 7px 9px;
+    gap: 7px;
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-module-header-height: 50px;
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 202px);
   }
 }
