@@ -1,13 +1,11 @@
-/* M4L v90.3 - Admin Class Progress GUI refinements
-   Baseline: V90.2 Admin Class Progress anchored student column.
+/* M4L v90.3.1 - Admin Class Progress width repair
+   Baseline: V90.3 Admin Class Progress GUI refinements.
    Scope: preserve the stable global student-column + module-pane rail model,
-   refine the GUI, widen the mobile viewport, move edit/save to global A1,
-   place the Student/Teacher key in A2, add subtle module numbers, improve the
-   Stepper active indicator, centre module content, compact the module header,
-   set the Progress selector pill to surface-card, and complete FillEditCell in
-   edit mode.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
+   keep V90.3 GUI refinements, and widen the Class Progress outer work area by
+   repairing the shell/viewport width constraints rather than changing grid
+   logic. Protected: Student Progress V89.7, Admin Individual Progress, Group
+   Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner,
+   backend.
 */
 
 :root {
@@ -9909,5 +9907,106 @@ body.is-student-progress-section .app-shell {
   .admin-progress-class-overview--attached {
     --admin-progress-class-module-header-height: 50px;
     --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 202px);
+  }
+}
+
+
+/* M4L v90.3.1 - Admin Class Progress width repair
+   The V90.3 panel was widened only inside a still-narrow Progress shell. This
+   repair widens the Progress shell/work area for the Class Progress landing,
+   while leaving selector width, grid logic, FillEditCell, and Student Progress
+   untouched. */
+body.is-admin-progress-section {
+  overflow-x: hidden;
+}
+
+body.is-admin-progress-section .app-shell,
+body.is-admin-progress-section.has-user-band .app-shell,
+body.is-admin-progress-section.has-bottom-nav .app-shell,
+body.is-admin-progress-section.has-user-band.has-bottom-nav .app-shell {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: visible;
+}
+
+body.is-admin-progress-section #progress-report.admin-progress-screen {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-dashboard {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--module-panes,
+body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--attached,
+body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-view-panel {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  body.is-admin-progress-section {
+    padding-inline: 0;
+  }
+
+  body.is-admin-progress-section.has-user-band .app-shell,
+  body.is-admin-progress-section.has-user-band.has-bottom-nav .app-shell {
+    padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 2px);
+    padding-inline: 0;
+  }
+
+  body.is-admin-progress-section #progress-report.admin-progress-screen {
+    padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px));
+  }
+
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-aig-shell {
+    padding-inline: 8px;
+  }
+
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--module-panes,
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--attached {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+  }
+
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-view-panel {
+    width: 100%;
+    max-width: none;
+    padding-inline: 3px;
+  }
+
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-attached-shell {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (min-width: 768px) {
+  body.is-admin-progress-section #progress-report.admin-progress-screen {
+    padding-inline: 12px;
+  }
+
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--module-panes,
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--attached {
+    width: min(100%, 1040px);
+    max-width: 1040px;
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1180px) {
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--module-panes,
+  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--attached {
+    width: min(100%, 1180px);
+    max-width: 1180px;
   }
 }
