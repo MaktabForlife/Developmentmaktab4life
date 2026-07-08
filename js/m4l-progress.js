@@ -1,11 +1,11 @@
-/* M4L v89.6.6.2 - Student Progress native swipe right sync repair
-   Baseline: V89.6.6.1 Student Progress native scroll-snap swipe trial.
-   CSS baseline: V89.6.6.1 native scroll-snap swipe trial.
-   Scope: repair medium/large native PaneViewport scroll syncing so backward
-   swipes/scrollLeft decreases are accepted after the scroll settles. Preserve
-   the confirmed 3-slot medium layout, 5-slot large layout, mobile native swipe,
-   editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder,
-   bottom navigation, auth banner, and backend.
+/* M4L v89.7 - Student Progress native swipe boundary guard + centred Stepper
+   Baseline: V89.6.6.2 Student Progress native swipe right sync repair.
+   CSS baseline: V89.6.6.2 native scroll-snap layout.
+   Scope: keep the working medium/large native PaneViewport swipe, add a boundary
+   guard so first/last-module overscroll cannot escape Progress, and keep Stepper
+   syncing intact. Preserve the confirmed 3-slot medium layout, 5-slot large
+   layout, mobile native swipe, editable grid behaviour, Admin Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -1317,6 +1317,136 @@ function bindStudentProgressSwipeWheelControls(track) {
 }
 
 
+function bindStudentProgressNativeBoundaryGuard(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+  const viewport = getStudentProgressPaneViewport(targetTrack);
+
+  if (!targetTrack || !viewport || viewport.dataset.progressNativeBoundaryGuardBound === "true") {
+    return !!targetTrack;
+  }
+
+  if (typeof viewport.addEventListener !== "function") {
+    return false;
+  }
+
+  viewport.dataset.progressNativeBoundaryGuardBound = "true";
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartLeft = 0;
+
+  const getViewportMaxLeft = () => {
+    return Math.max(0, (viewport.scrollWidth || 0) - (viewport.clientWidth || 0));
+  };
+
+  const isAtBoundary = (direction, startLeft) => {
+    if (isStudentProgressMobileSwipeViewport()) {
+      return false;
+    }
+
+    const maxLeft = getViewportMaxLeft();
+
+    if (maxLeft <= 2) {
+      return false;
+    }
+
+    const currentLeft = viewport.scrollLeft || 0;
+    const referenceLeft = Number.isFinite(startLeft) ? startLeft : currentLeft;
+    const atStart = currentLeft <= 2 && referenceLeft <= 4;
+    const atEnd = currentLeft >= maxLeft - 2 && referenceLeft >= maxLeft - 4;
+
+    return (direction < 0 && atStart) || (direction > 0 && atEnd);
+  };
+
+  const absorbBoundaryEscape = (event, direction) => {
+    const maxLeft = getViewportMaxLeft();
+
+    if (direction < 0) {
+      viewport.scrollLeft = 0;
+    } else if (direction > 0) {
+      viewport.scrollLeft = maxLeft;
+    }
+
+    if (event && event.cancelable && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+
+    if (event && typeof event.stopPropagation === "function") {
+      event.stopPropagation();
+    }
+
+    return true;
+  };
+
+  viewport.addEventListener("wheel", event => {
+    if (!event || isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const deltaX = Number(event.deltaX || 0);
+    const deltaY = Number(event.deltaY || 0);
+
+    if (!deltaX || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    const direction = deltaX < 0 ? -1 : 1;
+
+    if (isAtBoundary(direction)) {
+      absorbBoundaryEscape(event, direction);
+    }
+  }, { passive: false });
+
+  viewport.addEventListener("touchstart", event => {
+    if (!event || isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const touch = event.touches && event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    touchStartX = touch.clientX || 0;
+    touchStartY = touch.clientY || 0;
+    touchStartLeft = viewport.scrollLeft || 0;
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", event => {
+    if (!event || isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const touch = event.touches && event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    const deltaX = (touch.clientX || 0) - touchStartX;
+    const deltaY = (touch.clientY || 0) - touchStartY;
+    const horizontalIntent = Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY) * 1.08;
+
+    if (!horizontalIntent) {
+      return;
+    }
+
+    // Finger moving right at the first module would ask the scroll container to
+    // go past scrollLeft 0. Finger moving left at the final module would ask it
+    // to go past max scrollLeft. Absorb only those edge escapes; normal module
+    // swipes remain fully native.
+    const direction = deltaX > 0 ? -1 : 1;
+
+    if (isAtBoundary(direction, touchStartLeft)) {
+      absorbBoundaryEscape(event, direction);
+    }
+  }, { passive: false });
+
+  return true;
+}
+
+
 function bindStudentProgressNativeScrollSnap(track) {
   const targetTrack = track || getStudentProgressSwipeTrack();
   const viewport = getStudentProgressPaneViewport(targetTrack);
@@ -1475,6 +1605,7 @@ function bindStudentProgressSwipeControls() {
   bindStudentProgressSwipeResizeHandler();  
   bindStudentProgressSwipeDragControls(track);
   bindStudentProgressNativeScrollSnap(track);
+  bindStudentProgressNativeBoundaryGuard(track);
   bindStudentProgressSwipeWheelControls(track);
   
   if (track.dataset.progressSwipeBound !== "true") {  
