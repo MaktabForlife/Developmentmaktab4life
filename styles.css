@@ -1,11 +1,10 @@
-/* M4L v90 - Admin Class Progress module panes + FillEditCell
-   Baseline: V89.7 Student Progress boundary guard + centred Stepper.
-   Scope: rebuild Admin Class / All Progress landing as stepper-controlled module
-   panes below the existing Admin Progress selector. Each module pane owns one
-   compact sticky grid table. Preserve rotated/wrapped task headers, remove the
-   edit control from A1, keep A1 as the Student/Teacher tick key, and apply the
-   FillEditCell rule to Class Progress body cells in edit mode.
-   Protected: Student Progress, Admin Individual Progress, Group Progress,
+/* M4L v90.1 - Admin Class Progress Student-shell rebuild
+   Baseline: V90 Admin Class Progress module panes + FillEditCell.
+   Scope: rebuild Admin Class / All Progress around the proven Student Progress
+   shell: selector stays above, Stepper sits in a surface-card view panel, module
+   panes use a 1/3/5 viewport model, headers remove percentages, edit/save icons
+   are transparent normal-size controls, and FillEditCell remains in edit mode.
+   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
 */
 
@@ -7401,41 +7400,60 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 
-/* M4L v90 - Admin Class Progress module panes + FillEditCell */
+/* M4L v90.1 - Admin Class Progress Student-shell rebuild */
 .admin-progress-class-overview--module-panes {
-  --admin-progress-class-module-header-height: 0px;
   --admin-progress-class-task-header-height: 102px;
   --admin-progress-class-student-col-width: 122px;
   --admin-progress-class-task-col-width: 50px;
   --admin-progress-class-row-height: 40px;
-  gap: 10px;
+  --admin-progress-class-visible-slots: 1;
+  --admin-progress-class-pane-gap: 12px;
+  --admin-progress-class-pane-width: 100%;
+  --admin-progress-class-pane-step: calc(100% + var(--admin-progress-class-pane-gap));
+  --admin-progress-class-edge-space: 0px;
+  --admin-progress-class-track-offset: 0px;
+  gap: 12px;
+  margin-top: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .admin-progress-class-view-panel {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
+  margin: 0 auto;
+  padding: 12px 0 14px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   align-content: start;
+  border: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-radius: 24px;
+  background: var(--surface-card);
+  box-shadow: 0 4px 14px rgba(var(--black-rgb), 0.08);
+  overflow: hidden;
 }
 
 .admin-progress-class-module-stepper {
-  width: min(100%, 440px);
-  margin: 0 auto;
+  width: min(100%, 500px);
+  margin: 0 auto 2px;
+  padding: 0 10px;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
+  position: relative;
+  z-index: 2;
 }
 
 .admin-progress-class-module-stepper--single {
-  width: min(100%, 360px);
+  width: min(100%, 420px);
   grid-template-columns: minmax(0, 1fr);
-  padding: 5px 10px;
+  padding: 7px 12px;
   border-radius: 999px;
   background: rgba(var(--white-rgb), 0.76);
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-weight: 800;
   text-align: center;
 }
@@ -7452,14 +7470,19 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 .admin-progress-class-module-stepper-arrow {
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   display: inline-grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 0;
+}
+
+.admin-progress-class-module-stepper-arrow .app-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .admin-progress-class-module-stepper-arrow:disabled {
@@ -7473,7 +7496,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 10px;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -7485,54 +7508,89 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 .admin-progress-class-module-number {
-  width: 27px;
-  min-width: 27px;
-  height: 27px;
-  min-height: 27px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
   padding: 0;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 820;
+  font-size: 0.92rem;
+  font-weight: 830;
   line-height: 1;
 }
 
 .admin-progress-class-module-number.is-active {
   background: var(--surface-card);
   color: var(--text-strong);
-  box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.10);
+  box-shadow: 0 2px 7px rgba(var(--black-rgb), 0.12);
 }
 
-.admin-progress-class-pane-stack,
-.admin-progress-class-module-pane {
-  min-width: 0;
+.admin-progress-class-pane-viewport {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.admin-progress-class-pane-stack {
+  width: max-content;
+  min-width: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: var(--admin-progress-class-pane-gap);
+  padding-inline: var(--admin-progress-class-edge-space);
+  transform: translate3d(var(--admin-progress-class-track-offset), 0, 0);
+  transition: transform 220ms ease;
+  will-change: transform;
+}
+
+.admin-progress-class-module-pane {
+  flex: 0 0 var(--admin-progress-class-pane-width);
+  width: var(--admin-progress-class-pane-width);
+  max-width: var(--admin-progress-class-pane-width);
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  opacity: 0.58;
+  transform: scale(0.98);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .admin-progress-class-module-pane[hidden] {
-  display: none !important;
+  display: grid !important;
 }
 
 .admin-progress-class-module-pane.is-active {
-  display: grid;
-  gap: 8px;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.admin-progress-class-module-pane.is-adjacent {
+  opacity: 0.72;
+}
+
+.admin-progress-class-module-pane.is-far {
+  opacity: 0.42;
 }
 
 .admin-progress-class-module-header {
-  width: min(100%, 440px);
+  width: 100%;
   min-width: 0;
   margin: 0 auto;
-  padding: 7px 10px;
+  padding: 8px 12px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border-radius: 18px;
   background: var(--surface-card);
   border: 1px solid rgba(var(--primary-rgb), 0.12);
   color: var(--text-muted);
-  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.06);
+  box-shadow: 0 2px 7px rgba(var(--black-rgb), 0.06);
 }
 
 .admin-progress-class-module-header-text {
@@ -7546,58 +7604,78 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   min-width: 0;
   margin: 0;
   color: var(--text-muted);
-  font-size: clamp(1rem, 4.5vw, 1.25rem);
-  font-weight: 800;
+  font-size: clamp(1.22rem, 5.5vw, 1.55rem);
+  font-weight: 850;
   line-height: 1.08;
   text-align: left;
   overflow-wrap: anywhere;
 }
 
 .admin-progress-class-module-header .admin-progress-class-grid-module-percentages {
-  flex: 0 0 auto;
+  display: none;
 }
 
 .admin-progress-class-module-actions {
   min-width: 0;
   display: inline-grid;
   justify-items: center;
-  gap: 2px;
+  align-content: center;
+  gap: 0;
 }
 
 .admin-progress-class-module-edit-toggle {
-  width: auto;
-  min-width: 54px;
-  min-height: 44px;
-  padding: 2px 4px;
+  width: 64px;
+  min-width: 64px;
+  min-height: 58px;
+  padding: 0;
   display: inline-grid;
   place-items: center;
-  gap: 1px;
+  gap: 2px;
+  border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   box-shadow: none;
 }
 
+.admin-progress-class-module-edit-toggle.is-editing,
+.admin-progress-class-module-edit-toggle.is-saving {
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.admin-progress-class-module-edit-toggle .app-icon {
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
+}
+
 .admin-progress-class-module-edit-toggle .admin-progress-matrix-edit-label {
-  font-size: 0.56rem;
-  line-height: 1;
+  max-width: 64px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
 }
 
 .admin-progress-class-module-actions .admin-progress-matrix-save-status {
-  min-height: 0;
-  font-size: 0.58rem;
-  line-height: 1;
+  display: none;
 }
 
 .admin-progress-class-overview--module-panes .admin-progress-class-grid-card {
+  min-height: 0;
   border-radius: 20px;
+  overflow: hidden;
 }
 
 .admin-progress-class-overview--module-panes .admin-progress-class-grid-scroll {
-  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 190px);
+  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 236px);
   overflow: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+  scrollbar-gutter: stable both-edges;
 }
 
 .admin-progress-class-overview--module-panes .admin-progress-class-grid {
@@ -7633,10 +7711,10 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 .admin-progress-class-overview--module-panes .admin-progress-class-grid-status-symbol--empty-edit {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
   display: inline-block;
   background: currentColor;
   color: var(--text-muted);
@@ -7646,7 +7724,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 }
 
 .admin-progress-class-overview--module-panes.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit {
-  opacity: 0.72;
+  opacity: 0.78;
 }
 
 .admin-progress-class-overview--module-panes.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit {
@@ -7662,20 +7740,41 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   opacity: 1;
 }
 
-@media (min-width: 760px) {
+@media (min-width: 768px) {
+  .admin-progress-class-overview--module-panes {
+    --admin-progress-class-pane-gap: 14px;
+    --admin-progress-class-task-header-height: 96px;
+    --admin-progress-class-student-col-width: 112px;
+    --admin-progress-class-task-col-width: 48px;
+    --admin-progress-class-row-height: 38px;
+  }
+
+  .admin-progress-class-view-panel {
+    padding-block: 14px 16px;
+    gap: 14px;
+  }
+
+  .admin-progress-class-module-stepper {
+    width: min(100%, 620px);
+    margin-bottom: 4px;
+  }
+
   .admin-progress-class-overview--module-panes .admin-progress-class-grid-scroll {
-    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 165px);
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 208px);
   }
 }
 
 @media (min-width: 1180px) {
-  .admin-progress-class-module-stepper,
-  .admin-progress-class-module-header {
-    width: min(100%, 560px);
+  .admin-progress-class-overview--module-panes {
+    --admin-progress-class-pane-gap: 16px;
+  }
+
+  .admin-progress-class-module-stepper {
+    width: min(100%, 760px);
   }
 
   .admin-progress-class-overview--module-panes .admin-progress-class-grid-scroll {
-    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 150px);
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 190px);
   }
 }
 
@@ -7685,46 +7784,56 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
     --admin-progress-class-student-col-width: 104px;
     --admin-progress-class-task-col-width: 46px;
     --admin-progress-class-row-height: 38px;
+    margin-top: 12px;
+  }
+
+  .admin-progress-class-view-panel {
+    border-radius: 22px;
+    padding-block: 12px 14px;
   }
 
   .admin-progress-class-module-stepper {
-    width: min(100%, 350px);
-    grid-template-columns: 34px minmax(0, 1fr) 34px;
-    gap: 5px;
+    width: min(100%, 390px);
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
   }
 
   .admin-progress-class-module-stepper-arrow {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    min-height: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .admin-progress-class-module-stepper-arrow .app-icon {
+    width: 26px;
+    height: 26px;
   }
 
   .admin-progress-class-module-number-strip {
-    gap: 5px;
+    gap: 8px;
     justify-content: flex-start;
   }
 
   .admin-progress-class-module-number {
-    width: 25px;
-    min-width: 25px;
-    height: 25px;
-    min-height: 25px;
-    font-size: 0.68rem;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    font-size: 0.86rem;
   }
 
   .admin-progress-class-module-header {
-    width: min(100%, 350px);
-    padding: 6px 8px;
+    padding: 8px 10px;
     border-radius: 16px;
   }
 
   .admin-progress-class-module-title {
-    font-size: 1rem;
+    font-size: clamp(1.18rem, 5.3vw, 1.42rem);
   }
 
   .admin-progress-class-overview--module-panes .admin-progress-class-grid-scroll {
-    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 182px);
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 232px);
   }
 
   .admin-progress-class-overview--module-panes .admin-progress-matrix-key-block--a1 {
