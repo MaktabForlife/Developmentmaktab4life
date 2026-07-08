@@ -1,10 +1,11 @@
-/* M4L v89.6.6.1 - Student Progress native scroll-snap swipe trial
-   Baseline: V89.6.6 controlled swipe gesture trial.
-   Scope: replace medium/large pointer-drag gesture simulation with true native
-   scroll-snap on the PaneViewport. Preserve the confirmed 3-slot medium layout,
-   5-slot large layout, V89.6.5 widened Stepper number strip, mobile native swipe,
-   editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder,
-   bottom navigation, auth banner, and backend.
+/* M4L v89.6.6.2 - Student Progress native swipe right sync repair
+   Baseline: V89.6.6.1 native scroll-snap swipe trial.
+   Scope: CSS layout unchanged from V89.6.6.1. Keep true native scroll-snap on
+   the PaneViewport while JS repairs right/backward swipe active-index syncing.
+   Preserve the confirmed 3-slot medium layout, 5-slot large layout, V89.6.5
+   widened Stepper number strip, mobile native swipe, editable grid behaviour,
+   Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth
+   banner, and backend.
 */
 
 :root {
