@@ -1,10 +1,11 @@
-/* M4L v89.6.5 - Student Progress tablet/PC stepper number width
-   Baseline: V89.6.4.1 mobile equal-height restore.
-   Scope: CSS-only medium/large stepper number-strip width adjustment so the
-   numbered module navigation can show all 12 modules where space allows.
-   Protected: mobile stepper, mobile swipe, medium/large 3-slot/5-slot module
-   viewport, JS behaviour, editable grid behaviour, Admin Progress, Attendance,
-   Library, Home, Recorder, bottom navigation, auth banner, and backend.
+/* M4L v89.6.6 - Student Progress controlled swipe gesture trial
+   Baseline: V89.6.5 tablet/PC stepper number width.
+   JS baseline: V89.6.3.1 Student Progress strict viewport stepper repair.
+   Scope: keep the medium/large Stepper number width and add CSS support for
+   controlled swipe gestures on the PaneViewport. Preserve mobile swipe,
+   medium/large 3-slot/5-slot module viewport, editable grid behaviour, Admin
+   Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner,
+   and backend.
 */
 
 :root {
@@ -8806,6 +8807,18 @@ body.is-student-progress-section .app-shell {
     overflow: hidden;
     position: relative;
     box-sizing: border-box;
+    touch-action: pan-y;
+    cursor: grab;
+    overscroll-behavior-inline: contain;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-pane-viewport.is-pointer-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-pane-viewport.is-pointer-dragging .student-progress-swipe-track {
+    pointer-events: none;
   }
 
   #progress-subjects-screen.student-theme .student-progress-swipe-track {
