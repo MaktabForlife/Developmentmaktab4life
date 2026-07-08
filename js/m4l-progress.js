@@ -1,7 +1,11 @@
-/* M4L v89.6.3.1 - Student Progress viewport + moving track repair
-   Baseline: V89.6.3 Student Progress outer panel viewport stepper.
-   Scope: preserve the working mobile swipe and module stepper, add a real PaneViewport wrapper, and move the medium/large PaneTrack by active index using measured fixed slot widths.
-   Protected: mobile swipe behaviour, editable grid behaviour, Admin Progress, Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
+/* M4L v89.7 - Student Progress native swipe boundary guard + centred Stepper
+   Baseline: V89.6.6.2 Student Progress native swipe right sync repair.
+   CSS baseline: V89.6.6.2 native scroll-snap layout.
+   Scope: keep the working medium/large native PaneViewport swipe, add a boundary
+   guard so first/last-module overscroll cannot escape Progress, and keep Stepper
+   syncing intact. Preserve the confirmed 3-slot medium layout, 5-slot large
+   layout, mobile native swipe, editable grid behaviour, Admin Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -615,11 +619,17 @@ function getStudentProgressSwipeTrack() {
   return document.querySelector("#progress-subjects-screen [data-progress-swipe-track]");  
 }  
 
-function getStudentProgressPaneViewport() {
-  return document.querySelector("#progress-subjects-screen [data-progress-pane-viewport]");
+function getStudentProgressPaneViewport(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+
+  if (!targetTrack || typeof targetTrack.closest !== "function") {
+    return null;
+  }
+
+  return targetTrack.closest("[data-progress-pane-viewport], .student-progress-pane-viewport");
 }
 
-function getStudentProgressVisibleSlotCount() {
+function getStudentProgressStepperVisibleSlots() {
   if (isStudentProgressMobileSwipeViewport()) {
     return 1;
   }
@@ -631,68 +641,86 @@ function getStudentProgressVisibleSlotCount() {
   return 3;
 }
 
-function updateStudentProgressControlledTrackLayout(panelIndex, options = {}) {
-  if (isStudentProgressMobileSwipeViewport()) {
+function syncStudentProgressStepperViewport(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+
+  if (!targetTrack) {
     return false;
   }
 
-  const viewport = getStudentProgressPaneViewport();
+  if (isStudentProgressMobileSwipeViewport()) {
+    targetTrack.style.removeProperty("--student-progress-visible-slots");
+    targetTrack.style.removeProperty("--student-progress-card-gap");
+    targetTrack.style.removeProperty("--student-progress-card-width");
+    targetTrack.style.removeProperty("--student-progress-card-step");
+    targetTrack.style.removeProperty("--student-progress-edge-space");
+    targetTrack.style.removeProperty("--student-progress-track-offset");
+    targetTrack.style.transform = "";
+    return true;
+  }
+
+  const viewport = getStudentProgressPaneViewport(targetTrack) || targetTrack.parentElement;
+  const viewportWidth = viewport && viewport.clientWidth ? viewport.clientWidth : targetTrack.clientWidth;
+  const slots = getStudentProgressStepperVisibleSlots();
+  const gap = slots >= 5 ? 16 : 14;
+  const cardWidth = Math.max(1, Math.floor((Math.max(1, viewportWidth) - ((slots - 1) * gap)) / slots));
+  const cardStep = cardWidth + gap;
+  const edgeSpace = Math.max(0, (Math.max(1, viewportWidth) - cardWidth) / 2);
+
+  targetTrack.style.setProperty("--student-progress-visible-slots", String(slots));
+  targetTrack.style.setProperty("--student-progress-card-gap", `${gap}px`);
+  targetTrack.style.setProperty("--student-progress-card-width", `${cardWidth}px`);
+  targetTrack.style.setProperty("--student-progress-card-step", `${cardStep}px`);
+  targetTrack.style.setProperty("--student-progress-edge-space", `${edgeSpace}px`);
+  targetTrack.style.removeProperty("--student-progress-track-offset");
+  targetTrack.style.transform = "";
+  targetTrack.classList.remove("is-stepper-jump", "is-pointer-dragging");
+  return true;
+}
+
+function moveStudentProgressStepperTrackToIndex(index, options = {}) {
   const track = getStudentProgressSwipeTrack();
   const panels = getStudentProgressSwipePanels(track);
+  const viewport = getStudentProgressPaneViewport(track);
 
-  if (!viewport || !track || !panels.length) {
+  if (!track || !viewport || !panels.length || isStudentProgressMobileSwipeViewport()) {
     return false;
   }
 
-  const requestedIndex = Number(panelIndex || 0);
-  const index = Math.max(0, Math.min(panels.length - 1, Number.isFinite(requestedIndex) ? requestedIndex : 0));
-  const viewportWidth = Math.max(0, viewport.clientWidth || 0);
+  const requestedIndex = Number(index || 0);
+  const safeIndex = Math.max(0, Math.min(panels.length - 1, Number.isFinite(requestedIndex) ? requestedIndex : 0));
+  const panel = panels[safeIndex];
 
-  if (viewportWidth <= 0) {
+  if (!panel) {
     return false;
   }
 
-  const slots = getStudentProgressVisibleSlotCount();
-  const trackStyles = typeof window !== "undefined" && typeof window.getComputedStyle === "function"
-    ? window.getComputedStyle(track)
-    : null;
-  const measuredGap = trackStyles
-    ? parseFloat(trackStyles.columnGap || trackStyles.gap || "0")
-    : 0;
-  const fallbackGap = slots >= 5 ? 16 : 14;
-  const gap = Number.isFinite(measuredGap) && measuredGap >= 0 ? measuredGap : fallbackGap;
-  const cardWidth = Math.max(1, (viewportWidth - (gap * Math.max(0, slots - 1))) / slots);
-  const cardStep = cardWidth + gap;
-  const edgeSpace = Math.max(0, (viewportWidth - cardWidth) / 2);
-  const trackOffset = -(index * cardStep);
-  const behavior = options.behavior || "smooth";
-  const isInstant = behavior === "auto" || behavior === "instant" || behavior === "none";
+  syncStudentProgressStepperViewport(track);
 
-  track.style.setProperty("--student-progress-card-width", `${cardWidth}px`);
-  track.style.setProperty("--student-progress-card-step", `${cardStep}px`);
-  track.style.setProperty("--student-progress-edge-space", `${edgeSpace}px`);
-  track.style.setProperty("--student-progress-track-offset", `${trackOffset}px`);
-  track.dataset.progressActiveIndex = String(index);
-  track.dataset.progressVisibleSlots = String(slots);
-  viewport.dataset.progressVisibleSlots = String(slots);
+  const viewportWidth = viewport.clientWidth || track.clientWidth || 1;
+  const panelCenter = (panel.offsetLeft || 0) + ((panel.offsetWidth || panel.clientWidth || 0) / 2);
+  const targetLeft = Math.max(0, Math.min(
+    Math.max(0, (viewport.scrollWidth || 0) - viewportWidth),
+    panelCenter - (viewportWidth / 2)
+  ));
 
-  if (isInstant) {
-    track.classList.add("is-layout-jump");
-    const releaseJump = () => track.classList.remove("is-layout-jump");
-    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(releaseJump);
-    } else if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
-      window.setTimeout(releaseJump, 0);
-    } else {
-      releaseJump();
-    }
+  track.style.removeProperty("--student-progress-track-offset");
+  track.style.transform = "";
+  track.classList.toggle("is-stepper-jump", options.behavior === "auto");
+
+  if (typeof viewport.scrollTo === "function") {
+    viewport.scrollTo({
+      left: targetLeft,
+      top: 0,
+      behavior: options.behavior === "auto" ? "auto" : "smooth"
+    });
   } else {
-    track.classList.remove("is-layout-jump");
+    viewport.scrollLeft = targetLeft;
   }
 
   return true;
 }
-  
+
 function getStudentProgressSwipePanels(track) {  
   const targetTrack = track || getStudentProgressSwipeTrack();  
   
@@ -707,6 +735,68 @@ function getStudentProgressSwipePanels(track) {
   });  
 }  
   
+function getStudentProgressNativeViewportActiveIndex(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+  const viewport = getStudentProgressPaneViewport(targetTrack);
+  const panels = getStudentProgressSwipePanels(targetTrack);
+
+  if (!targetTrack || !viewport || !panels.length || isStudentProgressMobileSwipeViewport()) {
+    return 0;
+  }
+
+  const viewportCenter = (viewport.scrollLeft || 0) + ((viewport.clientWidth || 0) / 2);
+  let closestIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  panels.forEach((panel, index) => {
+    const panelCenter = (panel.offsetLeft || 0) + ((panel.offsetWidth || panel.clientWidth || 0) / 2);
+    const distance = Math.abs(panelCenter - viewportCenter);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  return Math.max(0, Math.min(panels.length - 1, closestIndex));
+}
+
+function syncStudentProgressNativeViewportActiveIndex(track, options = {}) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+  const panels = getStudentProgressSwipePanels(targetTrack);
+
+  if (!targetTrack || !panels.length || isStudentProgressMobileSwipeViewport()) {
+    return false;
+  }
+
+  const requestedIndex = Number(
+    options && options.index !== undefined
+      ? options.index
+      : getStudentProgressNativeViewportActiveIndex(targetTrack)
+  );
+  const index = Math.max(0, Math.min(
+    panels.length - 1,
+    Number.isFinite(requestedIndex) ? requestedIndex : 0
+  ));
+  const activePanel = panels[index];
+
+  if (!activePanel) {
+    return false;
+  }
+
+  currentStudentSubjectKey = String(activePanel.dataset.progressModuleKey || currentStudentSubjectKey || "");
+  targetTrack.dataset.progressActiveModuleKey = currentStudentSubjectKey;
+  targetTrack.dataset.progressActiveIndex = String(index);
+  targetTrack.style.setProperty("--student-progress-active-index", String(index));
+
+  if (options.update !== false) {
+    updateStudentProgressSwipeDots();
+  }
+
+  return true;
+}
+
+
 function getStudentProgressSwipePanelStep(track) {  
   const targetTrack = track || getStudentProgressSwipeTrack();  
   const panels = getStudentProgressSwipePanels(targetTrack);  
@@ -750,9 +840,9 @@ function getStudentProgressSwipeActiveIndex(track) {
     return Math.max(0, Math.min(panelCount - 1, Number.isFinite(numberValue) ? numberValue : 0));
   };
 
-  // V89.6.1.1: On medium/large screens manual horizontal swiping is disabled,
-  // so the stepper-owned active index is the source of truth. Mobile keeps
-  // the original scroll-position based active-index behaviour.
+  // V89.6.6.2: On medium/large screens native PaneViewport scrolling updates
+  // the stored active index after the scroll settles. Stepper clicks scroll the
+  // same viewport. Mobile keeps the original track scroll-position behaviour.
   if (!isStudentProgressMobileSwipeViewport()) {
     const storedIndex = Number(targetTrack.dataset.progressActiveIndex || "");
     if (Number.isFinite(storedIndex)) {
@@ -943,26 +1033,41 @@ function scrollStudentProgressSwipeToIndex(panelIndex, options = {}) {
   track.dataset.progressActiveModuleKey = currentStudentSubjectKey;
   track.dataset.progressActiveIndex = String(index);
   track.style.setProperty("--student-progress-active-index", String(index));
-
-  // V89.6.3.1: mobile keeps the proven native horizontal scroll model.
-  // Medium/large uses a real clipped PaneViewport and moves the PaneTrack by
-  // active index, so arrows/numbers always bring off-screen modules into view.
+  
   if (!isMobile) {
-    updateStudentProgressControlledTrackLayout(index, { behavior });
+    moveStudentProgressStepperTrackToIndex(index, { behavior });
     resetStudentProgressViewportScroll();
     updateStudentProgressSwipeDots();
+
+    const finishStepperUpdate = () => {
+      moveStudentProgressStepperTrackToIndex(index, { behavior });
+      updateStudentProgressSwipeDots();
+    };
+
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(finishStepperUpdate);
+    } else {
+      window.setTimeout(finishStepperUpdate, 0);
+    }
+
     return true;
   }
   
   // V76.7.2: scroll only the Student Progress rail. Avoid panel.scrollIntoView(),
   // because iOS Safari can satisfy it by horizontally scrolling the page/body.
+  // V89.6.1.1: mobile keeps the existing left-aligned card focus; medium/large
+  // uses the same safe scrollLeft method, but centres the selected card in the
+  // controlled stepper viewport.
   const trackRect = track.getBoundingClientRect ? track.getBoundingClientRect() : null;  
   const panelRect = panel.getBoundingClientRect ? panel.getBoundingClientRect() : null;  
   const rawLeft = trackRect && panelRect  
     ? (panelRect.left - trackRect.left + (track.scrollLeft || 0))  
     : (panel.offsetLeft - track.offsetLeft);  
+  const panelWidth = panelRect && panelRect.width ? panelRect.width : (panel.offsetWidth || 0);
+  const trackWidth = trackRect && trackRect.width ? trackRect.width : (track.clientWidth || 0);
   const maxLeft = Math.max(0, (track.scrollWidth || 0) - (track.clientWidth || 0));  
-  const targetLeft = Math.max(0, Math.min(maxLeft, rawLeft || 0));  
+  const centredLeft = rawLeft - Math.max(0, (trackWidth - panelWidth) / 2);
+  const targetLeft = Math.max(0, Math.min(maxLeft, isMobile ? (rawLeft || 0) : (centredLeft || 0)));  
   
   if (typeof track.scrollTo === "function") {  
     track.scrollTo({  
@@ -974,13 +1079,26 @@ function scrollStudentProgressSwipeToIndex(panelIndex, options = {}) {
     track.scrollLeft = targetLeft;  
   }  
   
+  // Keep the app/page itself anchored at the left edge. The nested rail owns  
+  // horizontal movement; the document should never remain horizontally panned.  
   resetStudentProgressViewportScroll();  
+  
   updateStudentProgressSwipeDots();  
   
+  const finishUpdate = () => {
+    // Some desktop Safari/WebKit builds are conservative with programmatic
+    // scrolling when overflow is visually hidden. Keep the rail's stored active
+    // index authoritative and nudge the scroll position once if needed.
+    if (!isMobile && Math.abs((track.scrollLeft || 0) - targetLeft) > 2) {
+      track.scrollLeft = targetLeft;
+    }
+    updateStudentProgressSwipeDots();
+  };
+
   if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {  
-    window.requestAnimationFrame(updateStudentProgressSwipeDots);  
+    window.requestAnimationFrame(finishUpdate);  
   } else {  
-    window.setTimeout(updateStudentProgressSwipeDots, 0);  
+    window.setTimeout(finishUpdate, 0);  
   }  
   
   return true;  
@@ -1042,18 +1160,20 @@ function bindStudentProgressSwipeResizeHandler() {
   }  
   
   studentProgressSwipeResizeHandlerBound = true;  
-  window.addEventListener("resize", () => {  
+  window.addEventListener("resize", () => {
     const track = getStudentProgressSwipeTrack();
-    const activeIndex = getStudentProgressSwipeActiveIndex(track);
 
     if (track && !isStudentProgressMobileSwipeViewport()) {
+      syncStudentProgressStepperViewport(track);
+      const activeIndex = getStudentProgressSwipeActiveIndex(track);
       scrollStudentProgressSwipeToIndex(activeIndex, { behavior: "auto" });
     } else {
+      syncStudentProgressStepperViewport(track);
       updateStudentProgressSwipeDots();
     }
 
-    scheduleStudentProgressHeaderMetricsUpdate();  
-    updateStudentProgressTaskScrollState();  
+    scheduleStudentProgressHeaderMetricsUpdate();
+    updateStudentProgressTaskScrollState();
   }, { passive: true });  
   return true;  
 }  
@@ -1151,13 +1271,10 @@ function bindStudentProgressSwipeWheelControls(track) {
     const isMostlyHorizontal = Math.abs(deltaX) >= Math.abs(deltaY);
     const shouldUseVerticalAsHorizontal = event.shiftKey && Math.abs(deltaY) > 0;
 
-    // V89.6.1.1: medium/large Progress is a controlled stepper. Prevent
-    // trackpad/wheel horizontal rail movement there; arrows/numbers remain the
-    // only larger-screen navigation. Mobile keeps the existing swipe behaviour.
+    // V89.6.6.1: medium/large Progress uses native scrolling on the
+    // PaneViewport, so do not block horizontal touchpad/wheel movement.
+    // The PaneViewport scroll listener keeps the Stepper active index synced.
     if (!isStudentProgressMobileSwipeViewport()) {
-      if (isMostlyHorizontal || shouldUseVerticalAsHorizontal) {
-        event.preventDefault();
-      }
       return;
     }
 
@@ -1200,6 +1317,284 @@ function bindStudentProgressSwipeWheelControls(track) {
 }
 
 
+function bindStudentProgressNativeBoundaryGuard(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+  const viewport = getStudentProgressPaneViewport(targetTrack);
+
+  if (!targetTrack || !viewport || viewport.dataset.progressNativeBoundaryGuardBound === "true") {
+    return !!targetTrack;
+  }
+
+  if (typeof viewport.addEventListener !== "function") {
+    return false;
+  }
+
+  viewport.dataset.progressNativeBoundaryGuardBound = "true";
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartLeft = 0;
+
+  const getViewportMaxLeft = () => {
+    return Math.max(0, (viewport.scrollWidth || 0) - (viewport.clientWidth || 0));
+  };
+
+  const isAtBoundary = (direction, startLeft) => {
+    if (isStudentProgressMobileSwipeViewport()) {
+      return false;
+    }
+
+    const maxLeft = getViewportMaxLeft();
+
+    if (maxLeft <= 2) {
+      return false;
+    }
+
+    const currentLeft = viewport.scrollLeft || 0;
+    const referenceLeft = Number.isFinite(startLeft) ? startLeft : currentLeft;
+    const atStart = currentLeft <= 2 && referenceLeft <= 4;
+    const atEnd = currentLeft >= maxLeft - 2 && referenceLeft >= maxLeft - 4;
+
+    return (direction < 0 && atStart) || (direction > 0 && atEnd);
+  };
+
+  const absorbBoundaryEscape = (event, direction) => {
+    const maxLeft = getViewportMaxLeft();
+
+    if (direction < 0) {
+      viewport.scrollLeft = 0;
+    } else if (direction > 0) {
+      viewport.scrollLeft = maxLeft;
+    }
+
+    if (event && event.cancelable && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+
+    if (event && typeof event.stopPropagation === "function") {
+      event.stopPropagation();
+    }
+
+    return true;
+  };
+
+  viewport.addEventListener("wheel", event => {
+    if (!event || isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const deltaX = Number(event.deltaX || 0);
+    const deltaY = Number(event.deltaY || 0);
+
+    if (!deltaX || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    const direction = deltaX < 0 ? -1 : 1;
+
+    if (isAtBoundary(direction)) {
+      absorbBoundaryEscape(event, direction);
+    }
+  }, { passive: false });
+
+  viewport.addEventListener("touchstart", event => {
+    if (!event || isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const touch = event.touches && event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    touchStartX = touch.clientX || 0;
+    touchStartY = touch.clientY || 0;
+    touchStartLeft = viewport.scrollLeft || 0;
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", event => {
+    if (!event || isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const touch = event.touches && event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    const deltaX = (touch.clientX || 0) - touchStartX;
+    const deltaY = (touch.clientY || 0) - touchStartY;
+    const horizontalIntent = Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY) * 1.08;
+
+    if (!horizontalIntent) {
+      return;
+    }
+
+    // Finger moving right at the first module would ask the scroll container to
+    // go past scrollLeft 0. Finger moving left at the final module would ask it
+    // to go past max scrollLeft. Absorb only those edge escapes; normal module
+    // swipes remain fully native.
+    const direction = deltaX > 0 ? -1 : 1;
+
+    if (isAtBoundary(direction, touchStartLeft)) {
+      absorbBoundaryEscape(event, direction);
+    }
+  }, { passive: false });
+
+  return true;
+}
+
+
+function bindStudentProgressNativeScrollSnap(track) {
+  const targetTrack = track || getStudentProgressSwipeTrack();
+  const viewport = getStudentProgressPaneViewport(targetTrack);
+
+  if (!targetTrack || !viewport || viewport.dataset.progressNativeScrollBound === "true") {
+    return !!targetTrack;
+  }
+
+  if (typeof viewport.addEventListener !== "function") {
+    return false;
+  }
+
+  viewport.dataset.progressNativeScrollBound = "true";
+  viewport.classList.add("student-progress-pane-viewport--native-scroll");
+
+  let settleTimer = 0;
+  let lastScrollLeft = viewport.scrollLeft || 0;
+  let scrollStartLeft = lastScrollLeft;
+  let scrollStartIndex = getStudentProgressSwipeActiveIndex(targetTrack);
+  let scrollDirection = 0;
+
+  const getClampedIndex = value => {
+    const panels = getStudentProgressSwipePanels(targetTrack);
+    const numberValue = Number(value);
+    return Math.max(0, Math.min(
+      Math.max(0, panels.length - 1),
+      Number.isFinite(numberValue) ? numberValue : 0
+    ));
+  };
+
+  const getStudentProgressNativeStep = () => {
+    const panels = getStudentProgressSwipePanels(targetTrack);
+
+    if (panels.length > 1) {
+      const firstPanel = panels[0];
+      const secondPanel = panels[1];
+      const firstCenter = (firstPanel.offsetLeft || 0) + ((firstPanel.offsetWidth || firstPanel.clientWidth || 0) / 2);
+      const secondCenter = (secondPanel.offsetLeft || 0) + ((secondPanel.offsetWidth || secondPanel.clientWidth || 0) / 2);
+      const measuredStep = Math.abs(secondCenter - firstCenter);
+
+      if (measuredStep > 1) {
+        return measuredStep;
+      }
+    }
+
+    const computed = typeof window !== "undefined" && typeof window.getComputedStyle === "function"
+      ? window.getComputedStyle(targetTrack)
+      : null;
+    const cssStep = computed ? parseFloat(computed.getPropertyValue("--student-progress-card-step")) : 0;
+
+    return Number.isFinite(cssStep) && cssStep > 1
+      ? cssStep
+      : Math.max(1, viewport.clientWidth || targetTrack.clientWidth || 1);
+  };
+
+  const finishNativeScrollSync = () => {
+    if (isStudentProgressMobileSwipeViewport()) {
+      return false;
+    }
+
+    syncStudentProgressStepperViewport(targetTrack);
+
+    const panels = getStudentProgressSwipePanels(targetTrack);
+
+    if (!panels.length) {
+      return false;
+    }
+
+    const nativeIndex = getStudentProgressNativeViewportActiveIndex(targetTrack);
+    const startIndex = getClampedIndex(scrollStartIndex);
+    const currentLeft = viewport.scrollLeft || 0;
+    const totalDelta = currentLeft - scrollStartLeft;
+    const direction = Math.abs(totalDelta) > 1 ? Math.sign(totalDelta) : scrollDirection;
+    const step = getStudentProgressNativeStep();
+    const threshold = Math.max(18, Math.min(90, step * 0.16));
+    let nextIndex = nativeIndex;
+
+    // V89.6.6.2: native scroll-snap can settle back on the current card if the
+    // scroll listener keeps the old active index too eagerly. Accept both
+    // scrollLeft increases and decreases after the scroll settles, using the
+    // measured scroll direction as a tie-breaker when the nearest card has not
+    // changed yet. This specifically restores backward/right swipe movement.
+    if (Math.abs(totalDelta) >= threshold) {
+      if (direction < 0 && nativeIndex >= startIndex) {
+        nextIndex = Math.max(0, startIndex - 1);
+      } else if (direction > 0 && nativeIndex <= startIndex) {
+        nextIndex = Math.min(panels.length - 1, startIndex + 1);
+      }
+    }
+
+    syncStudentProgressNativeViewportActiveIndex(targetTrack, {
+      index: nextIndex,
+      update: false
+    });
+    updateStudentProgressSwipeDots();
+
+    if (nextIndex !== nativeIndex) {
+      moveStudentProgressStepperTrackToIndex(nextIndex, {
+        behavior: "smooth"
+      });
+    }
+
+    lastScrollLeft = viewport.scrollLeft || 0;
+    scrollStartLeft = lastScrollLeft;
+    scrollStartIndex = nextIndex;
+    scrollDirection = 0;
+    return true;
+  };
+
+  viewport.addEventListener("scroll", () => {
+    if (isStudentProgressMobileSwipeViewport()) {
+      return;
+    }
+
+    const currentScrollLeft = viewport.scrollLeft || 0;
+
+    if (!settleTimer) {
+      scrollStartLeft = lastScrollLeft;
+      scrollStartIndex = getStudentProgressSwipeActiveIndex(targetTrack);
+      scrollDirection = 0;
+    }
+
+    if (currentScrollLeft > lastScrollLeft + 0.5) {
+      scrollDirection = 1;
+    } else if (currentScrollLeft < lastScrollLeft - 0.5) {
+      scrollDirection = -1;
+    }
+
+    lastScrollLeft = currentScrollLeft;
+
+    if (settleTimer && typeof window !== "undefined" && typeof window.clearTimeout === "function") {
+      window.clearTimeout(settleTimer);
+    }
+
+    if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+      settleTimer = window.setTimeout(() => {
+        settleTimer = 0;
+        finishNativeScrollSync();
+      }, 170);
+    } else {
+      finishNativeScrollSync();
+    }
+  }, { passive: true });
+
+  return true;
+}
+
+
 function bindStudentProgressSwipeControls() {  
   const track = getStudentProgressSwipeTrack();  
   
@@ -1209,6 +1604,8 @@ function bindStudentProgressSwipeControls() {
   
   bindStudentProgressSwipeResizeHandler();  
   bindStudentProgressSwipeDragControls(track);
+  bindStudentProgressNativeScrollSnap(track);
+  bindStudentProgressNativeBoundaryGuard(track);
   bindStudentProgressSwipeWheelControls(track);
   
   if (track.dataset.progressSwipeBound !== "true") {  
@@ -1216,8 +1613,9 @@ function bindStudentProgressSwipeControls() {
     let pendingFrame = 0;  
   
     track.addEventListener("scroll", () => {  
+      if (!isStudentProgressMobileSwipeViewport()) return;
       if (pendingFrame) return;  
-  
+
       pendingFrame = window.requestAnimationFrame(() => {  
         pendingFrame = 0;  
         updateStudentProgressSwipeDots();  
@@ -1913,14 +2311,10 @@ function renderStudentSubjectProgress(options = {}) {
   setDomHtml(container, `
     <div class="m4l-progress-swipe-shell student-progress-swipe-shell" data-progress-swipe="progress-subjects-screen">
       ${renderStudentProgressGlobalActions(modules, preferredModuleKey)}
-      <div
-        class="student-progress-pane-viewport"
-        data-progress-pane-viewport
-        aria-label="Student progress module viewport"
-      >
+      <div class="student-progress-pane-viewport" data-progress-pane-viewport>
         <div
           id="student-progress-swipe-track"
-          class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track student-progress-pane-track"
+          class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track"
           data-progress-swipe-track
           data-progress-active-index="${getStudentProgressModuleIndexFromKey(modules, preferredModuleKey)}"
           aria-label="Student progress modules"
@@ -1942,6 +2336,7 @@ function renderStudentSubjectProgress(options = {}) {
     updateStudentProgressTaskScrollState();
 
     if (!isStudentProgressMobileSwipeViewport()) {
+      syncStudentProgressStepperViewport(getStudentProgressSwipeTrack());
       scrollStudentProgressSwipeToIndex(preferredIndex, {
         behavior: options.scrollBehavior || "auto"
       });
