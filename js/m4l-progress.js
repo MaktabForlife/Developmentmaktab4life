@@ -1,12 +1,12 @@
-/* M4L v90.4.3 - Admin Class Progress control/key polish
-   Baseline: V90.4.2 Admin Class Progress FillToEdit cleanup.
+/* M4L v90.5 - Admin Class Progress tick/edit/task text polish
+   Baseline: V90.4.3 Admin Class Progress control/key polish.
    Scope: preserve the stable global student-column architecture and working
-   FillToEdit text glyph, add bottom breathing space to the synchronized student
-   list/module body scrollers, move the compact tick key into A1, and move the
-   larger Click-to-edit / Save control into A2. Protected: Student Progress
+   FillToEdit text glyph; CSS now makes the compact tick key transparent,
+   tightens the Click-to-edit / Save icon-label spacing, and sets rotated
+   class task-name text to 0.7rem with 400 weight. Protected: Student Progress
    V89.7, Admin Individual Progress, Group Progress, Attendance, Library, Home,
    Recorder, bottom navigation, auth banner, and backend.
-   Note: does not restore the removed legacy renderTaskStatusIndicator function.
+   Note: no JS behaviour changed in V90.5.
 */  
   
 /* =========================  
