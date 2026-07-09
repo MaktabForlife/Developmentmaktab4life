@@ -1,15 +1,14 @@
-/* M4L v90.8.1 - Admin Class Progress live group/module accordion
-   Baseline: V90.7.1 Admin Class Progress even module banding.
-   Scope: preserve the live Class Progress dataset, global student-column
-   anchor, A1/A2 key/edit controls, V90.7 continuous grid language, V90.7.1
-   even module banding, background-save navigation, and backend; replace the
-   immediate fully-expanded landing with a two-way accordion. Groups are
-   collapsed vertically by default, modules are collapsed horizontally by
-   default, chevrons appear after Group/Module labels, and live cells appear
-   when both the group and module are expanded. Protected: Student Progress
-   V89.7, Admin Individual Progress, Attendance, Library, Home, Recorder,
-   bottom navigation, auth banner, Worker, Apps Script, and backend API
-   behaviour.
+/* M4L v90.8.2 - Admin Class Progress accordion visual polish
+   Baseline: V90.8.1 Admin Class Progress live group/module accordion.
+   Scope: preserve the live two-way group/module accordion, global
+   student-column anchor, A1/A2 key/edit controls, V90.7.1 even-module header
+   banding, background-save navigation, and backend; polish the accordion
+   visuals so column/module headings are wider and clearer, group rows use the
+   surface-chip background, row 2 keeps the surface-chip band, and editable
+   grid body cells no longer use alternating module backgrounds. Protected:
+   Student Progress V89.7, Admin Individual Progress, Attendance, Library,
+   Home, Recorder, bottom navigation, auth banner, Worker, Apps Script, and
+   backend API behaviour.
 */
 
 /* =========================  
