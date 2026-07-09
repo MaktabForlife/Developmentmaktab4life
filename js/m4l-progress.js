@@ -1,13 +1,14 @@
-/* M4L v90.9.0 - Progress save behaviour and reliability correction
-   Baseline: V90.8.7.3 Admin Individual Progress module edit and large-screen guard fix.
-   Scope: preserve the completed Class/Group Progress V90.8.4 and Individual
-   Progress V90.8.7.3 layouts; correct Class Progress save UX so save exits
-   edit mode immediately while the background save/status pill continues; and
-   harden Student Progress autosave by draining a queued save loop, preserving
-   changes made while a save is in flight, and resetting module edit icons only
-   after confirmed save. No frontend array conversion in this version.
-   Protected: Attendance, Library, Home, Recorder, nav, auth banner, Worker,
-   Apps Script, backend API behaviour, and visual Progress layout.
+/* M4L v90.9.1 - Progress frontend batch arrays and Student save-icon UX
+   Baseline: V90.9.0 Progress save behaviour and reliability correction.
+   Scope: preserve the reliable V90.9.0 queued/background save behaviour while
+   converting frontend Progress saves to batch array payloads for the V90.8.8
+   backend trial. Student Progress keeps foolproof autosave, but pressing the
+   save icon now immediately returns the module to Click to edit while the
+   queued background save and global status pill continue. Admin Progress saves
+   continue to exit edit mode immediately, now using batched frontend requests.
+   Protected: completed Class/Group Progress layout, Individual Progress layout,
+   Attendance, Library, Home, Recorder, nav, auth banner, Worker, Apps Script,
+   and backend API behaviour.
 */
 
 /* =========================  
@@ -2384,24 +2385,36 @@ function setStudentProgressModuleEditButtonError(button, label = "Save failed") 
   return true;
 }  
   
-async function finishStudentProgressModuleEdit(button, key) {  
-  setStudentProgressModuleEditButtonSaving(button, "Saving...");  
-  
-  try {  
-    const saved = await flushStudentProgressAutoSave();  
-  
-    if (saved === false && hasProgressPendingUpdates()) {  
-      setStudentProgressModuleEditButtonError(button, "Save failed");  
-      return false;  
-    }  
-  
-    setStudentProgressModuleEditState(key, false);  
-    return true;  
-  } catch (err) {  
-    console.error("Could not save student progress before finishing edit mode:", err);  
-    setStudentProgressModuleEditButtonError(button, "Save failed");  
-    return false;  
-  }  
+async function finishStudentProgressModuleEdit(button, key) {
+  const moduleKey = String(key || button?.dataset?.progressModuleKey || getStudentProgressSwipeActiveModuleKey() || "");
+
+  if (!moduleKey) {
+    return false;
+  }
+
+  // V90.9.1: the save icon acts as "done editing". Return to the
+  // Click-to-edit state immediately while the reliable autosave queue drains
+  // in the background and the global saving pill remains visible.
+  setStudentProgressModuleEditState(moduleKey, false);
+
+  try {
+    const saved = await flushStudentProgressAutoSave();
+
+    if (saved === false && hasProgressPendingUpdates()) {
+      setStudentProgressModuleEditState(moduleKey, true);
+      const retryButton = document.querySelector(`[data-progress-action="toggle-student-progress-module-edit"][data-progress-module-key="${escapeCssAttributeValue(moduleKey)}"]`);
+      setStudentProgressModuleEditButtonError(retryButton || button, "Save failed");
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Could not save student progress before finishing edit mode:", err);
+    setStudentProgressModuleEditState(moduleKey, true);
+    const retryButton = document.querySelector(`[data-progress-action="toggle-student-progress-module-edit"][data-progress-module-key="${escapeCssAttributeValue(moduleKey)}"]`);
+    setStudentProgressModuleEditButtonError(retryButton || button, "Save failed");
+    return false;
+  }
 }  
   
 function toggleStudentProgressModuleEdit(button) {  
@@ -2788,6 +2801,16 @@ function updateStudentProgressStatusControls(studenttaskid, complete) {
   return didUpdate;  
 }  
   
+function finishStudentProgressAllModuleEditStates() {
+  Object.keys(studentProgressModuleEditState || {}).forEach(moduleKey => {
+    if (studentProgressModuleEditState[moduleKey] === true) {
+      setStudentProgressModuleEditState(moduleKey, false);
+    }
+  });
+
+  return true;
+}
+
 function resetStudentProgressSavedModuleEditStates() {
   if (hasProgressPendingUpdates()) {
     return false;
@@ -2937,8 +2960,10 @@ function toggleStudentSubjectTask(studenttaskid, complete) {
   
 async function toggleStudentTask(studenttaskid, complete) {  
   const result = await apiPost("/api/tasks/update-complete", {  
-    studenttaskid,  
-    complete  
+    updates: [{  
+      studenttaskid,  
+      complete  
+    }]  
   }, state.token);  
   
   if (!result.success) {  
@@ -7756,36 +7781,55 @@ async function saveProgressPendingChanges(options = {}) {
     ? beginProgressGlobalStatus("Saving progress...")
     : null;
 
+  const completeUpdates = [];
+  const verifyUpdates = [];
+
+  updates.forEach(update => {
+    if (!update || !update.studenttaskid) {
+      return;
+    }
+
+    if (update.completeStatus !== undefined) {
+      completeUpdates.push({
+        studenttaskid: update.studenttaskid,
+        complete: update.completeStatus !== ""
+      });
+    }
+
+    if (update.verifyStatus !== undefined) {
+      verifyUpdates.push({
+        studenttaskid: update.studenttaskid,
+        verified: update.verifyStatus !== ""
+      });
+    }
+  });
+
   try {
-    for (const update of updates) {
-      if (update.completeStatus !== undefined) {
-        const completeResult = await apiPost("/api/tasks/update-complete", {
-          studenttaskid: update.studenttaskid,
-          complete: update.completeStatus !== ""
-        }, state.token);
+    if (completeUpdates.length > 0) {
+      const completeResult = await apiPost("/api/tasks/update-complete", {
+        updates: completeUpdates
+      }, state.token);
 
-        if (!completeResult.success) {
-          failProgressGlobalStatus(statusToken, "Progress save failed");
-          if (shouldAlert) {
-            alert(completeResult.error || "Could not save completion update.");
-          }
-          return false;
+      if (!completeResult.success) {
+        failProgressGlobalStatus(statusToken, "Progress save failed");
+        if (shouldAlert) {
+          alert(completeResult.error || "Could not save completion updates.");
         }
+        return false;
       }
+    }
 
-      if (update.verifyStatus !== undefined) {
-        const verifyResult = await apiPost("/api/admin/tasks/verify", {
-          studenttaskid: update.studenttaskid,
-          verified: update.verifyStatus !== ""
-        }, state.token);
+    if (verifyUpdates.length > 0) {
+      const verifyResult = await apiPost("/api/admin/tasks/verify", {
+        updates: verifyUpdates
+      }, state.token);
 
-        if (!verifyResult.success) {
-          failProgressGlobalStatus(statusToken, "Progress save failed");
-          if (shouldAlert) {
-            alert(verifyResult.error || "Could not save verification update.");
-          }
-          return false;
+      if (!verifyResult.success) {
+        failProgressGlobalStatus(statusToken, "Progress save failed");
+        if (shouldAlert) {
+          alert(verifyResult.error || "Could not save verification updates.");
         }
+        return false;
       }
     }
 
@@ -7842,40 +7886,23 @@ async function saveProgressPendingChangesAndReturn() {
   }  
 }  
   
-async function saveStudentProgressSwipeChanges(button) {  
-  const saveButton = button || document.querySelector("#progress-subjects-screen .student-progress-save-btn");  
-  const originalText = saveButton ? saveButton.innerText : "Save";  
-  const pendingCount = Object.keys(progressPendingUpdates || {}).length;  
-  
-  if (pendingCount === 0) {  
-    if (saveButton) {  
-      saveButton.innerText = "Saved";  
-      window.setTimeout(() => {  
-        saveButton.innerText = originalText;  
-      }, 900);  
-    }  
-    return false;  
-  }  
-  
-  if (saveButton) {  
-    saveButton.disabled = true;  
-    saveButton.innerText = "Saving...";  
-  }  
-  
-  const saved = await saveProgressPendingChanges({ reload: false, alert: false });  
-  
-  if (saveButton) {  
-    saveButton.disabled = false;  
-    saveButton.innerText = saved ? "Saved" : originalText;  
-  
-    if (saved) {  
-      window.setTimeout(() => {  
-        saveButton.innerText = originalText;  
-      }, 900);  
-    }  
-  }  
-  
-  return saved;  
+async function saveStudentProgressSwipeChanges(button) {
+  const pendingCount = Object.keys(progressPendingUpdates || {}).length;
+
+  // V90.9.1: keep the learner-facing save button as good-practice guidance,
+  // but treat it as "done editing". The save queue continues in the background.
+  finishStudentProgressAllModuleEditStates();
+
+  if (pendingCount === 0 && !studentProgressAutoSaveInFlight) {
+    return false;
+  }
+
+  try {
+    return await flushStudentProgressAutoSave();
+  } catch (err) {
+    console.error("Could not save student progress:", err);
+    return false;
+  }
 }  
   
 async function saveStudentTaskChangesAndReturn() {  
