@@ -1,16 +1,16 @@
-/* M4L v90.6.1 - Admin Class Progress mobile module arrows polish
-   Baseline: V90.5 Admin Class Progress tick/edit/task text polish.
-   Scope: preserve the stable global student-column architecture, working
-   FillToEdit text glyph, V90.5 key/edit/task typography polish, and backend;
-   remove the visible Class Progress module stepper and let the module pane
-   viewport use native horizontal scroll-snap so swiping on the module header
-   moves between modules. Protected: Student Progress V89.7, Admin Individual
-   Progress, Group Progress, Attendance, Library, Home, Recorder, bottom
-   navigation, auth banner, and backend.
-   V90.6.1 mobile finish: lower the Click-to-edit label slightly and add
-   active left/right module-arrow cues beside each module name. The first module
-   shows only the right arrow, the last module shows only the left arrow, and
-   middle modules show both. Task-name swipe cues are intentionally deferred.
+/* M4L v90.6.2 - Admin Progress background-save navigation
+   Baseline: V90.6.1 Admin Class Progress mobile module arrows polish.
+   Scope: preserve the locked V90.6.1 mobile Class Progress layout, the stable
+   global student-column architecture, native module-header swipe, active
+   left/right module arrows, V90.5 key/edit/task typography polish, and backend;
+   update Admin Progress save/leave flow so confirmed saves run in the
+   background and normal in-app navigation can continue immediately. Protected:
+   Student Progress V89.7, Admin Individual Progress, Group Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, and
+   backend.
+   Note: this does not add a batch backend endpoint. Existing per-change API
+   calls remain in use, but they no longer block normal in-app navigation after
+   the user confirms background save.
 */  
   
 /* =========================  
