@@ -1,13 +1,12 @@
-/* M4L v90.4 - Admin Class Progress FillToEdit
-   Baseline: V90.3.1 Admin Class Progress width repair.
-   Scope: preserve the stable global student-column + module-pane rail model,
-   keep the width repair, and complete the FillToEdit rule for Admin Progress
-   matrix cells. In edit mode, empty editable body cells show edit.svg, complete
-   cells show a green tick, and verified cells show a gold tick. Group grid cells
-   receive the same shared empty/complete/verified visual metadata for reuse.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress
-   layout, Attendance, Library, Home, Recorder, bottom navigation, auth banner,
-   backend.
+/* M4L v90.4.2 - Admin Class Progress FillToEdit cleanup
+   Baseline: V90.4.1 Admin Class Progress FillToEdit text symbol.
+   Scope: clean the Admin Class Progress FillToEdit implementation so empty
+   editable body cells use only the plain text pencil glyph. Remove leftover
+   Class Progress FillToEdit CSS/comment snippets from the earlier masked-icon
+   experiment while preserving the stable global student-column architecture,
+   V90.3 GUI refinements, and V90.3.1 width repair.
+   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
 */
 
 :root {
@@ -7264,7 +7263,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   opacity: 0.62;
 }
 
-.admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol {
+.admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol:not(.admin-progress-class-grid-status-symbol--empty-edit-text) {
   width: 8px;
   height: 8px;
   border-radius: 999px;
@@ -7908,7 +7907,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   opacity: 0.45;
 }
 
-.admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol {
+.admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol:not(.admin-progress-class-grid-status-symbol--empty-edit-text) {
   width: 8px;
   height: 8px;
   border-radius: 999px;
@@ -7934,33 +7933,37 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   line-height: 1;
 }
 
-.admin-progress-class-grid-status-symbol--empty-edit {
+.admin-progress-class-grid-status-symbol--empty-edit-text {
   width: 22px;
   height: 22px;
   min-width: 22px;
   min-height: 22px;
-  display: inline-block;
-  background: currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
   opacity: 0;
-  -webkit-mask: url('/icons/edit.svg') center / contain no-repeat;
-  mask: url('/icons/edit.svg') center / contain no-repeat;
 }
 
 .admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button:not(:disabled) {
   cursor: pointer;
 }
 
-.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit {
-  opacity: 0.78;
+.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit-text {
+  opacity: 0.86;
 }
 
-.admin-progress-class-overview--attached.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit {
+.admin-progress-class-overview--attached.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit-text {
   opacity: 0;
 }
 
-.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled):focus-visible .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled):hover .admin-progress-class-grid-status-symbol--empty-edit {
+.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:focus-visible .admin-progress-class-grid-status-symbol--empty-edit-text,
+.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:hover .admin-progress-class-grid-status-symbol--empty-edit-text {
   opacity: 1;
 }
 
@@ -9835,17 +9838,6 @@ body.is-student-progress-section .app-shell {
   justify-content: center;
 }
 
-.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit {
-  opacity: 1;
-}
-
-.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) {
-  cursor: pointer;
-}
-
-.admin-progress-class-overview--attached.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit {
-  opacity: 0;
-}
 
 @media (max-width: 767px), (max-device-width: 767px) {
   #progress-report.admin-progress-screen {
@@ -10012,57 +10004,3 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     max-width: 1180px;
   }
 }
-
-/* M4L v90.4 - FillToEdit: editable empty cells are never visually blank in edit mode. */
-.admin-progress-class-grid-status-symbol--empty-edit {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  min-height: 22px;
-  display: inline-block;
-  flex: 0 0 auto;
-  background: currentColor;
-  color: var(--text-muted);
-  opacity: 0;
-  -webkit-mask: url('/icons/edit.svg') center / contain no-repeat;
-  mask: url('/icons/edit.svg') center / contain no-repeat;
-}
-
-.admin-progress-class-overview.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled),
-.admin-progress-group-overview.is-editing .admin-progress-group-grid-status-button--blank:not(:disabled) {
-  cursor: pointer;
-}
-
-.admin-progress-class-overview.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-class-overview--attached.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-group-overview.is-editing .admin-progress-group-grid-status-button--blank:not(:disabled) .admin-progress-class-grid-status-symbol--empty-edit {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  min-height: 22px;
-  opacity: 0.84;
-}
-
-.admin-progress-class-overview.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled):focus-visible .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-class-overview.is-editing .admin-progress-class-grid-status-button--blank:not(:disabled):hover .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-group-overview.is-editing .admin-progress-group-grid-status-button--blank:not(:disabled):focus-visible .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-group-overview.is-editing .admin-progress-group-grid-status-button--blank:not(:disabled):hover .admin-progress-class-grid-status-symbol--empty-edit {
-  opacity: 1;
-}
-
-.admin-progress-class-overview.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-class-overview--attached.is-viewing .admin-progress-class-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit,
-.admin-progress-group-overview.is-viewing .admin-progress-group-grid-status-button--blank .admin-progress-class-grid-status-symbol--empty-edit {
-  opacity: 0;
-}
-
-.admin-progress-class-grid-status-button[data-state="complete"] .admin-progress-class-grid-status-symbol,
-.admin-progress-group-grid-status-button[data-state="complete"] .admin-progress-class-grid-status-symbol {
-  color: var(--complete);
-}
-
-.admin-progress-class-grid-status-button[data-state="verified"] .admin-progress-class-grid-status-symbol,
-.admin-progress-group-grid-status-button[data-state="verified"] .admin-progress-class-grid-status-symbol {
-  color: var(--verified);
-}
-
