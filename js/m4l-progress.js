@@ -1,14 +1,14 @@
-/* M4L v90.8.2 - Admin Class Progress accordion visual polish
-   Baseline: V90.8.1 Admin Class Progress live group/module accordion.
+/* M4L v90.8.3 - Admin Class Progress narrow module accordion correction
+   Baseline: V90.8.2 Admin Class Progress accordion visual polish.
    Scope: preserve the live two-way group/module accordion, global
    student-column anchor, A1/A2 key/edit controls, V90.7.1 even-module header
-   banding, background-save navigation, and backend; polish the accordion
-   visuals so column/module headings are wider and clearer, group rows use the
-   surface-chip background, row 2 keeps the surface-chip band, and editable
-   grid body cells no longer use alternating module backgrounds. Protected:
-   Student Progress V89.7, Admin Individual Progress, Attendance, Library,
-   Home, Recorder, bottom navigation, auth banner, Worker, Apps Script, and
-   backend API behaviour.
+   banding, V90.8.2 group-row/surface-chip polish, background-save navigation,
+   and backend; restore narrow task columns, show compact module numbers when
+   modules are collapsed, restore full module names when modules are expanded,
+   and add the fixed-column hint below the group list. Protected: Student
+   Progress V89.7, Admin Individual Progress, Attendance, Library, Home,
+   Recorder, bottom navigation, auth banner, Worker, Apps Script, and backend
+   API behaviour.
 */
 
 /* =========================  
@@ -4303,6 +4303,7 @@ function renderAdminProgressClassStudentColumn(students, groups) {
       </div>
       <div class="admin-progress-class-student-list" data-admin-class-progress-student-list>
         ${groupList.map(group => renderAdminProgressClassStudentGroupSection(group)).join("")}
+        <p class="admin-progress-class-student-column-hint">Click on student name to see individual progress</p>
       </div>
     </aside>
   `;
@@ -4448,25 +4449,29 @@ function renderAdminProgressClassContinuousPane(modules, students, groups) {
 function renderAdminProgressClassContinuousModuleHeader(module, moduleIndex = 0) {
   const moduleName = getAdminModuleName(module) || "Module";
   const moduleKey = getAdminModuleKey(module);
+  const moduleNumber = Number(moduleIndex || 0) + 1;
   const tasks = Array.isArray(module && module.tasks) ? module.tasks : [];
   const isExpanded = isAdminProgressClassModuleExpanded(moduleKey);
   const span = isExpanded ? Math.max(1, tasks.length) : 1;
   const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);
   const chevron = getAdminProgressClassAccordionChevron(isExpanded);
+  const visibleLabel = isExpanded ? moduleName : String(moduleNumber);
+  const stateClass = isExpanded ? "is-expanded" : "is-collapsed";
 
   return `
     <button
       type="button"
-      class="admin-progress-class-merged-module-header admin-progress-class-accordion-module-heading ${themeClass}"
+      class="admin-progress-class-merged-module-header admin-progress-class-accordion-module-heading ${themeClass} ${stateClass}"
       data-progress-action="toggle-admin-progress-class-module"
       data-progress-class-module-key="${escapeForAttribute(moduleKey)}"
       role="columnheader"
       aria-expanded="${isExpanded ? "true" : "false"}"
       aria-label="${escapeForAttribute(moduleName)} module ${isExpanded ? "expanded" : "collapsed"}"
+      title="${escapeForAttribute(moduleName)}"
       style="grid-column: span ${span};"
     >
       <span class="admin-progress-class-module-title admin-progress-class-merged-module-title">
-        <span class="admin-progress-class-module-heading-label">${escapeHtml(moduleName)}</span>
+        <span class="admin-progress-class-module-heading-label">${escapeHtml(visibleLabel)}</span>
         <span class="admin-progress-class-accordion-chevron" aria-hidden="true">${chevron}</span>
       </span>
     </button>
