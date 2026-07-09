@@ -1,12 +1,10 @@
-/* M4L v90.8.7.3 - Individual Progress module edit and large-screen guard fix
-   Baseline: V90.8.7.2 Admin Individual Progress sticky cleanup + swipe guard.
-   Scope: keep mobile Individual Progress stable; position the global student
-   pane below the top nav on medium/large screens; use per-module edit state;
-   remove transient no-progress/cleanup messaging; and strengthen boundary
-   containment for Class and Individual Progress on touch, wheel, and larger
-   screens. Protected: Student Progress V89.7, completed Class/Group Progress
-   V90.8.4, Attendance, Library, Home, Recorder, nav, auth banner, Worker,
-   Apps Script, and backend API behaviour.
+/* M4L v90.9.0 - Progress save behaviour and reliability correction
+   Baseline: V90.8.7.3 Admin Individual Progress module edit and large-screen guard fix.
+   Scope: preserve existing Progress layouts while the JS corrects Class
+   Progress save UX and Student Progress autosave reliability. CSS layout is
+   intentionally unchanged except for version documentation. Protected:
+   Attendance, Library, Home, Recorder, nav, auth banner, Worker, Apps Script,
+   backend API behaviour, and visual Progress layout.
 */
 
 :root {
