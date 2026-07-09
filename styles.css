@@ -1,11 +1,9 @@
-/* M4L v90.6.1 - Admin Class Progress mobile module arrows polish
-   Baseline: V90.5 Admin Class Progress tick/edit/task text polish.
-   Scope: preserve the stable global student-column architecture and V90.5
-   visual polish; remove the visible Class Progress module stepper and switch
-   the module pane viewport to native horizontal scroll-snap so the module
-   header area can be swiped between modules. Protected: Student Progress
-   V89.7, Admin Individual Progress, Group Progress, Attendance, Library, Home,
-   Recorder, bottom navigation, auth banner, and backend.
+/* M4L v90.6.2 - Admin Progress background-save navigation
+   Baseline: V90.6.1 Admin Class Progress mobile module arrows.
+   Scope: CSS unchanged from V90.6.1; paired with the JS background-save
+   navigation correction so deployment files stay version-matched. Protected:
+   mobile Class Progress layout, Attendance, Library, Home, Recorder, nav,
+   auth banner, Worker, and Apps Script.
 */
 
 :root {
