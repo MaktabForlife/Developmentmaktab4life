@@ -1,14 +1,12 @@
-/* M4L v90.8.4 - Admin Class Progress calm grid/module headers
-   Baseline: V90.8.3 Admin Class Progress narrow module accordion correction.
-   Scope: preserve the working live two-way group/module accordion, narrow task
-   columns, compact collapsed module numbers, full expanded module names,
-   fixed student-column hint, A1/A2 key/edit controls, background-save
-   navigation, and backend; calm the medium/large grid body by removing group
-   row colour spillover, make merged module headers use one surface-card
-   background, and strengthen right borders between merged module headers.
-   Protected: Student Progress V89.7, Admin Individual Progress, Attendance,
-   Library, Home, Recorder, nav, auth banner, Worker, Apps Script, and backend
-   API behaviour.
+/* M4L v90.8.5 - Admin Individual Progress student-layout alignment
+   Baseline: V90.8.4 Admin Class/Group Progress calm accordion grid.
+   Scope: keep the completed Class Progress and Group Progress accordion/grid
+   baseline intact; align Admin Individual Progress to the proven Student
+   Progress module-card/swipe layout, keep Admin fill-to-edit behaviour for
+   Complete/Verify cells, and place the selected student name in a global
+   header above the module header. Protected: Class Progress, Group Progress,
+   Student Progress V89.7, Attendance, Library, Home, Recorder, nav, auth
+   banner, Worker, Apps Script, and backend API behaviour.
 */
 
 :root {
@@ -10709,3 +10707,243 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   background-clip: padding-box;
 }
 
+
+
+/* M4L v90.8.5 - Admin Individual Progress mirrors the Student Progress module-card layout.
+   Scoped to Admin Individual only so the completed Class/Group Progress baseline is untouched. */
+.admin-individual-progress-shell {
+  gap: 10px;
+}
+
+.admin-individual-progress-active-header {
+  position: sticky;
+  top: 0;
+  z-index: 98;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(34px, auto) minmax(0, 1fr) minmax(98px, 132px);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.08);
+  text-align: center;
+}
+
+.admin-individual-progress-active-header .admin-progress-close-btn {
+  position: relative;
+  top: auto;
+  left: auto;
+  justify-self: start;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--disabled);
+  color: var(--text-strong);
+  box-shadow: none;
+}
+
+.admin-individual-progress-student-name {
+  min-width: 0;
+  padding-inline: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: clamp(1.14rem, 3.4vw, 1.48rem);
+  font-weight: 850;
+  line-height: 1.12;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.admin-individual-progress-active-header .admin-individual-progress-edit-toggle {
+  width: 100%;
+  min-width: 98px;
+  max-width: 132px;
+  justify-self: end;
+}
+
+.admin-individual-progress-swipe-shell {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.admin-individual-progress-global-actions {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-individual-progress-stepper-row {
+  width: min(100%, 520px);
+  margin-inline: auto;
+}
+
+.admin-individual-progress-number-strip {
+  min-width: 0;
+}
+
+.admin-progress-individual-module-dots.student-progress-module-numbers {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  justify-content: center;
+  scrollbar-width: none;
+}
+
+.admin-progress-individual-module-dots.student-progress-module-numbers::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-individual-progress-module-number.student-progress-module-number {
+  width: auto;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.admin-individual-progress-module-number.student-progress-module-number.is-active {
+  min-width: 42px;
+  color: var(--text-strong);
+}
+
+.admin-individual-progress-stepper-arrow {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.admin-individual-progress-stepper-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.admin-individual-progress-pane-viewport {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-individual-progress-track {
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.admin-individual-progress-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.admin-individual-progress-module-header {
+  display: grid;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 12px 8px;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.08);
+}
+
+.admin-individual-progress-module-header .student-progress-panel-module-title-block,
+.admin-individual-progress-module-header .student-progress-active-module-title-block {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+}
+
+.admin-individual-progress-module-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: clamp(1.08rem, 3.1vw, 1.36rem);
+  font-weight: 850;
+  line-height: 1.12;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.admin-individual-progress-module-task-card {
+  min-height: 0;
+  max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 210px);
+  overflow: hidden;
+}
+
+.admin-individual-progress-grid {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-individual-progress-shell.is-editing .admin-individual-progress-status-cell:not(.is-on) .admin-progress-status-edit-icon {
+  display: inline-block;
+}
+
+.admin-individual-progress-shell.is-viewing .admin-individual-progress-status-cell:not(.is-on) .admin-progress-status-edit-icon {
+  display: none;
+}
+
+@media (min-width: 1180px) {
+  .admin-individual-progress-swipe-shell {
+    overflow: hidden;
+  }
+
+  .admin-individual-progress-panel {
+    flex-basis: min(100%, 520px);
+    width: min(100%, 520px);
+    max-width: min(100%, 520px);
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-individual-progress-active-header {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(82px, 98px);
+    min-height: 54px;
+    padding: 8px 10px;
+  }
+
+  .admin-individual-progress-active-header .admin-individual-progress-edit-toggle {
+    min-width: 82px;
+    max-width: 98px;
+  }
+
+  .admin-individual-progress-student-name {
+    font-size: clamp(1.05rem, 5vw, 1.32rem);
+  }
+
+  .admin-individual-progress-module-task-card {
+    max-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 190px);
+  }
+}
