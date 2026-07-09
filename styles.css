@@ -1,11 +1,11 @@
-/* M4L v90.5 - Admin Class Progress tick/edit/task text polish
-   Baseline: V90.4.3 Admin Class Progress control/key polish.
-   Scope: preserve the stable global student-column architecture and working
-   FillToEdit text glyph; make the compact tick key transparent, tighten the
-   Click-to-edit / Save icon-label spacing, and set rotated class task names
-   to 0.7rem with 400 weight. Protected: Student Progress V89.7, Admin
-   Individual Progress, Group Progress, Attendance, Library, Home, Recorder,
-   bottom navigation, auth banner, and backend.
+/* M4L v90.6 - Admin Class Progress native module-header swipe trial
+   Baseline: V90.5 Admin Class Progress tick/edit/task text polish.
+   Scope: preserve the stable global student-column architecture and V90.5
+   visual polish; remove the visible Class Progress module stepper and switch
+   the module pane viewport to native horizontal scroll-snap so the module
+   header area can be swiped between modules. Protected: Student Progress
+   V89.7, Admin Individual Progress, Group Progress, Attendance, Library, Home,
+   Recorder, bottom navigation, auth banner, and backend.
 */
 
 :root {
@@ -8970,7 +8970,7 @@ body.is-student-progress-section .app-shell {
   overscroll-behavior-inline: contain;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   cursor: grab;
   align-items: stretch;
 }
@@ -10141,6 +10141,85 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     width: 32px;
     height: 32px;
     margin-bottom: -2px;
+  }
+}
+
+/* M4L v90.6 - Admin Class Progress native module-header swipe trial
+   Removes the visible module stepper and lets the existing module PaneViewport
+   own native horizontal swipe. The global student column and task/body scroller
+   architecture remain unchanged. */
+.admin-progress-class-module-stepper,
+.admin-progress-class-module-stepper--single {
+  display: none;
+}
+
+.admin-progress-class-overview--module-panes,
+.admin-progress-class-overview--attached {
+  --admin-progress-class-track-offset: 0px;
+  --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 212px);
+}
+
+.admin-progress-class-view-panel {
+  gap: 0;
+}
+
+.admin-progress-class-pane-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-progress-class-pane-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-progress-class-pane-stack {
+  padding-inline: 0;
+  transform: none;
+  transition: none;
+  will-change: auto;
+}
+
+.admin-progress-class-module-pane {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.admin-progress-class-module-header {
+  touch-action: pan-x pan-y;
+  cursor: grab;
+  user-select: none;
+}
+
+.admin-progress-class-module-header:active {
+  cursor: grabbing;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 202px);
+  }
+}
+
+@media (min-width: 768px) {
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 174px);
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 162px);
   }
 }
 
