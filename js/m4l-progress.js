@@ -1,12 +1,11 @@
-/* M4L v90.4.2 - Admin Class Progress FillToEdit cleanup
-   Baseline: V90.4.1 Admin Class Progress FillToEdit text symbol.
-   Scope: clean the Admin Class Progress FillToEdit implementation so empty
-   editable body cells use only the plain text pencil glyph. Remove leftover
-   Class Progress FillToEdit CSS/comment snippets from the earlier masked-icon
-   experiment while preserving the stable global student-column architecture,
-   V90.3 GUI refinements, and V90.3.1 width repair.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
+/* M4L v90.4.3 - Admin Class Progress control/key polish
+   Baseline: V90.4.2 Admin Class Progress FillToEdit cleanup.
+   Scope: preserve the stable global student-column architecture and working
+   FillToEdit text glyph, add bottom breathing space to the synchronized student
+   list/module body scrollers, move the compact tick key into A1, and move the
+   larger Click-to-edit / Save control into A2. Protected: Student Progress
+   V89.7, Admin Individual Progress, Group Progress, Attendance, Library, Home,
+   Recorder, bottom navigation, auth banner, and backend.
    Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
@@ -4093,11 +4092,11 @@ function renderAdminProgressClassStudentColumn(students) {
 
   return `
     <aside class="admin-progress-class-student-column" aria-label="Students">
-      <div class="admin-progress-class-student-column-action" aria-label="Progress edit control">
-        ${renderAdminProgressClassMatrixActionBlock()}
-      </div>
       <div class="admin-progress-class-student-column-key" aria-label="Progress key">
         ${renderAdminProgressClassMatrixKeyOnlyBlock()}
+      </div>
+      <div class="admin-progress-class-student-column-action" aria-label="Progress edit control">
+        ${renderAdminProgressClassMatrixActionBlock()}
       </div>
       <div class="admin-progress-class-student-list" data-admin-class-progress-student-list>
         ${list.map(student => renderAdminProgressClassStudentColumnRow(student)).join("")}
@@ -4172,7 +4171,7 @@ function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0) {
 
 function renderAdminProgressClassMatrixActionBlock() {
   return `
-    <div class="admin-progress-matrix-action-block admin-progress-matrix-action-block--a1" aria-label="Progress edit control">
+    <div class="admin-progress-matrix-action-block admin-progress-matrix-action-block--a2" aria-label="Progress edit control">
       <button
         type="button"
         class="admin-progress-matrix-edit-toggle admin-progress-class-global-edit-toggle"
@@ -4191,7 +4190,7 @@ function renderAdminProgressClassMatrixActionBlock() {
 
 function renderAdminProgressClassMatrixKeyOnlyBlock() {
   return `
-    <div class="admin-progress-matrix-key-block admin-progress-matrix-key-block--a2" aria-label="Progress key">
+    <div class="admin-progress-matrix-key-block admin-progress-matrix-key-block--a1" aria-label="Progress key">
       <span class="admin-progress-matrix-key-line">
         <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--student" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
         <span>STUDENT</span>
