@@ -1,4 +1,4 @@
-/* M4L v90.6 - Admin Class Progress native module-header swipe trial
+/* M4L v90.6.1 - Admin Class Progress mobile module arrows polish
    Baseline: V90.5 Admin Class Progress tick/edit/task text polish.
    Scope: preserve the stable global student-column architecture, working
    FillToEdit text glyph, V90.5 key/edit/task typography polish, and backend;
@@ -7,8 +7,10 @@
    moves between modules. Protected: Student Progress V89.7, Admin Individual
    Progress, Group Progress, Attendance, Library, Home, Recorder, bottom
    navigation, auth banner, and backend.
-   Trial note: V90.6 keeps old stepper function names as compatibility wrappers
-   but no longer renders the stepper UI.
+   V90.6.1 mobile finish: lower the Click-to-edit label slightly and add
+   active left/right module-arrow cues beside each module name. The first module
+   shows only the right arrow, the last module shows only the left arrow, and
+   middle modules show both. Task-name swipe cues are intentionally deferred.
 */  
   
 /* =========================  
@@ -4024,7 +4026,7 @@ function renderAdminProgressClassOverview(modules) {
           ${renderAdminProgressClassStudentColumn(model.students)}
           <div class="admin-progress-class-pane-viewport" data-admin-class-progress-pane-viewport>
             <div class="admin-progress-class-pane-stack" data-admin-class-progress-pane-stack>
-              ${model.modules.map((module, moduleIndex) => renderAdminProgressClassModulePane(module, model.students, moduleIndex, safeActiveIndex)).join("")}
+              ${model.modules.map((module, moduleIndex) => renderAdminProgressClassModulePane(module, model.students, moduleIndex, safeActiveIndex, model.modules.length)).join("")}
             </div>
           </div>
         </section>
@@ -4079,7 +4081,7 @@ function renderAdminProgressClassStudentColumnRow(student) {
   `;
 }
 
-function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, activeIndex = 0) {
+function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, activeIndex = 0, moduleCount = 1) {
   const moduleName = getAdminModuleName(module) || "Module";
   const tasks = Array.isArray(module && module.tasks) ? module.tasks : [];
   const isActive = moduleIndex === activeIndex;
@@ -4093,7 +4095,7 @@ function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, a
       aria-label="${escapeForAttribute(moduleName)} class progress"
       style="--admin-progress-class-task-count: ${safeTaskCount};"
     >
-      ${renderAdminProgressClassModulePaneHeader(module, moduleIndex)}
+      ${renderAdminProgressClassModulePaneHeader(module, moduleIndex, moduleCount)}
       <section class="admin-progress-class-module-task-shell" aria-label="${escapeForAttribute(moduleName)} task columns">
         <div class="admin-progress-class-module-task-scroll" data-admin-class-progress-module-task-scroll tabindex="0" role="region" aria-label="Scrollable ${escapeForAttribute(moduleName)} task columns">
           <div class="admin-progress-class-module-task-header-row" role="row">
@@ -4108,17 +4110,48 @@ function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, a
   `;
 }
 
-function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0) {
+function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0, moduleCount = 1) {
   const moduleName = getAdminModuleName(module) || "Module";
   const moduleNumber = Number(moduleIndex || 0) + 1;
+  const requestedModuleCount = Number(moduleCount);
+  const safeModuleCount = Number.isFinite(requestedModuleCount)
+    ? Math.max(1, requestedModuleCount)
+    : 1;
+  const hasPreviousModule = moduleIndex > 0;
+  const hasNextModule = moduleIndex < safeModuleCount - 1;
 
   return `
     <header class="admin-progress-class-module-header" data-admin-class-progress-module-header>
       <div class="admin-progress-class-module-header-text">
+        ${renderAdminProgressClassModuleHeaderArrow("left", moduleIndex - 1, hasPreviousModule, `Previous module before ${moduleName}`)}
         <h3 class="admin-progress-class-module-title">${escapeHtml(moduleName)}</h3>
+        ${renderAdminProgressClassModuleHeaderArrow("right", moduleIndex + 1, hasNextModule, `Next module after ${moduleName}`)}
       </div>
       <span class="admin-progress-class-module-index-badge" aria-label="Module ${moduleNumber}">${moduleNumber}</span>
     </header>
+  `;
+}
+
+function renderAdminProgressClassModuleHeaderArrow(direction, targetIndex, isVisible, label) {
+  const directionClass = direction === "left" ? "left" : "right";
+  const iconClass = direction === "left" ? "app-icon-left" : "app-icon-right";
+  const visibilityClass = isVisible ? "" : " is-hidden";
+  const disabledAttrs = isVisible
+    ? ""
+    : ` disabled tabindex="-1" aria-hidden="true"`;
+
+  return `
+    <button
+      type="button"
+      class="admin-progress-class-module-nav admin-progress-class-module-nav--${directionClass}${visibilityClass}"
+      data-progress-action="scroll-admin-class-progress-module"
+      data-progress-class-module-index="${Number(targetIndex || 0)}"
+      aria-label="${escapeForAttribute(label || "Move module")}"
+      title="${escapeForAttribute(label || "Move module")}"
+      ${disabledAttrs}
+    >
+      <span class="app-icon app-icon-small ${iconClass}" aria-hidden="true"></span>
+    </button>
   `;
 }
 
