@@ -1,8 +1,9 @@
-/* M4L v90.8.7 - Admin Individual Progress Student Progress rebuild
-   Baseline: V90.8.5 Progress cleanup before Individual Progress rebuild.
-   Scope: preserve completed Class/Group Progress V90.8.4; rebuild Admin
-   Individual selected-student Progress from the Student Progress visual model
-   with one Admin fill-to-edit status column and a selected-student global pane.
+/* M4L v90.8.7.2 - Individual sticky header and legacy Progress cleanup
+   Baseline: V90.8.7.1 Admin Individual Progress polish/fill/save.
+   Scope: raise and fix the rebuilt Individual Progress student-name/stepper
+   pane below the app banner/nav, remove progress selector pills, prevent old
+   Group Progress pages/screens from appearing, and remove old cleanup/loading
+   placeholder styling from the active flow.
    Protected: Student Progress V89.7, completed Class/Group Progress V90.8.4,
    Attendance, Library, Home, Recorder, nav, auth banner, Worker, Apps Script,
    and backend API behaviour.
@@ -10938,5 +10939,175 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 
   #progress-report.admin-theme .admin-individual-progress-module-card-shell {
     height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 152px), 660px);
+  }
+}
+
+
+/* M4L v90.8.7.2 - Individual sticky global pane and legacy Progress cleanup */
+#progress-report.admin-theme .admin-progress-aig-shell,
+#progress-report.admin-theme [data-admin-progress-aig-shell],
+body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-aig-shell {
+  display: none;
+}
+
+#progress-report.admin-theme .admin-progress-placeholder-card,
+#progress-report.admin-theme .admin-progress-individual-cleanup-placeholder {
+  display: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell {
+  --admin-individual-progress-global-pane-height: 96px;
+  --admin-individual-progress-global-pane-gap: 8px;
+  padding-top: calc(var(--admin-individual-progress-global-pane-height) + var(--admin-individual-progress-global-pane-gap));
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-swipe-shell {
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-global-pane {
+  position: fixed;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  left: max(10px, env(safe-area-inset-left, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: 108;
+  width: auto;
+  max-width: none;
+  gap: 4px;
+  padding: 7px 12px 8px;
+  border-radius: 0 0 20px 20px;
+  transform: translateZ(0);
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-row {
+  min-height: 28px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-name {
+  font-size: clamp(1.08rem, 4.2vw, 1.46rem);
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-row {
+  min-height: 28px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  height: 32px;
+  min-height: 32px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  min-height: 28px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-number {
+  width: 25px;
+  min-width: 25px;
+  height: 25px;
+  min-height: 25px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-card-shell {
+  height: calc(
+    100dvh -
+    var(--user-band-height) -
+    var(--user-band-safe-area-top) -
+    var(--bottom-nav-height) -
+    var(--bottom-nav-safe-area) -
+    var(--admin-individual-progress-global-pane-height) -
+    24px
+  );
+  min-height: 360px;
+  max-height: 720px;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-global-pane-height: 92px;
+    padding-top: calc(var(--admin-individual-progress-global-pane-height) + 8px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  }
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-global-pane-height: 94px;
+    padding-top: calc(var(--admin-individual-progress-global-pane-height) + 12px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height));
+    left: 50%;
+    right: auto;
+    width: min(100% - 28px, 1040px);
+    transform: translateX(-50%) translateZ(0);
+    border-radius: 0 0 22px 22px;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--top-nav-height) -
+      var(--admin-individual-progress-global-pane-height) -
+      34px
+    );
+    min-height: 390px;
+    max-height: 680px;
+  }
+}
+
+@media (min-width: 1180px) {
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    width: min(100% - 32px, 1460px);
+  }
+}
+
+
+/* V90.8.7.2 swipe-escape guard for active Class and Individual Progress sections.
+   Keeps horizontal gestures contained inside Progress so users cannot accidentally
+   swipe out of a progress section while reviewing or editing. */
+#progress-report.admin-theme .admin-progress-class-overview,
+#progress-report.admin-theme .admin-individual-progress-shell {
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+}
+
+#progress-report.admin-theme .admin-progress-class-grid-card,
+#progress-report.admin-theme .admin-progress-class-grid-scroll,
+#progress-report.admin-theme .admin-individual-progress-swipe-shell,
+#progress-report.admin-theme .admin-individual-progress-pane-viewport,
+#progress-report.admin-theme .admin-individual-progress-module-card-shell,
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+}
+
+#progress-report.admin-theme .admin-progress-class-grid-scroll,
+#progress-report.admin-theme .admin-individual-progress-pane-viewport,
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-progress-class-overview,
+  #progress-report.admin-theme .admin-individual-progress-shell,
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell,
+  #progress-report.admin-theme .admin-individual-progress-module-task-card {
+    touch-action: pan-y;
+  }
+
+  #progress-report.admin-theme .admin-progress-class-grid-scroll,
+  #progress-report.admin-theme .admin-individual-progress-pane-viewport,
+  #progress-report.admin-theme .admin-individual-progress-module-numbers {
+    touch-action: pan-x pan-y;
   }
 }
