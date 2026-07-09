@@ -1,9 +1,11 @@
-/* M4L v90.6.2 - Admin Progress background-save navigation
-   Baseline: V90.6.1 Admin Class Progress mobile module arrows.
-   Scope: CSS unchanged from V90.6.1; paired with the JS background-save
-   navigation correction so deployment files stay version-matched. Protected:
-   mobile Class Progress layout, Attendance, Library, Home, Recorder, nav,
-   auth banner, Worker, and Apps Script.
+/* M4L v90.7 - Admin Class Progress medium/large continuous grid
+   Baseline: V90.6.2 Admin Progress background-save navigation.
+   Scope: preserve the locked V90.6.x mobile Class Progress layout and global
+   student-column architecture; rework medium/large Class Progress into one
+   continuous grid with merged module-header cells using the existing module
+   header visual language. Protected: saving/background-save flow, Student
+   Progress V89.7, Admin Individual Progress, Group Progress, Attendance,
+   Library, Home, Recorder, nav, auth banner, Worker, and Apps Script.
 */
 
 :root {
@@ -10271,3 +10273,139 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 /* M4L v90.6.1 - mobile module-arrow finish.
    The module title now carries active left/right swipe cues. Invisible edge
    placeholders keep the title stable while only valid arrows are visible. */
+
+
+/* M4L v90.7 - medium/large Class Progress continuous grid.
+   Mobile keeps the locked V90.6.x native swipe/module-card layout. Medium and
+   large screens use one continuous pane with merged module-header cells. */
+.admin-progress-class-continuous-pane {
+  display: none;
+}
+
+.admin-progress-class-continuous-task-scroll {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: var(--admin-progress-class-module-header-height) var(--admin-progress-class-task-header-height) minmax(0, 1fr);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface-card);
+}
+
+.admin-progress-class-continuous-module-header-row,
+.admin-progress-class-continuous-task-header-row,
+.admin-progress-class-continuous-task-row {
+  width: max-content;
+  min-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--admin-progress-class-total-task-count, var(--admin-progress-class-task-count, 1)), var(--admin-progress-class-task-col-width));
+}
+
+.admin-progress-class-continuous-module-header-row {
+  height: var(--admin-progress-class-module-header-height);
+  min-height: var(--admin-progress-class-module-header-height);
+  background: var(--surface-card);
+}
+
+.admin-progress-class-merged-module-header {
+  min-width: 0;
+  height: var(--admin-progress-class-module-header-height);
+  min-height: var(--admin-progress-class-module-header-height);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+}
+
+.admin-progress-class-merged-module-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1.02rem, 4.4vw, 1.32rem);
+  font-weight: 850;
+  line-height: 1.06;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-class-continuous-body {
+  max-height: var(--admin-progress-class-grid-body-height);
+  min-height: 0;
+  width: max-content;
+  min-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-progress-class-continuous-body::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .admin-progress-class-overview--module-panes,
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-visible-slots: 1;
+    --admin-progress-class-pane-gap: 0px;
+    --admin-progress-class-pane-width: 100%;
+    --admin-progress-class-pane-step: 100%;
+    --admin-progress-class-edge-space: 0px;
+    --admin-progress-class-track-offset: 0px;
+  }
+
+  .admin-progress-class-pane-viewport {
+    overflow: hidden;
+    touch-action: auto;
+    scroll-snap-type: none;
+  }
+
+  .admin-progress-class-pane-stack {
+    display: none;
+  }
+
+  .admin-progress-class-continuous-pane {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    background: var(--surface-card);
+  }
+
+  .admin-progress-class-continuous-task-scroll {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-progress-class-continuous-task-header-row,
+  .admin-progress-class-continuous-task-row {
+    justify-content: start;
+  }
+
+  .admin-progress-class-merged-module-title {
+    font-size: clamp(0.98rem, 1.65vw, 1.18rem);
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-class-merged-module-title {
+    font-size: clamp(1rem, 1.35vw, 1.2rem);
+  }
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  .admin-progress-class-continuous-pane {
+    display: none;
+  }
+}
+
