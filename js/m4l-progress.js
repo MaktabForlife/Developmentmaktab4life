@@ -1,14 +1,12 @@
-/* M4L v90.8.4 - Admin Class Progress calm grid/module headers
-   Baseline: V90.8.3 Admin Class Progress narrow module accordion correction.
-   Scope: preserve the working live two-way group/module accordion, narrow task
-   columns, compact collapsed module numbers, full expanded module names,
-   fixed student-column hint, A1/A2 key/edit controls, background-save
-   navigation, and backend; calm the medium/large grid body by removing group
-   row colour spillover, make merged module headers use one surface-card
-   background, and strengthen right borders between merged module headers.
-   Protected: Student Progress V89.7, Admin Individual Progress, Attendance,
-   Library, Home, Recorder, bottom navigation, auth banner, Worker, Apps
-   Script, and backend API behaviour.
+/* M4L v90.8.5 - Admin Individual Progress student-layout alignment
+   Baseline: V90.8.4 Admin Class/Group Progress calm accordion grid.
+   Scope: keep the completed Class Progress and Group Progress accordion/grid
+   baseline intact; align Admin Individual Progress to the proven Student
+   Progress module-card/swipe layout, keep Admin fill-to-edit behaviour for
+   Complete/Verify cells, and place the selected student name in a global
+   header above the module header. Protected: Class Progress, Group Progress,
+   Student Progress V89.7, Attendance, Library, Home, Recorder, bottom
+   navigation, auth banner, Worker, Apps Script, and backend API behaviour.
 */
 
 /* =========================  
@@ -361,6 +359,13 @@ function handleProgressUiClick(event) {
         Number(actionEl.dataset.progressTaskIndex || 0)  
       );  
       break;  
+
+    case "step-admin-individual-progress-module":
+      stepAdminIndividualProgressModuleBy(
+        actionEl,
+        Number(actionEl.dataset.progressStep || 0)
+      );
+      break;
   
     case "scroll-admin-popout-module":  
       scrollAdminProgressPopoutModuleToIndex(  
@@ -5532,6 +5537,22 @@ function updateAdminProgressDashboardRailDots(rail) {
     dot.classList.toggle("is-active", isActive);  
     dot.setAttribute("aria-current", isActive ? "true" : "false");  
   });  
+
+  const cards = getAdminProgressDashboardRailCards(targetRail);
+  const previousArrow = shelf.querySelector('[data-admin-individual-module-step="previous"]');
+  const nextArrow = shelf.querySelector('[data-admin-individual-module-step="next"]');
+
+  if (previousArrow) {
+    const disabled = cards.length <= 1 || activeIndex <= 0;
+    previousArrow.disabled = disabled;
+    previousArrow.setAttribute("aria-disabled", disabled ? "true" : "false");
+  }
+
+  if (nextArrow) {
+    const disabled = cards.length <= 1 || activeIndex >= cards.length - 1;
+    nextArrow.disabled = disabled;
+    nextArrow.setAttribute("aria-disabled", disabled ? "true" : "false");
+  }
   
   return true;  
 }  
@@ -5912,29 +5933,113 @@ function buildAdminIndividualStudentModules(rows) {
   return Object.values(moduleMap).sort(sortModuleGroupsByModuleId);  
 }  
   
-function renderAdminIndividualModuleDots(modules, studentName) {  
-  const list = Array.isArray(modules) ? modules : [];  
-  
-  if (list.length <= 1) {  
-    return "";  
-  }  
-  
-  return `  
-    <div class="m4l-progress-swipe-dots admin-progress-task-dots admin-progress-individual-module-dots" data-admin-progress-dashboard-task-dots aria-label="${escapeForAttribute(studentName || "Student")} module cards">  
-      ${list.map((module, index) => `  
-        <button  
-          type="button"  
-          class="m4l-progress-swipe-dot admin-progress-task-dot${index === 0 ? " is-active" : ""}"  
-          data-progress-action="scroll-admin-dashboard-task"  
-          data-progress-task-index="${index}"  
-          aria-label="Show ${escapeForAttribute(module.modulename || `module ${index + 1}`)}"  
-          aria-current="${index === 0 ? "true" : "false"}"  
-        ></button>  
-      `).join("")}  
-    </div>  
-  `;  
-}  
-  
+function getAdminIndividualModuleIndexFromKey(modules, activeModuleKey) {
+  const list = Array.isArray(modules) ? modules : [];
+  const activeKey = String(activeModuleKey || "");
+
+  if (!list.length) {
+    return 0;
+  }
+
+  const index = activeKey
+    ? list.findIndex(module => String(module.moduleid || module.modulename || "") === activeKey)
+    : 0;
+
+  return index >= 0 ? index : 0;
+}
+
+function renderAdminIndividualModuleStepperArrow(direction, isDisabled) {
+  const normalizedDirection = Number(direction || 0) < 0 ? -1 : 1;
+  const isPrevious = normalizedDirection < 0;
+  const label = isPrevious ? "Previous module" : "Next module";
+  const iconClass = isPrevious ? "app-icon-left" : "app-icon-right";
+
+  return `
+    <button
+      type="button"
+      class="student-progress-stepper-arrow admin-individual-progress-stepper-arrow admin-individual-progress-stepper-arrow--${isPrevious ? "previous" : "next"}"
+      data-progress-action="step-admin-individual-progress-module"
+      data-progress-step="${normalizedDirection}"
+      data-progress-step-direction="${isPrevious ? "previous" : "next"}"
+      data-admin-individual-module-step="${isPrevious ? "previous" : "next"}"
+      aria-label="${label}"
+      title="${label}"
+      ${isDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'}
+    >
+      <span class="app-icon ${iconClass}" aria-hidden="true"></span>
+      <span class="visually-hidden">${label}</span>
+    </button>
+  `;
+}
+
+function renderAdminIndividualModuleDots(modules, studentName, activeModuleKey) {
+  const list = Array.isArray(modules) ? modules : [];
+
+  if (!list.length) {
+    return "";
+  }
+
+  const activeKey = String(activeModuleKey || (list[0] && (list[0].moduleid || list[0].modulename)) || "");
+  const activeIndex = getAdminIndividualModuleIndexFromKey(list, activeKey);
+
+  return `
+    <div class="m4l-progress-swipe-dots student-progress-swipe-dots student-progress-module-numbers admin-progress-task-dots admin-progress-individual-module-dots" data-admin-progress-dashboard-task-dots aria-label="${escapeForAttribute(studentName || "Student")} modules">
+      ${list.map((module, index) => {
+        const moduleKey = String(module.moduleid || module.modulename || index);
+        const numberLabel = String(index + 1);
+        const isActive = index === activeIndex;
+
+        return `
+          <button
+            type="button"
+            class="m4l-progress-swipe-dot student-progress-swipe-dot student-progress-module-number admin-progress-task-dot admin-individual-progress-module-number${isActive ? " is-active" : ""}"
+            data-progress-action="scroll-admin-dashboard-task"
+            data-progress-task-index="${index}"
+            data-progress-module-key="${escapeForAttribute(moduleKey)}"
+            aria-label="Show module ${numberLabel}: ${escapeForAttribute(module.modulename || `module ${numberLabel}`)}"
+            aria-current="${isActive ? "true" : "false"}"
+          >${escapeHtml(numberLabel)}</button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderAdminIndividualProgressGlobalActions(modules, studentName, activeModuleKey) {
+  const list = Array.isArray(modules) ? modules : [];
+  const activeKey = String(activeModuleKey || (list[0] && (list[0].moduleid || list[0].modulename)) || "");
+  const activeIndex = getAdminIndividualModuleIndexFromKey(list, activeKey);
+  const hasMultipleModules = list.length > 1;
+
+  return `
+    <div class="student-progress-global-actions student-progress-global-swipe admin-individual-progress-global-actions" data-progress-global-actions data-admin-individual-progress-global-swipe>
+      <div class="student-progress-top-control-row student-progress-stepper-row admin-individual-progress-stepper-row">
+        ${renderAdminIndividualModuleStepperArrow(-1, !hasMultipleModules || activeIndex <= 0)}
+        <div class="student-progress-top-control-dots student-progress-stepper-number-strip admin-individual-progress-number-strip" data-progress-number-nav>
+          ${renderAdminIndividualModuleDots(list, studentName, activeKey)}
+        </div>
+        ${renderAdminIndividualModuleStepperArrow(1, !hasMultipleModules || activeIndex >= list.length - 1)}
+      </div>
+    </div>
+  `;
+}
+
+function stepAdminIndividualProgressModuleBy(actionEl, step) {
+  const shelf = getAdminProgressDashboardShelfFromElement(actionEl);
+  const rail = getAdminProgressDashboardRailFromShelf(shelf);
+  const cards = getAdminProgressDashboardRailCards(rail);
+  const direction = Number(step || 0);
+
+  if (!rail || !cards.length || direction === 0) {
+    return false;
+  }
+
+  const currentIndex = getAdminProgressDashboardRailActiveIndex(rail);
+  const nextIndex = Math.max(0, Math.min(cards.length - 1, currentIndex + direction));
+
+  return scrollAdminProgressDashboardRailToIndex(actionEl, nextIndex);
+}
+
 function renderAdminIndividualModuleTaskRow(row) {
   const pending = progressPendingUpdates[row.studenttaskid] || {};
 
@@ -5989,7 +6094,7 @@ function renderAdminIndividualSelectedModuleCard(module, index = 0, moduleCount 
 
   return `
     <section
-      class="admin-progress-task-card m4l-progress-swipe-panel m4l-progress-swipe-panel--full student-progress-module-panel admin-individual-progress-panel${adminIndividualProgressEditMode ? " is-editing" : " is-viewing"}"
+      class="admin-progress-task-card m4l-progress-swipe-panel m4l-progress-swipe-panel--full m4l-responsive-swipe-panel student-progress-module-panel admin-individual-progress-panel${adminIndividualProgressEditMode ? " is-editing" : " is-viewing"}"
       data-progress-swipe-panel
       data-progress-panel-index="${index}"
       data-progress-module-key="${escapeForAttribute(module.moduleid || module.modulename || index)}"
@@ -6004,7 +6109,7 @@ function renderAdminIndividualSelectedModuleCard(module, index = 0, moduleCount 
         </div>
       </div>
 
-      <section class="admin-progress-task-card admin-progress-individual-module-card student-progress-module-task-card student-progress-module-grid-card admin-individual-progress-module-task-card" aria-label="${escapeForAttribute(moduleName)} task progress">
+      <section class="admin-progress-task-card admin-progress-individual-module-card student-progress-module-task-card student-progress-module-grid-card student-progress-task-list-panel admin-individual-progress-module-task-card" aria-label="${escapeForAttribute(moduleName)} task progress">
         <div class="student-progress-module-grid admin-individual-progress-grid" role="table" aria-label="${escapeForAttribute(moduleName)} task progress">
           ${renderAdminIndividualProgressTaskTableHeader()}
           ${rows.map(renderAdminIndividualModuleTaskRow).join("")}
@@ -6076,13 +6181,16 @@ function renderAdminIndividualSelectedStudentModules(rows, studentName) {
         data-admin-progress-dashboard-shelf
         aria-label="${escapeForAttribute(safeStudentName)} modules"
       >
-        ${renderAdminIndividualModuleDots(modules, safeStudentName)}
-        <div
-          class="m4l-progress-swipe-track m4l-progress-swipe-track--full admin-individual-progress-track"
-          data-admin-progress-dashboard-rail
-          aria-label="${escapeForAttribute(safeStudentName)} module sheets"
-        >
-          ${modules.map((module, index) => renderAdminIndividualSelectedModuleCard(module, index, modules.length)).join("")}
+        ${renderAdminIndividualProgressGlobalActions(modules, safeStudentName, activeModuleKey)}
+        <div class="student-progress-pane-viewport admin-individual-progress-pane-viewport" data-progress-pane-viewport>
+          <div
+            class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track admin-individual-progress-track"
+            data-admin-progress-dashboard-rail
+            data-progress-active-index="${getAdminIndividualModuleIndexFromKey(modules, activeModuleKey)}"
+            aria-label="${escapeForAttribute(safeStudentName)} module sheets"
+          >
+            ${modules.map((module, index) => renderAdminIndividualSelectedModuleCard(module, index, modules.length)).join("")}
+          </div>
         </div>
       </section>
     </div>
