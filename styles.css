@@ -1,12 +1,11 @@
-/* M4L v90.4.2 - Admin Class Progress FillToEdit cleanup
-   Baseline: V90.4.1 Admin Class Progress FillToEdit text symbol.
-   Scope: clean the Admin Class Progress FillToEdit implementation so empty
-   editable body cells use only the plain text pencil glyph. Remove leftover
-   Class Progress FillToEdit CSS/comment snippets from the earlier masked-icon
-   experiment while preserving the stable global student-column architecture,
-   V90.3 GUI refinements, and V90.3.1 width repair.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
+/* M4L v90.4.3 - Admin Class Progress control/key polish
+   Baseline: V90.4.2 Admin Class Progress FillToEdit cleanup.
+   Scope: preserve the stable global student-column architecture and working
+   FillToEdit text glyph, add bottom breathing space to the synchronized student
+   list/module body scrollers, move the compact tick key into A1, and move the
+   larger Click-to-edit / Save control into A2. Protected: Student Progress
+   V89.7, Admin Individual Progress, Group Progress, Attendance, Library, Home,
+   Recorder, bottom navigation, auth banner, and backend.
 */
 
 :root {
@@ -10004,3 +10003,135 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     max-width: 1180px;
   }
 }
+
+/* M4L v90.4.3 - Admin Class Progress control/key polish
+   Admin Class Progress only.  Keeps the V90.4.2 FillToEdit text glyph, swaps
+   the A1/A2 support cells, and adds synchronized bottom breathing space. */
+.admin-progress-class-overview--attached {
+  --admin-progress-class-scroll-comfort-space: calc(var(--admin-progress-class-row-height) * 3);
+}
+
+.admin-progress-class-student-list::after,
+.admin-progress-class-module-body::after {
+  content: "";
+  display: block;
+  height: var(--admin-progress-class-scroll-comfort-space);
+  min-height: var(--admin-progress-class-scroll-comfort-space);
+  pointer-events: none;
+}
+
+.admin-progress-class-student-column-key {
+  min-height: var(--admin-progress-class-module-header-height);
+  display: grid;
+  align-items: center;
+  justify-items: start;
+  padding: 0 0 0 4px;
+  background: var(--admin-progress-class-grid-header-surface);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-class-student-column-key .admin-progress-matrix-key-block--a1 {
+  width: min(100%, 86px);
+  min-height: 0;
+  display: grid;
+  gap: 1px;
+  align-content: center;
+  justify-items: start;
+  padding: 0;
+  border-radius: 10px;
+  background: var(--surface-app);
+}
+
+.admin-progress-class-student-column-key .admin-progress-matrix-key-line {
+  justify-content: flex-start;
+  gap: 2px;
+  font-size: 0.55rem;
+  font-weight: 780;
+  line-height: 0.95;
+  letter-spacing: 0.03em;
+}
+
+.admin-progress-class-student-column-key .admin-progress-matrix-key-tick {
+  min-width: 0.95em;
+  font-size: 0.74rem;
+  line-height: 0.95;
+}
+
+.admin-progress-class-student-column-action {
+  min-height: var(--admin-progress-class-task-header-height);
+  display: grid;
+  place-items: center;
+  padding: 0 3px 1px;
+  background: var(--admin-progress-class-grid-header-surface);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-class-student-column-action .admin-progress-matrix-action-block--a2 {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+}
+
+.admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle,
+.admin-progress-class-global-edit-toggle {
+  width: 74px;
+  min-width: 74px;
+  min-height: 74px;
+  padding: 0;
+  gap: 2px;
+}
+
+.admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle .app-icon,
+.admin-progress-class-global-edit-toggle .app-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label,
+.admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label {
+  max-width: 72px;
+  font-size: 0.58rem;
+  font-weight: 840;
+  line-height: 1.02;
+}
+
+.admin-progress-class-student-column-action .admin-progress-matrix-save-status {
+  min-height: 0;
+  margin: 0;
+  font-size: 0.52rem;
+  line-height: 1;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  .admin-progress-class-overview--attached {
+    --admin-progress-class-scroll-comfort-space: calc(var(--admin-progress-class-row-height) * 3.5);
+  }
+
+  .admin-progress-class-student-column-key {
+    padding-left: 3px;
+  }
+
+  .admin-progress-class-student-column-key .admin-progress-matrix-key-block--a1 {
+    width: min(100%, 82px);
+  }
+
+  .admin-progress-class-student-column-key .admin-progress-matrix-key-line {
+    font-size: 0.52rem;
+  }
+
+  .admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle,
+  .admin-progress-class-global-edit-toggle {
+    width: 70px;
+    min-width: 70px;
+    min-height: 72px;
+  }
+
+  .admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle .app-icon,
+  .admin-progress-class-global-edit-toggle .app-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
