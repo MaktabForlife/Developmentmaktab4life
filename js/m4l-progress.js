@@ -1,14 +1,12 @@
-/* M4L v90.8.5 - Progress cleanup before Individual Progress rebuild
-   Baseline: V90.8.4 Admin Class/Group Progress completed accordion/grid.
-   Scope: preserve the completed V90.8.4 Class Progress and Group Progress
-   implementations, shared admin fill-to-edit behaviour, pending-save/background
-   save helpers, and backend APIs; remove old Individual Progress selected-view
-   rendering, remove the Individual progress selector pill/search UI, and stop
-   using quarantined legacy Class/Group dashboard shelf routes so Individual can
-   be rebuilt cleanly from the Student Progress visual model next.
-   Protected: Student Progress V89.7, completed Class/Group Progress V90.8.4,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
-   Apps Script, and backend API behaviour.
+/* M4L v90.8.6 - Admin Progress strict legacy cleanup
+   Baseline: V90.8.5 cleanup checkpoint from V90.8.4 Class/Group Progress.
+   Scope: remove the Progress selector pill from all Progress screens, remove
+   old separate Group Progress screens/routes, remove the old Select a Student
+   screen, and keep only the completed V90.8.4 Class Progress accordion/grid
+   plus selected-student loading hook for the next Individual rebuild.
+   Protected: Student Progress, completed Class Progress, shared admin
+   fill-to-edit helpers, background-save navigation, Attendance, Library, Home,
+   Recorder, nav, auth banner, Worker, Apps Script, and backend API behaviour.
 */
 
 /* =========================  
@@ -2871,39 +2869,16 @@ function getAdminProgressAvailableGroups(rows = adminProgressDashboardRows) {
   return Array.from(groups).sort(naturalCompare);  
 }  
   
-function getAdminProgressAigLabel(view) {  
-  const normalized = normalizeAdminProgressView(view);  
-  if (normalized === "individual") return "Select a student";  
-  if (isAdminProgressGroupView(normalized)) return `View Group ${getAdminProgressGroupFromView(normalized)} Progress`;  
-  return "View All Progress";  
-}  
+function getAdminProgressAigLabel(view) {
+  // V90.8.6 strict cleanup: the visible Progress selector pill has been removed.
+  // Keep this helper only for compatibility with stale calls.
+  return "Progress";
+}
   
-function renderAdminProgressAigSelector(activeView = "all") {  
-  const currentView = normalizeAdminProgressView(activeView);  
-  const dataGroups = getAdminProgressAvailableGroups();  
-  const options = [  
-    { value: "all", label: "View All Progress" },  
-    { value: "individual", label: "Select a student" },  
-    ...dataGroups.map(group => ({ value: `group-${group}`, label: `View Group ${group} Progress` }))  
-  ];  
-  
-  return `  
-    <div class="admin-progress-aig-shell" data-admin-progress-aig-shell>  
-      <label class="admin-progress-view-picker-label">  
-        <span class="visually-hidden">Progress view</span>  
-        <select  
-          class="admin-progress-view-picker"  
-          data-progress-change-action="set-admin-progress-view-picker"  
-          aria-label="Progress view"  
-        >  
-          ${options.map(option => `  
-            <option value="${escapeForAttribute(option.value)}"${normalizeAdminProgressView(option.value) === currentView ? " selected" : ""}>${escapeHtml(option.label)}</option>  
-          `).join("")}  
-        </select>  
-      </label>  
-    </div>  
-  `;  
-}  
+function renderAdminProgressAigSelector(activeView = "all") {
+  // V90.8.6 strict cleanup: no Progress selector pill is rendered anywhere.
+  return "";
+}
   
 function removeAdminProgressAigSelector(screenOrId = "progress-report") {
   const screen = getDomElement(screenOrId);
@@ -2914,44 +2889,13 @@ function removeAdminProgressAigSelector(screenOrId = "progress-report") {
 }
 
 function ensureAdminProgressAigSelector(screenOrId, activeView = adminProgressActiveView || "all") {
-  const screen = getDomElement(screenOrId);
-  if (!screen) return false;
-
-  // V90.8.5 cleanup: Individual Progress is being rebuilt as its own selected-student
-  // flow. Do not show the old progress selector pill / "Select a student" picker shell
-  // in the Individual path. Class and Group keep the existing selector.
-  if (normalizeAdminProgressView(activeView) === "individual") {
-    return removeAdminProgressAigSelector(screen);
-  }
-
-  let shell = screen.querySelector("[data-admin-progress-aig-shell]");
-  if (!shell) {
-    screen.insertAdjacentHTML("afterbegin", renderAdminProgressAigSelector(activeView));
-    shell = screen.querySelector("[data-admin-progress-aig-shell]");
-  } else {
-    shell.outerHTML = renderAdminProgressAigSelector(activeView);
-    shell = screen.querySelector("[data-admin-progress-aig-shell]");
-  }
-
-  bindProgressUiHandlers(screen);
-  return !!shell;
+  // V90.8.6 strict cleanup: always remove any stale selector shell that may
+  // exist from cached/older markup.
+  return removeAdminProgressAigSelector(screenOrId);
 }
 
 function updateAdminProgressAigSelectorState(activeView = adminProgressActiveView || "all") {
-  const currentView = normalizeAdminProgressView(activeView);
-
-  if (currentView === "individual") {
-    removeAdminProgressAigSelector("progress-report");
-    return true;
-  }
-
-  document.querySelectorAll("[data-admin-progress-aig-shell]").forEach(shell => {
-    const picker = shell.querySelector("[data-progress-change-action='set-admin-progress-view-picker']");
-    if (picker) {
-      picker.value = currentView;
-    }
-  });
-  return true;
+  return removeAdminProgressAigSelector("progress-report");
 }
 
 function renderAdminProgressPlaceholderView(view) {  
@@ -3033,36 +2977,20 @@ function startAdminProgressBackgroundSave(options = {}) {
 }  
   
 async function setAdminProgressAigView(view) {  
-  const normalizedView = normalizeAdminProgressView(view);  
-  
+  // V90.8.6 strict cleanup: the old selector pill, group screens, and
+  // select-a-student screen are removed. Stale selector actions fall back to
+  // the completed Class Progress overview.
   if (isAdminProgressScreenId(document.querySelector(".screen.active")?.id) && hasProgressPendingUpdates()) {  
-    const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
+    const saveStarted = startAdminProgressBackgroundSave({ confirm: true });  
     if (saveStarted === false) {
       return false;
     }
   }  
-  
+    
   closeAdminProgressStudentPopout({ silent: true });  
-  adminProgressActiveView = normalizedView;  
-  
-  if (normalizedView === "all") {  
-    await showProgressReport();  
-    return true;  
-  }  
-  
-  if (normalizedView === "individual") {  
-    await showAdminIndividualProgressLanding();  
-    return true;  
-  }  
-  
-  if (isAdminProgressGroupView(normalizedView)) {  
-    await showAdminScopedGroupProgress(normalizedView);  
-    return true;  
-  }  
-  
   await showProgressReport();  
   return true;  
-}  
+}
   
 async function saveAdminProgressPendingForClose() {  
   const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
@@ -3075,20 +3003,9 @@ async function requestCloseAdminProgressTaskScreen() {
     return false;
   }
   closeAdminProgressStudentPopout({ silent: true });  
-  
-  if (isAdminProgressGroupView(adminProgressActiveView)) {  
-    await showAdminScopedGroupProgress(adminProgressActiveView);  
-    return true;  
-  }  
-  
-  if (adminProgressActiveView === "individual") {  
-    await showAdminIndividualProgressLanding();  
-    return true;  
-  }  
-  
-  await showProgressReport();  
+  await showProgressReport();
   return true;  
-}  
+}
   
 async function requestCloseAdminProgressStudentPopout() {  
   const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
@@ -3199,7 +3116,8 @@ function prepareAdminProgressMonitor() {
   if (!screen) return;  
   
   bindAdminProgressLeaveGuard();  
-  screen.classList.add("progress-selector-screen", "admin-progress-screen");  
+  screen.classList.add("admin-progress-screen");
+  screen.classList.remove("progress-selector-screen");  
   
   const header = screen.querySelector(".nav-header");  
   if (header) {  
@@ -3324,81 +3242,32 @@ function buildAdminProgressModulesForScope(group, rows = adminProgressDashboardR
 }  
   
 function renderAdminProgressDashboardForScope(group) {  
-  const groupKey = String(group || "ALL");  
-  const activeView = groupKey === "ALL" ? "all" : `group-${groupKey}`;  
+  // V90.8.6 strict cleanup: separate Group Progress screens are removed.
+  // All calls render the completed Class Progress overview.
+  const groupKey = "ALL";
+  const activeView = "all";
   const modules = adminProgressDashboardRows.length > 0  
     ? buildAdminProgressModulesForScope(groupKey, adminProgressDashboardRows)  
-    : (groupKey === "ALL" ? adminProgressDashboardModules.map(module => ({  
+    : adminProgressDashboardModules.map(module => ({  
         ...module,  
         tasks: (module.tasks || []).map(task => ({ ...task, classgroup: "ALL" }))  
-      })) : []);  
-  
+      }));
+    
+  adminProgressSelectedGroup = "ALL";
+  adminProgressActiveView = "all";
   adminProgressDashboardModules = modules;  
-  ensureAdminProgressAigSelector("progress-report", activeView);  
-  updateAdminProgressAigSelectorState(activeView);  
+  removeAdminProgressAigSelector("progress-report");
   renderAdminProgressDashboard(modules);  
   return modules.length > 0;  
-}  
+}
   
 async function showAdminScopedGroupProgress(view) {  
-  const normalizedView = normalizeAdminProgressView(view);  
-  const group = getAdminProgressGroupFromView(normalizedView);  
-  const dashboard = getDomElement("admin-progress-dashboard");  
+  // V90.8.6 strict cleanup: separate Group Progress screens/routes are removed.
+  // Stale group actions now return to the completed Class Progress overview.
+  await showProgressReport();
+  return true;
+}
   
-  setAdminProgressSectionBodyState("progress-report");  
-  setProgressScreensForAdmin();  
-  adminProgressActiveView = normalizedView;  
-  adminProgressSelectedGroup = group;  
-  prepareAdminProgressMonitor();  
-  ensureAdminProgressAigSelector("progress-report", normalizedView);  
-  updateAdminProgressAigSelectorState(normalizedView);  
-  closeAdminProgressStudentPopout({ silent: true });  
-  
-  progressState.contextType = "group";  
-  progressState.classgroup = group;  
-  progressState.studentid = "ALL";  
-  progressState.studentName = "";  
-  progressState.subjectid = "ALL";  
-  progressState.subjectname = "";  
-  progressState.taskid = "ALL";  
-  progressState.taskname = "";  
-  progressState.fromAdminDashboard = true;  
-  adminIndividualProgressEditMode = false;  
-  currentProgressRows = [];  
-  adminProgressActiveTaskRows = [];  
-  adminProgressPopoutRows = [];  
-  
-  if (!dashboard) return false;  
-  
-  setDomHtml(dashboard, "");  
-  showScreen("progress-report");  
-  
-  const cached = readAdminProgressDashboardCache();  
-  if (cached && Array.isArray(cached.rows) && cached.rows.length > 0) {  
-    adminProgressDashboardRows = cached.rows.map(normalizeProgressStudentRow);  
-    renderAdminProgressDashboardForScope(group);  
-    refreshAdminProgressDashboardCacheInBackground({ render: true });  
-    return true;  
-  }  
-  
-  const statusToken = beginProgressLoadStatus(`Loading Group ${group} progress...`);
-
-  try {  
-    const fresh = await fetchAdminProgressDashboardData();  
-    adminProgressDashboardRows = fresh.rows;  
-    writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
-    renderAdminProgressDashboardForScope(group);  
-    endProgressLoadStatus(statusToken, "Progress loaded");
-    return true;  
-  } catch (err) {  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error(`Could not load Group ${group} progress:`, err);  
-    setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || `Could not load Group ${group} progress.`)}</p>`);  
-    return false;  
-  }  
-}  
-  
-
 async function loadAdminProgressDashboard() {  
   const dashboard = getDomElement("admin-progress-dashboard");  
   if (!dashboard) {  
@@ -3828,7 +3697,7 @@ function updateAdminProgressMatrixSaveStatus(message = "") {
 function updateAdminProgressMatrixEditControls() {  
   const isEditing = adminProgressMatrixEditMode === true;  
   
-  document.querySelectorAll(".admin-progress-class-overview, .admin-progress-group-overview").forEach(view => {  
+  document.querySelectorAll(".admin-progress-class-overview").forEach(view => {  
     view.classList.toggle("is-editing", isEditing);  
     view.classList.toggle("is-viewing", !isEditing);  
   });  
@@ -5167,20 +5036,14 @@ function bindAdminProgressClassMatrixLiveCells() {
   document.addEventListener("click", event => {  
     const target = event.target;  
     const button = target && typeof target.closest === "function"  
-      ? target.closest('[data-progress-action="cycle-admin-progress-class-cell"], [data-progress-action="cycle-admin-progress-group-cell"]')  
+      ? target.closest('[data-progress-action="cycle-admin-progress-class-cell"]')  
       : null;  
   
     if (!button) return;  
   
     event.preventDefault();  
     event.stopImmediatePropagation();  
-  
-    if (button.dataset.progressAction === "cycle-admin-progress-group-cell") {  
-      cycleAdminProgressGroupMatrixCell(button);  
-      return;  
-    }  
-  
-    cycleAdminProgressClassMatrixCell(button);  
+cycleAdminProgressClassMatrixCell(button);  
   }, true);  
   
   document.addEventListener("keydown", event => {  
@@ -5188,20 +5051,14 @@ function bindAdminProgressClassMatrixLiveCells() {
   
     const target = event.target;  
     const button = target && typeof target.closest === "function"  
-      ? target.closest('[data-progress-action="cycle-admin-progress-class-cell"], [data-progress-action="cycle-admin-progress-group-cell"]')  
+      ? target.closest('[data-progress-action="cycle-admin-progress-class-cell"]')  
       : null;  
   
     if (!button) return;  
   
     event.preventDefault();  
     event.stopImmediatePropagation();  
-  
-    if (button.dataset.progressAction === "cycle-admin-progress-group-cell") {  
-      cycleAdminProgressGroupMatrixCell(button);  
-      return;  
-    }  
-  
-    cycleAdminProgressClassMatrixCell(button);  
+cycleAdminProgressClassMatrixCell(button);  
   }, true);  
   
   return true;  
@@ -5209,200 +5066,20 @@ function bindAdminProgressClassMatrixLiveCells() {
   
   
 function shouldRenderAdminProgressGroupGrid() {  
-  return isAdminProgressGroupView(adminProgressActiveView || "all") &&  
-    String(adminProgressSelectedGroup || "ALL") !== "ALL";  
-}  
+  // V90.8.6 strict cleanup: no separate Group Progress grid screen.
+  return false;
+}
   
-function renderAdminProgressGroupGridOverview(modules) {  
-  resetAdminProgressMatrixEditMode();  
-  
-  const group = adminProgressSelectedGroup || getAdminProgressGroupFromView(adminProgressActiveView);  
-  const scopedRows = getAdminProgressRowsForScope(group, adminProgressDashboardRows);  
-  const model = buildAdminProgressClassOverviewModel(modules, scopedRows);  
-  const groupLabel = `Group ${group}`;  
-  
-  if (!model.students.length || !model.modules.length) {  
-    return `<p class="helper-text">No ${escapeHtml(groupLabel)} progress grid data found.</p>`;  
-  }  
-  
-  return `  
-    <section class="admin-progress-group-overview is-viewing" aria-label="${escapeForAttribute(groupLabel)} progress grid">  
-      <section class="admin-progress-group-grid-card" aria-label="${escapeForAttribute(groupLabel)} tasks by student">  
-        <div class="admin-progress-group-grid-scroll" tabindex="0" role="region" aria-label="Scrollable ${escapeForAttribute(groupLabel)} progress grid">  
-          <table class="admin-progress-group-grid" data-admin-progress-group-grid>  
-            <colgroup>  
-              <col class="admin-progress-group-grid-module-col" />  
-              <col class="admin-progress-group-grid-task-col" />  
-              ${model.students.map((student, studentIndex) => `<col class="admin-progress-group-grid-student-col${studentIndex % 2 ? " admin-progress-group-grid-student-col--alt" : ""}" />`).join("")}  
-            </colgroup>  
-            <thead>  
-              <tr>  
-                <th class="admin-progress-group-grid-module-corner" scope="col" aria-hidden="true"></th>  
-                <th class="admin-progress-group-grid-task-corner" scope="col">  
-                  ${renderAdminProgressMatrixEditKeyBlock()}  
-                </th>  
-                ${model.students.map((student, studentIndex) => renderAdminProgressGroupGridStudentHeader(student, studentIndex)).join("")}  
-              </tr>  
-            </thead>  
-            <tbody>  
-              ${model.modules.map((module, moduleIndex) => renderAdminProgressGroupGridModuleRows(module, model.students, moduleIndex)).join("")}  
-            </tbody>  
-          </table>  
-        </div>  
-        <p class="admin-progress-group-grid-caption">Tap a cell to select it. Use the edit icon to unlock updates, then save when done.</p>  
-      </section>  
-    </section>  
-  `;  
-}  
-  
-function renderAdminProgressGroupGridStudentHeader(student, studentIndex = 0) {  
-  const name = student.username || "Student";  
-  const studentId = student.studentid || name;  
-  
-  return `  
-    <th  
-      class="admin-progress-group-grid-student-header${studentIndex % 2 ? " admin-progress-group-grid-student-header--alt" : ""}"  
-      scope="col"  
-      data-progress-student-id="${escapeForAttribute(studentId)}"  
-      aria-label="${escapeForAttribute(name)}"  
-    >  
-      <span class="admin-progress-group-grid-student-header-wrap">  
-        <span class="admin-progress-group-grid-student-name">${escapeHtml(name)}</span>  
-      </span>  
-    </th>  
-  `;  
-}  
-  
-function renderAdminProgressGroupGridModuleRows(module, students, moduleIndex = 0) {  
-  const tasks = Array.isArray(module.tasks) ? module.tasks : [];  
-  const moduleName = module.modulename || module.subjectname || "Module";  
-  const safeRowspan = Math.max(1, tasks.length);  
-  
-  return tasks.map((task, taskIndex) => {  
-    const taskName = task.taskname || "Untitled Task";  
-    const rowKey = getAdminProgressGroupGridRowKey(module, task);  
-    const moduleStrip = taskIndex === 0  
-      ? `  
-        <th class="admin-progress-group-grid-module-cell" scope="rowgroup" rowspan="${safeRowspan}" aria-label="${escapeForAttribute(moduleName)}">  
-          <span class="admin-progress-group-grid-module-name">${escapeHtml(moduleName)}</span>  
-        </th>  
-      `  
-      : "";  
-  
-    return `  
-      <tr data-progress-row-key="${escapeForAttribute(rowKey)}">  
-        ${moduleStrip}  
-        <th class="admin-progress-group-grid-task-cell" scope="row" data-progress-row-key="${escapeForAttribute(rowKey)}">  
-          <span class="admin-progress-group-grid-task-name">${escapeHtml(taskName)}</span>  
-        </th>  
-        ${students.map((student, studentIndex) => renderAdminProgressGroupGridStatusCell(student, module, task, studentIndex, rowKey)).join("")}  
-      </tr>  
-    `;  
-  }).join("");  
-}  
-  
-function getAdminProgressGroupGridRowKey(module, task) {  
-  return `${getAdminModuleKey(module)}::${getAdminTaskKey(task)}`;  
-}  
-  
-function renderAdminProgressGroupGridStatusCell(student, module, task, studentIndex = 0, rowKey = "") {  
-  const row = findAdminProgressClassGridTaskRow(student, module, task);  
-  const studentName = student.username || "Student";  
-  const studentId = student.studentid || studentName;  
-  const moduleName = module.modulename || module.subjectname || "Module";  
-  const taskName = task.taskname || "Untitled Task";  
-  const state = getAdminProgressClassMatrixCellState(row);  
-  const stateLabel = getAdminProgressClassMatrixStateLabel(state);  
-  const label = `${studentName}, ${moduleName}, ${taskName}: ${stateLabel}`;  
-  const studentTaskId = row ? String(row.studenttaskid || "") : "";  
-  const altClass = studentIndex % 2 ? " admin-progress-group-grid-status-cell--alt" : "";  
-  
-  return `  
-    <td  
-      class="admin-progress-group-grid-status-cell${altClass}"  
-      data-progress-row-key="${escapeForAttribute(rowKey)}"  
-      data-progress-student-id="${escapeForAttribute(studentId)}"  
-    >  
-      <button  
-        type="button"  
-        class="admin-progress-group-grid-status-button admin-progress-group-grid-status-button--${escapeForAttribute(state)}"  
-        data-progress-action="cycle-admin-progress-group-cell"  
-        data-studenttaskid="${escapeForAttribute(studentTaskId)}"  
-        data-status="${escapeForAttribute(state)}"  
-        data-progress-row-key="${escapeForAttribute(rowKey)}"  
-        data-progress-student-id="${escapeForAttribute(studentId)}"  
-        aria-label="${escapeForAttribute(label)}"  
-        ${studentTaskId ? "" : "disabled"}  
-      >  
-        ${renderAdminProgressClassGridStatusSymbol(state)}  
-      </button>  
-    </td>  
-  `;  
-}  
-  
-function updateAdminProgressGroupMatrixCellButton(button, nextState) {  
-  if (!button) return false;  
-  
-  ["blank", "complete", "verified"].forEach(state => {  
-    button.classList.remove(`admin-progress-group-grid-status-button--${state}`);  
-  });  
-  
-  button.classList.add(`admin-progress-group-grid-status-button--${nextState}`);  
-  button.dataset.status = nextState;  
-  button.innerHTML = renderAdminProgressClassGridStatusSymbol(nextState);  
-  
-  const existingLabel = button.getAttribute("aria-label") || "Progress cell";  
-  const baseLabel = existingLabel.replace(/: (Blank|Complete|Verified)$/i, "");  
-  button.setAttribute("aria-label", `${baseLabel}: ${getAdminProgressClassMatrixStateLabel(nextState)}`);  
-  
-  return true;  
-}  
-  
-function escapeCssAttributeValue(value) {  
-  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {  
-    return CSS.escape(String(value || ""));  
-  }  
-  return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');  
-}  
-  
-function highlightAdminProgressGroupGridPosition(cell) {  
-  if (!cell) return false;  
-  
-  const grid = cell.closest(".admin-progress-group-grid");  
-  if (!grid) return false;  
-  
-  grid.querySelectorAll(".is-active-row, .is-active-column, .is-active-cell").forEach(item => {  
-    item.classList.remove("is-active-row", "is-active-column", "is-active-cell");  
-  });  
-  
-  cell.classList.add("is-active-cell");  
-  return true;  
-}  
-  
-function cycleAdminProgressGroupMatrixCell(button) {  
-  if (!button || button.disabled) return false;  
-  
-  const cell = button.closest("td");  
-  highlightAdminProgressGroupGridPosition(cell);  
-  
-  if (!adminProgressMatrixEditMode) {  
-    return false;  
-  }  
-  
-  const studentTaskId = String(button.dataset.studenttaskid || "");  
-  if (!studentTaskId) return false;  
-  
-  const currentState = String(button.dataset.status || "blank");  
-  const nextState = getNextAdminProgressClassMatrixCellState(currentState);  
-  
-  applyAdminProgressClassMatrixStateToRow(studentTaskId, nextState);  
-  updateAdminProgressGroupMatrixCellButton(button, nextState);  
-  cell?.classList.add("is-pending");  
-  updateAdminProgressMatrixSaveStatus(`${getAdminProgressMatrixPendingCount()} pending`);  
-  
-  return true;  
-}  
-  
+function renderAdminProgressGroupGridOverview(modules) {
+  // V90.8.6 strict cleanup: separate Group Progress screens have been removed.
+  return "";
+}
+
+function cycleAdminProgressGroupMatrixCell(button) {
+  // Compatibility shim for stale cached Group Progress DOM only.
+  return false;
+}
+
 function renderAdminProgressDashboard(modules) {  
   const dashboard = getDomElement("admin-progress-dashboard");  
   if (!dashboard) return;  
@@ -5436,7 +5113,7 @@ function renderAdminProgressDashboard(modules) {
   setDomHtml(dashboard, `
     <section class="admin-progress-placeholder-card" aria-label="Progress cleanup checkpoint">
       <h3>Progress cleanup</h3>
-      <p class="helper-text">The old module shelf route has been removed. Use View All Progress, Group Progress, or Individual Progress.</p>
+      <p class="helper-text">The old module shelf, Group Progress screen, Progress selector pill, and Select a Student screen have been removed.</p>
     </section>
   `);
   bindProgressUiHandlers(dashboard);  
@@ -5522,26 +5199,6 @@ function buildAdminIndividualStudentsFromRows(rows) {
     });  
 }  
   
-function renderAdminIndividualStudentCard(student) {  
-  const completedPercent = getProgressPercentValue(student.completedPercent);  
-  const verifiedPercent = getProgressPercentValue(student.verifiedPercent);  
-  const studentName = student.username || "Student";  
-  
-  return `  
-    <button  
-      type="button"  
-      class="admin-progress-task-card admin-progress-individual-student-card"  
-      data-progress-action="open-admin-individual-student-card"  
-      data-studentid="${escapeForAttribute(student.studentid)}"  
-      data-username="${escapeForAttribute(studentName)}"  
-      aria-label="Open individual progress for ${escapeForAttribute(studentName)}"  
-    >  
-      <span class="admin-progress-task-card-title">${escapeHtml(studentName)}</span>  
-      ${renderAdminProgressCardBars(completedPercent, verifiedPercent)}  
-    </button>  
-  `;  
-}  
-  
 function filterAdminProgressStudentPicker(query) {
   // V90.8.5 cleanup: the old Individual Progress search input has been removed.
   // Keep a no-op compatibility shim for any stale DOM/event references during deploys.
@@ -5549,128 +5206,30 @@ function filterAdminProgressStudentPicker(query) {
 }
 
 function renderAdminIndividualProgressDashboard(rows) {
+  // V90.8.6 strict cleanup: the old Select a Student screen is removed.
+  // Individual Progress will be rebuilt from the Student Progress layout next.
   const dashboard = getDomElement("admin-progress-dashboard");
   if (!dashboard) return false;
 
-  const students = buildAdminIndividualStudentsFromRows(rows);
-
-  if (students.length === 0) {
-    setDomHtml(dashboard, `<p class="helper-text">No active students found.</p>`);
-    return false;
-  }
-
-  const byGroup = {};
-
-  students.forEach(student => {
-    const groupKey = String(student.classgroup || "Group");
-    if (!byGroup[groupKey]) byGroup[groupKey] = [];
-    byGroup[groupKey].push(student);
-  });
-
-  const groupKeys = Object.keys(byGroup).sort(naturalCompare);
-
-  const html = `
-    <section class="admin-progress-individual-landing" aria-label="Individual Progress student list">
-      <div class="admin-progress-individual-landing-list">
-        ${groupKeys.map(groupKey => {
-          const groupStudents = byGroup[groupKey].sort((a, b) => naturalCompare(a.username, b.username));
-          return `
-            <section class="admin-progress-individual-landing-group" aria-label="Group ${escapeForAttribute(groupKey)}">
-              <h4>Group ${escapeHtml(groupKey)}</h4>
-              <div class="admin-progress-individual-student-cards">
-                ${groupStudents.map(renderAdminIndividualStudentCard).join("")}
-              </div>
-            </section>
-          `;
-        }).join("")}
-      </div>
+  setDomHtml(dashboard, `
+    <section class="admin-progress-placeholder-card" aria-label="Individual Progress cleanup checkpoint">
+      <h3>Individual Progress cleanup</h3>
+      <p class="helper-text">The old Select a Student screen has been removed. The new Individual Progress view will open from student names in Class Progress.</p>
     </section>
-  `;
-
-  setDomHtml(dashboard, html);
-  bindProgressUiHandlers(dashboard);
+  `);
   return true;
 }
 
 async function showAdminIndividualProgressLanding() {  
-  setAdminProgressSectionBodyState("progress-report");  
-  setProgressScreensForAdmin();  
-  adminProgressActiveView = "individual";  
-  prepareAdminProgressMonitor();  
-  ensureAdminProgressAigSelector("progress-report", "individual");  
-  updateAdminProgressAigSelectorState("individual");  
-  closeAdminProgressStudentPopout({ silent: true });  
+  // V90.8.6 strict cleanup: remove the old Select a Student screen.
+  await showProgressReport();
+  return true;
+}
   
-  progressState.contextType = "individual";  
-  progressState.classgroup = "ALL";  
-  progressState.studentid = "ALL";  
-  progressState.studentName = "";  
-  progressState.subjectid = "ALL";  
-  progressState.subjectname = "";  
-  progressState.taskid = "ALL";  
-  progressState.taskname = "";  
-  progressState.fromAdminDashboard = true;  
-  currentProgressRows = [];  
-  adminProgressActiveTaskRows = [];  
-  adminProgressPopoutRows = [];  
-  
-  const dashboard = getDomElement("admin-progress-dashboard");  
-  if (!dashboard) return false;  
-  
-  setDomHtml(dashboard, "");  
-  showScreen("progress-report");  
-  
-  const cached = readAdminProgressDashboardCache();  
-  if (cached && Array.isArray(cached.rows) && cached.rows.length > 0) {  
-    adminProgressDashboardRows = cached.rows;  
-    adminProgressIndividualRows = cached.rows.map(normalizeProgressStudentRow);  
-    renderAdminIndividualProgressDashboard(adminProgressIndividualRows);  
-    refreshAdminIndividualProgressLandingInBackground();  
-    return true;  
-  }  
-  
-  const statusToken = beginProgressLoadStatus("Loading progress...");
-
-  try {  
-    const fresh = await fetchAdminProgressDashboardData();  
-    adminProgressDashboardRows = fresh.rows;  
-    adminProgressDashboardModules = fresh.modules;  
-    adminProgressIndividualRows = fresh.rows.map(normalizeProgressStudentRow);  
-    writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
-    renderAdminIndividualProgressDashboard(adminProgressIndividualRows);  
-    endProgressLoadStatus(statusToken, "Progress loaded");
-    return true;  
-  } catch (err) {  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error("Could not load individual progress:", err);  
-    setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load individual progress.")}</p>`);  
-    return false;  
-  }  
-}  
-  
-
 async function refreshAdminIndividualProgressLandingInBackground() {  
-  try {  
-    const fresh = await fetchAdminProgressDashboardData();  
-    adminProgressDashboardRows = fresh.rows;  
-    adminProgressDashboardModules = fresh.modules;  
-    adminProgressIndividualRows = fresh.rows.map(normalizeProgressStudentRow);  
-    writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
-  
-    if (  
-      adminProgressActiveView === "individual" &&  
-      progressState.contextType === "individual" &&  
-      !!document.querySelector("#progress-report.active")  
-    ) {  
-      renderAdminIndividualProgressDashboard(adminProgressIndividualRows);  
-    }  
-  
-    return fresh;  
-  } catch (err) {  
-    console.warn("Could not refresh individual progress in background:", err);  
-    return null;  
-  }  
-}  
+  // V90.8.6 strict cleanup: no old Individual landing to refresh.
+  return null;
+}
   
 function buildAdminIndividualStudentModules(rows) {  
   const moduleMap = {};  
@@ -5708,7 +5267,7 @@ async function requestCloseAdminIndividualStudentView() {
     clearAdminProgressDashboardCache();  
   }  
   
-  await showAdminIndividualProgressLanding();  
+  await showProgressReport();  
   return true;  
 }  
   
@@ -5905,405 +5464,65 @@ async function openAdminProgressTaskCard(subjectid, subjectname, taskid, tasknam
 }  
   
 async function loadProgressSelectors() {  
-  const groupSelect = getDomElement("progress-group-select");  
-  const studentSelect = getDomElement("progress-student-select");  
-  
-  if (!groupSelect && !studentSelect) {  
-    console.warn("Progress selector controls are missing.");  
-    return;  
-  }  
-  
-  const result = await apiPost("/api/progress/task-detail", {  
-    studentid: "ALL",  
-    classgroup: "ALL",  
-    subjectid: "ALL",  
-    taskid: "ALL"  
-  }, state.token);  
-  
-  if (!result.success) {  
-    alert(result.error || "Could not load progress data.");  
-    return;  
-  }  
-  
-  const studentRows = Array.isArray(result.students) ? result.students : [];  
-  
-  if (groupSelect) {  
-    const groups = [...new Set(studentRows.map(s => s.classgroup))]  
-      .filter(group => group && String(group).trim() !== "0")  
-      .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));  
-  
-    groupSelect.innerHTML = `<option value="">Select a Group...</option>`;  
-  
-    groups.forEach(group => {  
-      const option = document.createElement("option");  
-      option.value = group;  
-      option.textContent = group;  
-      groupSelect.appendChild(option);  
-    });  
-  }  
-  
-  if (!studentSelect) return;  
-  
-  const studentsMap = {};  
-  
-  studentRows.forEach(row => {  
-    if (String(row.classgroup || "").trim() === "0") return;  
-    if (!studentsMap[row.studentid]) {  
-      studentsMap[row.studentid] = {  
-        studentid: row.studentid,  
-        username: row.username,  
-        classgroup: row.classgroup  
-      };  
-    }  
-  });  
-  
-  const students = Object.values(studentsMap).sort((a, b) => {  
-    const groupCompare = String(a.classgroup).localeCompare(  
-      String(b.classgroup),  
-      undefined,  
-      { numeric: true }  
-    );  
-  
-    if (groupCompare !== 0) return groupCompare;  
-  
-    return String(a.username).localeCompare(String(b.username));  
-  });  
-  
-  studentSelect.innerHTML = `<option value="">Select a Student...</option>`;  
-  
-  let currentGroup = "";  
-  let optgroup = null;  
-  
-  students.forEach(student => {  
-    if (student.classgroup !== currentGroup) {  
-      currentGroup = student.classgroup;  
-      optgroup = document.createElement("optgroup");  
-      optgroup.label = currentGroup;  
-      studentSelect.appendChild(optgroup);  
-    }  
-  
-    const option = document.createElement("option");  
-    option.value = student.studentid;  
-    option.textContent = student.username;  
-    optgroup.appendChild(option);  
-  });  
-}  
+  // V90.8.6 strict cleanup: old Progress group/student selector controls are removed.
+  ["progress-group-select", "progress-student-select"].forEach(id => {
+    const el = getDomElement(id);
+    if (el && el.parentElement) {
+      el.parentElement.classList.add("hidden");
+    }
+  });
+  return true;
+}
   
 function openSelectedGroupProgress() {  
-  const groupSelect = getDomElement("progress-group-select");  
-  const group = groupSelect ? groupSelect.value : "";  
-  
-  if (!group) {  
-    alert("Select a group first.");  
-    return;  
-  }  
-  
-  openProgressContext("group", group);  
-}  
+  // V90.8.6 strict cleanup: old Group Progress screens are removed.
+  showProgressReport();
+  return true;
+}
   
 function openSelectedStudentProgress() {  
-  const studentSelect = getDomElement("progress-student-select");  
-  const studentid = studentSelect ? studentSelect.value : "";  
-  
-  if (!studentid) {  
-    alert("Select a student first.");  
-    return;  
-  }  
-  
-  openProgressContext("student", studentid);  
-}  
+  // V90.8.6 strict cleanup: old Select a Student screen is removed.
+  showProgressReport();
+  return true;
+}
   
 async function openProgressContext(type, value) {  
-  setProgressScreensForAdmin();  
-  progressState.fromAdminDashboard = false;  
-  progressState.contextType = type;  
-  progressState.subjectid = "ALL";  
-  progressState.taskid = "ALL";  
-  progressPendingUpdates = {};  
-  currentProgressRows = [];  
-  
-  if (type === "class") {  
-    progressState.classgroup = "ALL";  
-    progressState.studentid = "ALL";  
-    setDomText("progress-subjects-title", "Class Modules");  
-    await loadProgressSubjects();  
-    return;  
-  }  
-  
-  if (type === "group") {  
-    progressState.classgroup = value;  
-    progressState.studentid = "ALL";  
-    setDomText("progress-subjects-title", `${value} Modules`);  
-    await loadProgressSubjects();  
-    return;  
-  }  
-  
-  if (type === "student") {  
-    progressState.classgroup = "ALL";  
-    progressState.studentid = value;  
-    progressState.subjectid = "ALL";  
-    progressState.taskid = "ALL";  
-  
-    const studentSelect = getDomElement("progress-student-select");  
-    const selectedOption = studentSelect  
-      ? Array.from(studentSelect.options || []).find(option => String(option.value) === String(value))  
-      : null;  
-  
-    const name = selectedOption ? selectedOption.textContent : "Student";  
-  
-    progressState.studentName = name;  
-    setDomText("progress-subjects-title", `${name}'s Subjects`);  
-  
-    await loadProgressSubjects();  
-    return;  
-  }  
-  
-  console.warn("Unknown progress context:", type);  
-}  
+  // V90.8.6 strict cleanup: legacy Class/Group/Student module-list screens are
+  // removed from the admin Progress flow. Stale calls return to the current
+  // Class Progress overview.
+  await showProgressReport();
+  return true;
+}
   
 async function loadProgressSubjects() {  
-  setAdminProgressSectionBodyState("progress-subjects-screen");  
-  setManualRefreshButton("progress-subjects-screen", "refreshProgressSubjects(this)");  
+  // V90.8.6 strict cleanup: old admin Progress subject list screen removed.
+  await showProgressReport();
+  return true;
+}
   
-  if (!showScreen("progress-subjects-screen")) {  
-    console.warn("Progress subjects screen is missing.");  
-    return;  
-  }  
-  
-  if (!setDomHtml("progress-subjects-list", "")) {  
-    console.warn("Missing progress-subjects-list container.");  
-    return;  
-  }  
-  
-  const statusToken = beginProgressLoadStatus("Loading progress...");
-
-  try {  
-    const result = await apiPost("/api/progress/task-detail", {  
-      studentid: progressState.studentid,  
-      classgroup: progressState.classgroup,  
-      subjectid: "ALL",  
-      taskid: "ALL"  
-    }, state.token);  
-  
-    if (!result.success) {  
-      failProgressLoadStatus(statusToken, "Progress load failed");
-      setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(result.error || "Could not load modules.")}</p>`);  
-      return;  
-    }  
-  
-    if (!result.subjects || result.subjects.length === 0) {  
-      endProgressLoadStatus(statusToken, "Progress loaded");
-      setDomHtml("progress-subjects-list", `<p class="helper-text">No assigned modules found.</p>`);  
-      return;  
-    }  
-  
-    const subjects = result.subjects.map(normalizeProgressSubject).sort(sortProgressSubjects);  
-  
-    const subjectsList = getDomElement("progress-subjects-list");  
-    setDomHtml(subjectsList, subjects.map(subject => `  
-      <button  
-        type="button"  
-        class="progress-list-button"  
-        data-progress-action="open-progress-subject"  
-        data-subjectid="${escapeForAttribute(subject.subjectid)}"  
-        data-subjectname="${escapeForAttribute(subject.subjectname)}"  
-      >  
-        <span class="progress-list-title">${escapeHtml(subject.subjectname)}</span>  
-        ${renderProgressBars(subject.completedPercent, subject.verifiedPercent)}  
-      </button>  
-    `).join(""));  
-    bindProgressUiHandlers(subjectsList);  
-    endProgressLoadStatus(statusToken, "Progress loaded");
-  } catch (err) {  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error("Could not load progress modules:", err);  
-    setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(err.message || "Could not load modules.")}</p>`);  
-  }  
-}  
-  
-
 async function openProgressSubject(subjectid, subjectname) {  
-  progressState.subjectid = subjectid;  
-  progressState.subjectname = subjectname;  
-  progressState.taskid = "ALL";  
-  
-  if (progressState.contextType === "student") {  
-    setDomText("progress-task-students-title", subjectname);  
-    await loadIndividualStudentTaskList();  
-    return;  
-  }  
-  
-  setDomText("progress-tasks-title", subjectname);  
-  
-  await loadProgressTasks();  
-}  
+  // V90.8.6 strict cleanup: old admin Progress task-list screen removed.
+  await showProgressReport();
+  return true;
+}
   
 async function loadProgressTasks() {  
-  setAdminProgressSectionBodyState("progress-tasks-screen");  
-  setManualRefreshButton("progress-tasks-screen", "refreshProgressTasks(this)");  
-  
-  if (!showScreen("progress-tasks-screen")) {  
-    console.warn("Progress tasks screen is missing.");  
-    return;  
-  }  
-  
-  if (!setDomHtml("progress-tasks-list", "")) {  
-    console.warn("Missing progress-tasks-list container.");  
-    return;  
-  }  
-  
-  const statusToken = beginProgressLoadStatus("Loading progress...");
-
-  try {  
-    const result = await apiPost("/api/progress/task-detail", {  
-      studentid: progressState.studentid,  
-      classgroup: progressState.classgroup,  
-      subjectid: progressState.subjectid,  
-      taskid: "ALL"  
-    }, state.token);  
-  
-    if (!result.success) {  
-      failProgressLoadStatus(statusToken, "Progress load failed");
-      setDomHtml("progress-tasks-list", `<p class="error-message">${escapeHtml(result.error || "Could not load tasks.")}</p>`);  
-      return;  
-    }  
-  
-    if (!result.tasks || result.tasks.length === 0) {  
-      setDomHtml("progress-tasks-list", `<p class="helper-text">No tasks found.</p>`);  
-      return;  
-    }  
-  
-    const sortedTasks = result.tasks.map(normalizeProgressTask).sort(sortProgressTasks);  
-  
-    const tasksList = getDomElement("progress-tasks-list");  
-    setDomHtml(tasksList, sortedTasks.map(task => `  
-      <button  
-        type="button"  
-        class="progress-list-button"  
-        data-progress-action="open-progress-task"  
-        data-taskid="${escapeForAttribute(task.taskid)}"  
-        data-taskname="${escapeForAttribute(task.taskname)}"  
-      >  
-        <span class="progress-list-title">${escapeHtml(task.taskname)}</span>  
-        ${renderProgressBars(task.completedPercent, task.verifiedPercent)}  
-      </button>  
-    `).join(""));  
-    bindProgressUiHandlers(tasksList);  
-    endProgressLoadStatus(statusToken, "Progress loaded");
-  } catch (err) {  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error("Could not load progress tasks:", err);  
-    setDomHtml("progress-tasks-list", `<p class="error-message">${escapeHtml(err.message || "Could not load tasks.")}</p>`);  
-  }  
-}  
+  // V90.8.6 strict cleanup: old admin Progress task-list screen removed.
+  await showProgressReport();
+  return true;
+}
   
 async function openProgressTask(taskid, taskname) {  
-  progressState.taskid = taskid;  
-  progressState.taskname = taskname;  
-  
-  const title = progressState.contextType === "group"  
-    ? `${taskname} ${progressState.classgroup}`  
-    : taskname;  
-  
-  setDomText("progress-task-students-title", title);  
-  
-  await loadProgressTaskStudents();  
-}  
+  // V90.8.6 strict cleanup: old admin task-student detail screen removed.
+  await showProgressReport();
+  return true;
+}
   
 async function loadProgressTaskStudents() {  
-  setAdminProgressSectionBodyState("progress-task-students-screen");  
-  setManualRefreshButton("progress-task-students-screen", "refreshProgressTaskStudents(this)");  
-  
-  if (!showScreen("progress-task-students-screen")) {  
-    console.warn("Progress task-students screen is missing.");  
-    return;  
-  }  
-  
-  progressPendingUpdates = {};  
-  
-  if (!setDomHtml("progress-task-students-list", "")) {  
-    console.warn("Missing progress-task-students-list container.");  
-    return;  
-  }  
-  
-  const statusToken = beginProgressLoadStatus("Loading progress...");
-
-  try {  
-    const result = await apiPost("/api/progress/task-detail", {  
-      studentid: progressState.studentid,  
-      classgroup: progressState.classgroup,  
-      subjectid: progressState.subjectid,  
-      taskid: progressState.taskid  
-    }, state.token);  
-  
-    if (!result.success) {  
-      const fallbackRows = getAdminFallbackRowsForActiveTask();  
-  
-      if (fallbackRows.length > 0) {  
-        currentProgressRows = fallbackRows;  
-        renderProgressTaskStudents(currentProgressRows);  
-        endProgressLoadStatus(statusToken, "Progress loaded");
-        return;  
-      }  
-  
-      failProgressLoadStatus(statusToken, "Progress load failed");
-      setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(result.error || "Could not load students.")}</p>`);  
-      return;  
-    }  
-  
-    const apiRows = Array.isArray(result.students)  
-      ? result.students.map(normalizeProgressStudentRow)  
-      : [];  
-  
-    let allSubjectRows = [];  
-  
-    if (  
-      apiRows.length === 0 &&  
-      progressState.taskid &&  
-      progressState.taskid !== "ALL" &&  
-      progressState.subjectid &&  
-      progressState.subjectid !== "ALL"  
-    ) {  
-      const allSubjectResult = await apiPost("/api/progress/task-detail", {  
-        studentid: progressState.studentid,  
-        classgroup: progressState.classgroup,  
-        subjectid: "ALL",  
-        taskid: progressState.taskid  
-      }, state.token).catch(err => ({ success: false, error: err.message, students: [] }));  
-  
-      allSubjectRows = allSubjectResult && allSubjectResult.success && Array.isArray(allSubjectResult.students)  
-        ? allSubjectResult.students.map(normalizeProgressStudentRow)  
-        : [];  
-    }  
-  
-    const rows = apiRows.length > 0  
-      ? apiRows  
-      : (allSubjectRows.length > 0 ? allSubjectRows : getAdminFallbackRowsForActiveTask());  
-  
-    if (rows.length === 0) {  
-      endProgressLoadStatus(statusToken, "Progress loaded");
-      setDomHtml("progress-task-students-list", `<p class="helper-text">No student tasks found.</p>`);  
-      return;  
-    }  
-  
-    currentProgressRows = rows;  
-    renderProgressTaskStudents(currentProgressRows);
-    endProgressLoadStatus(statusToken, "Progress loaded");  
-  } catch (err) {  
-    const fallbackRows = getAdminFallbackRowsForActiveTask();  
-  
-    if (fallbackRows.length > 0) {  
-      currentProgressRows = fallbackRows;  
-      renderProgressTaskStudents(currentProgressRows);  
-      endProgressLoadStatus(statusToken, "Progress loaded");
-      return;  
-    }  
-  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error("Could not load student progress rows:", err);  
-    setDomHtml("progress-task-students-list", `<p class="error-message">${escapeHtml(err.message || "Could not load students.")}</p>`);  
-  }  
-}  
+  // V90.8.6 strict cleanup: old admin task-student detail screen removed.
+  await showProgressReport();
+  return true;
+}
   
 function renderAdminProgressTaskDetailStudentRow(row) {  
   const pending = progressPendingUpdates[row.studenttaskid] || {};  
@@ -6447,289 +5666,30 @@ async function saveAdminProgressTaskChanges(button) {
   return saved;  
 }  
   
-function getAdminProgressGroupSwipeTrack() {  
-  return document.querySelector("#progress-task-students-screen [data-admin-progress-group-swipe-track]");  
-}  
-  
-function getAdminProgressGroupSwipePanels(track) {  
-  const targetTrack = track || getAdminProgressGroupSwipeTrack();  
-  
-  if (!targetTrack || !targetTrack.children) {  
-    return [];  
-  }  
-  
-  return Array.from(targetTrack.children).filter(child => {  
-    return child &&  
-      child.matches &&  
-      child.matches("[data-admin-progress-group-panel], .admin-progress-group-container");  
-  });  
-}  
-  
-function getAdminProgressGroupActiveIndex(track) {  
-  const targetTrack = track || getAdminProgressGroupSwipeTrack();  
-  
-  if (!targetTrack) {  
-    return 0;  
-  }  
-  
-  const panels = getAdminProgressGroupSwipePanels(targetTrack);  
-  
-  if (panels.length <= 1) {  
-    return 0;  
-  }  
-  
-  if ((targetTrack.scrollWidth || 0) <= (targetTrack.clientWidth || 0) + 2) {  
-    return 0;  
-  }  
-  
-  const firstPanel = panels[0];  
-  const secondPanel = panels[1];  
-  let step = targetTrack.clientWidth || 1;  
-  
-  if (firstPanel && secondPanel) {  
-    const firstRect = firstPanel.getBoundingClientRect();  
-    const secondRect = secondPanel.getBoundingClientRect();  
-    const measuredStep = Math.abs(secondRect.left - firstRect.left);  
-  
-    if (measuredStep > 1) {  
-      step = measuredStep;  
-    }  
-  }  
-  
-  const index = Math.round((targetTrack.scrollLeft || 0) / step);  
-  return Math.max(0, Math.min(panels.length - 1, index));  
-}  
-  
-function updateAdminProgressGroupSwipeDots() {  
-  const screen = document.getElementById("progress-task-students-screen");  
-  const track = getAdminProgressGroupSwipeTrack();  
-  
-  if (!screen || !track) {  
-    return false;  
-  }  
-  
-  const dots = Array.from(screen.querySelectorAll("[data-admin-progress-group-swipe-dots] [data-progress-group-index]"));  
-  
-  if (!dots.length) {  
-    return false;  
-  }  
-  
-  const activeIndex = getAdminProgressGroupActiveIndex(track);  
-  
-  dots.forEach((dot, fallbackIndex) => {  
-    const dotIndex = Number(dot.dataset.progressGroupIndex || fallbackIndex || 0);  
-    const isActive = dotIndex === activeIndex;  
-    dot.classList.toggle("is-active", isActive);  
-    dot.setAttribute("aria-current", isActive ? "true" : "false");  
-  });  
-  
-  return true;  
-}  
-  
-function scrollAdminProgressGroupToIndex(groupIndex, options = {}) {  
-  const track = getAdminProgressGroupSwipeTrack();  
-  const panels = getAdminProgressGroupSwipePanels(track);  
-  const index = Number(groupIndex || 0);  
-  
-  if (!track || !panels[index]) {  
-    return false;  
-  }  
-  
-  panels[index].scrollIntoView({  
-    behavior: options.behavior || "smooth",  
-    block: "nearest",  
-    inline: "start"  
-  });  
-  
-  updateAdminProgressGroupSwipeDots();  
-  
-  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {  
-    window.requestAnimationFrame(updateAdminProgressGroupSwipeDots);  
-  } else {  
-    window.setTimeout(updateAdminProgressGroupSwipeDots, 0);  
-  }  
-  
-  return true;  
-}  
-  
-function renderAdminProgressGroupSwipeDots(groups) {  
-  const list = Array.isArray(groups) ? groups : [];  
-  
-  if (list.length <= 1) {  
-    return "";  
-  }  
-  
-  return `  
-    <div class="m4l-progress-swipe-dots admin-progress-group-swipe-dots" data-admin-progress-group-swipe-dots aria-label="Class groups">  
-      ${list.map((group, index) => `  
-        <button  
-          type="button"  
-          class="m4l-progress-swipe-dot admin-progress-group-swipe-dot${index === 0 ? " is-active" : ""}"  
-          data-progress-action="scroll-admin-progress-group"  
-          data-progress-group-index="${index}"  
-          aria-label="Show Group ${escapeForAttribute(group)}"  
-          aria-current="${index === 0 ? "true" : "false"}"  
-        ></button>  
-      `).join("")}  
-    </div>  
-  `;  
-}  
-  
-function bindAdminProgressGroupSwipeControls() {  
-  const track = getAdminProgressGroupSwipeTrack();  
-  
-  if (!track) {  
-    return false;  
-  }  
-  
-  if (track.dataset.adminProgressGroupSwipeBound !== "true") {  
-    track.dataset.adminProgressGroupSwipeBound = "true";  
-    let pendingFrame = 0;  
-  
-    track.addEventListener("scroll", () => {  
-      if (pendingFrame) return;  
-  
-      pendingFrame = window.requestAnimationFrame(() => {  
-        pendingFrame = 0;  
-        updateAdminProgressGroupSwipeDots();  
-      });  
-    }, { passive: true });  
-  }  
-  
-  window.setTimeout(updateAdminProgressGroupSwipeDots, 0);  
-  return true;  
-}  
-  
-function updateProgressRowsStatusInMemory(studenttaskid, field, value) {  
-  const id = String(studenttaskid || "");  
-  if (!id || !field) return false;  
-  
-  let updated = false;  
-  [currentProgressRows, adminProgressActiveTaskRows, adminProgressDashboardRows, adminProgressIndividualRows, adminProgressPopoutRows].forEach(collection => {  
-    if (!Array.isArray(collection)) return;  
-    collection.forEach(row => {  
-      if (String(row.studenttaskid || "") === id) {  
-        row[field.toLowerCase ? field.toLowerCase() : field] = value ? "YES" : "";  
-        row[field] = value ? "YES" : "";  
-        updated = true;  
-      }  
-    });  
-  });  
-  
-  return updated;  
-}  
-  
-function updateAdminProgressStatusControls(studenttaskid, field, value, actionName) {
-  const type = field === "verifyStatus" ? "verify" : "complete";
-  const controls = Array.from(document.querySelectorAll(`[data-progress-action="${actionName}"][data-field="${field}"]`))
-    .filter(control => String(control.dataset.studenttaskid || "") === String(studenttaskid || ""));
-
-  controls.forEach(control => {
-    const currentLabel = control.getAttribute("aria-label") || "";
-    const labelSuffix = currentLabel.includes(":")
-      ? `: ${currentLabel.split(":").slice(1).join(":").trim()}`
-      : "";
-
-    control.dataset.value = value ? "false" : "true";
-    control.classList.toggle("is-on", !!value);
-    control.innerHTML = renderAdminProgressStatusIndicator(type, !!value);
-
-    if (field === "verifyStatus") {
-      control.setAttribute("aria-label", `${value ? "Verified" : "Click to mark verified"}${labelSuffix}`);
-    } else {
-      control.setAttribute("aria-label", `${value ? "Completed" : "Click to mark complete"}${labelSuffix}`);
-    }
-  });
-
-  return controls.length > 0;
-}  
-  
-  
-function renderAdminProgressStudentTaskRow(row) {  
-  const pending = progressPendingUpdates[row.studenttaskid] || {};  
-  
-  const completeStatus = pending.completeStatus !== undefined  
-    ? pending.completeStatus  
-    : row.completestatus;  
-  
-  const verifyStatus = pending.verifyStatus !== undefined  
-    ? pending.verifyStatus  
-    : row.verifystatus;  
-  
-  const isComplete = isStatusOn(completeStatus);  
-  const isVerified = isStatusOn(verifyStatus);  
-  
-  return `  
-    <div class="student-status-row admin-progress-student-row">  
-      <button  
-        type="button"  
-        class="admin-progress-student-name-button"  
-        data-progress-action="open-admin-progress-student-popout"  
-        data-studentid="${escapeForAttribute(row.studentid)}"  
-        data-username="${escapeForAttribute(row.username || "Student")}">  
-        ${escapeHtml(row.username || "Student")}  
-      </button>  
-  
-      <div  
-        class="status-action task-status-control admin-progress-status-control admin-progress-complete-control is-admin-complete-override${isComplete ? " is-on" : ""}"  
-        role="button"  
-        tabindex="0"  
-        data-progress-action="toggle-progress-pending"  
-        data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"  
-        data-field="completeStatus"  
-        data-value="${isComplete ? "false" : "true"}"  
-        aria-label="${isComplete ? "Mark incomplete" : "Mark complete"}: ${escapeForAttribute(row.username || "Student")}">  
-        ${renderAdminProgressStatusIndicator("complete", isComplete)}  
-      </div>  
-  
-      <div  
-        class="status-action task-status-control admin-progress-status-control admin-progress-verify-control${isVerified ? " is-on" : ""}"  
-        role="button"  
-        tabindex="0"  
-        data-progress-action="toggle-progress-pending"  
-        data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"  
-        data-field="verifyStatus"  
-        data-value="${isVerified ? "false" : "true"}"  
-        aria-label="${isVerified ? "Mark unverified" : "Mark verified"}: ${escapeForAttribute(row.username || "Student")}">  
-        ${renderAdminProgressStatusIndicator("verify", isVerified)}  
-      </div>  
-    </div>  
-  `;  
-}  
-  
-
-function ensureAdminProgressStudentPopout() {
-  console.warn("V79.4 legacy admin student popout is quarantined.");
+function getAdminProgressGroupSwipeTrack() {
+  // V90.8.6 strict cleanup: old Group swipe screen removed.
   return null;
 }
 
+function getAdminProgressGroupSwipePanels(track) {
+  return [];
+}
 
-async function openAdminProgressStudentPopout(studentid, username) {
-  console.warn("V79.4 legacy admin student popout route is quarantined; opening full student view instead.", studentid, username);
-  if (!studentid) {
-    alert("Student details are missing.");
-    return false;
-  }
+function getAdminProgressGroupActiveIndex(track) {
+  return 0;
+}
 
-  if (typeof openAdminIndividualStudentCard === "function") {
-    return openAdminIndividualStudentCard(studentid, username || "Student");
-  }
-
+function updateAdminProgressGroupSwipeDots() {
   return false;
 }
 
-
-async function loadAdminStudentProgressPopout(studentid, username) {
-  console.warn("V79.4 legacy admin popout loader is quarantined.", studentid, username);
+function scrollAdminProgressGroupToIndex(groupIndex, options = {}) {
   return false;
 }
 
-
-function renderAdminStudentProgressPopout(rows, username) {
-  console.warn("V79.4 legacy admin popout renderer is quarantined.", username, rows);
-  return false;
+function renderAdminProgressGroupSwipeDots(groups) {
+  return "";
 }
-
 
 function getAdminProgressPopoutModuleSwipeTrack() {
   return null;
