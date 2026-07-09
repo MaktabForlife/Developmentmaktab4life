@@ -1,9 +1,10 @@
-/* M4L v90.8.7 - Admin Individual Progress Student Progress rebuild
-   Baseline: V90.8.5 Progress cleanup before Individual Progress rebuild.
-   Scope: preserve completed Class/Group Progress V90.8.4 and shared save/API
-   behaviour; rebuild Admin Individual selected-student Progress using the
-   proven Student Progress module-stepper/module-card layout with one Admin
-   fill-to-edit status column and a selected-student global header.
+/* M4L v90.8.7.2 - Admin Individual Progress sticky header and legacy cleanup
+   Baseline: V90.8.7.1 Admin Individual Progress polish/fill/save.
+   Scope: raise and fix the rebuilt Individual Progress student-name/stepper
+   pane below the app banner/nav, route close.svg back to the clean Progress
+   landing, remove progress selector pills from active Progress screens, remove
+   legacy Group Progress pages/routes, and remove the temporary cleanup/loading
+   placeholder flash before Individual renders.
    Protected: Student Progress V89.7, completed Class/Group Progress V90.8.4,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
    Apps Script, and backend API behaviour.
@@ -111,9 +112,120 @@ function bindProgressUiHandlers(containerOrId) {
   document.addEventListener("keydown", handleProgressUiKeydown);  
   document.addEventListener("change", handleProgressUiChange);  
   document.addEventListener("input", handleProgressUiInput);  
+  bindAdminProgressSwipeEscapeGuard();
   return !!getDomElement(containerOrId);  
 }  
   
+function bindAdminProgressSwipeEscapeGuard() {
+  if (adminProgressSwipeEscapeGuardBound === true) return true;
+  if (typeof document === "undefined" || typeof document.addEventListener !== "function") return false;
+
+  adminProgressSwipeEscapeGuardBound = true;
+
+  const progressRootSelector = [
+    "#progress-report.admin-theme .admin-progress-class-overview",
+    "#progress-report.admin-theme .admin-individual-progress-shell"
+  ].join(", ");
+
+  const horizontalScrollSelector = [
+    ".admin-progress-class-grid-scroll",
+    ".admin-individual-progress-pane-viewport",
+    ".admin-individual-progress-module-numbers",
+    ".student-progress-stepper-number-strip"
+  ].join(", ");
+
+  let gesture = null;
+
+  const getTouchPoint = event => {
+    const touches = event && event.touches;
+    return touches && touches.length ? touches[0] : null;
+  };
+
+  const preventSwipeEscape = event => {
+    if (!event) return false;
+    if (event.cancelable && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    if (typeof event.stopPropagation === "function") {
+      event.stopPropagation();
+    }
+    return true;
+  };
+
+  document.addEventListener("touchstart", event => {
+    const target = event && event.target;
+    if (!target || typeof target.closest !== "function") {
+      gesture = null;
+      return;
+    }
+
+    const root = target.closest(progressRootSelector);
+    const point = getTouchPoint(event);
+
+    if (!root || !point) {
+      gesture = null;
+      return;
+    }
+
+    gesture = {
+      root,
+      target,
+      startX: point.clientX,
+      startY: point.clientY
+    };
+  }, { capture: true, passive: true });
+
+  document.addEventListener("touchmove", event => {
+    if (!gesture || !gesture.root || !gesture.target) return;
+
+    if (!document.body || !document.body.contains(gesture.root)) {
+      gesture = null;
+      return;
+    }
+
+    const point = getTouchPoint(event);
+    if (!point) return;
+
+    const deltaX = point.clientX - gesture.startX;
+    const deltaY = point.clientY - gesture.startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (absX < 12 || absX < absY * 1.12) {
+      return;
+    }
+
+    const horizontalScroller = gesture.target.closest && gesture.target.closest(horizontalScrollSelector);
+
+    if (horizontalScroller && horizontalScroller.scrollWidth > horizontalScroller.clientWidth + 2) {
+      const maxScrollLeft = Math.max(0, horizontalScroller.scrollWidth - horizontalScroller.clientWidth);
+      const currentScrollLeft = Math.max(0, horizontalScroller.scrollLeft || 0);
+      const atStart = currentScrollLeft <= 1;
+      const atEnd = currentScrollLeft >= maxScrollLeft - 1;
+      const swipingRight = deltaX > 0;
+      const swipingLeft = deltaX < 0;
+
+      if ((atStart && swipingRight) || (atEnd && swipingLeft)) {
+        preventSwipeEscape(event);
+      }
+
+      return;
+    }
+
+    preventSwipeEscape(event);
+  }, { capture: true, passive: false });
+
+  document.addEventListener("touchend", () => {
+    gesture = null;
+  }, { capture: true, passive: true });
+
+  document.addEventListener("touchcancel", () => {
+    gesture = null;
+  }, { capture: true, passive: true });
+
+  return true;
+}
+
 function getProgressActionElement(event) {  
   const target = event && event.target;  
   if (!target || typeof target.closest !== "function") return null;  
@@ -2947,40 +3059,16 @@ function ensureAdminProgressAigSelector(screenOrId, activeView = adminProgressAc
   const screen = getDomElement(screenOrId);
   if (!screen) return false;
 
-  // V90.8.5 cleanup: Individual Progress is being rebuilt as its own selected-student
-  // flow. Do not show the old progress selector pill / "Select a student" picker shell
-  // in the Individual path. Class and Group keep the existing selector.
-  if (normalizeAdminProgressView(activeView) === "individual") {
-    return removeAdminProgressAigSelector(screen);
-  }
-
-  let shell = screen.querySelector("[data-admin-progress-aig-shell]");
-  if (!shell) {
-    screen.insertAdjacentHTML("afterbegin", renderAdminProgressAigSelector(activeView));
-    shell = screen.querySelector("[data-admin-progress-aig-shell]");
-  } else {
-    shell.outerHTML = renderAdminProgressAigSelector(activeView);
-    shell = screen.querySelector("[data-admin-progress-aig-shell]");
-  }
-
-  bindProgressUiHandlers(screen);
-  return !!shell;
+  // V90.8.7.2: remove the old Progress selector pill from all active
+  // Progress screens. Individual now opens from student names and close.svg
+  // returns to the clean Class/All Progress landing.
+  removeAdminProgressAigSelector(screen);
+  return true;
 }
 
 function updateAdminProgressAigSelectorState(activeView = adminProgressActiveView || "all") {
-  const currentView = normalizeAdminProgressView(activeView);
-
-  if (currentView === "individual") {
-    removeAdminProgressAigSelector("progress-report");
-    return true;
-  }
-
-  document.querySelectorAll("[data-admin-progress-aig-shell]").forEach(shell => {
-    const picker = shell.querySelector("[data-progress-change-action='set-admin-progress-view-picker']");
-    if (picker) {
-      picker.value = currentView;
-    }
-  });
+  // V90.8.7.2: no visible Progress selector remains, so clear stale shells.
+  document.querySelectorAll("[data-admin-progress-aig-shell]").forEach(shell => shell.remove());
   return true;
 }
 
@@ -3086,7 +3174,9 @@ async function setAdminProgressAigView(view) {
   }  
   
   if (isAdminProgressGroupView(normalizedView)) {  
-    await showAdminScopedGroupProgress(normalizedView);  
+    // V90.8.7.2: old Group Progress pages/screens are removed from active flow.
+    adminProgressActiveView = "all";
+    await showProgressReport();  
     return true;  
   }  
   
@@ -3107,7 +3197,8 @@ async function requestCloseAdminProgressTaskScreen() {
   closeAdminProgressStudentPopout({ silent: true });  
   
   if (isAdminProgressGroupView(adminProgressActiveView)) {  
-    await showAdminScopedGroupProgress(adminProgressActiveView);  
+    adminProgressActiveView = "all";
+    await showProgressReport();  
     return true;  
   }  
   
@@ -3313,10 +3404,10 @@ async function refreshAdminProgressDashboardCacheInBackground(options = {}) {
   
     if (options.render === true) {  
       if (isAdminProgressGroupView(adminProgressActiveView)) {  
-        renderAdminProgressDashboardForScope(adminProgressSelectedGroup || getAdminProgressGroupFromView(adminProgressActiveView));  
-      } else {  
-        renderAdminProgressDashboard(fresh.modules);  
-      }  
+        adminProgressActiveView = "all";
+        adminProgressSelectedGroup = "ALL";
+      }
+      renderAdminProgressDashboard(fresh.modules);  
     }  
   
     return fresh;  
@@ -3354,14 +3445,17 @@ function buildAdminProgressModulesForScope(group, rows = adminProgressDashboardR
 }  
   
 function renderAdminProgressDashboardForScope(group) {  
-  const groupKey = String(group || "ALL");  
-  const activeView = groupKey === "ALL" ? "all" : `group-${groupKey}`;  
+  // V90.8.7.2: legacy Group Progress pages/screens are no longer an active
+  // Progress destination. Any scoped render request is normalized to the clean
+  // All/Class landing while preserving the completed Class/Group data model.
+  const groupKey = "ALL";  
+  const activeView = "all";  
   const modules = adminProgressDashboardRows.length > 0  
     ? buildAdminProgressModulesForScope(groupKey, adminProgressDashboardRows)  
-    : (groupKey === "ALL" ? adminProgressDashboardModules.map(module => ({  
+    : adminProgressDashboardModules.map(module => ({  
         ...module,  
         tasks: (module.tasks || []).map(task => ({ ...task, classgroup: "ALL" }))  
-      })) : []);  
+      }));  
   
   adminProgressDashboardModules = modules;  
   ensureAdminProgressAigSelector("progress-report", activeView);  
@@ -3370,62 +3464,12 @@ function renderAdminProgressDashboardForScope(group) {
   return modules.length > 0;  
 }  
   
-async function showAdminScopedGroupProgress(view) {  
-  const normalizedView = normalizeAdminProgressView(view);  
-  const group = getAdminProgressGroupFromView(normalizedView);  
-  const dashboard = getDomElement("admin-progress-dashboard");  
-  
-  setAdminProgressSectionBodyState("progress-report");  
-  setProgressScreensForAdmin();  
-  adminProgressActiveView = normalizedView;  
-  adminProgressSelectedGroup = group;  
-  prepareAdminProgressMonitor();  
-  ensureAdminProgressAigSelector("progress-report", normalizedView);  
-  updateAdminProgressAigSelectorState(normalizedView);  
-  closeAdminProgressStudentPopout({ silent: true });  
-  
-  progressState.contextType = "group";  
-  progressState.classgroup = group;  
-  progressState.studentid = "ALL";  
-  progressState.studentName = "";  
-  progressState.subjectid = "ALL";  
-  progressState.subjectname = "";  
-  progressState.taskid = "ALL";  
-  progressState.taskname = "";  
-  progressState.fromAdminDashboard = true;  
-  adminIndividualProgressEditMode = false;  
-  currentProgressRows = [];  
-  adminProgressActiveTaskRows = [];  
-  adminProgressPopoutRows = [];  
-  
-  if (!dashboard) return false;  
-  
-  setDomHtml(dashboard, "");  
-  showScreen("progress-report");  
-  
-  const cached = readAdminProgressDashboardCache();  
-  if (cached && Array.isArray(cached.rows) && cached.rows.length > 0) {  
-    adminProgressDashboardRows = cached.rows.map(normalizeProgressStudentRow);  
-    renderAdminProgressDashboardForScope(group);  
-    refreshAdminProgressDashboardCacheInBackground({ render: true });  
-    return true;  
-  }  
-  
-  const statusToken = beginProgressLoadStatus(`Loading Group ${group} progress...`);
-
-  try {  
-    const fresh = await fetchAdminProgressDashboardData();  
-    adminProgressDashboardRows = fresh.rows;  
-    writeAdminProgressDashboardCache(fresh.modules, fresh.rows);  
-    renderAdminProgressDashboardForScope(group);  
-    endProgressLoadStatus(statusToken, "Progress loaded");
-    return true;  
-  } catch (err) {  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error(`Could not load Group ${group} progress:`, err);  
-    setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || `Could not load Group ${group} progress.`)}</p>`);  
-    return false;  
-  }  
+async function showAdminScopedGroupProgress(view) {
+  // V90.8.7.2: old Group Progress pages/screens are removed from the active
+  // flow. Route stale group-view calls to the clean All/Class Progress landing.
+  adminProgressActiveView = "all";
+  adminProgressSelectedGroup = "ALL";
+  return showProgressReport();
 }  
   
 
@@ -5463,12 +5507,9 @@ function renderAdminProgressDashboard(modules) {
     return;  
   }  
   
-  setDomHtml(dashboard, `
-    <section class="admin-progress-placeholder-card" aria-label="Progress cleanup checkpoint">
-      <h3>Progress cleanup</h3>
-      <p class="helper-text">The old module shelf route has been removed. Use View All Progress, Group Progress, or Individual Progress.</p>
-    </section>
-  `);
+  // V90.8.7.2: remove the temporary Progress cleanup placeholder. Keep the
+  // landing quiet if no active Class/All grid can be rendered.
+  setDomHtml(dashboard, `<p class="helper-text">No progress tasks found.</p>`);
   bindProgressUiHandlers(dashboard);  
 }  
   
@@ -5737,7 +5778,11 @@ async function requestCloseAdminIndividualStudentView() {
     clearAdminProgressDashboardCache();  
   }  
   
-  await showAdminIndividualProgressLanding();  
+  // V90.8.7.2: close.svg returns to the clean Progress landing, not the old
+  // grouped student-card Individual landing.
+  adminProgressActiveView = "all";
+  adminProgressSelectedGroup = "ALL";
+  await showProgressReport();  
   return true;  
 }  
   
@@ -6235,12 +6280,9 @@ async function loadAdminIndividualSelectedStudentProgress(studentid, username) {
   if (!dashboard) return false;
 
   const safeStudentName = username || "Student";
-  setDomHtml(dashboard, `
-    <section class="admin-individual-progress-shell is-viewing is-loading" aria-label="Loading ${escapeForAttribute(safeStudentName)} progress">
-      ${renderAdminIndividualProgressGlobalPane(safeStudentName, [], 0)}
-      <p class="helper-text">Loading student progress...</p>
-    </section>
-  `);
+  // V90.8.7.2: do not flash the old cleanup/loading placeholder before the
+  // rebuilt Individual view renders. The global app status strip owns loading.
+  setDomHtml(dashboard, "");
   bindProgressUiHandlers(dashboard);
 
   const statusToken = beginProgressLoadStatus("Loading student modules...");
