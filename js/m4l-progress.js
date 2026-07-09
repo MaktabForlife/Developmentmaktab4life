@@ -1,14 +1,13 @@
-/* M4L v90.4 - Admin Class Progress FillToEdit
-   Baseline: V90.3.1 Admin Class Progress width repair.
-   CSS baseline: V90.3.1 Admin Class Progress width repair.
-   Scope: keep the stable V90.2/V90.3 global student-column architecture and
-   V90.3.1 width repair, then complete the FillToEdit rule for Admin Progress
-   matrix cells: in edit mode, empty editable body cells show edit.svg, complete
-   cells show a green tick, and verified cells show a gold tick. Also apply the
-   same shared empty/complete/verified metadata to Group grid cells for later reuse.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress
-   layout, Attendance, Library, Home, Recorder, bottom navigation, auth banner,
-   and backend. Note: does not restore the removed legacy renderTaskStatusIndicator function.
+/* M4L v90.4.2 - Admin Class Progress FillToEdit cleanup
+   Baseline: V90.4.1 Admin Class Progress FillToEdit text symbol.
+   Scope: clean the Admin Class Progress FillToEdit implementation so empty
+   editable body cells use only the plain text pencil glyph. Remove leftover
+   Class Progress FillToEdit CSS/comment snippets from the earlier masked-icon
+   experiment while preserving the stable global student-column architecture,
+   V90.3 GUI refinements, and V90.3.1 width repair.
+   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, backend.
+   Note: does not restore the removed legacy renderTaskStatusIndicator function.
 */  
   
 /* =========================  
@@ -3896,14 +3895,8 @@ function getAdminProgressClassMatrixCellState(row) {
   if (isStatusOn(verifyStatus)) return "verified";  
   if (isStatusOn(completeStatus)) return "complete";  
   return "blank";  
-}
-
-function getAdminProgressMatrixDisplayState(state) {
-  const normalizedState = String(state || "blank");
-
-  return normalizedState === "blank" ? "empty" : normalizedState;
-}
-    
+}  
+  
 function getNextAdminProgressClassMatrixCellState(currentState) {  
   switch (String(currentState || "blank")) {  
     case "blank":  
@@ -3935,7 +3928,7 @@ function getAdminProgressClassMatrixStateLabel(state) {
     case "complete":  
       return "Complete";  
     default:  
-      return "Empty";  
+      return "Blank";  
   }  
 }  
   
@@ -4557,7 +4550,6 @@ function renderAdminProgressClassGridTaskCell(student, module, task, moduleIndex
   const moduleName = module.modulename || module.subjectname || "Module";  
   const taskName = task.taskname || "Untitled Task";  
   const state = getAdminProgressClassMatrixCellState(row);  
-  const displayState = getAdminProgressMatrixDisplayState(state);
   const stateLabel = getAdminProgressClassMatrixStateLabel(state);  
   const label = `${studentName}, ${moduleName}, ${taskName}: ${stateLabel}`;  
   const studentTaskId = row ? String(row.studenttaskid || "") : "";  
@@ -4571,10 +4563,8 @@ function renderAdminProgressClassGridTaskCell(student, module, task, moduleIndex
           class="admin-progress-class-grid-status-button admin-progress-class-grid-status-button--${escapeForAttribute(state)}"  
           data-progress-action="cycle-admin-progress-class-cell"  
           data-studenttaskid="${escapeForAttribute(studentTaskId)}"  
-          data-status="${escapeForAttribute(state)}"
-          data-state="${escapeForAttribute(displayState)}"
-          aria-label="${escapeForAttribute(label)}"
-          title="${escapeForAttribute(label)}"
+          data-status="${escapeForAttribute(state)}"  
+          aria-label="${escapeForAttribute(label)}"  
           ${studentTaskId ? "" : "disabled"}  
         >  
           ${renderAdminProgressClassGridStatusSymbol(state)}  
@@ -4602,7 +4592,7 @@ function renderAdminProgressClassGridStatusSymbol(state) {
   }  
   
   return `  
-    <span class="admin-progress-class-grid-status-symbol admin-progress-class-grid-status-symbol--empty-edit edit-mode-icon" aria-hidden="true"></span>  
+    <span class="admin-progress-class-grid-status-symbol admin-progress-class-grid-status-symbol--empty-edit-text" aria-hidden="true">✎</span>  
     <span class="visually-hidden">Empty / editable</span>  
   `;  
 }  
@@ -4616,11 +4606,11 @@ function updateAdminProgressClassMatrixCellButton(button, nextState) {
   
   button.classList.add(`admin-progress-class-grid-status-button--${nextState}`);  
   button.dataset.status = nextState;
-  button.dataset.state = getAdminProgressMatrixDisplayState(nextState);  
+  button.dataset.state = nextState === "blank" ? "empty" : nextState;  
   button.innerHTML = renderAdminProgressClassGridStatusSymbol(nextState);  
   
   const existingLabel = button.getAttribute("aria-label") || "Progress cell";  
-  const baseLabel = existingLabel.replace(/: (Empty|Blank|Complete|Verified)$/i, "");  
+  const baseLabel = existingLabel.replace(/: (Blank|Complete|Verified)$/i, "");  
   button.setAttribute("aria-label", `${baseLabel}: ${getAdminProgressClassMatrixStateLabel(nextState)}`);  
   
   return true;  
@@ -4864,7 +4854,6 @@ function renderAdminProgressGroupGridStatusCell(student, module, task, studentIn
   const moduleName = module.modulename || module.subjectname || "Module";  
   const taskName = task.taskname || "Untitled Task";  
   const state = getAdminProgressClassMatrixCellState(row);  
-  const displayState = getAdminProgressMatrixDisplayState(state);
   const stateLabel = getAdminProgressClassMatrixStateLabel(state);  
   const label = `${studentName}, ${moduleName}, ${taskName}: ${stateLabel}`;  
   const studentTaskId = row ? String(row.studenttaskid || "") : "";  
@@ -4881,12 +4870,10 @@ function renderAdminProgressGroupGridStatusCell(student, module, task, studentIn
         class="admin-progress-group-grid-status-button admin-progress-group-grid-status-button--${escapeForAttribute(state)}"  
         data-progress-action="cycle-admin-progress-group-cell"  
         data-studenttaskid="${escapeForAttribute(studentTaskId)}"  
-        data-status="${escapeForAttribute(state)}"
-        data-state="${escapeForAttribute(displayState)}"
-        data-progress-row-key="${escapeForAttribute(rowKey)}"
-        data-progress-student-id="${escapeForAttribute(studentId)}"
-        aria-label="${escapeForAttribute(label)}"
-        title="${escapeForAttribute(label)}"
+        data-status="${escapeForAttribute(state)}"  
+        data-progress-row-key="${escapeForAttribute(rowKey)}"  
+        data-progress-student-id="${escapeForAttribute(studentId)}"  
+        aria-label="${escapeForAttribute(label)}"  
         ${studentTaskId ? "" : "disabled"}  
       >  
         ${renderAdminProgressClassGridStatusSymbol(state)}  
@@ -4903,12 +4890,11 @@ function updateAdminProgressGroupMatrixCellButton(button, nextState) {
   });  
   
   button.classList.add(`admin-progress-group-grid-status-button--${nextState}`);  
-  button.dataset.status = nextState;
-  button.dataset.state = getAdminProgressMatrixDisplayState(nextState);  
+  button.dataset.status = nextState;  
   button.innerHTML = renderAdminProgressClassGridStatusSymbol(nextState);  
   
   const existingLabel = button.getAttribute("aria-label") || "Progress cell";  
-  const baseLabel = existingLabel.replace(/: (Empty|Blank|Complete|Verified)$/i, "");  
+  const baseLabel = existingLabel.replace(/: (Blank|Complete|Verified)$/i, "");  
   button.setAttribute("aria-label", `${baseLabel}: ${getAdminProgressClassMatrixStateLabel(nextState)}`);  
   
   return true;  
