@@ -1,12 +1,14 @@
-/* M4L v90.8.5 - Admin Individual Progress student-layout alignment
-   Baseline: V90.8.4 Admin Class/Group Progress calm accordion grid.
-   Scope: keep the completed Class Progress and Group Progress accordion/grid
-   baseline intact; align Admin Individual Progress to the proven Student
-   Progress module-card/swipe layout, keep Admin fill-to-edit behaviour for
-   Complete/Verify cells, and place the selected student name in a global
-   header above the module header. Protected: Class Progress, Group Progress,
-   Student Progress V89.7, Attendance, Library, Home, Recorder, bottom
-   navigation, auth banner, Worker, Apps Script, and backend API behaviour.
+/* M4L v90.8.5 - Progress cleanup before Individual Progress rebuild
+   Baseline: V90.8.4 Admin Class/Group Progress completed accordion/grid.
+   Scope: preserve the completed V90.8.4 Class Progress and Group Progress
+   implementations, shared admin fill-to-edit behaviour, pending-save/background
+   save helpers, and backend APIs; remove old Individual Progress selected-view
+   rendering, remove the Individual progress selector pill/search UI, and stop
+   using quarantined legacy Class/Group dashboard shelf routes so Individual can
+   be rebuilt cleanly from the Student Progress visual model next.
+   Protected: Student Progress V89.7, completed Class/Group Progress V90.8.4,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
+   Apps Script, and backend API behaviour.
 */
 
 /* =========================  
@@ -168,9 +170,9 @@ function handleProgressUiInput(event) {
   const action = actionEl.dataset.progressInputAction || "";  
   
   switch (action) {  
-    case "filter-admin-student-list":  
-      filterAdminProgressStudentPicker(actionEl.value || "");  
-      break;  
+    case "filter-admin-student-list":
+      // V90.8.5 cleanup: old Individual student search has been removed.
+      break;
     default:  
       break;  
   }  
@@ -351,20 +353,6 @@ function handleProgressUiClick(event) {
 
     case "cycle-admin-progress-class-cell":
       cycleAdminProgressClassMatrixCell(actionEl);
-      break;
-  
-    case "scroll-admin-dashboard-task":  
-      scrollAdminProgressDashboardRailToIndex(  
-        actionEl,  
-        Number(actionEl.dataset.progressTaskIndex || 0)  
-      );  
-      break;  
-
-    case "step-admin-individual-progress-module":
-      stepAdminIndividualProgressModuleBy(
-        actionEl,
-        Number(actionEl.dataset.progressStep || 0)
-      );
       break;
   
     case "scroll-admin-popout-module":  
@@ -2066,29 +2054,6 @@ function renderAdminIndividualProgressEditToggle() {
   `;
 }
 
-function renderAdminIndividualProgressTaskTableHeader() {
-  return `
-    <div class="student-progress-grid-row student-progress-grid-heading-row admin-individual-progress-grid-heading-row" role="row" aria-hidden="true">
-      <div class="student-progress-grid-task-heading" role="columnheader" aria-label="Task"></div>
-      <div class="student-progress-grid-status-heading" role="columnheader"><span class="visually-hidden">Completed</span></div>
-      <div class="student-progress-grid-status-heading" role="columnheader"><span class="visually-hidden">Verified</span></div>
-    </div>
-  `;
-}
-
-function renderAdminIndividualProgressStatusContent(type, row, isOn) {
-  const dateValue = type === "verify" ? row.verifieddate : row.completeddate;
-
-  if (isOn) {
-    return `
-      ${renderAdminProgressStatusIndicator(type, true)}
-      ${renderStudentProgressFocusedDateNote(dateValue)}
-    `;
-  }
-
-  return renderAdminProgressStatusIndicator(type, false, { muted: true });
-}  
-  
 function isStudentProgressModuleEditing(moduleKey) {  
   return studentProgressModuleEditState[String(moduleKey || "")] === true;  
 }  
@@ -2940,34 +2905,55 @@ function renderAdminProgressAigSelector(activeView = "all") {
   `;  
 }  
   
-function ensureAdminProgressAigSelector(screenOrId, activeView = adminProgressActiveView || "all") {  
-  const screen = getDomElement(screenOrId);  
-  if (!screen) return false;  
-  
-  let shell = screen.querySelector("[data-admin-progress-aig-shell]");  
-  if (!shell) {  
-    screen.insertAdjacentHTML("afterbegin", renderAdminProgressAigSelector(activeView));  
-    shell = screen.querySelector("[data-admin-progress-aig-shell]");  
-  } else {  
-    shell.outerHTML = renderAdminProgressAigSelector(activeView);  
-    shell = screen.querySelector("[data-admin-progress-aig-shell]");  
-  }  
-  
-  bindProgressUiHandlers(screen);  
-  return !!shell;  
-}  
-  
-function updateAdminProgressAigSelectorState(activeView = adminProgressActiveView || "all") {  
-  const currentView = normalizeAdminProgressView(activeView);  
-  
-  document.querySelectorAll("[data-admin-progress-aig-shell]").forEach(shell => {  
-    const picker = shell.querySelector("[data-progress-change-action='set-admin-progress-view-picker']");  
-    if (picker) {  
-      picker.value = currentView;  
-    }  
-  });  
-}  
-  
+function removeAdminProgressAigSelector(screenOrId = "progress-report") {
+  const screen = getDomElement(screenOrId);
+  if (!screen) return false;
+
+  screen.querySelectorAll("[data-admin-progress-aig-shell]").forEach(shell => shell.remove());
+  return true;
+}
+
+function ensureAdminProgressAigSelector(screenOrId, activeView = adminProgressActiveView || "all") {
+  const screen = getDomElement(screenOrId);
+  if (!screen) return false;
+
+  // V90.8.5 cleanup: Individual Progress is being rebuilt as its own selected-student
+  // flow. Do not show the old progress selector pill / "Select a student" picker shell
+  // in the Individual path. Class and Group keep the existing selector.
+  if (normalizeAdminProgressView(activeView) === "individual") {
+    return removeAdminProgressAigSelector(screen);
+  }
+
+  let shell = screen.querySelector("[data-admin-progress-aig-shell]");
+  if (!shell) {
+    screen.insertAdjacentHTML("afterbegin", renderAdminProgressAigSelector(activeView));
+    shell = screen.querySelector("[data-admin-progress-aig-shell]");
+  } else {
+    shell.outerHTML = renderAdminProgressAigSelector(activeView);
+    shell = screen.querySelector("[data-admin-progress-aig-shell]");
+  }
+
+  bindProgressUiHandlers(screen);
+  return !!shell;
+}
+
+function updateAdminProgressAigSelectorState(activeView = adminProgressActiveView || "all") {
+  const currentView = normalizeAdminProgressView(activeView);
+
+  if (currentView === "individual") {
+    removeAdminProgressAigSelector("progress-report");
+    return true;
+  }
+
+  document.querySelectorAll("[data-admin-progress-aig-shell]").forEach(shell => {
+    const picker = shell.querySelector("[data-progress-change-action='set-admin-progress-view-picker']");
+    if (picker) {
+      picker.value = currentView;
+    }
+  });
+  return true;
+}
+
 function renderAdminProgressPlaceholderView(view) {  
   const dashboard = getDomElement("admin-progress-dashboard");  
   if (!dashboard) return false;  
@@ -5447,174 +5433,15 @@ function renderAdminProgressDashboard(modules) {
     return;  
   }  
   
-  const html = list.map(renderAdminProgressModuleShelf).join("");  
-  
-  setDomHtml(dashboard, html);  
-  bindProgressUiHandlers(dashboard);  
-  bindAdminProgressDashboardRailControls(dashboard);  
-}  
-  
-
-function renderAdminProgressModuleShelf(module, moduleIndex = 0) {
-  console.warn("V79.4 legacy admin module shelf route is quarantined.", moduleIndex, module);
-  const moduleName = module && (module.modulename || module.subjectname) ? (module.modulename || module.subjectname) : "Progress";
-  return `
-    <section class="admin-progress-placeholder-card" aria-label="${escapeForAttribute(moduleName)} legacy progress view quarantined">
-      <h3>${escapeHtml(moduleName)}</h3>
-      <p class="helper-text">This old module shelf view has been quarantined. Use View All Progress, Group Progress, or Select a student.</p>
+  setDomHtml(dashboard, `
+    <section class="admin-progress-placeholder-card" aria-label="Progress cleanup checkpoint">
+      <h3>Progress cleanup</h3>
+      <p class="helper-text">The old module shelf route has been removed. Use View All Progress, Group Progress, or Individual Progress.</p>
     </section>
-  `;
-}
-
-
-function renderAdminProgressModuleBars(module) {
-  console.warn("V79.4 legacy admin module progress bars are quarantined.", module);
-  return "";
-}
-
-
-function renderAdminProgressDashboardTaskDots(tasks, moduleName) {
-  console.warn("V79.4 legacy admin task-card dots are quarantined.", moduleName, tasks);
-  return "";
-}
-
-function getAdminProgressDashboardShelfFromElement(element) {  
-  return element && typeof element.closest === "function"  
-    ? element.closest("[data-admin-progress-dashboard-shelf], .admin-progress-module-shelf")  
-    : null;  
+  `);
+  bindProgressUiHandlers(dashboard);  
 }  
   
-function getAdminProgressDashboardRailFromShelf(shelf) {  
-  return shelf ? shelf.querySelector("[data-admin-progress-dashboard-rail], .admin-progress-task-rail") : null;  
-}  
-  
-function getAdminProgressDashboardRailCards(rail) {  
-  if (!rail || !rail.children) return [];  
-  
-  return Array.from(rail.children).filter(child => {  
-    return child && child.matches && child.matches(".admin-progress-task-card");  
-  });  
-}  
-  
-function getAdminProgressDashboardRailActiveIndex(rail) {  
-  if (!rail) return 0;  
-  
-  const cards = getAdminProgressDashboardRailCards(rail);  
-  if (cards.length <= 1) return 0;  
-  
-  const firstCard = cards[0];  
-  const secondCard = cards[1];  
-  let step = firstCard ? firstCard.getBoundingClientRect().width : (rail.clientWidth || 1);  
-  
-  if (firstCard && secondCard) {  
-    const firstRect = firstCard.getBoundingClientRect();  
-    const secondRect = secondCard.getBoundingClientRect();  
-    const measuredStep = Math.abs(secondRect.left - firstRect.left);  
-  
-    if (measuredStep > 1) {  
-      step = measuredStep;  
-    }  
-  }  
-  
-  const index = Math.round((rail.scrollLeft || 0) / Math.max(1, step));  
-  return Math.max(0, Math.min(cards.length - 1, index));  
-}  
-  
-function updateAdminProgressDashboardRailDots(rail) {  
-  const targetRail = rail || null;  
-  const shelf = targetRail ? targetRail.closest("[data-admin-progress-dashboard-shelf], .admin-progress-module-shelf") : null;  
-  
-  if (!shelf || !targetRail) return false;  
-  
-  const dots = Array.from(shelf.querySelectorAll("[data-admin-progress-dashboard-task-dots] [data-progress-task-index]"));  
-  if (!dots.length) return false;  
-  
-  const activeIndex = getAdminProgressDashboardRailActiveIndex(targetRail);  
-  
-  dots.forEach((dot, fallbackIndex) => {  
-    const dotIndex = Number(dot.dataset.progressTaskIndex || fallbackIndex || 0);  
-    const isActive = dotIndex === activeIndex;  
-    dot.classList.toggle("is-active", isActive);  
-    dot.setAttribute("aria-current", isActive ? "true" : "false");  
-  });  
-
-  const cards = getAdminProgressDashboardRailCards(targetRail);
-  const previousArrow = shelf.querySelector('[data-admin-individual-module-step="previous"]');
-  const nextArrow = shelf.querySelector('[data-admin-individual-module-step="next"]');
-
-  if (previousArrow) {
-    const disabled = cards.length <= 1 || activeIndex <= 0;
-    previousArrow.disabled = disabled;
-    previousArrow.setAttribute("aria-disabled", disabled ? "true" : "false");
-  }
-
-  if (nextArrow) {
-    const disabled = cards.length <= 1 || activeIndex >= cards.length - 1;
-    nextArrow.disabled = disabled;
-    nextArrow.setAttribute("aria-disabled", disabled ? "true" : "false");
-  }
-  
-  return true;  
-}  
-  
-function scrollAdminProgressDashboardRailToIndex(actionEl, taskIndex, options = {}) {  
-  const shelf = getAdminProgressDashboardShelfFromElement(actionEl);  
-  const rail = getAdminProgressDashboardRailFromShelf(shelf);  
-  const cards = getAdminProgressDashboardRailCards(rail);  
-  const index = Number(taskIndex || 0);  
-  
-  if (!rail || !cards[index]) return false;  
-  
-  cards[index].scrollIntoView({  
-    behavior: options.behavior || "smooth",  
-    block: "nearest",  
-    inline: "start"  
-  });  
-  
-  updateAdminProgressDashboardRailDots(rail);  
-  
-  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {  
-    window.requestAnimationFrame(() => updateAdminProgressDashboardRailDots(rail));  
-  } else {  
-    window.setTimeout(() => updateAdminProgressDashboardRailDots(rail), 0);  
-  }  
-  
-  return true;  
-}  
-  
-function bindAdminProgressDashboardRailControls(container) {  
-  const host = getDomElement(container) || document;  
-  const rails = Array.from(host.querySelectorAll("[data-admin-progress-dashboard-rail], .admin-progress-task-rail"));  
-  
-  rails.forEach(rail => {  
-    if (rail.dataset.adminProgressDashboardRailBound === "true") {  
-      updateAdminProgressDashboardRailDots(rail);  
-      return;  
-    }  
-  
-    rail.dataset.adminProgressDashboardRailBound = "true";  
-    let pendingFrame = 0;  
-  
-    rail.addEventListener("scroll", () => {  
-      if (pendingFrame) return;  
-  
-      pendingFrame = window.requestAnimationFrame(() => {  
-        pendingFrame = 0;  
-        updateAdminProgressDashboardRailDots(rail);  
-      });  
-    }, { passive: true });  
-  
-    window.setTimeout(() => updateAdminProgressDashboardRailDots(rail), 0);  
-  });  
-  
-  return rails.length > 0;  
-}  
-  
-
-function renderAdminProgressTaskCard(task) {
-  console.warn("V79.4 legacy admin task card renderer is quarantined.", task);
-  return "";
-}
 
 function renderAdminProgressCardBars(completedPercent, verifiedPercent) {  
   return `  
@@ -5695,29 +5522,6 @@ function buildAdminIndividualStudentsFromRows(rows) {
     });  
 }  
   
-function renderAdminIndividualStudentDots(students, groupName) {  
-  const list = Array.isArray(students) ? students : [];  
-  
-  if (list.length <= 1) {  
-    return "";  
-  }  
-  
-  return `  
-    <div class="m4l-progress-swipe-dots admin-progress-task-dots admin-progress-individual-student-dots" data-admin-progress-dashboard-task-dots aria-label="${escapeForAttribute(groupName || "Group")} student cards">  
-      ${list.map((student, index) => `  
-        <button  
-          type="button"  
-          class="m4l-progress-swipe-dot admin-progress-task-dot${index === 0 ? " is-active" : ""}"  
-          data-progress-action="scroll-admin-dashboard-task"  
-          data-progress-task-index="${index}"  
-          aria-label="Show ${escapeForAttribute(student.username || `student ${index + 1}`)}"  
-          aria-current="${index === 0 ? "true" : "false"}"  
-        ></button>  
-      `).join("")}  
-    </div>  
-  `;  
-}  
-  
 function renderAdminIndividualStudentCard(student) {  
   const completedPercent = getProgressPercentValue(student.completedPercent);  
   const verifiedPercent = getProgressPercentValue(student.verifiedPercent);  
@@ -5738,97 +5542,56 @@ function renderAdminIndividualStudentCard(student) {
   `;  
 }  
   
-function renderAdminProgressStudentPickerRow(student) {  
-  const name = student.username || "Student";  
-  const group = String(student.classgroup || "").trim() || "-";  
-  const searchText = `${name} Group ${group} ${group}`.toLowerCase();  
-  
-  return `  
-    <button  
-      type="button"  
-      class="admin-progress-student-picker-row"  
-      data-progress-action="open-admin-individual-student-card"  
-      data-studentid="${escapeForAttribute(student.studentid)}"  
-      data-username="${escapeForAttribute(name)}"  
-      data-progress-student-search="${escapeForAttribute(searchText)}"  
-      aria-label="Open individual progress for ${escapeForAttribute(name)}"  
-    >  
-      <span class="admin-progress-student-picker-name">${escapeHtml(name)}</span>  
-      <span class="admin-progress-student-picker-meta">Group ${escapeHtml(group)}</span>  
-      <span class="admin-progress-student-picker-arrow" aria-hidden="true">›</span>  
-    </button>  
-  `;  
-}  
-  
-function filterAdminProgressStudentPicker(query) {  
-  const normalizedQuery = String(query || "").trim().toLowerCase();  
-  document.querySelectorAll("[data-admin-progress-student-picker-group]").forEach(group => {  
-    let visibleCount = 0;  
-    group.querySelectorAll("[data-progress-student-search]").forEach(row => {  
-      const text = String(row.dataset.progressStudentSearch || "").toLowerCase();  
-      const isVisible = !normalizedQuery || text.includes(normalizedQuery);  
-      row.hidden = !isVisible;  
-      if (isVisible) visibleCount += 1;  
-    });  
-    group.hidden = visibleCount === 0;  
-  });  
-  return true;  
-}  
-  
-function renderAdminIndividualProgressDashboard(rows) {  
-  const dashboard = getDomElement("admin-progress-dashboard");  
-  if (!dashboard) return false;  
-  
-  const students = buildAdminIndividualStudentsFromRows(rows);  
-  
-  if (students.length === 0) {  
-    setDomHtml(dashboard, `<p class="helper-text">No active students found.</p>`);  
-    return false;  
-  }  
-  
-  const byGroup = {};  
-  
-  students.forEach(student => {  
-    const groupKey = String(student.classgroup || "Group");  
-    if (!byGroup[groupKey]) byGroup[groupKey] = [];  
-    byGroup[groupKey].push(student);  
-  });  
-  
-  const groupKeys = Object.keys(byGroup).sort(naturalCompare);  
-  
-  const html = `  
-    <section class="admin-progress-student-picker-screen" aria-label="Select Student">  
-      <div class="admin-progress-student-picker-header">  
-        <h3>Select Student</h3>  
-        <input  
-          type="search"  
-          class="admin-progress-student-picker-search"  
-          data-progress-input-action="filter-admin-student-list"  
-          placeholder="Search by name or group..."  
-          aria-label="Search by name or group"  
-        />  
-      </div>  
-      <div class="admin-progress-student-picker-list">  
-        ${groupKeys.map(groupKey => {  
-          const groupStudents = byGroup[groupKey].sort((a, b) => naturalCompare(a.username, b.username));  
-          return `  
-            <section class="admin-progress-student-picker-group" data-admin-progress-student-picker-group aria-label="Group ${escapeForAttribute(groupKey)}">  
-              <h4>Group ${escapeHtml(groupKey)}</h4>  
-              <div class="admin-progress-student-picker-rows">  
-                ${groupStudents.map(renderAdminProgressStudentPickerRow).join("")}  
-              </div>  
-            </section>  
-          `;  
-        }).join("")}  
-      </div>  
-    </section>  
-  `;  
-  
-  setDomHtml(dashboard, html);  
-  bindProgressUiHandlers(dashboard);  
-  return true;  
-}  
-  
+function filterAdminProgressStudentPicker(query) {
+  // V90.8.5 cleanup: the old Individual Progress search input has been removed.
+  // Keep a no-op compatibility shim for any stale DOM/event references during deploys.
+  return true;
+}
+
+function renderAdminIndividualProgressDashboard(rows) {
+  const dashboard = getDomElement("admin-progress-dashboard");
+  if (!dashboard) return false;
+
+  const students = buildAdminIndividualStudentsFromRows(rows);
+
+  if (students.length === 0) {
+    setDomHtml(dashboard, `<p class="helper-text">No active students found.</p>`);
+    return false;
+  }
+
+  const byGroup = {};
+
+  students.forEach(student => {
+    const groupKey = String(student.classgroup || "Group");
+    if (!byGroup[groupKey]) byGroup[groupKey] = [];
+    byGroup[groupKey].push(student);
+  });
+
+  const groupKeys = Object.keys(byGroup).sort(naturalCompare);
+
+  const html = `
+    <section class="admin-progress-individual-landing" aria-label="Individual Progress student list">
+      <div class="admin-progress-individual-landing-list">
+        ${groupKeys.map(groupKey => {
+          const groupStudents = byGroup[groupKey].sort((a, b) => naturalCompare(a.username, b.username));
+          return `
+            <section class="admin-progress-individual-landing-group" aria-label="Group ${escapeForAttribute(groupKey)}">
+              <h4>Group ${escapeHtml(groupKey)}</h4>
+              <div class="admin-progress-individual-student-cards">
+                ${groupStudents.map(renderAdminIndividualStudentCard).join("")}
+              </div>
+            </section>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+
+  setDomHtml(dashboard, html);
+  bindProgressUiHandlers(dashboard);
+  return true;
+}
+
 async function showAdminIndividualProgressLanding() {  
   setAdminProgressSectionBodyState("progress-report");  
   setProgressScreensForAdmin();  
@@ -5933,211 +5696,6 @@ function buildAdminIndividualStudentModules(rows) {
   return Object.values(moduleMap).sort(sortModuleGroupsByModuleId);  
 }  
   
-function getAdminIndividualModuleIndexFromKey(modules, activeModuleKey) {
-  const list = Array.isArray(modules) ? modules : [];
-  const activeKey = String(activeModuleKey || "");
-
-  if (!list.length) {
-    return 0;
-  }
-
-  const index = activeKey
-    ? list.findIndex(module => String(module.moduleid || module.modulename || "") === activeKey)
-    : 0;
-
-  return index >= 0 ? index : 0;
-}
-
-function renderAdminIndividualModuleStepperArrow(direction, isDisabled) {
-  const normalizedDirection = Number(direction || 0) < 0 ? -1 : 1;
-  const isPrevious = normalizedDirection < 0;
-  const label = isPrevious ? "Previous module" : "Next module";
-  const iconClass = isPrevious ? "app-icon-left" : "app-icon-right";
-
-  return `
-    <button
-      type="button"
-      class="student-progress-stepper-arrow admin-individual-progress-stepper-arrow admin-individual-progress-stepper-arrow--${isPrevious ? "previous" : "next"}"
-      data-progress-action="step-admin-individual-progress-module"
-      data-progress-step="${normalizedDirection}"
-      data-progress-step-direction="${isPrevious ? "previous" : "next"}"
-      data-admin-individual-module-step="${isPrevious ? "previous" : "next"}"
-      aria-label="${label}"
-      title="${label}"
-      ${isDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'}
-    >
-      <span class="app-icon ${iconClass}" aria-hidden="true"></span>
-      <span class="visually-hidden">${label}</span>
-    </button>
-  `;
-}
-
-function renderAdminIndividualModuleDots(modules, studentName, activeModuleKey) {
-  const list = Array.isArray(modules) ? modules : [];
-
-  if (!list.length) {
-    return "";
-  }
-
-  const activeKey = String(activeModuleKey || (list[0] && (list[0].moduleid || list[0].modulename)) || "");
-  const activeIndex = getAdminIndividualModuleIndexFromKey(list, activeKey);
-
-  return `
-    <div class="m4l-progress-swipe-dots student-progress-swipe-dots student-progress-module-numbers admin-progress-task-dots admin-progress-individual-module-dots" data-admin-progress-dashboard-task-dots aria-label="${escapeForAttribute(studentName || "Student")} modules">
-      ${list.map((module, index) => {
-        const moduleKey = String(module.moduleid || module.modulename || index);
-        const numberLabel = String(index + 1);
-        const isActive = index === activeIndex;
-
-        return `
-          <button
-            type="button"
-            class="m4l-progress-swipe-dot student-progress-swipe-dot student-progress-module-number admin-progress-task-dot admin-individual-progress-module-number${isActive ? " is-active" : ""}"
-            data-progress-action="scroll-admin-dashboard-task"
-            data-progress-task-index="${index}"
-            data-progress-module-key="${escapeForAttribute(moduleKey)}"
-            aria-label="Show module ${numberLabel}: ${escapeForAttribute(module.modulename || `module ${numberLabel}`)}"
-            aria-current="${isActive ? "true" : "false"}"
-          >${escapeHtml(numberLabel)}</button>
-        `;
-      }).join("")}
-    </div>
-  `;
-}
-
-function renderAdminIndividualProgressGlobalActions(modules, studentName, activeModuleKey) {
-  const list = Array.isArray(modules) ? modules : [];
-  const activeKey = String(activeModuleKey || (list[0] && (list[0].moduleid || list[0].modulename)) || "");
-  const activeIndex = getAdminIndividualModuleIndexFromKey(list, activeKey);
-  const hasMultipleModules = list.length > 1;
-
-  return `
-    <div class="student-progress-global-actions student-progress-global-swipe admin-individual-progress-global-actions" data-progress-global-actions data-admin-individual-progress-global-swipe>
-      <div class="student-progress-top-control-row student-progress-stepper-row admin-individual-progress-stepper-row">
-        ${renderAdminIndividualModuleStepperArrow(-1, !hasMultipleModules || activeIndex <= 0)}
-        <div class="student-progress-top-control-dots student-progress-stepper-number-strip admin-individual-progress-number-strip" data-progress-number-nav>
-          ${renderAdminIndividualModuleDots(list, studentName, activeKey)}
-        </div>
-        ${renderAdminIndividualModuleStepperArrow(1, !hasMultipleModules || activeIndex >= list.length - 1)}
-      </div>
-    </div>
-  `;
-}
-
-function stepAdminIndividualProgressModuleBy(actionEl, step) {
-  const shelf = getAdminProgressDashboardShelfFromElement(actionEl);
-  const rail = getAdminProgressDashboardRailFromShelf(shelf);
-  const cards = getAdminProgressDashboardRailCards(rail);
-  const direction = Number(step || 0);
-
-  if (!rail || !cards.length || direction === 0) {
-    return false;
-  }
-
-  const currentIndex = getAdminProgressDashboardRailActiveIndex(rail);
-  const nextIndex = Math.max(0, Math.min(cards.length - 1, currentIndex + direction));
-
-  return scrollAdminProgressDashboardRailToIndex(actionEl, nextIndex);
-}
-
-function renderAdminIndividualModuleTaskRow(row) {
-  const pending = progressPendingUpdates[row.studenttaskid] || {};
-
-  const completeStatus = pending.completeStatus !== undefined
-    ? pending.completeStatus
-    : row.completestatus;
-
-  const verifyStatus = pending.verifyStatus !== undefined
-    ? pending.verifyStatus
-    : row.verifystatus;
-
-  const isComplete = isStatusOn(completeStatus);
-  const isVerified = isStatusOn(verifyStatus);
-  const taskName = row.taskname || "Untitled Task";
-
-  return `
-    <div class="student-progress-grid-row admin-individual-progress-grid-row" role="row">
-      <div class="student-progress-grid-task-name admin-individual-progress-task-name" role="cell">${escapeHtml(taskName)}</div>
-
-      <button
-        type="button"
-        class="student-progress-grid-status-cell admin-individual-progress-status-cell admin-individual-progress-complete-cell${isComplete ? " is-on" : ""}"
-        data-progress-action="toggle-progress-pending"
-        data-admin-individual-progress-cell="true"
-        data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"
-        data-field="completeStatus"
-        data-value="${isComplete ? "false" : "true"}"
-        aria-label="${isComplete ? "Completed" : "Click to mark complete"}: ${escapeForAttribute(taskName)}"
-      >
-        ${renderAdminIndividualProgressStatusContent("complete", row, isComplete)}
-      </button>
-
-      <button
-        type="button"
-        class="student-progress-grid-status-cell admin-individual-progress-status-cell admin-individual-progress-verify-cell${isVerified ? " is-on" : ""}"
-        data-progress-action="toggle-progress-pending"
-        data-admin-individual-progress-cell="true"
-        data-studenttaskid="${escapeForAttribute(row.studenttaskid)}"
-        data-field="verifyStatus"
-        data-value="${isVerified ? "false" : "true"}"
-        aria-label="${isVerified ? "Verified" : "Click to mark verified"}: ${escapeForAttribute(taskName)}"
-      >
-        ${renderAdminIndividualProgressStatusContent("verify", row, isVerified)}
-      </button>
-    </div>
-  `;
-}  
-  
-function renderAdminIndividualSelectedModuleCard(module, index = 0, moduleCount = 1) {
-  const moduleName = module.modulename || "Module";
-  const rows = Array.isArray(module.rows) ? module.rows.sort(sortByModuleThenTask) : [];
-
-  return `
-    <section
-      class="admin-progress-task-card m4l-progress-swipe-panel m4l-progress-swipe-panel--full m4l-responsive-swipe-panel student-progress-module-panel admin-individual-progress-panel${adminIndividualProgressEditMode ? " is-editing" : " is-viewing"}"
-      data-progress-swipe-panel
-      data-progress-panel-index="${index}"
-      data-progress-module-key="${escapeForAttribute(module.moduleid || module.modulename || index)}"
-      aria-label="${escapeForAttribute(moduleName)} tasks"
-    >
-      <div
-        class="student-progress-panel-module-header admin-progress-detail-header admin-individual-progress-module-header"
-        aria-label="${escapeForAttribute(moduleName)} module progress"
-      >
-        <div class="student-progress-active-module-title-block">
-          <h2 class="student-progress-active-module-title admin-individual-progress-module-title">${escapeHtml(moduleName)}</h2>
-        </div>
-      </div>
-
-      <section class="admin-progress-task-card admin-progress-individual-module-card student-progress-module-task-card student-progress-module-grid-card student-progress-task-list-panel admin-individual-progress-module-task-card" aria-label="${escapeForAttribute(moduleName)} task progress">
-        <div class="student-progress-module-grid admin-individual-progress-grid" role="table" aria-label="${escapeForAttribute(moduleName)} task progress">
-          ${renderAdminIndividualProgressTaskTableHeader()}
-          ${rows.map(renderAdminIndividualModuleTaskRow).join("")}
-        </div>
-      </section>
-    </section>
-  `;
-}  
-  
-  
-function renderAdminIndividualStudentSticky(studentName) {
-  const safeStudentName = studentName || progressState.studentName || "Student";
-
-  return `
-    <div class="admin-progress-individual-student-sticky admin-individual-progress-active-header admin-progress-detail-header" data-admin-individual-progress-header>
-      <button
-        type="button"
-        class="admin-progress-close-btn admin-progress-individual-student-close"
-        data-progress-action="close-admin-individual-student-view"
-        aria-label="Save and exit ${escapeForAttribute(safeStudentName)} progress"
-        title="Save and exit"
-      >X</button>
-      <span class="admin-progress-individual-student-name admin-individual-progress-student-name">${escapeHtml(safeStudentName)}</span>
-      ${renderAdminIndividualProgressEditToggle()}
-    </div>
-  `;
-}  
-  
 async function requestCloseAdminIndividualStudentView() {  
   if (hasProgressPendingUpdates()) {  
     const saved = await saveProgressPendingChanges({ reload: false, alert: false });  
@@ -6158,50 +5716,30 @@ function renderAdminIndividualSelectedStudentModules(rows, studentName) {
   const dashboard = getDomElement("admin-progress-dashboard");
   if (!dashboard) return false;
 
-  const normalizedRows = (Array.isArray(rows) ? rows : []).map(normalizeProgressStudentRow);
-  const modules = buildAdminIndividualStudentModules(normalizedRows);
   const safeStudentName = studentName || progressState.studentName || "Student";
-  const activeModuleKey = String((modules[0] && (modules[0].moduleid || modules[0].modulename)) || "");
-
-  if (modules.length === 0) {
-    setDomHtml(dashboard, `
-      <div class="admin-progress-individual-selected-view admin-individual-progress-shell is-viewing">
-        ${renderAdminIndividualStudentSticky(safeStudentName)}
-        <p class="helper-text">No tasks assigned to this student.</p>
-      </div>
-    `);
-    return false;
-  }
+  const normalizedRows = (Array.isArray(rows) ? rows : []).map(normalizeProgressStudentRow);
+  const moduleCount = buildAdminIndividualStudentModules(normalizedRows).length;
+  const taskCount = normalizedRows.length;
 
   setDomHtml(dashboard, `
-    <div class="admin-progress-individual-selected-view admin-individual-progress-shell${adminIndividualProgressEditMode ? " is-editing" : " is-viewing"}">
-      ${renderAdminIndividualStudentSticky(safeStudentName)}
-      <section
-        class="m4l-progress-swipe-shell student-progress-swipe-shell admin-individual-progress-swipe-shell"
-        data-admin-progress-dashboard-shelf
-        aria-label="${escapeForAttribute(safeStudentName)} modules"
-      >
-        ${renderAdminIndividualProgressGlobalActions(modules, safeStudentName, activeModuleKey)}
-        <div class="student-progress-pane-viewport admin-individual-progress-pane-viewport" data-progress-pane-viewport>
-          <div
-            class="m4l-progress-swipe-track m4l-progress-swipe-track--full m4l-responsive-swipe-track student-progress-swipe-track admin-individual-progress-track"
-            data-admin-progress-dashboard-rail
-            data-progress-active-index="${getAdminIndividualModuleIndexFromKey(modules, activeModuleKey)}"
-            aria-label="${escapeForAttribute(safeStudentName)} module sheets"
-          >
-            ${modules.map((module, index) => renderAdminIndividualSelectedModuleCard(module, index, modules.length)).join("")}
-          </div>
-        </div>
-      </section>
-    </div>
+    <section class="admin-progress-individual-cleanup-placeholder" aria-label="${escapeForAttribute(safeStudentName)} Individual Progress cleanup checkpoint">
+      <button
+        type="button"
+        class="admin-progress-close-btn admin-progress-individual-cleanup-close"
+        data-progress-action="close-admin-individual-student-view"
+        aria-label="Return to Individual Progress student list"
+        title="Close"
+      >X</button>
+      <h3>${escapeHtml(safeStudentName)}</h3>
+      <p class="helper-text">Individual Progress selected-student layout has been cleared for the Student Progress-style rebuild.</p>
+      <p class="mini-text">Loaded ${moduleCount} module${moduleCount === 1 ? "" : "s"} and ${taskCount} task${taskCount === 1 ? "" : "s"} for this student.</p>
+    </section>
   `);
 
   bindProgressUiHandlers(dashboard);
-  bindAdminProgressDashboardRailControls(dashboard);
-  setAdminIndividualProgressEditMode(adminIndividualProgressEditMode);
   return true;
-}  
-  
+}
+
 function getAdminCachedRowsForStudent(studentid, username) {  
   const targetStudentId = String(studentid || "");  
   const targetUsername = String(username || "");  
@@ -6217,70 +5755,79 @@ function getAdminCachedRowsForStudent(studentid, username) {
     });  
 }  
   
-async function loadAdminIndividualSelectedStudentProgress(studentid, username) {  
-  const dashboard = getDomElement("admin-progress-dashboard");  
-  if (!dashboard) return false;  
-  
-  setDomHtml(dashboard, `  
-    <div class="admin-progress-individual-selected-view">  
-      ${renderAdminIndividualStudentSticky(username || "Student")}  
-    </div>  
-  `);  
-  
+async function loadAdminIndividualSelectedStudentProgress(studentid, username) {
+  const dashboard = getDomElement("admin-progress-dashboard");
+  if (!dashboard) return false;
+
+  const safeStudentName = username || "Student";
+  setDomHtml(dashboard, `
+    <section class="admin-progress-individual-cleanup-placeholder is-loading" aria-label="Loading ${escapeForAttribute(safeStudentName)} progress">
+      <button
+        type="button"
+        class="admin-progress-close-btn admin-progress-individual-cleanup-close"
+        data-progress-action="close-admin-individual-student-view"
+        aria-label="Return to Individual Progress student list"
+        title="Close"
+      >X</button>
+      <h3>${escapeHtml(safeStudentName)}</h3>
+      <p class="helper-text">Loading student progress...</p>
+    </section>
+  `);
+  bindProgressUiHandlers(dashboard);
+
   const statusToken = beginProgressLoadStatus("Loading student modules...");
 
-  try {  
-    const result = await apiPost("/api/progress/task-detail", {  
-      studentid,  
-      classgroup: "ALL",  
-      subjectid: "ALL",  
-      taskid: "ALL"  
-    }, state.token);  
-  
-    if (!result.success) {  
-      const fallbackRows = getAdminCachedRowsForStudent(studentid, username);  
-  
-      if (fallbackRows.length > 0) {  
-        currentProgressRows = fallbackRows;  
-        renderAdminIndividualSelectedStudentModules(fallbackRows, username);  
+  try {
+    const result = await apiPost("/api/progress/task-detail", {
+      studentid,
+      classgroup: "ALL",
+      subjectid: "ALL",
+      taskid: "ALL"
+    }, state.token);
+
+    if (!result.success) {
+      const fallbackRows = getAdminCachedRowsForStudent(studentid, username);
+
+      if (fallbackRows.length > 0) {
+        currentProgressRows = fallbackRows;
+        renderAdminIndividualSelectedStudentModules(fallbackRows, username);
         endProgressLoadStatus(statusToken, "Progress loaded");
-        return true;  
-      }  
-  
+        return true;
+      }
+
       failProgressLoadStatus(statusToken, "Progress load failed");
-      setDomHtml(dashboard, `<p class="error-message">${escapeHtml(result.error || "Could not load student progress.")}</p>`);  
-      return false;  
-    }  
-  
-    const apiRows = Array.isArray(result.students)  
-      ? result.students.map(normalizeProgressStudentRow)  
-      : [];  
-  
-    const rows = apiRows.length > 0  
-      ? apiRows  
-      : getAdminCachedRowsForStudent(studentid, username);  
-  
-    currentProgressRows = rows;  
-    renderAdminIndividualSelectedStudentModules(rows, username);  
+      setDomHtml(dashboard, `<p class="error-message">${escapeHtml(result.error || "Could not load student progress.")}</p>`);
+      return false;
+    }
+
+    const apiRows = Array.isArray(result.students)
+      ? result.students.map(normalizeProgressStudentRow)
+      : [];
+
+    const rows = apiRows.length > 0
+      ? apiRows
+      : getAdminCachedRowsForStudent(studentid, username);
+
+    currentProgressRows = rows;
+    renderAdminIndividualSelectedStudentModules(rows, username);
     endProgressLoadStatus(statusToken, "Progress loaded");
-    return true;  
-  } catch (err) {  
-    const fallbackRows = getAdminCachedRowsForStudent(studentid, username);  
-  
-    if (fallbackRows.length > 0) {  
-      currentProgressRows = fallbackRows;  
-      renderAdminIndividualSelectedStudentModules(fallbackRows, username);  
+    return true;
+  } catch (err) {
+    const fallbackRows = getAdminCachedRowsForStudent(studentid, username);
+
+    if (fallbackRows.length > 0) {
+      currentProgressRows = fallbackRows;
+      renderAdminIndividualSelectedStudentModules(fallbackRows, username);
       endProgressLoadStatus(statusToken, "Progress loaded");
-      return true;  
-    }  
-  
+      return true;
+    }
+
     failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error("Could not load selected student progress:", err);  
-    setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load student progress.")}</p>`);  
-    return false;  
-  }  
-}  
-  
+    console.error("Could not load selected student progress:", err);
+    setDomHtml(dashboard, `<p class="error-message">${escapeHtml(err.message || "Could not load student progress.")}</p>`);
+    return false;
+  }
+}
 
 async function openAdminIndividualStudentCard(studentid, username) {  
   if (!studentid) {  
