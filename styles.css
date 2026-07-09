@@ -1,13 +1,14 @@
-/* M4L v90.8.3 - Admin Class Progress narrow module accordion correction
-   Baseline: V90.8.2 Admin Class Progress accordion visual polish.
-   Scope: preserve the live two-way group/module accordion, global
-   student-column anchor, A1/A2 key/edit controls, V90.7.1 even-module header
-   banding, V90.8.2 group-row/surface-chip polish, background-save navigation,
-   and backend; restore narrow task columns, show compact module numbers when
-   modules are collapsed, restore full module names when modules are expanded,
-   and add the fixed-column hint below the group list. Protected: Student
-   Progress V89.7, Admin Individual Progress, Attendance, Library, Home,
-   Recorder, nav, auth banner, Worker, Apps Script, and backend API behaviour.
+/* M4L v90.8.4 - Admin Class Progress calm grid/module headers
+   Baseline: V90.8.3 Admin Class Progress narrow module accordion correction.
+   Scope: preserve the working live two-way group/module accordion, narrow task
+   columns, compact collapsed module numbers, full expanded module names,
+   fixed student-column hint, A1/A2 key/edit controls, background-save
+   navigation, and backend; calm the medium/large grid body by removing group
+   row colour spillover, make merged module headers use one surface-card
+   background, and strengthen right borders between merged module headers.
+   Protected: Student Progress V89.7, Admin Individual Progress, Attendance,
+   Library, Home, Recorder, nav, auth banner, Worker, Apps Script, and backend
+   API behaviour.
 */
 
 :root {
@@ -10655,8 +10656,9 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   background: var(--surface-chip);
 }
 
-/* Group rows use the chip surface in both the fixed left column and the aligned
-   grid row. */
+/* Group labels use the chip surface only in the fixed left column. The
+   matching right-side grid row stays surface-card so the group colour does not
+   spill into the editable grid body. */
 .admin-progress-class-overview--accordion .admin-progress-class-group-heading-row,
 .admin-progress-class-overview--accordion .admin-progress-class-student-row.admin-progress-class-group-heading-row {
   background: var(--surface-chip);
@@ -10672,22 +10674,35 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 }
 
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row .admin-progress-class-accordion-blank-cell {
-  background: var(--surface-chip);
-}
-
-/* Keep alternating colours on column/module headings only. */
-.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header.admin-progress-class-grid-module-theme--app,
-.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.admin-progress-class-grid-module-theme--app {
   background: var(--surface-card);
 }
 
+/* M4L v90.8.4 - calm module headers and calm grid body.
+   Module headings all use the same surface-card background; module separation
+   is carried by the merged-header right border, not by alternating fills. */
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-module-header-row,
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading,
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header.admin-progress-class-grid-module-theme--app,
 .admin-progress-class-overview--accordion .admin-progress-class-merged-module-header.admin-progress-class-grid-module-theme--disabled,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.admin-progress-class-grid-module-theme--app,
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.admin-progress-class-grid-module-theme--disabled {
-  background: var(--disabled);
+  background: var(--surface-card);
+  background-clip: padding-box;
 }
 
-/* Editable/live body cells should be a clean body surface, not alternating
-   module bands. Group summary rows remain chip-coloured above. */
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading {
+  border-right: 2px solid rgba(var(--primary-rgb), 0.22);
+}
+
+/* The fixed left group labels stay chip-coloured, but their aligned right-side
+   summary rows no longer spill that colour into the grid body. */
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row .admin-progress-class-accordion-blank-cell,
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-body,
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-task-row,
+.admin-progress-class-overview--accordion .admin-progress-class-grid-task-cell,
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-student-grid-row .admin-progress-class-grid-task-cell,
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-student-grid-row .admin-progress-class-accordion-blank-cell {
   background: var(--surface-card);
