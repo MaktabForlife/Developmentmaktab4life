@@ -1,12 +1,11 @@
-/* M4L v90.7.1 - Admin Class Progress even module banding
-   Baseline: V90.7 Admin Class Progress medium/large continuous grid.
-   Scope: preserve the locked mobile module-card swipe layout, the global
-   student-column anchor, the V90.7 single continuous medium/large pane,
-   merged module headers, background-save navigation, and backend; add visual
-   banding so even-numbered modules use the light grey disabled surface.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
-   Attendance, Library, Home, Recorder, nav, auth banner, Worker, Apps Script,
-   and backend API behaviour.
+/* M4L v90.8 - Admin Class Progress roll-up landing
+   Baseline: V90.7.1 Admin Class Progress even module banding.
+   Scope: replace the initial All/Class Progress landing matrix with a blank
+   roll-up view: names collapse into dynamic Group rows and task columns
+   collapse into Module columns. Cells are intentionally blank for now.
+   Protected: V90.7.1 even-module banding, detailed Progress renderers for
+   future expansion, scoped Group Progress, Student Progress, Attendance,
+   Library, Home, Recorder, nav, auth banner, Worker, Apps Script, and backend.
 */
 
 :root {
@@ -10438,5 +10437,219 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-grid-task-cell.admin-progress-class-grid-module-theme--disabled {
   background: var(--admin-progress-class-grid-body-surface, var(--surface-card));
   background-clip: padding-box;
+}
+
+/* M4L v90.8 - Class Progress roll-up landing.
+   Names are collapsed into Group rows and tasks into Module columns. Summary
+   cells intentionally stay blank until the next calculation/expansion pass. */
+.admin-progress-class-overview--rollup {
+  --admin-progress-class-module-header-height: 66px;
+  --admin-progress-class-row-height: 42px;
+  --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 252px);
+  --admin-progress-class-module-col-width: minmax(96px, 1fr);
+}
+
+.admin-progress-class-rollup-shell {
+  grid-template-columns: var(--admin-progress-class-student-col-width) minmax(0, 1fr);
+}
+
+.admin-progress-class-rollup-group-column {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: var(--admin-progress-class-module-header-height) minmax(0, 1fr);
+  border-right: 2px solid rgba(var(--primary-rgb), 0.16);
+  background: var(--admin-progress-class-grid-header-surface);
+  position: relative;
+  z-index: 5;
+}
+
+.admin-progress-class-rollup-group-column-header {
+  height: var(--admin-progress-class-module-header-height);
+  min-height: var(--admin-progress-class-module-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 9px;
+  background: var(--admin-progress-class-grid-header-surface);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-progress-class-rollup-group-column-title {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+}
+
+.admin-progress-class-rollup-group-list {
+  max-height: var(--admin-progress-class-grid-body-height);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background: var(--admin-progress-class-grid-header-surface);
+}
+
+.admin-progress-class-rollup-group-list::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-progress-class-rollup-group-row {
+  width: 100%;
+  min-width: 0;
+  height: var(--admin-progress-class-row-height);
+  min-height: var(--admin-progress-class-row-height);
+  padding: 5px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.11);
+  background: var(--admin-progress-class-grid-header-surface);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.admin-progress-class-rollup-group-name {
+  max-width: 100%;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-class-rollup-group-count {
+  max-width: 100%;
+  color: var(--text-subtle);
+  font-size: 0.56rem;
+  font-weight: 400;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-class-rollup-pane {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  background: var(--surface-card);
+}
+
+.admin-progress-class-rollup-scroll {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: var(--admin-progress-class-module-header-height) minmax(0, 1fr);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface-card);
+}
+
+.admin-progress-class-rollup-module-header-row,
+.admin-progress-class-rollup-row {
+  width: max-content;
+  min-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--admin-progress-class-module-count, 1), var(--admin-progress-class-module-col-width));
+}
+
+.admin-progress-class-rollup-module-header-row {
+  height: var(--admin-progress-class-module-header-height);
+  min-height: var(--admin-progress-class-module-header-height);
+  background: var(--surface-card);
+}
+
+.admin-progress-class-rollup-module-header {
+  height: var(--admin-progress-class-module-header-height);
+  min-height: var(--admin-progress-class-module-header-height);
+}
+
+.admin-progress-class-rollup-module-title {
+  font-size: clamp(0.9rem, 4.2vw, 1.16rem);
+}
+
+.admin-progress-class-rollup-body {
+  max-height: var(--admin-progress-class-grid-body-height);
+  min-height: 0;
+  width: max-content;
+  min-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-progress-class-rollup-body::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-progress-class-rollup-row {
+  min-height: var(--admin-progress-class-row-height);
+}
+
+.admin-progress-class-rollup-cell {
+  height: var(--admin-progress-class-row-height);
+  min-height: var(--admin-progress-class-row-height);
+  display: block;
+  border-right: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.10);
+  background: var(--admin-progress-class-grid-body-surface, var(--surface-card));
+  background-clip: padding-box;
+}
+
+@media (min-width: 768px) {
+  .admin-progress-class-overview--rollup {
+    --admin-progress-class-module-col-width: minmax(122px, 1fr);
+    --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 184px);
+  }
+
+  .admin-progress-class-rollup-module-title {
+    font-size: clamp(0.98rem, 1.65vw, 1.18rem);
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-class-overview--rollup {
+    --admin-progress-class-module-col-width: minmax(138px, 1fr);
+  }
+
+  .admin-progress-class-rollup-module-title {
+    font-size: clamp(1rem, 1.35vw, 1.2rem);
+  }
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  .admin-progress-class-overview--rollup {
+    --admin-progress-class-student-col-width: 104px;
+    --admin-progress-class-module-header-height: 60px;
+    --admin-progress-class-row-height: 40px;
+    --admin-progress-class-module-col-width: 96px;
+  }
+
+  .admin-progress-class-rollup-group-column-header {
+    padding: 7px 6px;
+  }
+
+  .admin-progress-class-rollup-group-row {
+    padding: 5px 6px;
+  }
+
+  .admin-progress-class-rollup-group-name {
+    font-size: 0.72rem;
+  }
+
+  .admin-progress-class-rollup-group-count {
+    font-size: 0.52rem;
+  }
 }
 
