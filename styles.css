@@ -1,4 +1,4 @@
-/* M4L v90.6 - Admin Class Progress native module-header swipe trial
+/* M4L v90.6.1 - Admin Class Progress mobile module arrows polish
    Baseline: V90.5 Admin Class Progress tick/edit/task text polish.
    Scope: preserve the stable global student-column architecture and V90.5
    visual polish; remove the visible Class Progress module stepper and switch
@@ -7694,9 +7694,10 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 
 .admin-progress-class-module-header-text {
   min-width: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .admin-progress-class-module-title {
@@ -7706,8 +7707,44 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   font-size: clamp(1.02rem, 4.4vw, 1.32rem);
   font-weight: 850;
   line-height: 1.06;
-  text-align: left;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+
+.admin-progress-class-module-nav {
+  appearance: none;
+  width: 28px;
+  min-width: 28px;
+  height: 38px;
+  min-height: 38px;
+  margin: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  touch-action: manipulation;
+}
+
+.admin-progress-class-module-nav .app-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-progress-class-module-nav.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-progress-class-module-nav:disabled {
+  cursor: default;
+}
+
+.admin-progress-class-module-nav:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .admin-progress-class-module-header .admin-progress-class-grid-module-percentages {
@@ -7751,11 +7788,13 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 
 .admin-progress-class-module-edit-toggle .admin-progress-matrix-edit-label {
   max-width: 62px;
+  margin-top: 2px;
   font-size: 0.56rem;
   font-weight: 800;
   line-height: 1.05;
   text-align: center;
   white-space: normal;
+  transform: translateY(1px);
 }
 
 .admin-progress-class-module-actions .admin-progress-matrix-save-status {
@@ -10099,10 +10138,11 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label,
 .admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label {
   max-width: 72px;
-  margin-top: -1px;
+  margin-top: 1px;
   font-size: 0.58rem;
   font-weight: 840;
   line-height: 0.95;
+  transform: translateY(1px);
 }
 
 .admin-progress-class-student-column-action .admin-progress-matrix-save-status {
@@ -10142,9 +10182,15 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     height: 32px;
     margin-bottom: -2px;
   }
+
+  .admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label,
+  .admin-progress-class-global-edit-toggle .admin-progress-matrix-edit-label {
+    margin-top: 1px;
+    transform: translateY(1px);
+  }
 }
 
-/* M4L v90.6 - Admin Class Progress native module-header swipe trial
+/* M4L v90.6.1 - Admin Class Progress native module-header swipe polish
    Removes the visible module stepper and lets the existing module PaneViewport
    own native horizontal swipe. The global student column and task/body scroller
    architecture remain unchanged. */
@@ -10223,3 +10269,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   }
 }
 
+
+/* M4L v90.6.1 - mobile module-arrow finish.
+   The module title now carries active left/right swipe cues. Invisible edge
+   placeholders keep the title stable while only valid arrows are visible. */
