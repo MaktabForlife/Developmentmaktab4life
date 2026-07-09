@@ -2768,6 +2768,7 @@ let adminProgressSelectedGroup = "ALL";
   
 const ADMIN_PROGRESS_DASHBOARD_CACHE_KEY = "m4l_admin_progress_dashboard_v77";  
 let adminProgressLeaveGuardBound = false;  
+let adminProgressBackgroundSaveInFlight = null;  
   
 function hasProgressPendingUpdates() {  
   return Object.keys(progressPendingUpdates || {}).length > 0;  
@@ -2967,43 +2968,75 @@ function renderAdminProgressPlaceholderView(view) {
 /* V87.3: in-screen Progress loading cards removed. The global user-band status strip now owns Progress loading feedback. */
 
 function startAdminProgressBackgroundSave(options = {}) {  
-  if (!hasProgressPendingUpdates()) {  
-    return null;  
-  }  
-  
-  const pendingCount = Object.keys(progressPendingUpdates || {}).length;  
-  
-  if (options.confirm !== false) {  
-    window.confirm("Progress changes will be saved in the background.");  
-  }  
-  
-  const savePromise = saveProgressPendingChanges({ reload: false, alert: false })  
-    .then(saved => {  
-      if (saved) {  
-        clearAdminProgressDashboardCache();  
-        refreshAdminProgressDashboardCacheInBackground({  
-          render: (adminProgressActiveView === "all" || isAdminProgressGroupView(adminProgressActiveView)) && !!document.querySelector("#progress-report.active")  
-        });  
-        return true;  
-      }  
-  
-      alert(`${pendingCount} progress ${pendingCount === 1 ? "change" : "changes"} could not be saved. Please retry from Progress.`);  
-      return false;  
-    })  
-    .catch(err => {  
-      console.error("Could not save progress changes in the background:", err);  
-      alert(err.message || "Could not save progress changes in the background.");  
-      return false;  
-    });  
-  
-  return savePromise;  
+  const hasPending = hasProgressPendingUpdates();
+  const existingSave = adminProgressBackgroundSaveInFlight ||
+    (typeof adminProgressClassMatrixSaveInFlight !== "undefined" ? adminProgressClassMatrixSaveInFlight : null);
+
+  if (!hasPending) {
+    return existingSave || null;
+  }
+
+  const pendingSnapshot = { ...(progressPendingUpdates || {}) };
+  const pendingCount = Object.keys(pendingSnapshot).length;
+
+  if (options.confirm !== false) {
+    const shouldSave = window.confirm(
+      "You have unsaved progress changes. Press OK to save in the background and continue, or Cancel to stay."
+    );
+
+    if (!shouldSave) {
+      return false;
+    }
+  }
+
+  if (adminProgressBackgroundSaveInFlight) {
+    return adminProgressBackgroundSaveInFlight;
+  }
+
+  const restorePendingSnapshot = () => {
+    progressPendingUpdates = {
+      ...pendingSnapshot,
+      ...(progressPendingUpdates || {})
+    };
+  };
+
+  const sourcePromise = existingSave || saveProgressPendingChanges({ reload: false, alert: false });
+
+  adminProgressBackgroundSaveInFlight = Promise.resolve(sourcePromise)
+    .then(saved => {
+      if (saved) {
+        clearAdminProgressDashboardCache();
+        refreshAdminProgressDashboardCacheInBackground({
+          render: (adminProgressActiveView === "all" || isAdminProgressGroupView(adminProgressActiveView)) && !!document.querySelector("#progress-report.active")
+        });
+        return true;
+      }
+
+      restorePendingSnapshot();
+      alert(`${pendingCount} progress ${pendingCount === 1 ? "change" : "changes"} could not be saved. Please retry from Progress.`);
+      return false;
+    })
+    .catch(err => {
+      restorePendingSnapshot();
+      console.error("Could not save progress changes in the background:", err);
+      alert(err.message || "Could not save progress changes in the background.");
+      return false;
+    })
+    .finally(() => {
+      adminProgressBackgroundSaveInFlight = null;
+    });
+
+  return adminProgressBackgroundSaveInFlight;
 }  
   
 async function setAdminProgressAigView(view) {  
   const normalizedView = normalizeAdminProgressView(view);  
   
   if (isAdminProgressScreenId(document.querySelector(".screen.active")?.id) && hasProgressPendingUpdates()) {  
-    startAdminProgressBackgroundSave({ confirm: true });  
+    const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
+    if (saveStarted === false) {
+      return false;
+    }
   }  
   
   closeAdminProgressStudentPopout({ silent: true });  
@@ -3029,12 +3062,15 @@ async function setAdminProgressAigView(view) {
 }  
   
 async function saveAdminProgressPendingForClose() {  
-  startAdminProgressBackgroundSave({ confirm: true });  
-  return true;  
+  const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
+  return saveStarted !== false;
 }  
   
 async function requestCloseAdminProgressTaskScreen() {  
-  startAdminProgressBackgroundSave({ confirm: true });  
+  const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
+  if (saveStarted === false) {
+    return false;
+  }
   closeAdminProgressStudentPopout({ silent: true });  
   
   if (isAdminProgressGroupView(adminProgressActiveView)) {  
@@ -3052,7 +3088,10 @@ async function requestCloseAdminProgressTaskScreen() {
 }  
   
 async function requestCloseAdminProgressStudentPopout() {  
-  startAdminProgressBackgroundSave({ confirm: true });  
+  const saveStarted = startAdminProgressBackgroundSave({ confirm: true });
+  if (saveStarted === false) {
+    return false;
+  }
   closeAdminProgressStudentPopout({ silent: true });  
   return true;  
 }  
@@ -3065,7 +3104,7 @@ function bindAdminProgressLeaveGuard() {
   
   if (typeof window.addEventListener === "function") {  
     window.addEventListener("beforeunload", event => {  
-      if (!hasProgressPendingUpdates()) return;  
+      if (!hasProgressPendingUpdates() && !adminProgressBackgroundSaveInFlight) return;  
       event.preventDefault();  
       event.returnValue = "";  
     });  
@@ -3093,26 +3132,22 @@ function bindAdminProgressLeaveGuard() {
     }  
   
     const shouldSave = window.confirm(  
-      "You have unsaved progress changes. Press OK to save before leaving Progress, or Cancel to stay."  
+      "You have unsaved progress changes. Press OK to save in the background and continue, or Cancel to stay."  
     );  
   
     if (!shouldSave) {  
       return false;  
     }  
   
-    saveProgressPendingChanges({ reload: false, alert: false })  
-      .then(saved => {  
-        if (saved || !hasProgressPendingUpdates()) {  
-          originalShowScreen.call(this, screenId, ...args);  
-          setAdminProgressSectionBodyState(targetScreenId);  
-        }  
-      })  
-      .catch(err => {  
-        console.error("Could not save progress before leaving:", err);  
-        alert(err.message || "Could not save progress changes.");  
-      });  
-  
-    return false;  
+    const saveStarted = startAdminProgressBackgroundSave({ confirm: false });
+
+    if (saveStarted === false) {
+      return false;
+    }
+
+    const screenChanged = originalShowScreen.call(this, screenId, ...args);
+    setAdminProgressSectionBodyState(targetScreenId);
+    return screenChanged;  
   };  
   
   guardedShowScreen.__m4lAdminProgressGuard = true;  
@@ -4762,6 +4797,9 @@ async function saveAdminProgressClassMatrixPendingChanges(button) {
     .finally(() => {  
       if (button) {  
         button.classList.remove("is-saving");  
+      }  
+      if (!adminProgressMatrixEditMode) {  
+        updateAdminProgressMatrixEditControls();  
       }  
       adminProgressClassMatrixSaveInFlight = null;  
     });  
