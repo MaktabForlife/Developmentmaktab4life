@@ -1,16 +1,14 @@
-/* M4L v90.6.2 - Admin Progress background-save navigation
-   Baseline: V90.6.1 Admin Class Progress mobile module arrows polish.
-   Scope: preserve the locked V90.6.1 mobile Class Progress layout, the stable
-   global student-column architecture, native module-header swipe, active
-   left/right module arrows, V90.5 key/edit/task typography polish, and backend;
-   update Admin Progress save/leave flow so confirmed saves run in the
-   background and normal in-app navigation can continue immediately. Protected:
-   Student Progress V89.7, Admin Individual Progress, Group Progress,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, and
-   backend.
-   Note: this does not add a batch backend endpoint. Existing per-change API
-   calls remain in use, but they no longer block normal in-app navigation after
-   the user confirms background save.
+/* M4L v90.7 - Admin Class Progress medium/large continuous grid
+   Baseline: V90.6.2 Admin Progress background-save navigation.
+   Scope: preserve the locked V90.6.x mobile Class Progress layout, the stable
+   global student-column architecture, native mobile module-header swipe,
+   active mobile left/right module arrows, V90.5 key/edit/task typography
+   polish, and V90.6.2 background-save navigation; rework medium/large Class
+   Progress only by removing the 1/3/5 pane-slot model and adding a single
+   continuous task grid with merged module-header cells. Protected: Student
+   Progress V89.7, Admin Individual Progress, Group Progress, Attendance,
+   Library, Home, Recorder, bottom navigation, auth banner, Worker, Apps Script,
+   and backend API behaviour.
 */  
   
 /* =========================  
@@ -4050,7 +4048,7 @@ function renderAdminProgressClassOverview(modules) {
 
   return `
     <section
-      class="admin-progress-class-overview admin-progress-class-overview--module-panes admin-progress-class-overview--attached is-viewing"
+      class="admin-progress-class-overview admin-progress-class-overview--module-panes admin-progress-class-overview--attached admin-progress-class-overview--continuous-ready is-viewing"
       aria-label="Class progress overview"
       data-admin-class-progress-overview
       data-active-module-index="${safeActiveIndex}"
@@ -4063,6 +4061,7 @@ function renderAdminProgressClassOverview(modules) {
             <div class="admin-progress-class-pane-stack" data-admin-class-progress-pane-stack>
               ${model.modules.map((module, moduleIndex) => renderAdminProgressClassModulePane(module, model.students, moduleIndex, safeActiveIndex, model.modules.length)).join("")}
             </div>
+            ${renderAdminProgressClassContinuousPane(model.modules, model.students)}
           </div>
         </section>
       </section>
@@ -4144,6 +4143,80 @@ function renderAdminProgressClassModulePane(module, students, moduleIndex = 0, a
     </section>
   `;
 }
+
+function getAdminProgressClassContinuousItems(modules) {
+  const items = [];
+
+  (Array.isArray(modules) ? modules : []).forEach((module, moduleIndex) => {
+    const tasks = Array.isArray(module && module.tasks) ? module.tasks : [];
+
+    tasks.forEach(task => {
+      items.push({
+        module,
+        moduleIndex,
+        task
+      });
+    });
+  });
+
+  return items;
+}
+
+function renderAdminProgressClassContinuousPane(modules, students) {
+  const list = Array.isArray(modules) ? modules : [];
+  const items = getAdminProgressClassContinuousItems(list);
+  const totalTaskCount = Math.max(1, items.length);
+
+  return `
+    <section
+      class="admin-progress-class-continuous-pane"
+      data-admin-class-progress-continuous-pane
+      aria-label="Continuous class progress grid"
+      style="--admin-progress-class-total-task-count: ${totalTaskCount}; --admin-progress-class-task-count: ${totalTaskCount};"
+    >
+      <div class="admin-progress-class-continuous-task-scroll" data-admin-class-progress-continuous-task-scroll tabindex="0" role="region" aria-label="Scrollable continuous class progress task grid">
+        <div class="admin-progress-class-continuous-module-header-row" role="row">
+          ${list.map((module, moduleIndex) => renderAdminProgressClassContinuousModuleHeader(module, moduleIndex)).join("")}
+        </div>
+        <div class="admin-progress-class-module-task-header-row admin-progress-class-continuous-task-header-row" role="row">
+          ${items.map(item => renderAdminProgressClassGridTaskHeader(item.task, item.module, item.moduleIndex)).join("")}
+        </div>
+        <div class="admin-progress-class-module-body admin-progress-class-continuous-body" data-admin-class-progress-module-body data-admin-class-progress-continuous-body>
+          ${(Array.isArray(students) ? students : []).map(student => renderAdminProgressClassContinuousTaskRow(student, items, totalTaskCount)).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminProgressClassContinuousModuleHeader(module, moduleIndex = 0) {
+  const moduleName = getAdminModuleName(module) || "Module";
+  const tasks = Array.isArray(module && module.tasks) ? module.tasks : [];
+  const span = Math.max(1, tasks.length);
+  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);
+
+  return `
+    <div
+      class="admin-progress-class-merged-module-header ${themeClass}"
+      role="columnheader"
+      aria-label="${escapeForAttribute(moduleName)} module heading spanning ${span} task${span === 1 ? "" : "s"}"
+      style="grid-column: span ${span};"
+    >
+      <h3 class="admin-progress-class-module-title admin-progress-class-merged-module-title">${escapeHtml(moduleName)}</h3>
+    </div>
+  `;
+}
+
+function renderAdminProgressClassContinuousTaskRow(student, items, totalTaskCount = 1) {
+  const safeTaskCount = Math.max(1, Number(totalTaskCount || 1));
+
+  return `
+    <div class="admin-progress-class-module-task-row admin-progress-class-continuous-task-row" role="row" style="--admin-progress-class-task-count: ${safeTaskCount}; --admin-progress-class-total-task-count: ${safeTaskCount};">
+      ${(Array.isArray(items) ? items : []).map(item => renderAdminProgressClassModuleTaskCell(student, item.module, item.task, item.moduleIndex)).join("")}
+    </div>
+  `;
+}
+
 
 function renderAdminProgressClassModulePaneHeader(module, moduleIndex = 0, moduleCount = 1) {
   const moduleName = getAdminModuleName(module) || "Module";
@@ -4276,16 +4349,9 @@ function getAdminProgressClassOverviewElement() {
 }
 
 function getAdminProgressClassVisibleSlots() {
-  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-    if (window.matchMedia("(min-width: 1180px)").matches) {
-      return 5;
-    }
-
-    if (window.matchMedia("(min-width: 768px)").matches) {
-      return 3;
-    }
-  }
-
+  // V90.7: Class Progress no longer uses the old 1/3/5 pane-slot model.
+  // Each layout fills one single view pane. Mobile still swipes one module at
+  // a time; medium/large use the continuous merged-header grid.
   return 1;
 }
 
