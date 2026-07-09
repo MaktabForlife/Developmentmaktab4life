@@ -1,16 +1,14 @@
-/* M4L v90.7 - Admin Class Progress medium/large continuous grid
-   Baseline: V90.6.2 Admin Progress background-save navigation.
-   Scope: preserve the locked V90.6.x mobile Class Progress layout, the stable
-   global student-column architecture, native mobile module-header swipe,
-   active mobile left/right module arrows, V90.5 key/edit/task typography
-   polish, and V90.6.2 background-save navigation; rework medium/large Class
-   Progress only by removing the 1/3/5 pane-slot model and adding a single
-   continuous task grid with merged module-header cells. Protected: Student
-   Progress V89.7, Admin Individual Progress, Group Progress, Attendance,
-   Library, Home, Recorder, bottom navigation, auth banner, Worker, Apps Script,
-   and backend API behaviour.
-*/  
-  
+/* M4L v90.7.1 - Admin Class Progress even module banding
+   Baseline: V90.7 Admin Class Progress medium/large continuous grid.
+   Scope: preserve the locked mobile module-card swipe layout, the global
+   student-column anchor, the V90.7 single continuous medium/large pane,
+   merged module headers, background-save navigation, and backend; add visual
+   banding so even-numbered modules use the light grey disabled surface.
+   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
+   Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
+   Apps Script, and backend API behaviour.
+*/
+
 /* =========================  
    STUDENT TASK VIEW  
 ========================= */  
@@ -3970,7 +3968,10 @@ function getAdminProgressClassMatrixStateLabel(state) {
   
 function getAdminProgressClassMatrixModuleTheme(moduleIndex) {  
   const index = Number(moduleIndex || 0);  
-  return index % 2 === 0 ? "app" : "disabled";  
+  const moduleNumber = Number.isFinite(index) ? index + 1 : 1;  
+  // V90.7.1: human even-numbered modules (2, 4, 6...) use the
+  // disabled/light-grey surface for visual banding.
+  return moduleNumber % 2 === 0 ? "disabled" : "app";  
 }  
   
 function getAdminProgressClassMatrixModuleThemeClass(moduleIndex) {  
