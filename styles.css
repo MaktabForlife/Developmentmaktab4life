@@ -10290,7 +10290,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 
 
 
-/* M4L v90.8.7 - Admin Individual Progress rebuild from Student Progress template */
+/* M4L v90.8.7.1 - Admin Individual Progress polish: sticky compact header, close icon, fill-to-edit, background save */
 #progress-report.admin-theme .admin-individual-progress-shell {
   --student-progress-task-row-height: var(--admin-progress-class-row-height, 40px);
   --admin-individual-progress-panel-gap: 4px;
@@ -10753,5 +10753,190 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     --admin-individual-progress-panel-basis: calc((100% - 64px) / 5);
     width: min(100%, 1460px);
     max-width: 1460px;
+  }
+}
+
+
+/* M4L v90.8.7.1 - Individual Progress polish */
+#progress-report.admin-theme .admin-individual-progress-shell {
+  gap: 10px;
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-swipe-shell {
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-global-pane {
+  position: sticky;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 8px);
+  z-index: 35;
+  gap: 5px;
+  padding: 7px 12px 8px;
+  border-radius: 20px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-row {
+  min-height: 30px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-close-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-close-btn .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-name {
+  font-size: clamp(1.18rem, 4.5vw, 1.58rem);
+  line-height: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-row-spacer {
+  min-width: 34px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-row {
+  min-height: 30px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  min-height: 30px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-number {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  min-height: 26px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-pane-viewport {
+  min-height: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel {
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-card-shell {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 160px), 680px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  padding: 8px;
+  border-radius: 24px;
+  background: rgba(var(--white-rgb), 0.76);
+  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.08);
+  overflow: hidden;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-header {
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 9px 14px;
+  border-radius: 20px 20px 0 0;
+  box-shadow: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  border-radius: 0 0 20px 20px;
+  box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.03);
+  overflow: hidden;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-grid {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+#progress-report.admin-theme .admin-individual-progress-empty-edit-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  opacity: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-editing .admin-individual-progress-empty-edit-icon {
+  opacity: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-viewing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  opacity: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-editing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  background: rgba(var(--primary-rgb), 0.04);
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --student-progress-global-swipe-left-width: 34px;
+    --student-progress-global-swipe-right-width: 34px;
+    --student-progress-global-swipe-dots-width: min(228px, 64vw);
+    gap: 9px;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 6px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 152px);
+    min-height: 390px;
+    max-height: 680px;
+  }
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 8px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-panel {
+    height: auto;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 152px), 660px);
   }
 }
