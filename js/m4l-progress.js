@@ -1,10 +1,12 @@
-/* M4L v90.8.7.2 - Admin Individual Progress sticky header and legacy cleanup
-   Baseline: V90.8.7.1 Admin Individual Progress polish/fill/save.
-   Scope: raise and fix the rebuilt Individual Progress student-name/stepper
-   pane below the app banner/nav, route close.svg back to the clean Progress
-   landing, remove progress selector pills from active Progress screens, remove
-   legacy Group Progress pages/routes, and remove the temporary cleanup/loading
-   placeholder flash before Individual renders.
+/* M4L v90.8.7.3 - Admin Individual Progress module edit and large-screen guard fix
+   Baseline: V90.8.7.2 Admin Individual Progress sticky cleanup + swipe guard.
+   Scope: keep mobile Individual Progress stable; move the global student-name
+   and module stepper pane below the top nav on medium/large screens; remove
+   the transient no-progress/cleanup flash during student switching; change
+   Individual Progress from global edit mode to per-module edit mode so each
+   module card's edit icon controls only that module; and strengthen Progress
+   swipe/boundary containment for both touch and trackpad/wheel gestures on
+   Class and Individual Progress, including larger screens.
    Protected: Student Progress V89.7, completed Class/Group Progress V90.8.4,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
    Apps Script, and backend API behaviour.
@@ -24,7 +26,9 @@ let studentProgressAutoSaveInFlight = null;
 let studentProgressSectionStateGuardBound = false;  
 let studentProgressModuleEditState = Object.create(null);  
 let adminIndividualProgressEditMode = false;  
+let adminIndividualProgressModuleEditState = Object.create(null);
 let adminIndividualProgressActiveModuleIndex = 0;  
+let adminProgressSwipeEscapeGuardBound = false;
   
 function resetStudentProgressViewportScroll() {  
   const reset = () => {  
@@ -152,6 +156,41 @@ function bindAdminProgressSwipeEscapeGuard() {
     return true;
   };
 
+  const getHorizontalScroller = target => {
+    if (!target || typeof target.closest !== "function") return null;
+    const scroller = target.closest(horizontalScrollSelector);
+    if (!scroller) return null;
+    return (scroller.scrollWidth || 0) > (scroller.clientWidth || 0) + 2 ? scroller : null;
+  };
+
+  const shouldAbsorbHorizontalEscape = (target, deltaX, deltaY) => {
+    const absX = Math.abs(Number(deltaX || 0));
+    const absY = Math.abs(Number(deltaY || 0));
+
+    if (absX < 10 || absX < absY * 1.08) {
+      return false;
+    }
+
+    const horizontalScroller = getHorizontalScroller(target);
+
+    if (!horizontalScroller) {
+      return true;
+    }
+
+    const maxScrollLeft = Math.max(0, (horizontalScroller.scrollWidth || 0) - (horizontalScroller.clientWidth || 0));
+    const currentScrollLeft = Math.max(0, horizontalScroller.scrollLeft || 0);
+    const atStart = currentScrollLeft <= 1;
+    const atEnd = currentScrollLeft >= maxScrollLeft - 1;
+
+    // Touch: deltaX > 0 means the finger is moving right and trying to move the
+    // scroll container before its first pane. Wheel/trackpad: the caller passes
+    // deltaX in native wheel direction, so normalize before calling this helper.
+    const swipingRight = deltaX > 0;
+    const swipingLeft = deltaX < 0;
+
+    return (atStart && swipingRight) || (atEnd && swipingLeft);
+  };
+
   document.addEventListener("touchstart", event => {
     const target = event && event.target;
     if (!target || typeof target.closest !== "function") {
@@ -188,31 +227,44 @@ function bindAdminProgressSwipeEscapeGuard() {
 
     const deltaX = point.clientX - gesture.startX;
     const deltaY = point.clientY - gesture.startY;
+
+    if (shouldAbsorbHorizontalEscape(gesture.target, deltaX, deltaY)) {
+      preventSwipeEscape(event);
+    }
+  }, { capture: true, passive: false });
+
+  document.addEventListener("wheel", event => {
+    const target = event && event.target;
+    if (!target || typeof target.closest !== "function") return;
+
+    const root = target.closest(progressRootSelector);
+    if (!root) return;
+
+    const deltaX = Number(event.deltaX || 0);
+    const deltaY = Number(event.deltaY || 0);
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    if (absX < 12 || absX < absY * 1.12) {
+    if (absX < 6 || absX < absY * 1.02) {
       return;
     }
 
-    const horizontalScroller = gesture.target.closest && gesture.target.closest(horizontalScrollSelector);
+    const horizontalScroller = getHorizontalScroller(target);
 
-    if (horizontalScroller && horizontalScroller.scrollWidth > horizontalScroller.clientWidth + 2) {
-      const maxScrollLeft = Math.max(0, horizontalScroller.scrollWidth - horizontalScroller.clientWidth);
-      const currentScrollLeft = Math.max(0, horizontalScroller.scrollLeft || 0);
-      const atStart = currentScrollLeft <= 1;
-      const atEnd = currentScrollLeft >= maxScrollLeft - 1;
-      const swipingRight = deltaX > 0;
-      const swipingLeft = deltaX < 0;
-
-      if ((atStart && swipingRight) || (atEnd && swipingLeft)) {
-        preventSwipeEscape(event);
-      }
-
+    if (!horizontalScroller) {
+      preventSwipeEscape(event);
       return;
     }
 
-    preventSwipeEscape(event);
+    const maxScrollLeft = Math.max(0, (horizontalScroller.scrollWidth || 0) - (horizontalScroller.clientWidth || 0));
+    const currentScrollLeft = Math.max(0, horizontalScroller.scrollLeft || 0);
+    const atStart = currentScrollLeft <= 1;
+    const atEnd = currentScrollLeft >= maxScrollLeft - 1;
+
+    // Wheel deltaX is negative when scrolling left and positive when scrolling right.
+    if ((atStart && deltaX < 0) || (atEnd && deltaX > 0)) {
+      preventSwipeEscape(event);
+    }
   }, { capture: true, passive: false });
 
   document.addEventListener("touchend", () => {
@@ -2061,28 +2113,86 @@ function isAdminIndividualProgressPendingControl(actionEl) {
   return !!(actionEl && actionEl.closest && actionEl.closest(".admin-individual-progress-shell"));
 }
 
+function getAdminIndividualProgressModuleEditKey(source) {
+  if (!source) return "";
+
+  if (source.dataset && source.dataset.progressModuleKey) {
+    return String(source.dataset.progressModuleKey || "");
+  }
+
+  if (source.closest) {
+    const panel = source.closest(".admin-individual-progress-module-panel");
+    if (panel && panel.dataset) {
+      return String(panel.dataset.progressModuleKey || "");
+    }
+  }
+
+  return "";
+}
+
+function isAdminIndividualProgressModuleEditing(moduleKey) {
+  return adminIndividualProgressModuleEditState[String(moduleKey || "")] === true;
+}
+
+function hasAdminIndividualProgressEditingModule() {
+  return Object.keys(adminIndividualProgressModuleEditState || {}).some(key => adminIndividualProgressModuleEditState[key] === true);
+}
+
+function syncAdminIndividualProgressModuleEditDom() {
+  const hasEditingModule = hasAdminIndividualProgressEditingModule();
+
+  document.querySelectorAll(".admin-individual-progress-shell").forEach(shell => {
+    shell.classList.toggle("has-editing-module", hasEditingModule);
+    shell.classList.toggle("is-editing", hasEditingModule);
+    shell.classList.toggle("is-viewing", !hasEditingModule);
+  });
+
+  document.querySelectorAll(".admin-individual-progress-module-panel").forEach(panel => {
+    const moduleKey = getAdminIndividualProgressModuleEditKey(panel);
+    const isEditing = isAdminIndividualProgressModuleEditing(moduleKey);
+    panel.classList.toggle("is-editing", isEditing);
+    panel.classList.toggle("is-viewing", !isEditing);
+  });
+
+  document.querySelectorAll('[data-progress-action="toggle-admin-individual-progress-edit"]').forEach(button => {
+    const moduleKey = getAdminIndividualProgressModuleEditKey(button);
+    updateAdminIndividualProgressEditButton(button, isAdminIndividualProgressModuleEditing(moduleKey));
+  });
+
+  return true;
+}
+
 function canToggleAdminIndividualProgressCell(actionEl) {
   if (!isAdminIndividualProgressPendingControl(actionEl)) {
     return true;
   }
 
-  const shell = actionEl.closest(".admin-individual-progress-shell");
-  return !!(shell && shell.classList.contains("is-editing"));
+  const panel = actionEl.closest && actionEl.closest(".admin-individual-progress-module-panel");
+  return !!(panel && panel.classList.contains("is-editing"));
 }
 
 function setAdminIndividualProgressEditMode(isEditing) {
-  adminIndividualProgressEditMode = !!isEditing;
+  // V90.8.7.3: Individual Progress no longer uses a global edit mode.
+  // Keep this compatibility wrapper for older call sites, but apply it to the
+  // currently active module only so behaviour matches Student Progress.
+  const panels = getAdminIndividualProgressPanels();
+  const activePanel = panels[clampAdminIndividualProgressModuleIndex(adminIndividualProgressActiveModuleIndex, panels)] || panels[0];
+  const moduleKey = getAdminIndividualProgressModuleEditKey(activePanel);
+  return setAdminIndividualProgressModuleEditState(moduleKey, isEditing);
+}
 
-  document.querySelectorAll(".admin-individual-progress-shell").forEach(shell => {
-    shell.classList.toggle("is-editing", adminIndividualProgressEditMode);
-    shell.classList.toggle("is-viewing", !adminIndividualProgressEditMode);
-  });
+function setAdminIndividualProgressModuleEditState(moduleKey, isEditing) {
+  const key = String(moduleKey || "");
+  if (!key) return false;
 
-  document.querySelectorAll('[data-progress-action="toggle-admin-individual-progress-edit"]').forEach(button => {
-    updateAdminIndividualProgressEditButton(button, adminIndividualProgressEditMode);
-  });
+  if (isEditing) {
+    adminIndividualProgressModuleEditState[key] = true;
+  } else {
+    delete adminIndividualProgressModuleEditState[key];
+  }
 
-  return true;
+  adminIndividualProgressEditMode = hasAdminIndividualProgressEditingModule();
+  return syncAdminIndividualProgressModuleEditDom();
 }
 
 function updateAdminIndividualProgressEditButton(button, isEditing) {
@@ -2092,7 +2202,7 @@ function updateAdminIndividualProgressEditButton(button, isEditing) {
   button.classList.toggle("is-editing", !!isEditing);
   button.classList.remove("is-saving", "has-save-error");
   button.setAttribute("aria-pressed", isEditing ? "true" : "false");
-  button.setAttribute("aria-label", isEditing ? "Save progress changes" : "Click to edit");
+  button.setAttribute("aria-label", isEditing ? "Save this module's progress changes" : "Click to edit this module");
   button.setAttribute("title", isEditing ? "Save" : "Click to edit");
   button.innerHTML = `
     <span class="app-icon app-icon-small ${isEditing ? "save-mode-icon" : "student-edit-icon"}" aria-hidden="true"></span>
@@ -2134,8 +2244,10 @@ function setAdminIndividualProgressEditButtonError(button, label = "Save failed"
 }
 
 function finishAdminIndividualProgressEdit(button) {
+  const moduleKey = getAdminIndividualProgressModuleEditKey(button);
+
   if (!hasProgressPendingUpdates()) {
-    setAdminIndividualProgressEditMode(false);
+    setAdminIndividualProgressModuleEditState(moduleKey, false);
     return true;
   }
 
@@ -2149,7 +2261,7 @@ function finishAdminIndividualProgressEdit(button) {
     return false;
   }
 
-  setAdminIndividualProgressEditMode(false);
+  setAdminIndividualProgressModuleEditState(moduleKey, false);
 
   if (saveStarted && typeof saveStarted.then === "function") {
     saveStarted.then(saved => {
@@ -2170,23 +2282,27 @@ function finishAdminIndividualProgressEdit(button) {
 }
 
 function toggleAdminIndividualProgressEdit(button) {
-  if (adminIndividualProgressEditMode) {
+  const moduleKey = getAdminIndividualProgressModuleEditKey(button);
+
+  if (isAdminIndividualProgressModuleEditing(moduleKey)) {
     finishAdminIndividualProgressEdit(button);
     return true;
   }
 
-  return setAdminIndividualProgressEditMode(true);
+  return setAdminIndividualProgressModuleEditState(moduleKey, true);
 }
 
-function renderAdminIndividualProgressEditToggle() {
-  const isEditing = adminIndividualProgressEditMode;
+function renderAdminIndividualProgressEditToggle(moduleKey) {
+  const key = String(moduleKey || "");
+  const isEditing = isAdminIndividualProgressModuleEditing(key);
 
   return `
     <button
       type="button"
       class="student-progress-module-edit-toggle admin-individual-progress-edit-toggle${isEditing ? " is-editing" : ""}"
       data-progress-action="toggle-admin-individual-progress-edit"
-      aria-label="${isEditing ? "Save progress changes" : "Click to edit"}"
+      data-progress-module-key="${escapeForAttribute(key)}"
+      aria-label="${isEditing ? "Save this module's progress changes" : "Click to edit this module"}"
       aria-pressed="${isEditing ? "true" : "false"}"
       title="${isEditing ? "Save" : "Click to edit"}"
     >
@@ -5503,13 +5619,14 @@ function renderAdminProgressDashboard(modules) {
   }  
   
   if (list.length === 0) {  
-    setDomHtml(dashboard, `<p class="helper-text">No progress tasks found.</p>`);  
+    setDomHtml(dashboard, "");  
+    bindProgressUiHandlers(dashboard);
     return;  
   }  
   
   // V90.8.7.2: remove the temporary Progress cleanup placeholder. Keep the
   // landing quiet if no active Class/All grid can be rendered.
-  setDomHtml(dashboard, `<p class="helper-text">No progress tasks found.</p>`);
+  setDomHtml(dashboard, "");
   bindProgressUiHandlers(dashboard);  
 }  
   
@@ -6001,10 +6118,11 @@ function renderAdminIndividualProgressTaskTable(module) {
 function renderAdminIndividualProgressModulePanel(module, index, moduleCount) {
   const moduleKey = getAdminIndividualProgressModuleKey(module, index);
   const title = getAdminIndividualProgressModuleTitle(module, index);
+  const isEditing = isAdminIndividualProgressModuleEditing(moduleKey);
 
   return `
     <section
-      class="m4l-progress-swipe-panel m4l-progress-swipe-panel--full m4l-responsive-swipe-panel student-progress-module-panel admin-individual-progress-module-panel${index === adminIndividualProgressActiveModuleIndex ? " is-active" : ""}"
+      class="m4l-progress-swipe-panel m4l-progress-swipe-panel--full m4l-responsive-swipe-panel student-progress-module-panel admin-individual-progress-module-panel${index === adminIndividualProgressActiveModuleIndex ? " is-active" : ""}${isEditing ? " is-editing" : " is-viewing"}"
       data-admin-individual-progress-panel
       data-progress-panel-index="${index}"
       data-progress-module-key="${escapeForAttribute(moduleKey)}"
@@ -6019,7 +6137,7 @@ function renderAdminIndividualProgressModulePanel(module, index, moduleCount) {
           <div class="student-progress-panel-module-title-block">
             <h2 class="student-progress-panel-module-title admin-individual-progress-module-title">${escapeHtml(title)}</h2>
           </div>
-          ${renderAdminIndividualProgressEditToggle()}
+          ${renderAdminIndividualProgressEditToggle(moduleKey)}
         </div>
         ${renderAdminIndividualProgressTaskTable(module)}
       </div>
@@ -6222,10 +6340,11 @@ function renderAdminIndividualSelectedStudentModules(rows, studentName) {
   const modules = getAdminIndividualProgressModules(normalizedRows);
 
   if (modules.length === 0) {
+    // V90.8.7.3: keep the selected-student transition quiet. Avoid flashing a
+    // temporary no-progress message while a newly selected student's rows settle.
     setDomHtml(dashboard, `
       <section class="admin-individual-progress-shell is-viewing" aria-label="${escapeForAttribute(safeStudentName)} Individual Progress">
         ${renderAdminIndividualProgressGlobalPane(safeStudentName, [], 0)}
-        <p class="helper-text">No tasks assigned to this student.</p>
       </section>
     `);
     bindProgressUiHandlers(dashboard);
@@ -6235,7 +6354,7 @@ function renderAdminIndividualSelectedStudentModules(rows, studentName) {
   adminIndividualProgressActiveModuleIndex = clampAdminIndividualProgressModuleIndex(adminIndividualProgressActiveModuleIndex, modules);
 
   setDomHtml(dashboard, `
-    <section class="admin-individual-progress-shell ${adminIndividualProgressEditMode ? "is-editing" : "is-viewing"}" data-admin-individual-progress-shell aria-label="${escapeForAttribute(safeStudentName)} Individual Progress">
+    <section class="admin-individual-progress-shell ${hasAdminIndividualProgressEditingModule() ? "is-editing has-editing-module" : "is-viewing"}" data-admin-individual-progress-shell aria-label="${escapeForAttribute(safeStudentName)} Individual Progress">
       <div class="m4l-progress-swipe-shell student-progress-swipe-shell admin-individual-progress-swipe-shell" data-admin-individual-progress-swipe>
         ${renderAdminIndividualProgressGlobalPane(safeStudentName, modules, adminIndividualProgressActiveModuleIndex)}
         <div class="student-progress-pane-viewport admin-individual-progress-pane-viewport" data-admin-individual-progress-viewport>
@@ -6255,7 +6374,7 @@ function renderAdminIndividualSelectedStudentModules(rows, studentName) {
 
   bindProgressUiHandlers(dashboard);
   bindAdminIndividualProgressSwipeControls();
-  setAdminIndividualProgressEditMode(adminIndividualProgressEditMode);
+  syncAdminIndividualProgressModuleEditDom();
   updateAdminIndividualProgressModuleStepper(adminIndividualProgressActiveModuleIndex);
   return true;
 }
@@ -6369,6 +6488,7 @@ async function openAdminIndividualStudentCard(studentid, username) {
   progressState.fromAdminDashboard = true;  
   progressPendingUpdates = {};  
   adminIndividualProgressEditMode = false;  
+  adminIndividualProgressModuleEditState = Object.create(null);
   adminIndividualProgressActiveModuleIndex = 0;  
   
   return loadAdminIndividualSelectedStudentProgress(studentid, progressState.studentName);  
