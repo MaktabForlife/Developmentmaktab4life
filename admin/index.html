@@ -1,22 +1,213 @@
+u<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Maktab4Life Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- M4L v87.1: PWA Level 1 install metadata -->
+  <meta name="theme-color" content="#2f8f8f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="M4L Admin" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <!-- PWA: Admin install settings -->
+  <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
+  <link rel="stylesheet" href="/styles.css?v=90.8.7" />
+  <link rel="manifest" href="/admin-manifest.json" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/admin-favicon-16x16.png" />
+
+</head>
+
+<body>
+  <main class="app-shell">
+
+    <!-- LOGIN / PIN SCREEN -->
+    <section id="auth-screen" class="screen active">
+      <div id="auth-welcome-banner" class="auth-welcome-banner hidden">
+        Ahlan wa Sahlan
+      </div>
+
+      <div class="auth-brand-block">
+        <h2 class="auth-brand-title">Maktabhelper</h2>
+        <img src="/logo.png" alt="Maktab4Life Logo" class="app-logo auth-logo" />
+        <h2 class="auth-brand-title">Reboot Your Maktab</h2>
+        <p id="portal-title" class="auth-login-label">Admin Login</p>
+        <p id="portal-subtitle" class="subtitle auth-user-subtitle">Checking your link...</p>
+      </div>
+
+      <div id="setup-pin-box" class="auth-box hidden">
+        <h2>Create PIN</h2>
+        <ol class="pin-instruction-list">
+          <li>Create a memorable PIN.</li>
+          <li>Login with your PIN.</li>
+          <li>Add the page to your Homescreen.</li>
+        </ol>
+
+        <div class="pin-digit-row" data-pin-group="setup-pin" aria-label="Create 4-digit PIN">
+          <input id="setup-pin-1" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
+          <input id="setup-pin-2" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 2" />
+          <input id="setup-pin-3" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 3" />
+          <input id="setup-pin-4" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="done" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 4" />
+        </div>
+        <input id="setup-pin" type="hidden" />
+
+        <button onclick="submitSetupPin()">Set PIN</button>
+      </div>
+
+      <div id="login-pin-box" class="auth-box hidden">
+        <h2>Enter PIN</h2>
+        <p class="helper-text">Enter your 4-digit PIN to continue.</p>
+
+        <div class="pin-digit-row" data-pin-group="login-pin" aria-label="Enter 4-digit PIN">
+          <input id="login-pin-1" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
+          <input id="login-pin-2" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 2" />
+          <input id="login-pin-3" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 3" />
+          <input id="login-pin-4" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="done" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 4" />
+        </div>
+        <input id="login-pin" type="hidden" />
+      </div>
+
+      <p id="auth-error" class="error-message"></p>
+    </section>
+
+    <!-- ADMIN HOME -->
+    <section id="admin-home" class="screen admin-theme">
+      <div id="admin-home-panel" class="home-stack admin-home-panel student-home-panel" data-home-stack="admin" aria-label="Admin home content">
+        <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
+          <p class="helper-text">Loading class duas...</p>
+        </section>
+
+        <section class="home-section home-icons-section" aria-label="Admin home app icons">
+          <div aria-label="Admin home app icons" class="home-cover-icon-grid">
+          <button class="home-cover-icon-btn" data-cover-home-nav="attendance" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Attendance</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="record" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Record</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="library" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Library</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="progress" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Progress</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="admin" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Admin</span>
+          </button>
+          </div>
+        </section>
+
+        <section class="home-section home-timetable-section" aria-label="Timetable">
+          <section class="timetable-card">
+          <div class="timetable-card-header">
+          <h3>Reboot Your Maktab</h3>
+          <button aria-label="Refresh timetable" class="small-btn manual-refresh-btn" onclick="refreshAdminHomeTimetable(this)" title="Refresh timetable" type="button">
+          <span aria-hidden="true" class="manual-refresh-btn__icon"></span>
+          <span class="visually-hidden">Refresh timetable</span>
+          </button>
+          </div>
+          <div id="admin-home-timetable-content">
+          <p class="helper-text">Loading timetable...</p>
+          </div>
+          </section>
+        </section>
+      </div>
+    </section>
+
+    <!-- ADMIN ACADEMICS MENU -->
+    <section id="admin-academics" class="screen admin-theme">
+      <div class="nav-header">
+        <h2>Admin</h2>
+      </div>
+
+      <div class="list-stack">
+        <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
+        <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
+        <button class="list-btn" onclick="showAdminResources()">Library</button>
+        <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
+        <button class="list-btn" onclick="showAdminTimetableAdmin()">Timetable</button>
+        <button class="list-btn" onclick="showAdminZoomLinkAdmin()">Zoom Link</button>
+      </div>
+    </section>
+
+    <!-- SHARED LIBRARY SCREEN -->
+    <section id="student-resources-subjects" class="screen admin-theme">
+      <div id="student-resource-subject-list" class="list-stack">
+        <p class="helper-text">Loading resources...</p>
+      </div>
+    </section>
+    <!-- PROGRESS REPORT -->
+    <!-- M4L v79.7: active Admin Progress dashboard retained; quarantined legacy support screens removed. -->
+<section id="progress-report" class="screen admin-theme admin-progress-screen">
+  <div class="nav-header admin-progress-landing-header">
+    <h2>Progress</h2>
+  </div>
+
+  <div id="admin-progress-dashboard" class="admin-progress-dashboard">
+    <p class="helper-text">Loading progress...</p>
+  </div>
+</section>
 
 
-Tools
 
-History
-Real-time editor
+<section id="progress-task-students-screen" class="screen admin-theme">
+  <div class="nav-header admin-progress-detail-header">
+    <button
+      type="button"
+      class="small-btn admin-progress-close-btn"
+      data-progress-action="close-admin-progress-task-screen"
+      aria-label="Close progress detail"
+      title="Close"
+    >X</button>
+    <h2 id="progress-task-students-title">Task</h2>
+  </div>
 
-Hide unchanged lines
+  <div id="progress-task-students-list" class="list-stack"></div>
+</section>
 
-Disable line wrap
+    
 
-Layout
-Diff precision
-Text styles
-Syntax highlighting
-6 removals
-506 lines
-10 additions
-507 lines
+
+
+
+    <!-- MANAGE STUDENTS -->
+    <section id="manage-students-screen" class="screen admin-theme student-admin-screen">
+      <div class="student-admin-modern-header">
+        <h2>Manage Students</h2>
+        <button class="small-btn" onclick="showScreen('admin-academics')">Back</button>
+      </div>
+
+      <div id="manage-students-content">
+        <p class="helper-text">Loading student management...</p>
+      </div>
+    </section>
+
+    <section id="manage-students-result-screen" class="screen admin-theme student-admin-screen">
+      <div class="student-admin-modern-header">
+        <h2>Student Link</h2>
+        <button class="small-btn home-icon-btn" onclick="showScreen('admin-home')" aria-label="Home" title="Home"><span class="home-icon-btn__icon" aria-hidden="true"></span><span class="visually-hidden">Home</span></button>
+      </div>
+
+      <div id="manage-students-result-content">
         <p class="helper-text">Loading student link...</p>
       </div>
     </section>
@@ -311,176 +502,5 @@ Syntax highlighting
   <script src="/js/m4l-resources.js?v=89.2"></script>
 <script src="/js/m4l-progress.js?v=90.8.7"></script>
 <script src="/js/m4l-manage-students.js?v=55"></script>
-
-
-
-
-
-
-
-
-
-
-Original text
-No file chosen
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Maktab4Life Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- M4L v87.1: PWA Level 1 install metadata -->
-  <meta name="theme-color" content="#2f8f8f" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="M4L Admin" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-
-  <!-- PWA: Admin install settings -->
-  <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-  <link rel="stylesheet" href="/styles.css?v=86.2" />
-  <link rel="manifest" href="/admin-manifest.json" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/admin-favicon-16x16.png" />
-
-</head>
-
-<body>
-  <main class="app-shell">
-
-    <!-- LOGIN / PIN SCREEN -->
-    <section id="auth-screen" class="screen active">
-      <div id="auth-welcome-banner" class="auth-welcome-banner hidden">
-        Ahlan wa Sahlan
-      </div>
-
-      <div class="auth-brand-block">
-        <h2 class="auth-brand-title">Maktabhelper</h2>
-        <img src="/logo.png" alt="Maktab4Life Logo" class="app-logo auth-logo" />
-Changed text
-No file chosen
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-u<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Maktab4Life Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- M4L v87.1: PWA Level 1 install metadata -->
-  <meta name="theme-color" content="#2f8f8f" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="M4L Admin" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-
-  <!-- PWA: Admin install settings -->
-  <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-  <link rel="stylesheet" href="/styles.css?v=90.8.7" />
-  <link rel="manifest" href="/admin-manifest.json" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/admin-favicon-16x16.png" />
-
-</head>
-
-<body>
-  <main class="app-shell">
-
-    <!-- LOGIN / PIN SCREEN -->
-    <section id="auth-screen" class="screen active">
-      <div id="auth-welcome-banner" class="auth-welcome-banner hidden">
-        Ahlan wa Sahlan
-      </div>
-
-      <div class="auth-brand-block">
-        <h2 class="auth-brand-title">Maktabhelper</h2>
-        <img src="/logo.png" alt="Maktab4Life Logo" class="app-logo auth-logo" />
-        <h2 class="auth-brand-title">Reboot Your Maktab</h2>
-        <p id="portal-title" class="auth-login-label">Admin Login</p>
-        <p id="portal-subtitle" class="subtitle auth-user-subtitle">Checking your link...</p>
-      </div>
-
-      <div id="setup-pin-box" class="auth-box hidden">
-        <h2>Create PIN</h2>
-Compare text and find differences online or offline - Diffchecker
+</body>
+</html>
