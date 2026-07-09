@@ -1,10 +1,10 @@
-/* M4L v90.9.0 - Progress save behaviour and reliability correction
-   Baseline: V90.8.7.3 Admin Individual Progress module edit and large-screen guard fix.
-   Scope: preserve existing Progress layouts while the JS corrects Class
-   Progress save UX and Student Progress autosave reliability. CSS layout is
-   intentionally unchanged except for version documentation. Protected:
-   Attendance, Library, Home, Recorder, nav, auth banner, Worker, Apps Script,
-   backend API behaviour, and visual Progress layout.
+/* M4L v90.9.1 - Progress frontend batch arrays and Student save-icon UX
+   Baseline: V90.9.0 Progress save behaviour and reliability correction.
+   Scope: visual layout intentionally unchanged. The JS converts Progress
+   frontend saves to batch array payloads and makes the Student Progress save
+   icon return to Click to edit immediately while saving continues in the
+   background. Protected: Attendance, Library, Home, Recorder, nav, auth banner,
+   Worker, Apps Script, backend API behaviour, and visual Progress layout.
 */
 
 :root {
