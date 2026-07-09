@@ -1,10 +1,13 @@
-/* M4L v90.7.1 - Admin Class Progress even module banding
-   Baseline: V90.7 Admin Class Progress medium/large continuous grid.
-   Scope: preserve the locked mobile module-card swipe layout, the global
-   student-column anchor, the V90.7 single continuous medium/large pane,
-   merged module headers, background-save navigation, and backend; add visual
-   banding so even-numbered modules use the light grey disabled surface.
-   Protected: Student Progress V89.7, Admin Individual Progress, Group Progress,
+/* M4L v90.8 - Admin Class Progress roll-up landing
+   Baseline: V90.7.1 Admin Class Progress even module banding.
+   Scope: replace the initial All/Class Progress landing matrix with a blank
+   roll-up view: student names are collapsed into dynamic Group rows and task
+   columns are collapsed into Module columns. Summary cells are intentionally
+   blank for now. Preserve the global left anchor concept, V90.7 continuous
+   grid styling, V90.7.1 even-module banding, background-save navigation, and
+   backend/API behaviour.
+   Protected: detailed Class Progress renderer functions for future expansion,
+   Student Progress V89.7, Admin Individual Progress, scoped Group Progress,
    Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
    Apps Script, and backend API behaviour.
 */
@@ -4035,38 +4038,157 @@ function applyAdminProgressClassMatrixStateToRow(studenttaskid, nextState) {
   
 function renderAdminProgressClassOverview(modules) {
   resetAdminProgressMatrixEditMode();
-  const model = buildAdminProgressClassOverviewModel(modules, adminProgressDashboardRows);
+  const model = buildAdminProgressClassRollupModel(modules, adminProgressDashboardRows);
 
-  if (!model.students.length || !model.modules.length) {
-    return `<p class="helper-text">No class progress grid data found.</p>`;
+  if (!model.groups.length || !model.modules.length) {
+    return `<p class="helper-text">No class progress roll-up data found.</p>`;
   }
-
-  const safeActiveIndex = Math.max(0, Math.min(
-    model.modules.length - 1,
-    Number.isFinite(Number(adminProgressClassActiveModuleIndex)) ? Number(adminProgressClassActiveModuleIndex) : 0
-  ));
-  adminProgressClassActiveModuleIndex = safeActiveIndex;
 
   return `
     <section
-      class="admin-progress-class-overview admin-progress-class-overview--module-panes admin-progress-class-overview--attached admin-progress-class-overview--continuous-ready is-viewing"
-      aria-label="Class progress overview"
+      class="admin-progress-class-overview admin-progress-class-overview--attached admin-progress-class-overview--rollup is-viewing"
+      aria-label="Class progress roll-up overview"
       data-admin-class-progress-overview
-      data-active-module-index="${safeActiveIndex}"
-      style="--admin-progress-class-active-index: ${safeActiveIndex};"
+      data-admin-class-progress-rollup
+      style="--admin-progress-class-module-count: ${Math.max(1, model.modules.length)};"
     >
-      <section class="admin-progress-class-view-panel" aria-label="All students by module">
-        <section class="admin-progress-class-attached-shell" data-admin-class-progress-attached-shell aria-label="Attached class progress module grid">
-          ${renderAdminProgressClassStudentColumn(model.students)}
-          <div class="admin-progress-class-pane-viewport" data-admin-class-progress-pane-viewport>
-            <div class="admin-progress-class-pane-stack" data-admin-class-progress-pane-stack>
-              ${model.modules.map((module, moduleIndex) => renderAdminProgressClassModulePane(module, model.students, moduleIndex, safeActiveIndex, model.modules.length)).join("")}
-            </div>
-            ${renderAdminProgressClassContinuousPane(model.modules, model.students)}
-          </div>
+      <section class="admin-progress-class-view-panel" aria-label="Groups by module roll-up">
+        <section class="admin-progress-class-attached-shell admin-progress-class-rollup-shell" data-admin-class-progress-attached-shell aria-label="Class progress group and module roll-up grid">
+          ${renderAdminProgressClassRollupGroupColumn(model.groups)}
+          ${renderAdminProgressClassRollupModulePane(model.modules, model.groups)}
         </section>
       </section>
     </section>
+  `;
+}
+
+function buildAdminProgressClassRollupModel(modules, rows) {
+  const model = buildAdminProgressClassOverviewModel(modules, rows);
+  const groupMap = {};
+
+  model.students.forEach(student => {
+    const classgroup = String(student.classgroup || "").trim();
+
+    if (!classgroup || classgroup === "0") {
+      return;
+    }
+
+    if (!groupMap[classgroup]) {
+      groupMap[classgroup] = {
+        classgroup,
+        groupLabel: `Group ${classgroup}`,
+        studentCount: 0
+      };
+    }
+
+    groupMap[classgroup].studentCount += 1;
+  });
+
+  const groups = Object.values(groupMap).sort((a, b) => naturalCompare(a.classgroup, b.classgroup));
+
+  return {
+    ...model,
+    groups
+  };
+}
+
+function renderAdminProgressClassRollupGroupColumn(groups) {
+  const list = Array.isArray(groups) ? groups : [];
+
+  return `
+    <aside class="admin-progress-class-rollup-group-column" aria-label="Groups">
+      <div class="admin-progress-class-rollup-group-column-header" aria-label="Group roll-up row header">
+        <span class="admin-progress-class-rollup-group-column-title">Groups</span>
+      </div>
+      <div class="admin-progress-class-rollup-group-list" data-admin-class-progress-rollup-group-list>
+        ${list.map(group => renderAdminProgressClassRollupGroupRow(group)).join("")}
+      </div>
+    </aside>
+  `;
+}
+
+function renderAdminProgressClassRollupGroupRow(group) {
+  const classgroup = String(group && group.classgroup || "").trim();
+  const label = group && group.groupLabel ? group.groupLabel : `Group ${classgroup || ""}`.trim();
+
+  return `
+    <div
+      class="admin-progress-class-rollup-group-row"
+      role="rowheader"
+      aria-label="${escapeForAttribute(label)}"
+      data-progress-classgroup="${escapeForAttribute(classgroup)}"
+    >
+      <span class="admin-progress-class-rollup-group-name">${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function renderAdminProgressClassRollupModulePane(modules, groups) {
+  const moduleList = Array.isArray(modules) ? modules : [];
+  const groupList = Array.isArray(groups) ? groups : [];
+  const moduleCount = Math.max(1, moduleList.length);
+
+  return `
+    <section
+      class="admin-progress-class-rollup-pane"
+      aria-label="Blank group by module progress roll-up"
+      style="--admin-progress-class-module-count: ${moduleCount};"
+    >
+      <div class="admin-progress-class-rollup-scroll" tabindex="0" role="region" aria-label="Scrollable blank class progress roll-up grid">
+        <div class="admin-progress-class-rollup-module-header-row" role="row">
+          ${moduleList.map((module, moduleIndex) => renderAdminProgressClassRollupModuleHeader(module, moduleIndex)).join("")}
+        </div>
+        <div class="admin-progress-class-rollup-body" data-admin-class-progress-rollup-body>
+          ${groupList.map(group => renderAdminProgressClassRollupBlankRow(group, moduleList)).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminProgressClassRollupModuleHeader(module, moduleIndex = 0) {
+  const moduleName = getAdminModuleName(module) || "Module";
+  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);
+
+  return `
+    <div
+      class="admin-progress-class-merged-module-header admin-progress-class-rollup-module-header ${themeClass}"
+      role="columnheader"
+      aria-label="${escapeForAttribute(moduleName)} module roll-up column"
+    >
+      <h3 class="admin-progress-class-module-title admin-progress-class-merged-module-title admin-progress-class-rollup-module-title">${escapeHtml(moduleName)}</h3>
+    </div>
+  `;
+}
+
+function renderAdminProgressClassRollupBlankRow(group, modules) {
+  const moduleList = Array.isArray(modules) ? modules : [];
+  const moduleCount = Math.max(1, moduleList.length);
+  const groupLabel = group && group.groupLabel ? group.groupLabel : "Group";
+
+  return `
+    <div
+      class="admin-progress-class-rollup-row"
+      role="row"
+      aria-label="${escapeForAttribute(groupLabel)} blank module roll-up row"
+      style="--admin-progress-class-module-count: ${moduleCount};"
+    >
+      ${moduleList.map((module, moduleIndex) => renderAdminProgressClassRollupBlankCell(group, module, moduleIndex)).join("")}
+    </div>
+  `;
+}
+
+function renderAdminProgressClassRollupBlankCell(group, module, moduleIndex = 0) {
+  const groupLabel = group && group.groupLabel ? group.groupLabel : "Group";
+  const moduleName = getAdminModuleName(module) || "Module";
+  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);
+
+  return `
+    <div
+      class="admin-progress-class-rollup-cell ${themeClass}"
+      role="cell"
+      aria-label="${escapeForAttribute(groupLabel)} ${escapeForAttribute(moduleName)} blank summary cell"
+    ></div>
   `;
 }
 
