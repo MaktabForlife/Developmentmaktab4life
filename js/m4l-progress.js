@@ -2021,25 +2021,40 @@ function setAdminIndividualProgressEditButtonError(button, label = "Save failed"
   return true;
 }
 
-async function finishAdminIndividualProgressEdit(button) {
-  setAdminIndividualProgressEditButtonSaving(button, "Saving...");
-
-  try {
-    const saved = await saveProgressPendingChanges({ reload: false, alert: false });
-
-    if (saved === false && hasProgressPendingUpdates()) {
-      setAdminIndividualProgressEditButtonError(button, "Save failed");
-      return false;
-    }
-
-    clearAdminProgressDashboardCache();
+function finishAdminIndividualProgressEdit(button) {
+  if (!hasProgressPendingUpdates()) {
     setAdminIndividualProgressEditMode(false);
     return true;
-  } catch (err) {
-    console.error("Could not save Admin Individual Progress changes:", err);
+  }
+
+  const statusToken = beginProgressLoadStatus("Saving progress...");
+  setAdminIndividualProgressEditButtonSaving(button, "Saving...");
+  const saveStarted = startAdminProgressBackgroundSave({ confirm: false });
+
+  if (saveStarted === false) {
+    failProgressLoadStatus(statusToken, "Save cancelled");
     setAdminIndividualProgressEditButtonError(button, "Save failed");
     return false;
   }
+
+  setAdminIndividualProgressEditMode(false);
+
+  if (saveStarted && typeof saveStarted.then === "function") {
+    saveStarted.then(saved => {
+      if (saved) {
+        endProgressLoadStatus(statusToken, "Progress saved");
+      } else {
+        failProgressLoadStatus(statusToken, "Save failed");
+      }
+    }).catch(err => {
+      console.error("Could not save Admin Individual Progress changes in the background:", err);
+      failProgressLoadStatus(statusToken, "Save failed");
+    });
+  } else {
+    endProgressLoadStatus(statusToken, "Progress saved");
+  }
+
+  return true;
 }
 
 function toggleAdminIndividualProgressEdit(button) {
@@ -5713,10 +5728,9 @@ function buildAdminIndividualStudentModules(rows) {
   
 async function requestCloseAdminIndividualStudentView() {  
   if (hasProgressPendingUpdates()) {  
-    const saved = await saveProgressPendingChanges({ reload: false, alert: false });  
+    const saveStarted = startAdminProgressBackgroundSave({ confirm: true });  
   
-    if (!saved && hasProgressPendingUpdates()) {  
-      alert("Progress changes could not be saved. Please retry before exiting.");  
+    if (saveStarted === false) {  
       return false;  
     }  
   
@@ -5819,7 +5833,10 @@ function renderAdminIndividualProgressGlobalPane(studentName, modules, activeInd
           data-progress-action="close-admin-individual-student-view"
           aria-label="Return to Individual Progress student list"
           title="Close"
-        >X</button>
+        >
+          <span class="app-icon app-icon-close" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
         <h3 class="admin-individual-progress-student-name">${escapeHtml(safeStudentName)}</h3>
         <span class="admin-individual-progress-student-row-spacer" aria-hidden="true"></span>
       </div>
@@ -5843,6 +5860,47 @@ function renderAdminIndividualProgressTaskTableHeader() {
   `;
 }
 
+function renderAdminIndividualProgressStatusSymbol(state) {
+  const normalizedState = String(state || "blank");
+
+  if (normalizedState === "verified") {
+    return `
+      <span class="admin-progress-class-grid-status-symbol status-tick status-tick-verified" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
+      <span class="visually-hidden">Verified</span>
+    `;
+  }
+
+  if (normalizedState === "complete") {
+    return `
+      <span class="admin-progress-class-grid-status-symbol status-tick status-tick-complete" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
+      <span class="visually-hidden">Complete</span>
+    `;
+  }
+
+  return `
+    <span class="app-icon student-edit-icon admin-individual-progress-empty-edit-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Empty / editable</span>
+  `;
+}
+
+function updateAdminIndividualProgressCellButton(button, nextState) {
+  if (!button) return false;
+
+  ["blank", "complete", "verified"].forEach(state => {
+    button.classList.remove(`admin-progress-class-grid-status-button--${state}`);
+  });
+
+  button.classList.add(`admin-progress-class-grid-status-button--${nextState}`);
+  button.dataset.status = nextState;
+  button.dataset.state = nextState === "blank" ? "empty" : nextState;
+  button.innerHTML = renderAdminIndividualProgressStatusSymbol(nextState);
+
+  const existingLabel = button.getAttribute("aria-label") || "Progress cell";
+  const baseLabel = existingLabel.replace(/: (Blank|Complete|Verified)$/i, "");
+  button.setAttribute("aria-label", `${baseLabel}: ${getAdminProgressClassMatrixStateLabel(nextState)}`);
+  return true;
+}
+
 function renderAdminIndividualProgressStatusButton(row) {
   const normalizedRow = normalizeProgressStudentRow(row || {});
   const studentTaskId = String(normalizedRow.studenttaskid || "");
@@ -5861,7 +5919,7 @@ function renderAdminIndividualProgressStatusButton(row) {
       aria-label="${escapeForAttribute(taskName)}: ${escapeForAttribute(stateLabel)}"
       ${studentTaskId ? "" : "disabled"}
     >
-      ${renderAdminProgressClassGridStatusSymbol(state)}
+      ${renderAdminIndividualProgressStatusSymbol(state)}
     </button>
   `;
 }
@@ -5907,17 +5965,19 @@ function renderAdminIndividualProgressModulePanel(module, index, moduleCount) {
       data-progress-module-key="${escapeForAttribute(moduleKey)}"
       aria-label="${escapeForAttribute(title)}"
     >
-      <div
-        class="student-progress-panel-module-header student-progress-header-panel admin-individual-progress-module-header"
-        data-admin-individual-progress-panel-module-header="${escapeForAttribute(moduleKey)}"
-        aria-label="${escapeForAttribute(title)} module progress"
-      >
-        <div class="student-progress-panel-module-title-block">
-          <h2 class="student-progress-panel-module-title admin-individual-progress-module-title">${escapeHtml(title)}</h2>
+      <div class="admin-individual-progress-module-card-shell">
+        <div
+          class="student-progress-panel-module-header student-progress-header-panel admin-individual-progress-module-header"
+          data-admin-individual-progress-panel-module-header="${escapeForAttribute(moduleKey)}"
+          aria-label="${escapeForAttribute(title)} module progress"
+        >
+          <div class="student-progress-panel-module-title-block">
+            <h2 class="student-progress-panel-module-title admin-individual-progress-module-title">${escapeHtml(title)}</h2>
+          </div>
+          ${renderAdminIndividualProgressEditToggle()}
         </div>
-        ${renderAdminIndividualProgressEditToggle()}
+        ${renderAdminIndividualProgressTaskTable(module)}
       </div>
-      ${renderAdminIndividualProgressTaskTable(module)}
     </section>
   `;
 }
@@ -6101,7 +6161,7 @@ function cycleAdminIndividualProgressCell(button) {
   const nextState = getNextAdminProgressClassMatrixCellState(currentState);
 
   updateAdminIndividualProgressRowsInMemory(studentTaskId, nextState);
-  updateAdminProgressClassMatrixCellButton(button, nextState);
+  updateAdminIndividualProgressCellButton(button, nextState);
   const cell = button.closest(".admin-individual-progress-status-cell, .student-progress-grid-status-cell");
   if (cell) cell.classList.add("is-pending");
 
