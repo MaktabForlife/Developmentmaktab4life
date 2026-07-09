@@ -1,15 +1,13 @@
-/* M4L v90.8.7.3 - Admin Individual Progress module edit and large-screen guard fix
-   Baseline: V90.8.7.2 Admin Individual Progress sticky cleanup + swipe guard.
-   Scope: keep mobile Individual Progress stable; move the global student-name
-   and module stepper pane below the top nav on medium/large screens; remove
-   the transient no-progress/cleanup flash during student switching; change
-   Individual Progress from global edit mode to per-module edit mode so each
-   module card's edit icon controls only that module; and strengthen Progress
-   swipe/boundary containment for both touch and trackpad/wheel gestures on
-   Class and Individual Progress, including larger screens.
-   Protected: Student Progress V89.7, completed Class/Group Progress V90.8.4,
-   Attendance, Library, Home, Recorder, bottom navigation, auth banner, Worker,
-   Apps Script, and backend API behaviour.
+/* M4L v90.9.0 - Progress save behaviour and reliability correction
+   Baseline: V90.8.7.3 Admin Individual Progress module edit and large-screen guard fix.
+   Scope: preserve the completed Class/Group Progress V90.8.4 and Individual
+   Progress V90.8.7.3 layouts; correct Class Progress save UX so save exits
+   edit mode immediately while the background save/status pill continues; and
+   harden Student Progress autosave by draining a queued save loop, preserving
+   changes made while a save is in flight, and resetting module edit icons only
+   after confirmed save. No frontend array conversion in this version.
+   Protected: Attendance, Library, Home, Recorder, nav, auth banner, Worker,
+   Apps Script, backend API behaviour, and visual Progress layout.
 */
 
 /* =========================  
@@ -23,6 +21,7 @@ let progressUiGlobalHandlersBound = false;
 const M4L_PROGRESS_TICK = "\u2713";  
 let studentProgressAutoSaveTimer = 0;  
 let studentProgressAutoSaveInFlight = null;  
+let studentProgressAutoSaveDrainRequested = false;
 let studentProgressSectionStateGuardBound = false;  
 let studentProgressModuleEditState = Object.create(null);  
 let adminIndividualProgressEditMode = false;  
@@ -2789,27 +2788,69 @@ function updateStudentProgressStatusControls(studenttaskid, complete) {
   return didUpdate;  
 }  
   
+function resetStudentProgressSavedModuleEditStates() {
+  if (hasProgressPendingUpdates()) {
+    return false;
+  }
+
+  Object.keys(studentProgressModuleEditState || {}).forEach(moduleKey => {
+    if (studentProgressModuleEditState[moduleKey] === true) {
+      setStudentProgressModuleEditState(moduleKey, false);
+    }
+  });
+
+  return true;
+}
+
 async function flushStudentProgressAutoSave() {  
-  if (studentProgressAutoSaveTimer) {  
+  if (studentProgressAutoSaveTimer && typeof window !== "undefined") {  
     window.clearTimeout(studentProgressAutoSaveTimer);  
     studentProgressAutoSaveTimer = 0;  
   }  
   
+  if (studentProgressAutoSaveInFlight) {
+    studentProgressAutoSaveDrainRequested = true;
+    return studentProgressAutoSaveInFlight;
+  }
+
   if (!hasProgressPendingUpdates()) {  
+    resetStudentProgressSavedModuleEditStates();
     return true;  
   }  
   
-  if (studentProgressAutoSaveInFlight) {  
-    return studentProgressAutoSaveInFlight;  
-  }  
-  
-  studentProgressAutoSaveInFlight = saveProgressPendingChanges({ reload: false, alert: false })  
+  studentProgressAutoSaveDrainRequested = true;
+
+  studentProgressAutoSaveInFlight = (async () => {
+    let allSaved = true;
+
+    while (studentProgressAutoSaveDrainRequested || hasProgressPendingUpdates()) {
+      studentProgressAutoSaveDrainRequested = false;
+
+      if (!hasProgressPendingUpdates()) {
+        break;
+      }
+
+      const saved = await saveProgressPendingChanges({ reload: false, alert: false });
+
+      if (!saved) {
+        allSaved = false;
+        break;
+      }
+    }
+
+    if (allSaved && !hasProgressPendingUpdates()) {
+      resetStudentProgressSavedModuleEditStates();
+    }
+
+    return allSaved;
+  })()
     .catch(err => {  
       console.error("Could not auto-save student progress:", err);  
       return false;  
     })  
     .finally(() => {  
-      studentProgressAutoSaveInFlight = null;  
+      studentProgressAutoSaveInFlight = null;
+      studentProgressAutoSaveDrainRequested = false;
     });  
   
   return studentProgressAutoSaveInFlight;  
@@ -4067,51 +4108,49 @@ async function setAdminProgressMatrixEditMode(isEditing, button) {
     return true;  
   }  
   
+  adminProgressMatrixEditMode = false;
+  updateAdminProgressMatrixEditControls();
+  
   if (!hasProgressPendingUpdates()) {  
-    adminProgressMatrixEditMode = false;  
-    updateAdminProgressMatrixEditControls();  
+    updateAdminProgressMatrixSaveStatus("");
     return true;  
   }  
-  
-  if (button) {  
-    button.disabled = true;  
-    button.classList.add("is-saving");  
-  }  
-  if (button) {  
-    const label = button.querySelector(".admin-progress-matrix-edit-label");  
-    if (label) label.textContent = "Saving";  
-  }  
+
   updateAdminProgressMatrixSaveStatus("Saving...");  
-  
-  try {  
-    const saved = await saveAdminProgressClassMatrixPendingChanges(button);  
-  
-    if (!saved && hasProgressPendingUpdates()) {  
-      updateAdminProgressMatrixSaveStatus("Save failed");  
-      alert("Could not save progress changes. Please check your connection and try again.");  
-      return false;  
-    }  
-  
-    adminProgressMatrixEditMode = false;  
-    updateAdminProgressMatrixEditControls();  
-    updateAdminProgressMatrixSaveStatus("Saved");  
-    window.setTimeout(() => {  
-      if (!adminProgressMatrixEditMode) updateAdminProgressMatrixSaveStatus("");  
-    }, 1400);  
-    return true;  
-  } catch (err) {  
-    console.error("Could not save progress matrix changes:", err);  
-    updateAdminProgressMatrixSaveStatus("Save failed");  
-    alert(err.message || "Could not save progress changes.");  
-    return false;  
-  } finally {  
-    if (button) {  
-      button.disabled = false;  
-      button.classList.remove("is-saving");  
-    }  
-  }  
+
+  const saveStarted = startAdminProgressBackgroundSave({ confirm: false });
+
+  if (saveStarted === false) {
+    adminProgressMatrixEditMode = true;
+    updateAdminProgressMatrixEditControls();
+    updateAdminProgressMatrixSaveStatus("Save cancelled");
+    return false;
+  }
+
+  if (saveStarted && typeof saveStarted.then === "function") {
+    saveStarted.then(saved => {
+      if (saved) {
+        updateAdminProgressMatrixSaveStatus("Saved");
+        window.setTimeout(() => {
+          if (!adminProgressMatrixEditMode) updateAdminProgressMatrixSaveStatus("");
+        }, 1400);
+      } else {
+        updateAdminProgressMatrixSaveStatus("Save failed");
+      }
+    }).catch(err => {
+      console.error("Could not save progress matrix changes in the background:", err);
+      updateAdminProgressMatrixSaveStatus("Save failed");
+    });
+  } else {
+    updateAdminProgressMatrixSaveStatus("Saved");
+    window.setTimeout(() => {
+      if (!adminProgressMatrixEditMode) updateAdminProgressMatrixSaveStatus("");
+    }, 1400);
+  }
+
+  return true;
 }  
-  
+
 function getAdminProgressClassMatrixCellState(row) {  
   if (!row) return "blank";  
   
@@ -7668,12 +7707,43 @@ function failProgressLoadStatus(token, message) {
   return false;
 }
 
+function cloneProgressPendingUpdatesSnapshot() {
+  const snapshot = {};
+
+  Object.keys(progressPendingUpdates || {}).forEach(studentTaskId => {
+    snapshot[studentTaskId] = { ...(progressPendingUpdates[studentTaskId] || {}) };
+  });
+
+  return snapshot;
+}
+
+function clearProgressPendingUpdatesSnapshot(snapshot) {
+  Object.keys(snapshot || {}).forEach(studentTaskId => {
+    const current = progressPendingUpdates && progressPendingUpdates[studentTaskId];
+    const saved = snapshot[studentTaskId] || {};
+
+    if (!current) {
+      return;
+    }
+
+    const sameComplete = current.completeStatus === saved.completeStatus;
+    const sameVerify = current.verifyStatus === saved.verifyStatus;
+
+    if (sameComplete && sameVerify) {
+      delete progressPendingUpdates[studentTaskId];
+    }
+  });
+
+  return true;
+}
+
 async function saveProgressPendingChanges(options = {}) {
   const shouldReload = options.reload !== false;
   const shouldAlert = options.alert !== false;
   const shouldUseGlobalStatus = options.globalStatus !== false;
 
-  const updates = Object.values(progressPendingUpdates);
+  const pendingSnapshot = cloneProgressPendingUpdatesSnapshot();
+  const updates = Object.values(pendingSnapshot);
 
   if (updates.length === 0) {
     if (shouldAlert) {
@@ -7719,7 +7789,7 @@ async function saveProgressPendingChanges(options = {}) {
       }
     }
 
-    progressPendingUpdates = {};
+    clearProgressPendingUpdatesSnapshot(pendingSnapshot);
 
     if (shouldAlert) {
       alert("Changes saved.");
