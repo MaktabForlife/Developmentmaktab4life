@@ -1,14 +1,14 @@
-/* M4L v90.8.3 - Admin Class Progress narrow module accordion correction
-   Baseline: V90.8.2 Admin Class Progress accordion visual polish.
-   Scope: preserve the live two-way group/module accordion, global
-   student-column anchor, A1/A2 key/edit controls, V90.7.1 even-module header
-   banding, V90.8.2 group-row/surface-chip polish, background-save navigation,
-   and backend; restore narrow task columns, show compact module numbers when
-   modules are collapsed, restore full module names when modules are expanded,
-   and add the fixed-column hint below the group list. Protected: Student
-   Progress V89.7, Admin Individual Progress, Attendance, Library, Home,
-   Recorder, bottom navigation, auth banner, Worker, Apps Script, and backend
-   API behaviour.
+/* M4L v90.8.4 - Admin Class Progress calm grid/module headers
+   Baseline: V90.8.3 Admin Class Progress narrow module accordion correction.
+   Scope: preserve the working live two-way group/module accordion, narrow task
+   columns, compact collapsed module numbers, full expanded module names,
+   fixed student-column hint, A1/A2 key/edit controls, background-save
+   navigation, and backend; calm the medium/large grid body by removing group
+   row colour spillover, make merged module headers use one surface-card
+   background, and strengthen right borders between merged module headers.
+   Protected: Student Progress V89.7, Admin Individual Progress, Attendance,
+   Library, Home, Recorder, bottom navigation, auth banner, Worker, Apps
+   Script, and backend API behaviour.
 */
 
 /* =========================  
