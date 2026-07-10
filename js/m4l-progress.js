@@ -1,14 +1,13 @@
-/* M4L v90.9.1 - Progress frontend batch arrays and Student save-icon UX
-   Baseline: V90.9.0 Progress save behaviour and reliability correction.
-   Scope: preserve the reliable V90.9.0 queued/background save behaviour while
-   converting frontend Progress saves to batch array payloads for the V90.8.8
-   backend trial. Student Progress keeps foolproof autosave, but pressing the
-   save icon now immediately returns the module to Click to edit while the
-   queued background save and global status pill continue. Admin Progress saves
-   continue to exit edit mode immediately, now using batched frontend requests.
-   Protected: completed Class/Group Progress layout, Individual Progress layout,
-   Attendance, Library, Home, Recorder, nav, auth banner, Worker, Apps Script,
-   and backend API behaviour.
+/* M4L v90.9.2 - Progress housekeeping finish
+   Baseline: V90.9.1.2 Progress frontend batch backend guard.
+   Scope: keep the confirmed batch save chain stable while making final
+   Progress housekeeping corrections: Class Progress task columns default
+   expanded/open on load, Individual Progress blank fill-to-edit cells use the
+   same text pencil glyph as Class/Admin Progress, and the Individual Progress
+   editable status column is shifted slightly left with a small right gutter.
+   Protected: save queue/batch behaviour, Student autosave, Admin background
+   save, backend/API files, Attendance, Library, Home, Recorder, nav, and auth
+   banner.
 */
 
 /* =========================  
@@ -29,6 +28,7 @@ let adminIndividualProgressEditMode = false;
 let adminIndividualProgressModuleEditState = Object.create(null);
 let adminIndividualProgressActiveModuleIndex = 0;  
 let adminProgressSwipeEscapeGuardBound = false;
+let progressBatchEndpointSupport = Object.create(null);
   
 function resetStudentProgressViewportScroll() {  
   const reset = () => {  
@@ -2959,12 +2959,12 @@ function toggleStudentSubjectTask(studenttaskid, complete) {
   
   
 async function toggleStudentTask(studenttaskid, complete) {  
-  const result = await apiPost("/api/tasks/update-complete", {  
-    updates: [{  
-      studenttaskid,  
-      complete  
-    }]  
-  }, state.token);  
+  const result = await postProgressUpdatesWithBatchFallback(
+    "/api/tasks/update-complete",
+    [{ studenttaskid, complete }],
+    [{ studenttaskid, complete }],
+    "completion"
+  );  
   
   if (!result.success) {  
     alert(result.error || "Could not update task.");  
@@ -3071,6 +3071,22 @@ let adminProgressActiveView = "all";
 let adminProgressSelectedGroup = "ALL";  
 let adminProgressClassExpandedGroups = Object.create(null);
 let adminProgressClassExpandedModules = Object.create(null);
+
+function ensureAdminProgressClassDefaultExpandedModules(modules) {
+  const list = Array.isArray(modules) ? modules : [];
+
+  list.forEach(module => {
+    const moduleKey = String(getAdminModuleKey(module) || "").trim();
+
+    if (!moduleKey) return;
+
+    if (!Object.prototype.hasOwnProperty.call(adminProgressClassExpandedModules, moduleKey)) {
+      adminProgressClassExpandedModules[moduleKey] = true;
+    }
+  });
+
+  return true;
+}
   
 const ADMIN_PROGRESS_DASHBOARD_CACHE_KEY = "m4l_admin_progress_dashboard_v77";  
 let adminProgressLeaveGuardBound = false;  
@@ -4389,6 +4405,8 @@ function rerenderAdminProgressClassAccordion() {
 function getAdminProgressClassAccordionColumnItems(modules) {
   const items = [];
 
+  ensureAdminProgressClassDefaultExpandedModules(modules);
+
   (Array.isArray(modules) ? modules : []).forEach((module, moduleIndex) => {
     const moduleKey = getAdminModuleKey(module);
     const tasks = Array.isArray(module && module.tasks) ? module.tasks : [];
@@ -4500,6 +4518,8 @@ function renderAdminProgressClassOverview(modules) {
     Number.isFinite(Number(adminProgressClassActiveModuleIndex)) ? Number(adminProgressClassActiveModuleIndex) : 0
   ));
   adminProgressClassActiveModuleIndex = safeActiveIndex;
+
+  ensureAdminProgressClassDefaultExpandedModules(model.modules);
 
   const groups = getAdminProgressClassAccordionGroups(model.students);
 
@@ -6104,7 +6124,7 @@ function renderAdminIndividualProgressStatusSymbol(state) {
   }
 
   return `
-    <span class="app-icon student-edit-icon admin-individual-progress-empty-edit-icon" aria-hidden="true"></span>
+    <span class="admin-progress-class-grid-status-symbol admin-progress-class-grid-status-symbol--empty-edit-text admin-individual-progress-empty-edit-icon" aria-hidden="true">✎</span>
     <span class="visually-hidden">Empty / editable</span>
   `;
 }
@@ -7762,6 +7782,106 @@ function clearProgressPendingUpdatesSnapshot(snapshot) {
   return true;
 }
 
+function getProgressBatchEndpointSupport(endpoint) {
+  const key = String(endpoint || "").trim();
+
+  if (!key) {
+    return "disabled";
+  }
+
+  return progressBatchEndpointSupport[key] || "unknown";
+}
+
+function setProgressBatchEndpointSupport(endpoint, supportState) {
+  const key = String(endpoint || "").trim();
+
+  if (!key) {
+    return false;
+  }
+
+  progressBatchEndpointSupport[key] = supportState === "supported" ? "supported" : "disabled";
+  return true;
+}
+
+function shouldDisableProgressBatchForError(errorText) {
+  const text = String(errorText || "").toLowerCase();
+
+  return text.includes("400") ||
+    text.includes("404") ||
+    text.includes("not found") ||
+    text.includes("missing studenttaskid") ||
+    text.includes("missing student task") ||
+    text.includes("invalid updates") ||
+    text.includes("updates must be") ||
+    text.includes("studenttaskid");
+}
+
+async function postProgressUpdatesWithBatchFallback(endpoint, batchUpdates, singlePayloads, label = "progress") {
+  const updates = Array.isArray(batchUpdates) ? batchUpdates.filter(update => update && update.studenttaskid) : [];
+  const singles = Array.isArray(singlePayloads) ? singlePayloads.filter(update => update && update.studenttaskid) : [];
+
+  if (updates.length === 0 && singles.length === 0) {
+    return { success: true, updatedCount: 0 };
+  }
+
+  let batchError = "";
+  const batchSupport = getProgressBatchEndpointSupport(endpoint);
+
+  if (updates.length > 0 && batchSupport !== "disabled") {
+    try {
+      const batchResult = await apiPost(endpoint, { updates }, state.token);
+
+      if (batchResult && batchResult.success) {
+        setProgressBatchEndpointSupport(endpoint, "supported");
+        return batchResult;
+      }
+
+      batchError = batchResult && batchResult.error
+        ? String(batchResult.error)
+        : `Could not save ${label} updates as a batch.`;
+    } catch (err) {
+      batchError = err && err.message ? err.message : String(err || "Batch save failed");
+    }
+
+    if (shouldDisableProgressBatchForError(batchError)) {
+      setProgressBatchEndpointSupport(endpoint, "disabled");
+      console.warn(`Progress ${label} batch endpoint is not available; using single-update fallback for this session.`, batchError);
+    } else {
+      console.warn(`Progress ${label} batch save failed; retrying individual saves.`, batchError);
+    }
+  }
+
+  for (const payload of singles) {
+    try {
+      const singleResult = await apiPost(endpoint, payload, state.token);
+
+      if (!singleResult || !singleResult.success) {
+        return {
+          success: false,
+          error: singleResult && singleResult.error
+            ? singleResult.error
+            : batchError || `Could not save ${label} update.`,
+          batchError,
+          fallback: true
+        };
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: err && err.message ? err.message : batchError || `Could not save ${label} update.`,
+        batchError,
+        fallback: true
+      };
+    }
+  }
+
+  return {
+    success: true,
+    updatedCount: singles.length,
+    fallback: updates.length > 0
+  };
+}
+
 async function saveProgressPendingChanges(options = {}) {
   const shouldReload = options.reload !== false;
   const shouldAlert = options.alert !== false;
@@ -7806,9 +7926,12 @@ async function saveProgressPendingChanges(options = {}) {
 
   try {
     if (completeUpdates.length > 0) {
-      const completeResult = await apiPost("/api/tasks/update-complete", {
-        updates: completeUpdates
-      }, state.token);
+      const completeResult = await postProgressUpdatesWithBatchFallback(
+        "/api/tasks/update-complete",
+        completeUpdates,
+        completeUpdates,
+        "completion"
+      );
 
       if (!completeResult.success) {
         failProgressGlobalStatus(statusToken, "Progress save failed");
@@ -7820,9 +7943,12 @@ async function saveProgressPendingChanges(options = {}) {
     }
 
     if (verifyUpdates.length > 0) {
-      const verifyResult = await apiPost("/api/admin/tasks/verify", {
-        updates: verifyUpdates
-      }, state.token);
+      const verifyResult = await postProgressUpdatesWithBatchFallback(
+        "/api/admin/tasks/verify",
+        verifyUpdates,
+        verifyUpdates,
+        "verification"
+      );
 
       if (!verifyResult.success) {
         failProgressGlobalStatus(statusToken, "Progress save failed");
