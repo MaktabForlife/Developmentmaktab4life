@@ -18,7 +18,7 @@
   min-height: 0;
   margin: 0;
   padding: 0;
-  display: grid;
+  display: flex;
   gap: 8px;
   justify-items: center;
   align-content: start;
@@ -38,17 +38,25 @@
 }
 
 .home-cover-icon-tile {
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
-  min-height: 64px;
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+     border-radius: 16px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(var(--primary-rgb), 0.12);
-  border-radius: 18px;
-  background: var(--surface-card);
+  border: 1px solid rgba(255,255,255,0.3);
+     box-shadow: 0 8px 32px 0 rgba(31,38,135,0.2);
+
+  
+ 
+  /*glasmorphic properties */
+   background: rgba(255,255,255,0.1);
+   backdrop-filter: blur (12px);
+   -webkit-backdrop-filter: blur (12px);
+
+   
   color: var(--primary);
-  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.12);
 }
 
 .home-cover-icon-glyph {
