@@ -1,11 +1,12 @@
-/* M4L v90.9.6 - Progress JS cleanup wave 3
-   Baseline: V90.9.5 Progress JS cleanup wave 2, deployed and tested good.
-   Scope: remove legacy Progress summary percentage/statistic logic and old
-   progress/status-bar rendering from the JS. Keep the active Class grid,
-   selected-student Individual Progress, Student autosave, and batch save chain.
-   Protected: confirmed save behaviour, Student autosave, Admin background
-   save, Class Progress, selected-student Individual Progress, backend/API
-   files, Attendance, Library, Home, Recorder, nav, and auth banner.
+/* M4L v90.9.6 - Progress JS cleanup wave 3 + V90.9.5.1 swipe relief
+   Baseline: V90.9.5.1 Progress mobile swipe relief + desktop containment.
+   Scope: keep the V90.9.5.1 mobile Class Progress swipe fix while removing
+   legacy Progress summary percentage/statistic logic and old progress/status-bar
+   rendering from the JS. Keep the active Class grid, selected-student Individual
+   Progress, Student autosave, and batch save chain.
+   Protected: confirmed save behaviour, Student autosave, Admin background save,
+   Class Progress, selected-student Individual Progress, backend/API files,
+   Attendance, Library, Home, Recorder, nav, and auth banner.
 */
 
 /* =========================  
@@ -118,9 +119,24 @@ function bindProgressUiHandlers(containerOrId) {
   return !!getDomElement(containerOrId);  
 }  
   
+function isAdminProgressSwipeEscapeGuardViewport() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return true;
+  }
+
+  return window.matchMedia("(min-width: 768px)").matches;
+}
+
 function bindAdminProgressSwipeEscapeGuard() {
   if (adminProgressSwipeEscapeGuardBound === true) return true;
   if (typeof document === "undefined" || typeof document.addEventListener !== "function") return false;
+
+  // V90.9.5.1: do not bind the blocking document-level touchmove guard on
+  // mobile. Mobile Class Progress already owns native horizontal scrolling,
+  // and the extra guard made the task/module swipe feel heavy and erratic.
+  if (!isAdminProgressSwipeEscapeGuardViewport()) {
+    return true;
+  }
 
   adminProgressSwipeEscapeGuardBound = true;
 
@@ -130,6 +146,8 @@ function bindAdminProgressSwipeEscapeGuard() {
   ].join(", ");
 
   const horizontalScrollSelector = [
+    ".admin-progress-class-continuous-task-scroll",
+    ".admin-progress-class-pane-viewport",
     ".admin-progress-class-grid-scroll",
     ".admin-individual-progress-pane-viewport",
     ".admin-individual-progress-module-numbers",
@@ -162,6 +180,10 @@ function bindAdminProgressSwipeEscapeGuard() {
   };
 
   const shouldAbsorbHorizontalEscape = (target, deltaX, deltaY) => {
+    if (!isAdminProgressSwipeEscapeGuardViewport()) {
+      return false;
+    }
+
     const absX = Math.abs(Number(deltaX || 0));
     const absY = Math.abs(Number(deltaY || 0));
 
@@ -181,8 +203,8 @@ function bindAdminProgressSwipeEscapeGuard() {
     const atEnd = currentScrollLeft >= maxScrollLeft - 1;
 
     // Touch: deltaX > 0 means the finger is moving right and trying to move the
-    // scroll container before its first pane. Wheel/trackpad: the caller passes
-    // deltaX in native wheel direction, so normalize before calling this helper.
+    // scroll container before its first pane/task column. Wheel/trackpad is
+    // handled separately with native wheel delta direction.
     const swipingRight = deltaX > 0;
     const swipingLeft = deltaX < 0;
 
@@ -190,6 +212,11 @@ function bindAdminProgressSwipeEscapeGuard() {
   };
 
   document.addEventListener("touchstart", event => {
+    if (!isAdminProgressSwipeEscapeGuardViewport()) {
+      gesture = null;
+      return;
+    }
+
     const target = event && event.target;
     if (!target || typeof target.closest !== "function") {
       gesture = null;
@@ -213,6 +240,10 @@ function bindAdminProgressSwipeEscapeGuard() {
   }, { capture: true, passive: true });
 
   document.addEventListener("touchmove", event => {
+    if (!isAdminProgressSwipeEscapeGuardViewport()) {
+      return;
+    }
+
     if (!gesture || !gesture.root || !gesture.target) return;
 
     if (!document.body || !document.body.contains(gesture.root)) {
@@ -232,6 +263,10 @@ function bindAdminProgressSwipeEscapeGuard() {
   }, { capture: true, passive: false });
 
   document.addEventListener("wheel", event => {
+    if (!isAdminProgressSwipeEscapeGuardViewport()) {
+      return;
+    }
+
     const target = event && event.target;
     if (!target || typeof target.closest !== "function") return;
 
