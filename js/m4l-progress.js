@@ -1,12 +1,13 @@
-/* M4L v90.9.6 - Progress JS cleanup wave 3 + V90.9.5.1 swipe relief
-   Baseline: V90.9.5.1 Progress mobile swipe relief + desktop containment.
-   Scope: keep the V90.9.5.1 mobile Class Progress swipe fix while removing
-   legacy Progress summary percentage/statistic logic and old progress/status-bar
-   rendering from the JS. Keep the active Class grid, selected-student Individual
-   Progress, Student autosave, and batch save chain.
-   Protected: confirmed save behaviour, Student autosave, Admin background save,
-   Class Progress, selected-student Individual Progress, backend/API files,
-   Attendance, Library, Home, Recorder, nav, and auth banner.
+/* M4L v90.9.6.4 - Progress JS cleanup recovery
+   Baseline: V90.9.6 from V90.9.5.1 mobile swipe relief.
+   Scope: keep V90.9.6 no-stats/no-status-bar cleanup, preserve the active
+   selected-student Individual Progress header/stepper, and properly remove
+   the legacy Class Progress grey-banding theme helper/calls instead of leaving
+   a neutralized compatibility stub.
+   Protected: Student autosave, Admin background/batch save, Class Progress
+   grid, Class student-name to Individual Progress route, Individual per-module
+   edit/save, backend/API files, Attendance, Library, Home, Recorder, nav,
+   and auth banner.
 */
 
 /* =========================  
@@ -4029,41 +4030,6 @@ function getAdminProgressClassMatrixStateLabel(state) {
   }  
 }  
   
-function getAdminProgressClassMatrixModuleTheme(moduleIndex) {  
-  const index = Number(moduleIndex || 0);  
-  const moduleNumber = Number.isFinite(index) ? index + 1 : 1;  
-  // V90.7.1: human even-numbered modules (2, 4, 6...) use the
-  // disabled/light-grey surface for visual banding.
-  return moduleNumber % 2 === 0 ? "disabled" : "app";  
-}  
-  
-function getAdminProgressClassMatrixModuleThemeClass(moduleIndex) {  
-  return `admin-progress-class-grid-module-theme--${getAdminProgressClassMatrixModuleTheme(moduleIndex)}`;  
-}  
-  
-function getAdminProgressClassGroupPrefix(classgroup) {  
-  const raw = String(classgroup || "").trim();  
-  if (!raw || raw.toUpperCase() === "ALL") return "";  
-  return raw.replace(/^group\s*/i, "").trim();  
-}  
-  
-function getAdminProgressClassMatrixNameTheme(classgroup) {  
-  const prefix = getAdminProgressClassGroupPrefix(classgroup);  
-  const groupNumber = Number(prefix);  
-  
-  if (Number.isFinite(groupNumber) && groupNumber > 0) {  
-    return Math.floor(groupNumber) % 2 === 1 ? "app" : "disabled";  
-  }  
-  
-  if (!prefix) return "app";  
-  
-  const hash = prefix.split("").reduce((total, char) => total + char.charCodeAt(0), 0);  
-  return hash % 2 === 0 ? "app" : "disabled";  
-}  
-  
-function getAdminProgressClassMatrixNameThemeClass(classgroup) {  
-  return `admin-progress-class-grid-name-theme--${getAdminProgressClassMatrixNameTheme(classgroup)}`;  
-}  
   
 function findAdminProgressDashboardRowByStudentTaskId(studenttaskid) {  
   const targetId = String(studenttaskid || "");  
@@ -4225,9 +4191,6 @@ function getAdminProgressClassAccordionColumnItems(modules) {
 
 function renderAdminProgressClassAccordionColumnHeader(item) {
   if (!item) return "";
-
-  const themeClass = getAdminProgressClassMatrixModuleThemeClass(item.moduleIndex || 0);
-
   if (item.type === "task") {
     return renderAdminProgressClassGridTaskHeader(item.task, item.module, item.moduleIndex);
   }
@@ -4236,7 +4199,7 @@ function renderAdminProgressClassAccordionColumnHeader(item) {
 
   return `
     <div
-      class="admin-progress-class-grid-task-header admin-progress-class-accordion-task-placeholder ${themeClass}"
+      class="admin-progress-class-grid-task-header admin-progress-class-accordion-task-placeholder"
       role="columnheader"
       aria-label="${escapeForAttribute(moduleName)} collapsed module column"
     ></div>
@@ -4245,11 +4208,9 @@ function renderAdminProgressClassAccordionColumnHeader(item) {
 
 function renderAdminProgressClassAccordionBlankCell(item, label = "Blank progress cell") {
   if (!item) return "";
-  const themeClass = getAdminProgressClassMatrixModuleThemeClass(item.moduleIndex || 0);
-
   return `
     <div
-      class="admin-progress-class-grid-task-cell admin-progress-class-accordion-blank-cell ${themeClass}"
+      class="admin-progress-class-grid-task-cell admin-progress-class-accordion-blank-cell"
       role="gridcell"
       aria-label="${escapeForAttribute(label)}"
     ></div>
@@ -4393,12 +4354,10 @@ function renderAdminProgressClassStudentColumnRow(student) {
   const name = student.username || "Student";
   const groupPrefix = getAdminProgressClassGroupPrefix(student.classgroup);
   const accessibleName = groupPrefix ? `${groupPrefix} ${name}` : name;
-  const nameThemeClass = getAdminProgressClassMatrixNameThemeClass(student.classgroup);
-
   return `
     <button
       type="button"
-      class="admin-progress-class-student-row admin-progress-class-grid-student-button ${nameThemeClass}"
+      class="admin-progress-class-student-row admin-progress-class-grid-student-button"
       data-progress-action="open-admin-individual-student-card"
       data-studentid="${escapeForAttribute(student.studentid || "")}" 
       data-username="${escapeForAttribute(name)}"
@@ -4504,7 +4463,6 @@ function renderAdminProgressClassContinuousModuleHeader(module, moduleIndex = 0)
   const tasks = Array.isArray(module && module.tasks) ? module.tasks : [];
   const isExpanded = isAdminProgressClassModuleExpanded(moduleKey);
   const span = isExpanded ? Math.max(1, tasks.length) : 1;
-  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);
   const chevron = getAdminProgressClassAccordionChevron(isExpanded);
   const visibleLabel = isExpanded ? moduleName : String(moduleNumber);
   const stateClass = isExpanded ? "is-expanded" : "is-collapsed";
@@ -4512,7 +4470,7 @@ function renderAdminProgressClassContinuousModuleHeader(module, moduleIndex = 0)
   return `
     <button
       type="button"
-      class="admin-progress-class-merged-module-header admin-progress-class-accordion-module-heading ${themeClass} ${stateClass}"
+      class="admin-progress-class-merged-module-header admin-progress-class-accordion-module-heading ${stateClass}"
       data-progress-action="toggle-admin-progress-class-module"
       data-progress-class-module-key="${escapeForAttribute(moduleKey)}"
       role="columnheader"
@@ -4639,10 +4597,8 @@ function renderAdminProgressClassModuleTaskCell(student, module, task, moduleInd
   const stateLabel = getAdminProgressClassMatrixStateLabel(state);
   const label = `${studentName}, ${moduleName}, ${taskName}: ${stateLabel}`;
   const studentTaskId = row ? String(row.studenttaskid || "") : "";
-  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);
-
   return `
-    <div class="admin-progress-class-grid-task-cell ${themeClass}" role="gridcell">
+    <div class="admin-progress-class-grid-task-cell" role="gridcell">
       <button
         type="button"
         class="admin-progress-class-grid-status-button admin-progress-class-grid-status-button--${escapeForAttribute(state)}"
@@ -4979,10 +4935,8 @@ function scrollAdminProgressClassModuleToIndex(index) {
 function renderAdminProgressClassGridTaskHeader(task, module, moduleIndex = 0) {  
   const taskName = task.taskname || "Untitled Task";  
   const moduleName = module.modulename || module.subjectname || "Module";  
-  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);  
-  
   return `  
-    <th class="admin-progress-class-grid-task-header ${themeClass}" scope="col" aria-label="${escapeForAttribute(moduleName)}: ${escapeForAttribute(taskName)}">  
+    <th class="admin-progress-class-grid-task-header" scope="col" aria-label="${escapeForAttribute(moduleName)}: ${escapeForAttribute(taskName)}">  
       <span class="admin-progress-class-grid-task-title-wrap">  
         <span class="admin-progress-class-grid-task-title">${escapeHtml(taskName)}</span>  
       </span>  
@@ -5008,10 +4962,8 @@ function renderAdminProgressClassGridTaskCell(student, module, task, moduleIndex
   const stateLabel = getAdminProgressClassMatrixStateLabel(state);  
   const label = `${studentName}, ${moduleName}, ${taskName}: ${stateLabel}`;  
   const studentTaskId = row ? String(row.studenttaskid || "") : "";  
-  const themeClass = getAdminProgressClassMatrixModuleThemeClass(moduleIndex);  
-  
   return `  
-    <td class="admin-progress-class-grid-task-cell ${themeClass}">  
+    <td class="admin-progress-class-grid-task-cell">  
       <div class="admin-progress-class-grid-task-status">  
         <button  
           type="button"  
