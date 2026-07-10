@@ -1,4 +1,5 @@
-/* M4L v87.2 - Attendance module + bounded sticky top panel scroll
+/* M4L v91.2 - Attendance save icon class cleanup and header panel flattening
+   Baseline: M4L v87.2 Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
 
@@ -222,6 +223,7 @@ function getAttendanceActivePanelKey() {
 
 function updateAttendanceDots(activePanel) {
   const activeIndex = getAttendancePanelIndex(activePanel);
+  ensureAttendancePanelDots(activeIndex);
 
   document.querySelectorAll("[data-attendance-panel-index]").forEach(dot => {
     const index = Number(dot.dataset.attendancePanelIndex || 0);
@@ -237,6 +239,8 @@ function bindAttendanceNativeScroll() {
   const screen = getDomElement(ATTENDANCE_SCREEN_ID);
   const track = getAttendanceSwipeTrack();
   if (!screen || !track) return false;
+
+  ensureAttendancePanelDots(getAttendanceActivePanelKey());
 
   if (attendanceNativeScrollBound === true) {
     return true;
@@ -280,6 +284,7 @@ function showAttendanceScreen() {
 
   const didShow = showScreen(ATTENDANCE_SCREEN_ID);
   if (didShow) {
+    ensureAttendancePanelDots(getAttendanceActivePanelKey());
     bindAttendanceNativeScroll();
     resetAttendanceViewportScroll();
   }
@@ -564,13 +569,13 @@ function renderAttendancePanelDots(activePanel) {
   ];
 
   return `
-    <div class="attendance-panel-dots" data-swipe-group="attendance" aria-label="Attendance panels">
+    <div class="attendance-panel-dots m4l-progress-swipe-dots" data-swipe-group="attendance" aria-label="Attendance panels">
       ${panels.map((panel, index) => {
         const isActive = panel.key === activePanel;
         return `
           <button
             type="button"
-            class="section-swipe-dot${isActive ? " is-active" : ""}"
+            class="section-swipe-dot attendance-panel-dot m4l-progress-swipe-dot${isActive ? " is-active" : ""}"
             data-swipe-group="attendance"
             data-swipe-panel-index="${index}"
             data-attendance-panel-index="${index}"
@@ -584,20 +589,88 @@ function renderAttendancePanelDots(activePanel) {
   `;
 }
 
-function renderAttendancePanelHeading(text) {
+function ensureAttendancePanelDots(activePanel) {
+  const screen = getDomElement(ATTENDANCE_SCREEN_ID);
+  if (!screen) return false;
+
+  const panelKey = getAttendancePanelKey(activePanel == null ? getAttendanceActivePanelKey() : activePanel);
+  const track = getAttendanceSwipeTrack();
+  const referenceNode = track && track.parentElement === screen ? track : screen.firstChild;
+  let dots = screen.querySelector(".attendance-panel-dots[data-swipe-group='attendance']");
+
+  if (!dots || dots.querySelectorAll("[data-attendance-panel-index]").length !== ATTENDANCE_PANEL_SEQUENCE.length) {
+    const template = document.createElement("template");
+    template.innerHTML = renderAttendancePanelDots(panelKey).trim();
+    const nextDots = template.content ? template.content.firstElementChild : template.firstElementChild;
+    if (!nextDots) return false;
+
+    if (dots && dots.parentElement) {
+      dots.parentElement.replaceChild(nextDots, dots);
+      dots = nextDots;
+    } else {
+      dots = nextDots;
+      screen.insertBefore(dots, referenceNode);
+    }
+  }
+
+  dots.classList.add("attendance-panel-dots", "m4l-progress-swipe-dots");
+  dots.setAttribute("data-swipe-group", "attendance");
+  dots.setAttribute("aria-label", "Attendance panels");
+
+  dots.querySelectorAll("[data-attendance-panel-index]").forEach(dot => {
+    dot.classList.add("section-swipe-dot", "attendance-panel-dot", "m4l-progress-swipe-dot");
+  });
+
+  if (dots.parentElement !== screen || (track && track.parentElement === screen && dots.nextElementSibling !== track)) {
+    screen.insertBefore(dots, referenceNode);
+  }
+
+  return true;
+}
+
+function renderAttendanceHeaderAction(options = {}) {
+  const label = String(options.label || "").trim();
+  const iconClass = String(options.iconClass || "").trim();
+  const ariaLabel = String(options.ariaLabel || label || "Attendance action");
+  const action = String(options.action || "");
+  const actionType = options.actionType === "register" ? "register" : "general";
+  const dataAttribute = actionType === "register"
+    ? "data-attendance-register-action"
+    : "data-attendance-action";
+
+  if (!action || !label || !iconClass) {
+    return "";
+  }
+
   return `
-    <div class="attendance-subscreen-header">
+    <button
+      type="button"
+      class="attendance-header-action-btn attendance-${escapeHtml(action)}-btn${action === "save-register" ? " attendance-header-save-btn" : ""}"
+      ${dataAttribute}="${escapeHtml(action)}"
+      aria-label="${escapeHtml(ariaLabel)}"
+    >
+      <span class="app-icon app-icon-small ${escapeHtml(iconClass)}" aria-hidden="true"></span>
+      <span class="attendance-header-action-label">${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
+function renderAttendancePanelHeading(text, actionMarkup = "") {
+  const hasAction = String(actionMarkup || "").trim() ? " has-action" : "";
+  return `
+    <div class="attendance-subscreen-header${hasAction}">
       <h3 class="attendance-panel-heading">${escapeHtml(text)}</h3>
+      ${actionMarkup || ""}
     </div>
   `;
 }
 
-function renderAttendanceTopPanel(activePanel, heading, bodyMarkup) {
+function renderAttendanceTopPanel(activePanel, heading, bodyMarkup, actionMarkup = "") {
   const panelKey = String(activePanel || "register");
   return `
     <div class="attendance-sticky-control-pane attendance-${escapeHtml(panelKey)}-control-pane">
       <section class="attendance-top-panel attendance-top-panel--${escapeHtml(panelKey)}">
-        ${renderAttendancePanelHeading(heading)}
+        ${renderAttendancePanelHeading(heading, actionMarkup)}
         <div class="attendance-top-content">
           ${bodyMarkup || ""}
         </div>
@@ -666,15 +739,12 @@ function bindAttendancePanelSwipe(containerOrId, activePanel) {
   return true;
 }
 
-function renderAttendanceDateFilter(mode, startDate, endDate, buttonLabel) {
+function renderAttendanceDateFilter(mode, startDate, endDate) {
   const normalizedMode = mode === "stats" ? "stats" : "view";
-  const action = normalizedMode === "stats" ? "calculate-stats" : "view-records";
-  const label = buttonLabel || "Calculate";
 
   return `
     <div class="attendance-control-block attendance-filter-box attendance-filter-box-compact">
       ${renderAttendanceDateControl(normalizedMode, startDate, endDate)}
-      ${renderAttendanceActionButton(action, label)}
     </div>
   `;
 }
@@ -832,11 +902,14 @@ function getAttendanceRegisterDateValue() {
 }
 
 function setAttendanceSaveButtonState(isSaving) {
-  const saveButton = document.querySelector("#attendance-register-content .attendance-save-btn");
+  const saveButton = document.querySelector("#attendance-register-content .attendance-header-save-btn");
   if (!saveButton) return false;
 
-  saveButton.disabled = Boolean(isSaving);
-  saveButton.innerText = isSaving ? "Saving..." : "Save";
+  const isBusy = Boolean(isSaving);
+  saveButton.disabled = isBusy;
+  saveButton.classList.toggle("is-saving", isBusy);
+  saveButton.setAttribute("aria-busy", isBusy ? "true" : "false");
+  saveButton.setAttribute("aria-disabled", isBusy ? "true" : "false");
   return true;
 }
 
@@ -913,41 +986,45 @@ function renderAttendanceRegister(dateValue) {
   const students = [...attendanceStudentsCache].sort(sortAttendanceStudents);
   const absentCount = students.filter(student => attendanceState[student.studentid] === "Absent").length;
 
-  let html = renderAttendanceTopPanel("register", "Register", `
-    <div class="attendance-control-block attendance-register-control-block">
-      <div class="attendance-summary-card">
-        <div class="attendance-summary-item">
-          <span class="attendance-summary-icon" aria-hidden="true">📅</span>
-          <div class="attendance-summary-text">
-            <span class="attendance-summary-label">Date</span>
-            <input
-              type="date"
-              id="attendance-date"
-              value="${escapeHtml(dateValue || getLocalDateString())}"
-              data-attendance-register-field="date"
-            >
+  let html = renderAttendanceTopPanel(
+    "register",
+    "Mark Register",
+    `
+      <div class="attendance-control-block attendance-register-control-block">
+        <div class="attendance-summary-card">
+          <div class="attendance-summary-item">
+            <span class="attendance-summary-icon" aria-hidden="true">📅</span>
+            <div class="attendance-summary-text">
+              <span class="attendance-summary-label">Date</span>
+              <input
+                type="date"
+                id="attendance-date"
+                value="${escapeHtml(dateValue || getLocalDateString())}"
+                data-attendance-register-field="date"
+              >
+            </div>
           </div>
-        </div>
 
-        <div class="attendance-summary-divider" aria-hidden="true"></div>
+          <div class="attendance-summary-divider" aria-hidden="true"></div>
 
-        <div class="attendance-summary-item">
-          <span class="attendance-summary-icon" aria-hidden="true">👥</span>
-          <div class="attendance-summary-text">
-            <span class="attendance-summary-label">Absent</span>
-            <strong class="attendance-absence-feedback">${absentCount} student${absentCount === 1 ? "" : "s"}</strong>
-            <span class="attendance-summary-subtext">marked absent</span>
+          <div class="attendance-summary-item">
+            <span class="attendance-summary-icon" aria-hidden="true">👥</span>
+            <div class="attendance-summary-text">
+              <span class="attendance-summary-label">Absent</span>
+              <strong class="attendance-absence-feedback">${absentCount} student${absentCount === 1 ? "" : "s"}</strong>
+            </div>
           </div>
         </div>
       </div>
-
-      <button
-        type="button"
-        class="attendance-action-btn attendance-save-btn"
-        data-attendance-register-action="save-register"
-      >Save</button>
-    </div>
-  `);
+    `,
+    renderAttendanceHeaderAction({
+      actionType: "register",
+      action: "save-register",
+      iconClass: "save-mode-icon",
+      label: "SAVE",
+      ariaLabel: "Save attendance register"
+    })
+  );
 
   if (students.length === 0) {
     html += `<p class="helper-text">No active students found.</p>`;
@@ -1105,7 +1182,14 @@ function renderAttendanceRecordsControlsMarkup(range) {
   return renderAttendanceTopPanel(
     "records",
     "Attendance Records",
-    renderAttendanceDateFilter("view", range.start, range.end, "Calculate")
+    renderAttendanceDateFilter("view", range.start, range.end),
+    renderAttendanceHeaderAction({
+      actionType: "general",
+      action: "view-records",
+      iconClass: "calculate-mode-icon",
+      label: "CALC",
+      ariaLabel: "Calculate attendance records"
+    })
   );
 }
 
@@ -1264,8 +1348,15 @@ function openAttendanceStats() {
 function renderAttendanceStatsControlsMarkup(range) {
   return renderAttendanceTopPanel(
     "stats",
-    "Statistics",
-    renderAttendanceDateFilter("stats", range.start, range.end, "Calculate")
+    "Attendance Stats",
+    renderAttendanceDateFilter("stats", range.start, range.end),
+    renderAttendanceHeaderAction({
+      actionType: "general",
+      action: "calculate-stats",
+      iconClass: "calculate-mode-icon",
+      label: "CALC",
+      ariaLabel: "Calculate attendance statistics"
+    })
   );
 }
 
@@ -1491,6 +1582,7 @@ window.M4LAttendance = {
   showAttendanceScreen,
   scrollAttendancePanelIntoView,
   updateAttendanceDots,
+  ensureAttendancePanelDots,
   bindAttendanceNativeScroll,
   getAttendanceActivePanelKey,
   refreshCurrentAttendancePanel,
@@ -1508,6 +1600,7 @@ window.M4LAttendance = {
 window.showAttendanceScreen = showAttendanceScreen;
 window.scrollAttendancePanelIntoView = scrollAttendancePanelIntoView;
 window.updateAttendanceDots = updateAttendanceDots;
+window.ensureAttendancePanelDots = ensureAttendancePanelDots;
 window.bindAttendanceNativeScroll = bindAttendanceNativeScroll;
 window.getAttendanceActivePanelKey = getAttendanceActivePanelKey;
 window.refreshCurrentAttendancePanel = refreshCurrentAttendancePanel;

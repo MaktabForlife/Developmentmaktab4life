@@ -1,4 +1,5 @@
-/* M4L v90.9.5.1 - Progress swipe containment support
+/* M4L v91.4 - Attendance save icon class cleanup and header panel flattening
+   Baseline: M4L v90.9.5.1 Progress swipe containment support
    Baseline: V90.9.2 stylesheet used with V90.9.5 Progress JS cleanup.
    Scope: add non-visual scroll containment support for the V90.9.5.1 Admin
    Progress swipe-guard correction. Mobile remains native; medium/large Class
@@ -406,6 +407,10 @@ button:active {
 
 .save-mode-icon {
   --app-icon-url: url('/icons/save.svg');
+}
+
+.calculate-mode-icon {
+  --app-icon-url: url('/icons/calculate.svg');
 }
 
 .app-icon-close {
@@ -3984,9 +3989,11 @@ body.is-attendance-section #attendance-screen.screen {
   z-index: 55;
   display: grid;
   gap: 8px;
-  padding: 0 0 10px;
-  margin-bottom: 10px;
+  padding: 0;
+  margin-bottom: 14px;
   background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .attendance-top-panel {
@@ -3998,7 +4005,7 @@ body.is-attendance-section #attendance-screen.screen {
   border: 1px solid rgba(var(--primary-rgb), 0.12);
   border-radius: 18px;
   background: var(--surface-card);
-  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.05);
+  box-shadow: none;
 }
 
 .attendance-top-content {
@@ -4008,12 +4015,19 @@ body.is-attendance-section #attendance-screen.screen {
 }
 
 .attendance-subscreen-header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
   text-align: left;
 }
 
 .attendance-panel-heading,
 .attendance-subscreen-header h3 {
   margin: 0;
+  min-width: 0;
+  align-self: center;
   color: var(--primary);
   font-size: clamp(1.05rem, 4.6vw, 1.35rem);
   line-height: 1.15;
@@ -4022,13 +4036,59 @@ body.is-attendance-section #attendance-screen.screen {
   font-weight: 800;
 }
 
+.attendance-header-action-btn {
+  appearance: none;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  min-height: 42px;
+  margin: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  justify-self: end;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-strong);
+  box-shadow: none;
+  font: inherit;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.attendance-header-action-btn .app-icon {
+  width: 24px;
+  height: 24px;
+  color: currentColor;
+  background: currentColor;
+}
+
+.attendance-header-action-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.attendance-header-action-btn:disabled,
+.attendance-header-action-btn.is-saving {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .attendance-control-block,
 .attendance-filter-box,
 .attendance-filter-box-compact,
 .attendance-register-control-block {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto;
   gap: 10px;
   align-content: start;
   margin: 0;
@@ -4123,9 +4183,7 @@ body.is-attendance-section #attendance-screen.screen {
   line-height: 1.1;
 }
 
-.attendance-action-btn,
-.attendance-filter-action-btn,
-.attendance-save-btn {
+.attendance-action-btn {
   width: 50%;
   max-width: 300px;
   justify-self: center;
@@ -4161,9 +4219,7 @@ body.is-attendance-section #attendance-screen.screen {
     gap: 12px;
   }
 
-  .attendance-action-btn,
-  .attendance-filter-action-btn,
-  .attendance-save-btn {
+  .attendance-action-btn {
     width: 50%;
     max-width: 300px;
     min-height: 48px;
@@ -4453,9 +4509,7 @@ body.is-attendance-section #attendance-screen.screen {
     font-size: 0.68rem;
   }
 
-  .attendance-action-btn,
-  .attendance-filter-action-btn,
-  .attendance-save-btn {
+  .attendance-action-btn {
     width: 50%;
     max-width: 300px;
     min-height: 48px;
@@ -5683,8 +5737,11 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
     top: auto;
     z-index: 3;
     grid-row: 1;
-    margin: 0 0 10px;
-    background: var(--surface-app);
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   #attendance-screen .attendance-panel-scroll-body {
@@ -5806,7 +5863,11 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
     position: relative;
     top: auto;
     z-index: 3;
-    margin: 0 0 10px;
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   #attendance-register-content,
@@ -11225,6 +11286,16 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     );
   }
 }
+  #attendance-screen .attendance-swipe-track {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 12px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
 
 #progress-report.admin-theme .admin-progress-class-overview,
 #progress-report.admin-theme .admin-individual-progress-shell,
