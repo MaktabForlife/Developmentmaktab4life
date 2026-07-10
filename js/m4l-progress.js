@@ -4030,10 +4030,11 @@ function getAdminProgressClassMatrixStateLabel(state) {
 }  
   
 function getAdminProgressClassMatrixModuleTheme(moduleIndex) {  
-  // V90.9.6.2: Class Progress no longer uses grey/disabled module banding.
-  // Keep the small theme helper for compatibility with the renderer, but make
-  // all module/task columns use the normal app surface.
-  return "app";  
+  const index = Number(moduleIndex || 0);  
+  const moduleNumber = Number.isFinite(index) ? index + 1 : 1;  
+  // V90.7.1: human even-numbered modules (2, 4, 6...) use the
+  // disabled/light-grey surface for visual banding.
+  return moduleNumber % 2 === 0 ? "disabled" : "app";  
 }  
   
 function getAdminProgressClassMatrixModuleThemeClass(moduleIndex) {  
@@ -4047,8 +4048,17 @@ function getAdminProgressClassGroupPrefix(classgroup) {
 }  
   
 function getAdminProgressClassMatrixNameTheme(classgroup) {  
-  // V90.9.6.2: remove legacy alternating grey name-column banding as well.
-  return "app";  
+  const prefix = getAdminProgressClassGroupPrefix(classgroup);  
+  const groupNumber = Number(prefix);  
+  
+  if (Number.isFinite(groupNumber) && groupNumber > 0) {  
+    return Math.floor(groupNumber) % 2 === 1 ? "app" : "disabled";  
+  }  
+  
+  if (!prefix) return "app";  
+  
+  const hash = prefix.split("").reduce((total, char) => total + char.charCodeAt(0), 0);  
+  return hash % 2 === 0 ? "app" : "disabled";  
 }  
   
 function getAdminProgressClassMatrixNameThemeClass(classgroup) {  
