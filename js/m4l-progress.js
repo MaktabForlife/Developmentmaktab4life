@@ -1,4 +1,4 @@
-/* M4L v90.9.5.1 - Progress mobile swipe relief + desktop containment
+/* M4L v90.9.6.5 copy of M4L v90.9.5.1 - Progress mobile swipe relief + desktop containment
    Baseline: V90.9.5 Progress JS cleanup wave 2, confirmed deployed and working.
    Scope: correct Admin Progress swipe guards before continuing cleanup. Mobile
    Class Progress must use native horizontal scrolling with no extra document
