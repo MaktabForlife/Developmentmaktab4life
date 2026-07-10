@@ -1,0 +1,469 @@
+
+/* V66 final Attendance screen spacing override: keep native-swipe dots clear of content after base screen rules. */
+@media (max-width: 767px) {
+  #attendance-screen.screen {
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
+  }
+}
+
+/* Shared bounded viewport top-stack correction - V76.7.4
+   Fixed top controls stay visible, while each screen reserves a bounded content
+   viewport underneath them. This prevents Home, Attendance and Student Progress
+   content from scrolling underneath the auth band or swipe dots. */
+@media (max-width: 767px), (max-device-width: 767px) {
+  body.is-home-section {
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+  }
+
+  body.is-attendance-section,
+  body.is-student-progress-section {
+    overflow-y: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  body.is-home-section .app-shell {
+    align-items: flex-start;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  body.is-attendance-section .app-shell,
+  body.is-student-progress-section .app-shell {
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #student-home.screen,
+  #admin-home.screen {
+    align-self: flex-start;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+    padding-top: 6px;
+    padding-bottom: 12px;
+  }
+
+  #student-home.screen.active,
+  #admin-home.screen.active {
+    display: block;
+  }
+
+  #student-home .home-sticky-action-bar,
+  #admin-home .home-sticky-action-bar {
+    display: none;
+  }
+
+  #student-home .home-swipe-shell,
+  #admin-home .home-swipe-shell {
+    height: auto;
+    min-height: 0;
+    display: block;
+    overflow: visible;
+  }
+
+  #student-home .home-swipe-track,
+  #admin-home .home-swipe-track {
+    height: auto;
+    min-height: 0;
+    align-items: start;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  #student-home .home-swipe-panel,
+  #admin-home .home-swipe-panel {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    align-content: start;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+  }
+
+  #student-home .home-swipe-panel > :first-child,
+  #admin-home .home-swipe-panel > :first-child {
+    margin-top: 0;
+  }
+
+  #attendance-screen.screen {
+    align-self: flex-start;
+    width: 100%;
+    max-width: 100%;
+    height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--bottom-nav-height) -
+      var(--bottom-nav-safe-area) -
+      24px
+    );
+    max-height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--bottom-nav-height) -
+      var(--bottom-nav-safe-area) -
+      24px
+    );
+    min-height: 0;
+    overflow: hidden;
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 12px);
+    padding-bottom: 10px;
+  }
+
+  #attendance-screen.screen.active {
+    display: block;
+  }
+
+  #attendance-screen .attendance-swipe-track {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  #attendance-screen .attendance-swipe-panel {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #attendance-register-content,
+  #attendance-report-content,
+  #attendance-stats-content {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  #attendance-screen .attendance-sticky-control-pane {
+    position: relative;
+    top: auto;
+    z-index: 3;
+    grid-row: 1;
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  #attendance-screen .attendance-panel-scroll-body {
+    grid-row: 2;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 14px;
+  }
+
+  #progress-subjects-screen.student-theme {
+    --student-progress-visible-top-stack-height: calc(
+      var(--swipe-dot-band-gap) +
+      var(--swipe-dot-bar-height) +
+      8px +
+      var(--student-progress-active-header-height) +
+      var(--student-progress-top-stack-extra-gap)
+    );
+    align-self: flex-start;
+    height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--bottom-nav-height) -
+      var(--bottom-nav-safe-area) -
+      24px
+    );
+    max-height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--bottom-nav-height) -
+      var(--bottom-nav-safe-area) -
+      24px
+    );
+    min-height: 0;
+    overflow: hidden;
+    padding-top: var(--student-progress-visible-top-stack-height);
+    padding-bottom: 10px;
+  }
+
+  #progress-subjects-screen.student-theme.active {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-active-module-header {
+    position: fixed;
+    top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--swipe-dot-band-gap) +
+      var(--swipe-dot-bar-height) +
+      8px
+    );
+    left: 50%;
+    z-index: 107;
+    width: min(calc(100dvw - 20px), 500px);
+    max-width: calc(100dvw - 20px);
+    transform: translateX(-50%);
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-shell {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-swipe-track {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-panel {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    align-content: stretch;
+    overflow: hidden;
+  }
+
+  #progress-subjects-screen.student-theme .student-progress-module-task-card {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1179px) {
+  #student-home.screen,
+  #admin-home.screen {
+    align-self: flex-start;
+    min-height: 0;
+    overflow: visible;
+    padding-top: 12px;
+  }
+
+  #student-home .home-sticky-action-bar,
+  #admin-home .home-sticky-action-bar {
+    display: none;
+  }
+
+  #attendance-screen.screen {
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 12px);
+  }
+
+  #attendance-screen .attendance-sticky-control-pane {
+    position: relative;
+    top: auto;
+    z-index: 3;
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  #attendance-register-content,
+  #attendance-report-content,
+  #attendance-stats-content {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #attendance-screen .attendance-panel-scroll-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 1180px) {
+  body.is-home-section,
+  body.is-attendance-section,
+  body.is-student-progress-section {
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+  }
+
+  #student-home .home-sticky-action-bar,
+  #admin-home .home-sticky-action-bar {
+    position: sticky;
+    left: auto;
+    width: 100%;
+    max-width: 100%;
+    transform: none;
+  }
+
+  #attendance-screen .attendance-sticky-control-pane {
+    position: static;
+    top: auto;
+  }
+}
+
+
+/* V78.1 Progress picker and student picker */
+.admin-progress-aig-shell {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 0 8px;
+  margin: 0 0 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-progress-view-picker-label {
+  width: min(100%, 430px);
+  display: block;
+}
+
+.admin-progress-view-picker {
+  width: 100%;
+  min-height: 50px;
+  margin: 0;
+  padding: 10px 42px 10px 16px;
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-card) 72%, var(--surface-chip));
+  color: var(--text-strong);
+  box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.08);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 820;
+  line-height: 1.1;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+
+.admin-progress-individual-landing {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.admin-progress-individual-landing-list {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+
+.admin-progress-individual-landing-group {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-progress-individual-landing-group h4 {
+  margin: 0;
+  padding: 0 6px;
+  color: var(--text-subtle);
+  font-size: 0.82rem;
+  font-weight: 820;
+  line-height: 1.1;
+}
+
+.admin-progress-individual-student-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.admin-progress-individual-student-card {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 34%);
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 16px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.06);
+  text-align: left;
+}
+
+.admin-progress-individual-student-card .admin-progress-task-card-title {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 760;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-individual-student-card .admin-progress-card-bars {
+  width: min(100%, 128px);
+  justify-self: end;
+}
+
+.admin-progress-individual-cleanup-placeholder {
+  position: relative;
+  width: min(100%, 560px);
+  margin: 0 auto;
+  display: grid;
+  gap: 8px;
+  padding: 42px 16px 18px;
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 18px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  box-shadow: 0 3px 10px rgba(var(--black-rgb), 0.08);
+  text-align: center;
+}
+
+.admin-progress-individual-cleanup-placeholder h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1.05rem, 4vw, 1.28rem);
+  line-height: 1.15;
+}
+
+.admin-progress-individual-cleanup-close {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+}
+
+@media (min-width: 768px) {
+  .admin-progress-individual-student-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
+  .admin-progress-individual-student-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
