@@ -1,4 +1,5 @@
-/* M4L v87.2 - Attendance module + bounded sticky top panel scroll
+/* M4L v91.0 - Attendance mobile swipe dots placement
+   Baseline: M4L v87.2 Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
 
@@ -222,6 +223,7 @@ function getAttendanceActivePanelKey() {
 
 function updateAttendanceDots(activePanel) {
   const activeIndex = getAttendancePanelIndex(activePanel);
+  ensureAttendancePanelDots(activeIndex);
 
   document.querySelectorAll("[data-attendance-panel-index]").forEach(dot => {
     const index = Number(dot.dataset.attendancePanelIndex || 0);
@@ -237,6 +239,8 @@ function bindAttendanceNativeScroll() {
   const screen = getDomElement(ATTENDANCE_SCREEN_ID);
   const track = getAttendanceSwipeTrack();
   if (!screen || !track) return false;
+
+  ensureAttendancePanelDots(getAttendanceActivePanelKey());
 
   if (attendanceNativeScrollBound === true) {
     return true;
@@ -280,6 +284,7 @@ function showAttendanceScreen() {
 
   const didShow = showScreen(ATTENDANCE_SCREEN_ID);
   if (didShow) {
+    ensureAttendancePanelDots(getAttendanceActivePanelKey());
     bindAttendanceNativeScroll();
     resetAttendanceViewportScroll();
   }
@@ -564,13 +569,13 @@ function renderAttendancePanelDots(activePanel) {
   ];
 
   return `
-    <div class="attendance-panel-dots" data-swipe-group="attendance" aria-label="Attendance panels">
+    <div class="attendance-panel-dots m4l-progress-swipe-dots" data-swipe-group="attendance" aria-label="Attendance panels">
       ${panels.map((panel, index) => {
         const isActive = panel.key === activePanel;
         return `
           <button
             type="button"
-            class="section-swipe-dot${isActive ? " is-active" : ""}"
+            class="section-swipe-dot attendance-panel-dot m4l-progress-swipe-dot${isActive ? " is-active" : ""}"
             data-swipe-group="attendance"
             data-swipe-panel-index="${index}"
             data-attendance-panel-index="${index}"
@@ -582,6 +587,45 @@ function renderAttendancePanelDots(activePanel) {
       }).join("")}
     </div>
   `;
+}
+
+function ensureAttendancePanelDots(activePanel) {
+  const screen = getDomElement(ATTENDANCE_SCREEN_ID);
+  if (!screen) return false;
+
+  const panelKey = getAttendancePanelKey(activePanel == null ? getAttendanceActivePanelKey() : activePanel);
+  const track = getAttendanceSwipeTrack();
+  const referenceNode = track && track.parentElement === screen ? track : screen.firstChild;
+  let dots = screen.querySelector(".attendance-panel-dots[data-swipe-group='attendance']");
+
+  if (!dots || dots.querySelectorAll("[data-attendance-panel-index]").length !== ATTENDANCE_PANEL_SEQUENCE.length) {
+    const template = document.createElement("template");
+    template.innerHTML = renderAttendancePanelDots(panelKey).trim();
+    const nextDots = template.content ? template.content.firstElementChild : template.firstElementChild;
+    if (!nextDots) return false;
+
+    if (dots && dots.parentElement) {
+      dots.parentElement.replaceChild(nextDots, dots);
+      dots = nextDots;
+    } else {
+      dots = nextDots;
+      screen.insertBefore(dots, referenceNode);
+    }
+  }
+
+  dots.classList.add("attendance-panel-dots", "m4l-progress-swipe-dots");
+  dots.setAttribute("data-swipe-group", "attendance");
+  dots.setAttribute("aria-label", "Attendance panels");
+
+  dots.querySelectorAll("[data-attendance-panel-index]").forEach(dot => {
+    dot.classList.add("section-swipe-dot", "attendance-panel-dot", "m4l-progress-swipe-dot");
+  });
+
+  if (dots.parentElement !== screen || (track && track.parentElement === screen && dots.nextElementSibling !== track)) {
+    screen.insertBefore(dots, referenceNode);
+  }
+
+  return true;
 }
 
 function renderAttendancePanelHeading(text) {
@@ -1491,6 +1535,7 @@ window.M4LAttendance = {
   showAttendanceScreen,
   scrollAttendancePanelIntoView,
   updateAttendanceDots,
+  ensureAttendancePanelDots,
   bindAttendanceNativeScroll,
   getAttendanceActivePanelKey,
   refreshCurrentAttendancePanel,
@@ -1508,6 +1553,7 @@ window.M4LAttendance = {
 window.showAttendanceScreen = showAttendanceScreen;
 window.scrollAttendancePanelIntoView = scrollAttendancePanelIntoView;
 window.updateAttendanceDots = updateAttendanceDots;
+window.ensureAttendancePanelDots = ensureAttendancePanelDots;
 window.bindAttendanceNativeScroll = bindAttendanceNativeScroll;
 window.getAttendanceActivePanelKey = getAttendanceActivePanelKey;
 window.refreshCurrentAttendancePanel = refreshCurrentAttendancePanel;
