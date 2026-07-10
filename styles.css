@@ -1,11 +1,10 @@
-/* M4L v90.9.2 - Progress housekeeping finish
-   Baseline: V90.9.1.2 Progress frontend batch backend guard.
-   Scope: preserve confirmed batch save behaviour and existing layouts while
-   applying final Progress housekeeping polish. CSS shifts the Individual
-   Progress editable status column slightly left and supports the text pencil
-   glyph used for blank fill-to-edit cells. Protected: Attendance, Library,
-   Home, Recorder, nav, auth banner, Worker, Apps Script, backend files, and
-   save logic.
+/* M4L v90.9.5.1 - Progress swipe containment support
+   Baseline: V90.9.2 stylesheet used with V90.9.5 Progress JS cleanup.
+   Scope: add non-visual scroll containment support for the V90.9.5.1 Admin
+   Progress swipe-guard correction. Mobile remains native; medium/large Class
+   and Individual horizontal scroll containers get stronger boundary containment.
+   Protected: all existing Progress layout, colours, save logic, Attendance,
+   Library, Home, Recorder, nav, auth banner, Worker, and Apps Script.
 */
 
 :root {
@@ -10157,6 +10156,29 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 
   .admin-progress-class-overview--accordion .admin-progress-class-merged-module-title {
     font-size: clamp(0.98rem, 4.2vw, 1.24rem);
+  }
+}
+
+
+
+/* M4L v90.9.5.1 - Progress swipe containment support.
+   Mobile uses native scrolling without the extra JS document touch guard.
+   Medium/large keep edge containment for active Class/Individual horizontal
+   containers so swipes do not escape the Progress section at boundaries. */
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-progress-class-continuous-task-scroll,
+  #progress-report.admin-theme .admin-progress-class-pane-viewport,
+  #progress-report.admin-theme .admin-individual-progress-pane-viewport,
+  #progress-report.admin-theme .admin-individual-progress-module-numbers,
+  #progress-report.admin-theme .student-progress-stepper-number-strip {
+    overscroll-behavior-x: contain;
+    overscroll-behavior-inline: contain;
+  }
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  #progress-report.admin-theme .admin-progress-class-continuous-task-scroll {
+    touch-action: pan-x pan-y;
   }
 }
 
