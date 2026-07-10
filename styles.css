@@ -1,4 +1,4 @@
-/* M4L v91.7.2 - CSS split phase 1 loader
+/* M4L v91.7.4 - CSS split phase 1 loader
    Generated from styles(85).css / M4L v91.4.
    Deploy this file as /styles.css only after deploying every file below to /css/.
    The import order exactly preserves the original cascade.
@@ -18,3 +18,4 @@
 @import url("/css/m4l-11-student-progress-stepper-pane.css?v=91.5");
 @import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=91.5");
 @import url("/css/m4l-13-admin-individual-progress-overrides.css?v=91.7.2a");
+@import url('/css/m4l-14-attendance-responsive-repair.css?v=91.7.4');
