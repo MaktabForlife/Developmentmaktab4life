@@ -10051,35 +10051,6 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   }
 }
 
-/* M4L v90.7.1 - even-numbered module banding.
-   Human even modules (2, 4, 6...) receive the disabled theme class in JS.
-   Use the disabled token as the band surface across merged module headers,
-   rotated task headers, and body cells without touching the global student
-   column or save behaviour. */
-.admin-progress-class-grid-module-theme--app {
-  --admin-progress-class-grid-body-surface: var(--surface-card);
-  --admin-progress-class-grid-module-band-surface: var(--surface-card);
-}
-
-.admin-progress-class-grid-module-theme--disabled {
-  --admin-progress-class-grid-body-surface: var(--disabled);
-  --admin-progress-class-grid-module-band-surface: var(--disabled);
-}
-
-.admin-progress-class-merged-module-header,
-.admin-progress-class-grid-module-header.admin-progress-class-grid-module-theme--app,
-.admin-progress-class-grid-module-header.admin-progress-class-grid-module-theme--disabled,
-.admin-progress-class-grid-task-header.admin-progress-class-grid-module-theme--app,
-.admin-progress-class-grid-task-header.admin-progress-class-grid-module-theme--disabled {
-  background: var(--admin-progress-class-grid-module-band-surface, var(--surface-card));
-  background-clip: padding-box;
-}
-
-.admin-progress-class-grid-task-cell.admin-progress-class-grid-module-theme--app,
-.admin-progress-class-grid-task-cell.admin-progress-class-grid-module-theme--disabled {
-  background: var(--admin-progress-class-grid-body-surface, var(--surface-card));
-  background-clip: padding-box;
-}
 
 
 /* M4L v90.8.1 - live group/module accordion for Class Progress.
@@ -10407,3 +10378,206 @@ body.is-attendance-section .attendance-panel-dots {
   }
 }
 
+
+
+/* M4L v90.9.6.4 - Progress Individual UI recovery on latest V91.2 CSS
+   Rebuilds the V90.9.6.3 recovery support on top of the latest V91.2
+   attendance stylesheet. These rules keep the active selected-student
+   Individual Progress header/stepper visible and remove the legacy grey class
+   banding from the Class Progress theme surface. They do not alter save/data
+   behaviour. */
+.admin-individual-progress-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  overflow: visible;
+}
+
+.admin-individual-progress-swipe-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.admin-individual-progress-global-pane {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 7px 12px 8px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.08);
+}
+
+.admin-individual-progress-student-row {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+}
+
+.admin-individual-progress-close-btn {
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  justify-self: start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.admin-individual-progress-close-btn .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.admin-individual-progress-student-name {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1.18rem, 4.5vw, 1.58rem);
+  font-weight: 820;
+  line-height: 1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.admin-individual-progress-student-row-spacer {
+  min-width: 34px;
+}
+
+.admin-individual-progress-stepper-row {
+  width: min(var(--student-progress-global-swipe-max-width, 410px), 100%);
+  max-width: min(var(--student-progress-global-swipe-max-width, 410px), 100%);
+  min-width: 0;
+  min-height: 30px;
+  display: grid;
+  grid-template-columns:
+    minmax(34px, var(--student-progress-global-swipe-left-width, 34px))
+    minmax(0, var(--student-progress-global-swipe-dots-width, min(228px, 64vw)))
+    minmax(34px, var(--student-progress-global-swipe-right-width, 34px));
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  margin: 0 auto;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-individual-progress-stepper-arrow {
+  appearance: none;
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  align-self: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.admin-individual-progress-stepper-arrow .app-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.admin-individual-progress-stepper-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.admin-individual-progress-stepper-number-strip {
+  grid-column: 2;
+  min-width: 0;
+  width: min(var(--student-progress-global-swipe-dots-width, min(228px, 64vw)), 100%);
+  justify-self: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-individual-progress-module-numbers {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding: 0 2px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-individual-progress-module-numbers::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-individual-progress-module-number {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 26px;
+  min-width: 26px;
+  max-width: 26px;
+  height: 26px;
+  min-height: 26px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.admin-individual-progress-module-number.is-active {
+  border-color: rgba(var(--primary-rgb), 0.38);
+  background: rgba(var(--primary-rgb), 0.16);
+  color: var(--text-strong);
+}
