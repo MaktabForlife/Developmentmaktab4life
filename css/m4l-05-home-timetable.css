@@ -49,7 +49,7 @@
 
 .home-icons-section {
   padding: 8px 8px 6px;
-  background: transparent;
+  background: var(--surface-card);
   border-color: transparent;
   box-shadow: none;
 }
