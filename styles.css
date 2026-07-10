@@ -1,4 +1,4 @@
-/* M4L v91.1 - Attendance header icon actions and responsive three-panel layout
+/* M4L v91.2 - Attendance save icon class cleanup and header panel flattening
    Baseline: M4L v90.9.5.1 Progress swipe containment support
    Baseline: V90.9.2 stylesheet used with V90.9.5 Progress JS cleanup.
    Scope: add non-visual scroll containment support for the V90.9.5.1 Admin
@@ -3989,9 +3989,11 @@ body.is-attendance-section #attendance-screen.screen {
   z-index: 55;
   display: grid;
   gap: 8px;
-  padding: 0 0 10px;
-  margin-bottom: 10px;
+  padding: 0;
+  margin-bottom: 14px;
   background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .attendance-top-panel {
@@ -4003,7 +4005,7 @@ body.is-attendance-section #attendance-screen.screen {
   border: 1px solid rgba(var(--primary-rgb), 0.12);
   border-radius: 18px;
   background: var(--surface-card);
-  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.05);
+  box-shadow: none;
 }
 
 .attendance-top-content {
@@ -4181,9 +4183,7 @@ body.is-attendance-section #attendance-screen.screen {
   line-height: 1.1;
 }
 
-.attendance-action-btn,
-.attendance-filter-action-btn,
-.attendance-save-btn {
+.attendance-action-btn {
   width: 50%;
   max-width: 300px;
   justify-self: center;
@@ -4219,9 +4219,7 @@ body.is-attendance-section #attendance-screen.screen {
     gap: 12px;
   }
 
-  .attendance-action-btn,
-  .attendance-filter-action-btn,
-  .attendance-save-btn {
+  .attendance-action-btn {
     width: 50%;
     max-width: 300px;
     min-height: 48px;
@@ -4511,9 +4509,7 @@ body.is-attendance-section #attendance-screen.screen {
     font-size: 0.68rem;
   }
 
-  .attendance-action-btn,
-  .attendance-filter-action-btn,
-  .attendance-save-btn {
+  .attendance-action-btn {
     width: 50%;
     max-width: 300px;
     min-height: 48px;
@@ -5741,8 +5737,11 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
     top: auto;
     z-index: 3;
     grid-row: 1;
-    margin: 0 0 10px;
-    background: var(--surface-app);
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   #attendance-screen .attendance-panel-scroll-body {
@@ -5864,7 +5863,11 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
     position: relative;
     top: auto;
     z-index: 3;
-    margin: 0 0 10px;
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   #attendance-register-content,
@@ -10376,8 +10379,11 @@ body.is-attendance-section .attendance-panel-dots {
     top: auto;
     z-index: 3;
     grid-row: 1;
-    margin: 0 0 10px;
-    background: var(--surface-app);
+    margin: 0 0 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   #attendance-screen .attendance-panel-scroll-body {
