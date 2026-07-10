@@ -1,5 +1,6 @@
-/* M4L v87.2 - Shell / Navigation / User Band module.
+/* M4L v91.3 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation,
+   V91.3: medium/large browser Back/edge-swipe guard keeps active app pages in place.
    banner Zoom, slide-down menu grid, and shared refresh feedback.
    /js/m4l-swipe.js is no longer required. */
 
@@ -223,6 +224,7 @@ function showScreen(screenId) {
 const M4L_APP_HISTORY_FLAG = "maktab4life";
 const M4L_APP_HISTORY_VERSION = 87;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
+const M4L_APP_HISTORY_DESKTOP_GUARD_QUERY = "(min-width: 768px)";
 
 let m4lAppHistoryBound = false;
 let m4lAppHistoryHandlingPopState = false;
@@ -450,6 +452,47 @@ function handleM4LAppHomeBackAttempt(targetScreenId) {
   return true;
 }
 
+function isM4LAppHistoryDesktopGuardViewport() {
+  return typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(M4L_APP_HISTORY_DESKTOP_GUARD_QUERY).matches;
+}
+
+function shouldGuardM4LAppHistoryPopState(targetState, activeScreenId) {
+  const activeId = String(activeScreenId || "");
+  const targetId = String(targetState && targetState.screenId ? targetState.screenId : "");
+
+  if (!activeId || !isM4LAppHistoryState(targetState)) return false;
+  if (!isM4LAppHistoryDesktopGuardViewport()) return false;
+  if (!getM4LAppHistoryToken()) return false;
+
+  // V91.3: medium and large layouts should not let browser Back/edge-swipe
+  // move ordinary app pages back to Home. App Home/menu/nav buttons remain the
+  // explicit way to leave the current page. Mobile keeps the existing behavior.
+  if (isM4LAppAuthScreen(activeId) || isM4LAppHomeScreen(activeId) || isM4LAppLayerScreen(activeId)) {
+    return false;
+  }
+
+  // Temporary overlay/layer history still uses Back as a close/return mechanism.
+  if (targetState.kind === "layer") {
+    return false;
+  }
+
+  if (targetId && targetId === activeId) {
+    return false;
+  }
+
+  return Boolean(typeof document !== "undefined" && document.getElementById(activeId));
+}
+
+function rearmM4LAppHistoryCurrentScreen(activeScreenId) {
+  const id = String(activeScreenId || "");
+  if (!id || !isM4LAppHistorySupported()) return false;
+
+  pushM4LAppHistoryState(id, { guard: true });
+  return true;
+}
+
 function handleM4LAppHistoryPopState(event) {
   if (m4lAppHistoryExitArmed === true) {
     m4lAppHistoryExitArmed = false;
@@ -464,6 +507,11 @@ function handleM4LAppHistoryPopState(event) {
 
   const targetScreenId = String(targetState.screenId || getM4LAppHomeScreenId(targetState.role));
   const activeScreenId = typeof getActiveScreenId === "function" ? getActiveScreenId() : "";
+
+  if (shouldGuardM4LAppHistoryPopState(targetState, activeScreenId)) {
+    rearmM4LAppHistoryCurrentScreen(activeScreenId);
+    return;
+  }
 
   if (targetState.kind === "home" && isM4LAppHomeScreen(activeScreenId)) {
     handleM4LAppHomeBackAttempt(targetScreenId);
