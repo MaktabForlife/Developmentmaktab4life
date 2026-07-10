@@ -10051,6 +10051,35 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   }
 }
 
+/* M4L v90.7.1 - even-numbered module banding.
+   Human even modules (2, 4, 6...) receive the disabled theme class in JS.
+   Use the disabled token as the band surface across merged module headers,
+   rotated task headers, and body cells without touching the global student
+   column or save behaviour. */
+.admin-progress-class-grid-module-theme--app {
+  --admin-progress-class-grid-body-surface: var(--surface-card);
+  --admin-progress-class-grid-module-band-surface: var(--surface-card);
+}
+
+.admin-progress-class-grid-module-theme--disabled {
+  --admin-progress-class-grid-body-surface: var(--disabled);
+  --admin-progress-class-grid-module-band-surface: var(--disabled);
+}
+
+.admin-progress-class-merged-module-header,
+.admin-progress-class-grid-module-header.admin-progress-class-grid-module-theme--app,
+.admin-progress-class-grid-module-header.admin-progress-class-grid-module-theme--disabled,
+.admin-progress-class-grid-task-header.admin-progress-class-grid-module-theme--app,
+.admin-progress-class-grid-task-header.admin-progress-class-grid-module-theme--disabled {
+  background: var(--admin-progress-class-grid-module-band-surface, var(--surface-card));
+  background-clip: padding-box;
+}
+
+.admin-progress-class-grid-task-cell.admin-progress-class-grid-module-theme--app,
+.admin-progress-class-grid-task-cell.admin-progress-class-grid-module-theme--disabled {
+  background: var(--admin-progress-class-grid-body-surface, var(--surface-card));
+  background-clip: padding-box;
+}
 
 
 /* M4L v90.8.1 - live group/module accordion for Class Progress.
@@ -10193,305 +10222,263 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 
 
 
-/* M4L v91.1 - Attendance mobile dots and three-panel responsive layout
-   Mobile keeps swipe dots directly under the authenticated user band.
-   Medium and large layouts show all three Attendance panels side by side. */
-body.is-attendance-section .attendance-panel-dots {
-  display: none;
+/* M4L v90.9.5.1 - Progress swipe containment support.
+   Mobile uses native scrolling without the extra JS document touch guard.
+   Medium/large keep edge containment for active Class/Individual horizontal
+   containers so swipes do not escape the Progress section at boundaries. */
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-progress-class-continuous-task-scroll,
+  #progress-report.admin-theme .admin-progress-class-pane-viewport,
+  #progress-report.admin-theme .admin-individual-progress-pane-viewport,
+  #progress-report.admin-theme .admin-individual-progress-module-numbers,
+  #progress-report.admin-theme .student-progress-stepper-number-strip {
+    overscroll-behavior-x: contain;
+    overscroll-behavior-inline: contain;
+  }
 }
 
 @media (max-width: 767px), (max-device-width: 767px) {
-  body.is-attendance-section.has-user-band .app-shell {
-    padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
-  }
-
-  body.is-attendance-section .attendance-panel-dots {
-    position: fixed;
-    top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
-    left: 0;
-    right: 0;
-    z-index: 108;
-    width: 100%;
-    min-width: 0;
-    min-height: var(--swipe-dot-bar-height);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    margin: 0;
-    padding: 6px 0 4px;
-    border: 0;
-    border-radius: 0;
-    background: var(--surface-app);
-    box-shadow: none;
-    pointer-events: none;
-    transform: translateZ(0);
-  }
-
-  body.is-attendance-section .attendance-panel-dots .section-swipe-dot,
-  body.is-attendance-section .attendance-panel-dots .attendance-panel-dot,
-  body.is-attendance-section .attendance-panel-dots .m4l-progress-swipe-dot {
-    appearance: none;
-    flex: 0 0 auto;
-    width: 8px;
-    min-width: 8px;
-    max-width: 8px;
-    height: 8px;
-    min-height: 8px;
-    max-height: 8px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: var(--surface-track);
-    color: transparent;
-    box-shadow: none;
-    opacity: 0.75;
-    pointer-events: auto;
-  }
-
-  body.is-attendance-section .attendance-panel-dots .section-swipe-dot.is-active,
-  body.is-attendance-section .attendance-panel-dots .attendance-panel-dot.is-active,
-  body.is-attendance-section .attendance-panel-dots .m4l-progress-swipe-dot.is-active {
-    width: 22px;
-    min-width: 22px;
-    max-width: 22px;
-    background: var(--primary);
-    opacity: 1;
-  }
-
-  #attendance-screen.screen {
-    padding-top: calc(var(--swipe-dot-bar-height) + 8px);
+  #progress-report.admin-theme .admin-progress-class-continuous-task-scroll {
+    touch-action: pan-x pan-y;
   }
 }
 
-@media (min-width: 768px) {
-  body.is-attendance-section .attendance-panel-dots {
-    display: none;
-  }
-
-  body.is-attendance-section .app-shell {
-    width: 100%;
-    max-width: min(1280px, calc(100vw - 20px));
-    align-items: flex-start;
-    justify-content: center;
-    overflow: visible;
-  }
-
-  body.is-attendance-section.has-bottom-nav .app-shell,
-  body.is-attendance-section.has-user-band.has-bottom-nav .app-shell {
-    padding-top: calc(
-      var(--user-band-height) +
-      var(--user-band-safe-area-top) +
-      var(--top-nav-height) +
-      16px
-    );
-  }
-
-  #attendance-screen.screen {
-    width: 100%;
-    max-width: 100%;
-    height: calc(
-      100dvh -
-      var(--user-band-height) -
-      var(--user-band-safe-area-top) -
-      var(--top-nav-height) -
-      42px
-    );
-    max-height: calc(
-      100dvh -
-      var(--user-band-height) -
-      var(--user-band-safe-area-top) -
-      var(--top-nav-height) -
-      42px
-    );
-    min-height: 0;
-    overflow: hidden;
-    padding-top: 12px;
-    padding-bottom: 10px;
-  }
-
-  #attendance-screen .attendance-swipe-track {
-    height: 100%;
-    min-height: 0;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: stretch;
-    gap: 12px;
-    overflow: visible;
-    scroll-snap-type: none;
-  }
-
-  #attendance-screen .attendance-swipe-panel {
-    flex: initial;
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-    padding: 0;
-    scroll-snap-align: none;
-    scroll-snap-stop: normal;
-  }
-
-  #attendance-register-content,
-  #attendance-report-content,
-  #attendance-stats-content {
-    height: 100%;
-    min-height: 0;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    overflow: hidden;
-  }
-
-  #attendance-screen .attendance-sticky-control-pane {
-    position: relative;
-    top: auto;
-    z-index: 3;
-    grid-row: 1;
-    margin: 0 0 14px;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-  }
-
-  #attendance-screen .attendance-panel-scroll-body {
-    grid-row: 2;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    padding: 0 0 14px;
-  }
+/* M4L v90.8.3 - Class Progress accordion correction.
+   Keep the two-way accordion model, but restore the narrow task grid. Collapsed
+   modules use compact numbers; expanded modules use their full names across
+   their task columns. */
+.admin-progress-class-overview--accordion {
+  --admin-progress-class-task-col-width: 50px;
 }
 
-@media (min-width: 1180px) {
-  body.is-attendance-section .app-shell {
-    max-width: min(1380px, calc(100vw - 28px));
-  }
+/* Calmer module column headings. Keep the even/odd module band colours on the
+   headings only, while matching the weight/scale of the group headings. */
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading {
+  padding: 6px 8px;
+  justify-content: center;
+}
 
-  #attendance-screen .attendance-swipe-track {
-    gap: 16px;
-  }
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading .admin-progress-class-merged-module-title,
+.admin-progress-class-overview--accordion .admin-progress-class-module-heading-label {
+  max-width: 100%;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.08;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-chevron {
+  color: var(--text-subtle);
+  font-size: 0.78em;
+  font-weight: 700;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.is-collapsed .admin-progress-class-merged-module-title,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.is-collapsed .admin-progress-class-module-heading-label {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.is-collapsed .admin-progress-class-module-heading-label {
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.is-expanded .admin-progress-class-module-heading-label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-progress-class-student-column-hint {
+  margin: 8px 8px 10px;
+  padding: 8px 7px;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.22;
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+/* Row 2: keep the A2/edit-control band and the aligned task-header band on
+   surface-chip. Individual task/header cells can still carry their own header
+   styling when a module is opened. */
+.admin-progress-class-overview--accordion .admin-progress-class-student-column-action,
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-task-header-row {
+  background: var(--surface-chip);
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-task-header-row .admin-progress-class-accordion-task-placeholder {
+  background: var(--surface-chip);
+}
+
+/* Group labels use the chip surface only in the fixed left column. The
+   matching right-side grid row stays surface-card so the group colour does not
+   spill into the editable grid body. */
+.admin-progress-class-overview--accordion .admin-progress-class-group-heading-row,
+.admin-progress-class-overview--accordion .admin-progress-class-student-row.admin-progress-class-group-heading-row {
+  background: var(--surface-chip);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-group-heading-label {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row .admin-progress-class-accordion-blank-cell {
+  background: var(--surface-card);
+}
+
+/* M4L v90.8.4 - calm module headers and calm grid body.
+   Module headings all use the same surface-card background; module separation
+   is carried by the merged-header right border, not by alternating fills. */
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-module-header-row,
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading,
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header.admin-progress-class-grid-module-theme--app,
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header.admin-progress-class-grid-module-theme--disabled,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.admin-progress-class-grid-module-theme--app,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading.admin-progress-class-grid-module-theme--disabled {
+  background: var(--surface-card);
+  background-clip: padding-box;
+}
+
+.admin-progress-class-overview--accordion .admin-progress-class-merged-module-header,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading {
+  border-right: 2px solid rgba(var(--primary-rgb), 0.22);
+}
+
+/* The fixed left group labels stay chip-coloured, but their aligned right-side
+   summary rows no longer spill that colour into the grid body. */
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row .admin-progress-class-accordion-blank-cell,
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-body,
+.admin-progress-class-overview--accordion .admin-progress-class-continuous-task-row,
+.admin-progress-class-overview--accordion .admin-progress-class-grid-task-cell,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-student-grid-row .admin-progress-class-grid-task-cell,
+.admin-progress-class-overview--accordion .admin-progress-class-accordion-student-grid-row .admin-progress-class-accordion-blank-cell {
+  background: var(--surface-card);
+  background-clip: padding-box;
 }
 
 
 
-/* M4L v90.9.6.4 - Progress Individual UI recovery on latest V91.2 CSS
-   Rebuilds the V90.9.6.3 recovery support on top of the latest V91.2
-   attendance stylesheet. These rules keep the active selected-student
-   Individual Progress header/stepper visible and remove the legacy grey class
-   banding from the Class Progress theme surface. They do not alter save/data
-   behaviour. */
-.admin-individual-progress-shell {
+/* M4L v90.8.7.1 - Admin Individual Progress polish: sticky compact header, close icon, fill-to-edit, background save */
+#progress-report.admin-theme .admin-individual-progress-shell {
+  --student-progress-task-row-height: var(--admin-progress-class-row-height, 40px);
+  --admin-individual-progress-panel-gap: 4px;
+  --admin-individual-progress-visible-slots: 1;
+  --admin-individual-progress-panel-basis: 100%;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   display: grid;
-  gap: 10px;
-  overflow: visible;
+  gap: 14px;
+  color: var(--text-muted);
+  text-align: left;
+  overflow: hidden;
 }
 
-.admin-individual-progress-swipe-shell {
+#progress-report.admin-theme .admin-individual-progress-swipe-shell {
   width: 100%;
   max-width: 100%;
   min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 14px;
   background: transparent;
   border: 0;
   box-shadow: none;
-  overflow: visible;
+  overflow: hidden;
 }
 
-.admin-individual-progress-global-pane {
+#progress-report.admin-theme .admin-individual-progress-global-pane {
+  position: relative;
   width: 100%;
-  max-width: 100%;
   min-width: 0;
   display: grid;
-  gap: 5px;
-  padding: 7px 12px 8px;
-  border: 0;
-  border-radius: 20px;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 22px;
   background: var(--surface-card);
-  color: var(--text-muted);
   box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.08);
 }
 
-.admin-individual-progress-student-row {
-  min-height: 30px;
+#progress-report.admin-theme .admin-individual-progress-student-row {
+  position: relative;
+  min-height: 38px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
   align-items: center;
 }
 
-.admin-individual-progress-close-btn {
-  width: 30px;
-  min-width: 30px;
-  max-width: 30px;
-  height: 30px;
-  min-height: 30px;
-  padding: 0;
-  display: inline-grid;
-  place-items: center;
+#progress-report.admin-theme .admin-individual-progress-close-btn {
+  grid-column: 1;
   justify-self: start;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-muted);
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--disabled);
+  color: var(--text);
   box-shadow: none;
+  font-weight: 800;
 }
 
-.admin-individual-progress-close-btn .app-icon {
-  width: 22px;
-  height: 22px;
-}
-
-.admin-individual-progress-student-name {
+#progress-report.admin-theme .admin-individual-progress-student-name {
+  grid-column: 2;
   min-width: 0;
   margin: 0;
   color: var(--text-muted);
-  font-size: clamp(1.18rem, 4.5vw, 1.58rem);
+  font-size: clamp(1.32rem, 5vw, 1.82rem);
   font-weight: 820;
-  line-height: 1;
+  line-height: 1.08;
   text-align: center;
   overflow-wrap: anywhere;
 }
 
-.admin-individual-progress-student-row-spacer {
-  min-width: 34px;
+#progress-report.admin-theme .admin-individual-progress-student-row-spacer {
+  grid-column: 3;
+  min-width: 42px;
 }
 
-.admin-individual-progress-stepper-row {
+#progress-report.admin-theme .admin-individual-progress-stepper-row {
   width: min(var(--student-progress-global-swipe-max-width, 410px), 100%);
   max-width: min(var(--student-progress-global-swipe-max-width, 410px), 100%);
   min-width: 0;
-  min-height: 30px;
+  min-height: var(--student-progress-global-swipe-height, 32px);
   display: grid;
   grid-template-columns:
-    minmax(34px, var(--student-progress-global-swipe-left-width, 34px))
-    minmax(0, var(--student-progress-global-swipe-dots-width, min(228px, 64vw)))
-    minmax(34px, var(--student-progress-global-swipe-right-width, 34px));
+    minmax(42px, var(--student-progress-global-swipe-left-width, 44px))
+    minmax(0, var(--student-progress-global-swipe-dots-width, min(260px, 62vw)))
+    minmax(42px, var(--student-progress-global-swipe-right-width, 44px));
   align-items: center;
   justify-content: center;
   gap: 0;
   padding: 0;
   margin: 0 auto;
-  background: transparent;
-  box-shadow: none;
 }
 
-.admin-individual-progress-stepper-arrow {
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
   appearance: none;
-  width: 34px;
-  min-width: 34px;
-  max-width: 34px;
-  height: 34px;
-  min-height: 34px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
   margin: 0;
   padding: 0;
   display: inline-flex;
@@ -10506,33 +10493,31 @@ body.is-attendance-section .attendance-panel-dots {
   box-shadow: none;
 }
 
-.admin-individual-progress-stepper-arrow .app-icon {
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow .app-icon {
   width: var(--icon-size);
   height: var(--icon-size);
 }
 
-.admin-individual-progress-stepper-arrow:disabled {
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow:disabled {
   opacity: 0.28;
   cursor: default;
 }
 
-.admin-individual-progress-stepper-number-strip {
+#progress-report.admin-theme .admin-individual-progress-stepper-number-strip {
   grid-column: 2;
   min-width: 0;
-  width: min(var(--student-progress-global-swipe-dots-width, min(228px, 64vw)), 100%);
+  width: min(var(--student-progress-global-swipe-dots-width, min(260px, 62vw)), 100%);
   justify-self: center;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: transparent;
-  box-shadow: none;
 }
 
-.admin-individual-progress-module-numbers {
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
   width: 100%;
   min-width: 0;
-  min-height: 30px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -10544,22 +10529,19 @@ body.is-attendance-section .attendance-panel-dots {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   padding: 0 2px;
-  background: transparent;
-  box-shadow: none;
 }
 
-.admin-individual-progress-module-numbers::-webkit-scrollbar {
+#progress-report.admin-theme .admin-individual-progress-module-numbers::-webkit-scrollbar {
   display: none;
 }
 
-.admin-individual-progress-module-number {
+#progress-report.admin-theme .admin-individual-progress-module-number {
   appearance: none;
   flex: 0 0 auto;
-  width: 26px;
-  min-width: 26px;
-  max-width: 26px;
-  height: 26px;
-  min-height: 26px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
   margin: 0;
   padding: 0;
   display: inline-flex;
@@ -10576,8 +10558,807 @@ body.is-attendance-section .attendance-panel-dots {
   line-height: 1;
 }
 
-.admin-individual-progress-module-number.is-active {
+#progress-report.admin-theme .admin-individual-progress-module-number.is-active {
   border-color: rgba(var(--primary-rgb), 0.38);
   background: rgba(var(--primary-rgb), 0.16);
   color: var(--text-strong);
+}
+
+#progress-report.admin-theme .admin-individual-progress-pane-viewport {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+#progress-report.admin-theme .admin-individual-progress-pane-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-swipe-track {
+  display: flex;
+  gap: var(--admin-individual-progress-panel-gap, 4px);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: stretch;
+  scroll-behavior: smooth;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel {
+  flex: 0 0 var(--admin-individual-progress-panel-basis, 100%);
+  width: var(--admin-individual-progress-panel-basis, 100%);
+  min-width: var(--admin-individual-progress-panel-basis, 100%);
+  max-width: var(--admin-individual-progress-panel-basis, 100%);
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: var(--admin-individual-progress-panel-gap, 4px);
+  padding: 7px;
+  border-radius: 22px;
+  background: rgba(var(--white-rgb), 0.72);
+  box-shadow: 0 7px 16px rgba(var(--black-rgb), 0.08);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-header {
+  width: calc(100% - 12px);
+  min-height: 42px;
+  margin: 0 auto 0;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 20px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  box-shadow: 0 6px 16px rgba(var(--black-rgb), 0.08);
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1.1rem, 5vw, 1.42rem);
+  font-weight: 820;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+#progress-report.admin-theme .admin-individual-progress-edit-toggle {
+  width: auto;
+  min-width: 62px;
+  min-height: 40px;
+  margin: 0;
+  padding: 2px 4px;
+  display: inline-grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font: inherit;
+  text-align: center;
+}
+
+#progress-report.admin-theme .admin-individual-progress-edit-toggle .app-icon {
+  width: var(--icon-size-large);
+  height: var(--icon-size-large);
+}
+
+#progress-report.admin-theme .admin-individual-progress-edit-toggle.is-editing,
+#progress-report.admin-theme .admin-individual-progress-edit-toggle.is-saving {
+  color: var(--text-muted);
+}
+
+#progress-report.admin-theme .admin-individual-progress-edit-toggle.has-save-error {
+  color: var(--danger);
+}
+
+#progress-report.admin-theme .admin-individual-progress-edit-toggle .student-progress-module-edit-label {
+  color: currentColor;
+  font-size: 0.48rem;
+  font-weight: 820;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-task-card,
+#progress-report.admin-theme .admin-individual-progress-module-grid {
+  min-width: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  padding: 9px;
+  border: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-radius: 22px;
+  background: var(--surface-chip);
+  box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.03), 0 4px 12px rgba(var(--black-rgb), 0.08);
+  overflow: hidden;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-grid {
+  height: 100%;
+  max-height: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  grid-auto-rows: minmax(var(--student-progress-task-row-height, 40px), auto);
+  border: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-radius: 18px;
+  background: var(--surface-card);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+}
+
+#progress-report.admin-theme .admin-individual-progress-grid-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  min-height: var(--student-progress-task-row-height, 40px);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.08);
+}
+
+#progress-report.admin-theme .admin-individual-progress-grid-heading-row {
+  display: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-task-name {
+  min-height: var(--student-progress-task-row-height, 40px);
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+  font-weight: 500;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+#progress-report.admin-theme .admin-individual-progress-status-cell {
+  min-height: var(--student-progress-task-row-height, 40px);
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid rgba(var(--primary-rgb), 0.08);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-viewing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  opacity: 0.48;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-editing .admin-individual-progress-status-cell {
+  cursor: pointer;
+}
+
+#progress-report.admin-theme .admin-individual-progress-status-cell:focus-visible,
+#progress-report.admin-theme .admin-individual-progress-status-cell:focus {
+  outline: 2px solid rgba(var(--primary-rgb), 0.36);
+  outline-offset: -2px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-status-cell .admin-progress-class-grid-status-symbol--empty-edit-text {
+  font-size: 1.34rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+#progress-report.admin-theme .admin-individual-progress-status-cell .status-tick {
+  font-size: 1.34rem;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --student-progress-global-swipe-left-width: 44px;
+    --student-progress-global-swipe-dots-width: min(218px, 62vw);
+    --student-progress-global-swipe-right-width: 44px;
+    --student-progress-global-swipe-max-width: 344px;
+    --student-progress-task-row-height: 38px;
+  }
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --student-progress-global-swipe-left-width: 44px;
+    --student-progress-global-swipe-dots-width: min(420px, calc(100vw - 126px));
+    --student-progress-global-swipe-right-width: 44px;
+    --student-progress-global-swipe-max-width: 520px;
+    --admin-individual-progress-panel-gap: 14px;
+    --admin-individual-progress-visible-slots: 3;
+    --admin-individual-progress-panel-basis: calc((100% - 28px) / 3);
+    width: min(100%, 1040px);
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 12px 14px 16px;
+    border-radius: 26px;
+    background: var(--surface-app);
+    box-shadow: 0 10px 28px rgba(var(--black-rgb), 0.10);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-panel {
+    height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 160px), 660px);
+    scroll-snap-stop: normal;
+    transform: scale(0.965);
+    opacity: 0.82;
+    transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-panel.is-active {
+    z-index: 3;
+    transform: scale(1);
+    opacity: 1;
+    outline: 2px solid rgba(var(--primary-rgb), 0.32);
+    outline-offset: 2px;
+    box-shadow: 0 14px 30px rgba(var(--black-rgb), 0.18);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-panel.is-adjacent {
+    z-index: 2;
+    transform: scale(0.975);
+    opacity: 0.9;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-panel.is-far {
+    z-index: 1;
+    transform: scale(0.94);
+    opacity: 0.66;
+  }
+}
+
+@media (min-width: 1180px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --student-progress-global-swipe-dots-width: min(460px, calc(100vw - 126px));
+    --student-progress-global-swipe-max-width: 560px;
+    --admin-individual-progress-panel-gap: 16px;
+    --admin-individual-progress-visible-slots: 5;
+    --admin-individual-progress-panel-basis: calc((100% - 64px) / 5);
+    width: min(100%, 1460px);
+    max-width: 1460px;
+  }
+}
+
+
+/* M4L v90.8.7.1 - Individual Progress polish */
+#progress-report.admin-theme .admin-individual-progress-shell {
+  gap: 10px;
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-swipe-shell {
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-global-pane {
+  position: sticky;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 8px);
+  z-index: 35;
+  gap: 5px;
+  padding: 7px 12px 8px;
+  border-radius: 20px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-row {
+  min-height: 30px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-close-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-close-btn .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-name {
+  font-size: clamp(1.18rem, 4.5vw, 1.58rem);
+  line-height: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-row-spacer {
+  min-width: 34px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-row {
+  min-height: 30px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  min-height: 30px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-number {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  min-height: 26px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-pane-viewport {
+  min-height: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel {
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-card-shell {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 160px), 680px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  padding: 8px;
+  border-radius: 24px;
+  background: rgba(var(--white-rgb), 0.76);
+  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.08);
+  overflow: hidden;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-header {
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 9px 14px;
+  border-radius: 20px 20px 0 0;
+  box-shadow: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  border-radius: 0 0 20px 20px;
+  box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.03);
+  overflow: hidden;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-grid {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+#progress-report.admin-theme .admin-individual-progress-empty-edit-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  opacity: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-editing .admin-individual-progress-empty-edit-icon {
+  opacity: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-viewing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  opacity: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell.is-editing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  background: rgba(var(--primary-rgb), 0.04);
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --student-progress-global-swipe-left-width: 34px;
+    --student-progress-global-swipe-right-width: 34px;
+    --student-progress-global-swipe-dots-width: min(228px, 64vw);
+    gap: 9px;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + 6px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 152px);
+    min-height: 390px;
+    max-height: 680px;
+  }
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 8px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-panel {
+    height: auto;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 152px), 660px);
+  }
+}
+
+
+/* M4L v90.8.7.2 - Individual sticky global pane and legacy Progress cleanup */
+#progress-report.admin-theme .admin-progress-aig-shell,
+#progress-report.admin-theme [data-admin-progress-aig-shell],
+body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-aig-shell {
+  display: none;
+}
+
+#progress-report.admin-theme .admin-progress-placeholder-card,
+#progress-report.admin-theme .admin-progress-individual-cleanup-placeholder {
+  display: none;
+}
+
+#progress-report.admin-theme .admin-individual-progress-shell {
+  --admin-individual-progress-global-pane-height: 96px;
+  --admin-individual-progress-global-pane-gap: 8px;
+  padding-top: calc(var(--admin-individual-progress-global-pane-height) + var(--admin-individual-progress-global-pane-gap));
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-swipe-shell {
+  overflow: visible;
+}
+
+#progress-report.admin-theme .admin-individual-progress-global-pane {
+  position: fixed;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  left: max(10px, env(safe-area-inset-left, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: 108;
+  width: auto;
+  max-width: none;
+  gap: 4px;
+  padding: 7px 12px 8px;
+  border-radius: 0 0 20px 20px;
+  transform: translateZ(0);
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-row {
+  min-height: 28px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-student-name {
+  font-size: clamp(1.08rem, 4.2vw, 1.46rem);
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-row {
+  min-height: 28px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  height: 32px;
+  min-height: 32px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  min-height: 28px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-number {
+  width: 25px;
+  min-width: 25px;
+  height: 25px;
+  min-height: 25px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-card-shell {
+  height: calc(
+    100dvh -
+    var(--user-band-height) -
+    var(--user-band-safe-area-top) -
+    var(--bottom-nav-height) -
+    var(--bottom-nav-safe-area) -
+    var(--admin-individual-progress-global-pane-height) -
+    24px
+  );
+  min-height: 360px;
+  max-height: 720px;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-global-pane-height: 92px;
+    padding-top: calc(var(--admin-individual-progress-global-pane-height) + 8px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  }
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-global-pane-height: 94px;
+    padding-top: calc(var(--admin-individual-progress-global-pane-height) + 12px);
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height));
+    left: 50%;
+    right: auto;
+    width: min(100% - 28px, 1040px);
+    transform: translateX(-50%) translateZ(0);
+    border-radius: 0 0 22px 22px;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--top-nav-height) -
+      var(--admin-individual-progress-global-pane-height) -
+      34px
+    );
+    min-height: 390px;
+    max-height: 680px;
+  }
+}
+
+@media (min-width: 1180px) {
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    width: min(100% - 32px, 1460px);
+  }
+}
+
+
+/* V90.8.7.2 swipe-escape guard for active Class and Individual Progress sections.
+   Keeps horizontal gestures contained inside Progress so users cannot accidentally
+   swipe out of a progress section while reviewing or editing. */
+#progress-report.admin-theme .admin-progress-class-overview,
+#progress-report.admin-theme .admin-individual-progress-shell {
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+}
+
+#progress-report.admin-theme .admin-progress-class-grid-card,
+#progress-report.admin-theme .admin-progress-class-grid-scroll,
+#progress-report.admin-theme .admin-individual-progress-swipe-shell,
+#progress-report.admin-theme .admin-individual-progress-pane-viewport,
+#progress-report.admin-theme .admin-individual-progress-module-card-shell,
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+}
+
+#progress-report.admin-theme .admin-progress-class-grid-scroll,
+#progress-report.admin-theme .admin-individual-progress-pane-viewport,
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-progress-class-overview,
+  #progress-report.admin-theme .admin-individual-progress-shell,
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell,
+  #progress-report.admin-theme .admin-individual-progress-module-task-card {
+    touch-action: pan-y;
+  }
+
+  #progress-report.admin-theme .admin-progress-class-grid-scroll,
+  #progress-report.admin-theme .admin-individual-progress-pane-viewport,
+  #progress-report.admin-theme .admin-individual-progress-module-numbers {
+    touch-action: pan-x pan-y;
+  }
+}
+
+
+/* M4L v90.8.7.3 - Individual Progress medium/large positioning + per-module edit state */
+#progress-report.admin-theme .admin-individual-progress-module-panel.is-viewing .admin-individual-progress-empty-edit-icon {
+  opacity: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel.is-editing .admin-individual-progress-empty-edit-icon {
+  opacity: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel.is-viewing .admin-individual-progress-status-cell {
+  cursor: default;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel.is-editing .admin-individual-progress-status-cell {
+  cursor: pointer;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel.is-editing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  background: rgba(var(--primary-rgb), 0.04);
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-panel.is-viewing .admin-individual-progress-status-cell:not(.admin-progress-class-grid-status-button--complete):not(.admin-progress-class-grid-status-button--verified) {
+  background: transparent;
+}
+
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-top-nav-clearance: 18px;
+    padding-top: calc(
+      var(--admin-individual-progress-global-pane-height) +
+      var(--admin-individual-progress-top-nav-clearance) +
+      12px
+    );
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--admin-individual-progress-top-nav-clearance)
+    );
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--top-nav-height) -
+      var(--admin-individual-progress-global-pane-height) -
+      var(--admin-individual-progress-top-nav-clearance) -
+      42px
+    );
+  }
+}
+
+
+/* V90.8.7.3 final corrections - medium/large nav clearance and full-screen boundary containment */
+@media (min-width: 768px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-top-nav-clearance: 36px;
+    padding-top: calc(
+      var(--admin-individual-progress-global-pane-height) +
+      var(--admin-individual-progress-top-nav-clearance) +
+      14px
+    );
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-global-pane {
+    top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--admin-individual-progress-top-nav-clearance)
+    );
+    z-index: 96;
+  }
+
+  #progress-report.admin-theme .admin-individual-progress-module-card-shell {
+    height: calc(
+      100dvh -
+      var(--user-band-height) -
+      var(--user-band-safe-area-top) -
+      var(--top-nav-height) -
+      var(--admin-individual-progress-global-pane-height) -
+      var(--admin-individual-progress-top-nav-clearance) -
+      44px
+    );
+  }
+}
+  #attendance-screen .attendance-swipe-track {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 12px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+#progress-report.admin-theme .admin-progress-class-overview,
+#progress-report.admin-theme .admin-individual-progress-shell,
+#progress-report.admin-theme .admin-progress-class-grid-card,
+#progress-report.admin-theme .admin-progress-class-grid-scroll,
+#progress-report.admin-theme .admin-individual-progress-swipe-shell,
+#progress-report.admin-theme .admin-individual-progress-pane-viewport,
+#progress-report.admin-theme .admin-individual-progress-module-card-shell,
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-inline: contain;
+}
+
+#progress-report.admin-theme .admin-progress-class-overview,
+#progress-report.admin-theme .admin-individual-progress-shell,
+#progress-report.admin-theme .admin-individual-progress-module-card-shell,
+#progress-report.admin-theme .admin-individual-progress-module-task-card {
+  touch-action: pan-y;
+}
+
+#progress-report.admin-theme .admin-progress-class-grid-scroll,
+#progress-report.admin-theme .admin-individual-progress-pane-viewport,
+#progress-report.admin-theme .admin-individual-progress-module-numbers {
+  touch-action: pan-x pan-y;
+}
+
+/* M4L v90.9.2 - final Progress housekeeping polish */
+#progress-report.admin-theme .admin-individual-progress-shell {
+  --admin-individual-progress-status-width: 52px;
+  --admin-individual-progress-status-gutter: 14px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-grid,
+#progress-report.admin-theme .admin-individual-progress-grid-row {
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--admin-individual-progress-status-width)
+    var(--admin-individual-progress-status-gutter);
+}
+
+#progress-report.admin-theme .admin-individual-progress-task-name {
+  grid-column: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-status-cell {
+  grid-column: 2;
+}
+
+#progress-report.admin-theme .admin-individual-progress-empty-edit-icon {
+  width: auto;
+  height: auto;
+  min-width: 1.4em;
+  min-height: 1.4em;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-status-width: 50px;
+    --admin-individual-progress-status-gutter: 12px;
+  }
 }
