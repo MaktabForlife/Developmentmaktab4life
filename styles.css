@@ -1,4 +1,5 @@
-/* M4L v90.9.5.1 - Progress swipe containment support
+/* M4L v91.0 - Attendance mobile swipe dots correction
+   Baseline: M4L v90.9.5.1 Progress swipe containment support
    Baseline: V90.9.2 stylesheet used with V90.9.5 Progress JS cleanup.
    Scope: add non-visual scroll containment support for the V90.9.5.1 Admin
    Progress swipe-guard correction. Mobile remains native; medium/large Class
@@ -10161,7 +10162,8 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 
 
 
-/* M4L v90.9.5.1 - Progress swipe containment support.
+/* M4L v91.0 - Attendance mobile swipe dots correction
+   Baseline: M4L v90.9.5.1 Progress swipe containment support.
    Mobile uses native scrolling without the extra JS document touch guard.
    Medium/large keep edge containment for active Class/Individual horizontal
    containers so swipes do not escape the Progress section at boundaries. */
@@ -11289,5 +11291,100 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   #progress-report.admin-theme .admin-individual-progress-shell {
     --admin-individual-progress-status-width: 50px;
     --admin-individual-progress-status-gutter: 12px;
+  }
+}
+
+
+/* M4L v91.0 - Attendance mobile swipe dots correction
+   The Attendance panel dots are a mobile-only fixed strip directly under the
+   authenticated user band. Medium and large layouts do not show dots. */
+body.is-attendance-section .attendance-panel-dots {
+  display: none;
+}
+
+@media (max-width: 767px), (max-device-width: 767px) {
+  body.is-attendance-section.has-user-band .app-shell {
+    padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  }
+
+  body.is-attendance-section .attendance-panel-dots {
+    position: fixed;
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+    left: 0;
+    right: 0;
+    z-index: 108;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--swipe-dot-bar-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 0;
+    padding: 6px 0 4px;
+    border: 0;
+    border-radius: 0;
+    background: var(--surface-app);
+    box-shadow: none;
+    pointer-events: none;
+    transform: translateZ(0);
+  }
+
+  body.is-attendance-section .attendance-panel-dots .section-swipe-dot,
+  body.is-attendance-section .attendance-panel-dots .attendance-panel-dot,
+  body.is-attendance-section .attendance-panel-dots .m4l-progress-swipe-dot {
+    appearance: none;
+    flex: 0 0 auto;
+    width: 8px;
+    min-width: 8px;
+    max-width: 8px;
+    height: 8px;
+    min-height: 8px;
+    max-height: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface-track);
+    color: transparent;
+    box-shadow: none;
+    opacity: 0.75;
+    pointer-events: auto;
+  }
+
+  body.is-attendance-section .attendance-panel-dots .section-swipe-dot.is-active,
+  body.is-attendance-section .attendance-panel-dots .attendance-panel-dot.is-active,
+  body.is-attendance-section .attendance-panel-dots .m4l-progress-swipe-dot.is-active {
+    width: 22px;
+    min-width: 22px;
+    max-width: 22px;
+    background: var(--primary);
+    opacity: 1;
+  }
+
+  #attendance-screen.screen {
+    padding-top: calc(var(--swipe-dot-bar-height) + 8px);
+  }
+}
+
+@media (min-width: 768px) {
+  body.is-attendance-section .attendance-panel-dots {
+    display: none;
+  }
+
+  #attendance-screen.screen {
+    padding-top: 12px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1179px) {
+  body.is-attendance-section.has-bottom-nav .app-shell,
+  body.is-attendance-section.has-user-band.has-bottom-nav .app-shell {
+    padding-top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      16px
+    );
   }
 }
