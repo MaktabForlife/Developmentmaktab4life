@@ -1,3 +1,7 @@
+/* M4L v90.8.8-dev - Development Worker progress batch update trial.
+   Baseline: uploaded Cloudflare development worker.
+   Scope: keep existing routes/service metadata and update only Progress completion/verification saves to accept single or updates-array payloads.
+*/
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -11,8 +15,8 @@ export default {
     if (url.pathname === "/") {
       return json({
         success: true,
-        service: "rebootworker",
-        version: "1.0"
+        service: "devrebootworker",
+        version: "dev"
       });
     }
     if (url.pathname === "/api/resources/list") {
@@ -1145,6 +1149,120 @@ async function getStudentTasksEndpoint(request, env) {
 
   return json(result);
 }
+function hasOwnProgressField(source, key) {
+  return !!source && Object.prototype.hasOwnProperty.call(source, key);
+}
+
+function normalizeProgressCompleteStatus(value) {
+  if (value === true) return "COMPLETE";
+  if (value === false || value === null || value === undefined) return "";
+
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const normalized = text.toLowerCase();
+  if (["true", "1", "yes", "y", "complete", "completed"].includes(normalized)) {
+    return "COMPLETE";
+  }
+  if (["false", "0", "no", "n", "blank", "clear", "incomplete"].includes(normalized)) {
+    return "";
+  }
+
+  return text;
+}
+
+function normalizeProgressVerifyStatus(value) {
+  if (value === true) return "VERIFIED";
+  if (value === false || value === null || value === undefined) return "";
+
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const normalized = text.toLowerCase();
+  if (["true", "1", "yes", "y", "verify", "verified"].includes(normalized)) {
+    return "VERIFIED";
+  }
+  if (["false", "0", "no", "n", "blank", "clear", "unverified", "not verified"].includes(normalized)) {
+    return "";
+  }
+
+  return text;
+}
+
+function getProgressUpdateRows(body) {
+  if (Array.isArray(body)) {
+    return body;
+  }
+  if (body && Array.isArray(body.updates)) {
+    return body.updates;
+  }
+  return [body || {}];
+}
+
+function getProgressActorForAppsScript(authUser) {
+  return {
+    type: authUser.type || "",
+    studentid: authUser.studentid || "",
+    adminid: authUser.adminid || "",
+    username: authUser.username || "",
+    role: authUser.role || "",
+    assignedgroup: authUser.assignedgroup || ""
+  };
+}
+
+function normalizeProgressStatusUpdates(body, mode, authUser) {
+  const sourceRows = getProgressUpdateRows(body);
+  const updates = [];
+  const errors = [];
+
+  sourceRows.forEach((row, index) => {
+    const source = row || {};
+    const studenttaskid = String(
+      source.studenttaskid ||
+      source.studentTaskId ||
+      source.StudentTaskID ||
+      ""
+    ).trim();
+
+    if (!studenttaskid) {
+      errors.push({ index, error: "Missing studenttaskid" });
+      return;
+    }
+
+    const update = { studenttaskid };
+
+    if (hasOwnProgressField(source, "completeStatus")) {
+      update.completeStatus = normalizeProgressCompleteStatus(source.completeStatus);
+    } else if (hasOwnProgressField(source, "complete")) {
+      update.completeStatus = normalizeProgressCompleteStatus(source.complete);
+    } else if (mode === "complete" && !hasOwnProgressField(source, "verifyStatus") && !hasOwnProgressField(source, "verified")) {
+      update.completeStatus = normalizeProgressCompleteStatus(source.complete === true);
+    }
+
+    if (hasOwnProgressField(source, "verifyStatus")) {
+      update.verifyStatus = normalizeProgressVerifyStatus(source.verifyStatus);
+    } else if (hasOwnProgressField(source, "verified")) {
+      update.verifyStatus = normalizeProgressVerifyStatus(source.verified);
+    } else if (mode === "verify" && !hasOwnProgressField(source, "completeStatus") && !hasOwnProgressField(source, "complete")) {
+      update.verifyStatus = normalizeProgressVerifyStatus(source.verified === true);
+    }
+
+    if (authUser.type === "student" && hasOwnProgressField(update, "verifyStatus")) {
+      errors.push({ index, studenttaskid, error: "Students cannot verify tasks" });
+      return;
+    }
+
+    if (!hasOwnProgressField(update, "completeStatus") && !hasOwnProgressField(update, "verifyStatus")) {
+      errors.push({ index, studenttaskid, error: "No progress status supplied" });
+      return;
+    }
+
+    updates.push(update);
+  });
+
+  return { updates, errors };
+}
+
 async function updateTaskComplete(request, env) {
   const authUser = await getAuthUser(request, env);
 
@@ -1153,40 +1271,21 @@ async function updateTaskComplete(request, env) {
   }
 
   const body = await request.json();
+  const normalized = normalizeProgressStatusUpdates(body, "complete", authUser);
 
-  const studenttaskid = String(body.studenttaskid || "").trim();
-  const complete = body.complete === true;
-
-  if (!studenttaskid) {
-    return json({ success: false, error: "Missing studenttaskid" }, 400);
-  }
-
-  const taskResult = await callAppsScript(env, {
-    action: "getStudentTaskById",
-    studenttaskid
-  });
-
-  if (!taskResult.task) {
-    return json({ success: false, error: "Student task not found" }, 404);
-  }
-
-  const assignedTask = taskResult.task;
-
-  if (authUser.type === "student" && assignedTask.studentid !== authUser.studentid) {
-    return json({ success: false, error: "Forbidden" }, 403);
-  }
-
-  if (authUser.type === "admin") {
-    if (authUser.role === "TEACHER" && assignedTask.classgroup !== authUser.assignedgroup) {
-      return json({ success: false, error: "Forbidden" }, 403);
-    }
+  if (normalized.errors.length > 0) {
+    return json({
+      success: false,
+      error: normalized.errors[0].error || "Invalid progress update",
+      errors: normalized.errors
+    }, 400);
   }
 
   const result = await callAppsScript(env, {
     action: "updateStudentTaskStatus",
     data: {
-      studenttaskid,
-      completeStatus: complete ? "COMPLETE" : ""
+      updates: normalized.updates,
+      actor: getProgressActorForAppsScript(authUser)
     }
   });
 
@@ -1200,34 +1299,21 @@ async function verifyStudentTask(request, env) {
   }
 
   const body = await request.json();
+  const normalized = normalizeProgressStatusUpdates(body, "verify", authUser);
 
-  const studenttaskid = String(body.studenttaskid || "").trim();
-  const verified = body.verified === true;
-
-  if (!studenttaskid) {
-    return json({ success: false, error: "Missing studenttaskid" }, 400);
-  }
-
-  const taskResult = await callAppsScript(env, {
-    action: "getStudentTaskById",
-    studenttaskid
-  });
-
-  if (!taskResult.task) {
-    return json({ success: false, error: "Student task not found" }, 404);
-  }
-
-  const assignedTask = taskResult.task;
-
-  if (authUser.role === "TEACHER" && assignedTask.classgroup !== authUser.assignedgroup) {
-    return json({ success: false, error: "Forbidden" }, 403);
+  if (normalized.errors.length > 0) {
+    return json({
+      success: false,
+      error: normalized.errors[0].error || "Invalid progress update",
+      errors: normalized.errors
+    }, 400);
   }
 
   const result = await callAppsScript(env, {
     action: "updateStudentTaskStatus",
     data: {
-      studenttaskid,
-      verifyStatus: verified ? "VERIFIED" : ""
+      updates: normalized.updates,
+      actor: getProgressActorForAppsScript(authUser)
     }
   });
 

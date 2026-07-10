@@ -1,8 +1,14 @@
 {
+  "id": "/admin/",
   "name": "Maktab4Life Admin",
-  "short_name": "Maktab",
-  "scope": "/",
+  "short_name": "M4L Admin",
+  "description": "Admin portal for Maktab4Life attendance, progress, library and maktab management.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/admin/",
+  "scope": "/admin/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#2f8f8f",
   "icons": [
