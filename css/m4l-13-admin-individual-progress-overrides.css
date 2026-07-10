@@ -911,17 +911,6 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
     );
   }
 }
-  #attendance-screen .attendance-swipe-track {
-    height: 100%;
-    min-height: 0;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: stretch;
-    gap: 12px;
-    overflow: visible;
-    scroll-snap-type: none;
-  }
-
 #progress-report.admin-theme .admin-progress-class-overview,
 #progress-report.admin-theme .admin-individual-progress-shell,
 #progress-report.admin-theme .admin-progress-class-grid-card,
