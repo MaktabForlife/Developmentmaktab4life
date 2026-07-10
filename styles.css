@@ -1,10 +1,11 @@
-/* M4L v90.9.1 - Progress frontend batch arrays and Student save-icon UX
-   Baseline: V90.9.0 Progress save behaviour and reliability correction.
-   Scope: visual layout intentionally unchanged. The JS converts Progress
-   frontend saves to batch array payloads and makes the Student Progress save
-   icon return to Click to edit immediately while saving continues in the
-   background. Protected: Attendance, Library, Home, Recorder, nav, auth banner,
-   Worker, Apps Script, backend API behaviour, and visual Progress layout.
+/* M4L v90.9.2 - Progress housekeeping finish
+   Baseline: V90.9.1.2 Progress frontend batch backend guard.
+   Scope: preserve confirmed batch save behaviour and existing layouts while
+   applying final Progress housekeeping polish. CSS shifts the Individual
+   Progress editable status column slightly left and supports the text pencil
+   glyph used for blank fill-to-edit cells. Protected: Attendance, Library,
+   Home, Recorder, nav, auth banner, Worker, Apps Script, backend files, and
+   save logic.
 */
 
 :root {
@@ -11227,4 +11228,44 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 #progress-report.admin-theme .admin-individual-progress-pane-viewport,
 #progress-report.admin-theme .admin-individual-progress-module-numbers {
   touch-action: pan-x pan-y;
+}
+
+/* M4L v90.9.2 - final Progress housekeeping polish */
+#progress-report.admin-theme .admin-individual-progress-shell {
+  --admin-individual-progress-status-width: 52px;
+  --admin-individual-progress-status-gutter: 14px;
+}
+
+#progress-report.admin-theme .admin-individual-progress-module-grid,
+#progress-report.admin-theme .admin-individual-progress-grid-row {
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--admin-individual-progress-status-width)
+    var(--admin-individual-progress-status-gutter);
+}
+
+#progress-report.admin-theme .admin-individual-progress-task-name {
+  grid-column: 1;
+}
+
+#progress-report.admin-theme .admin-individual-progress-status-cell {
+  grid-column: 2;
+}
+
+#progress-report.admin-theme .admin-individual-progress-empty-edit-icon {
+  width: auto;
+  height: auto;
+  min-width: 1.4em;
+  min-height: 1.4em;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  #progress-report.admin-theme .admin-individual-progress-shell {
+    --admin-individual-progress-status-width: 50px;
+    --admin-individual-progress-status-gutter: 12px;
+  }
 }
