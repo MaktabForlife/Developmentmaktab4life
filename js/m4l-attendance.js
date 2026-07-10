@@ -1,4 +1,4 @@
-/* M4L v91.1 - Attendance header icon actions and responsive three-panel layout
+/* M4L v91.2 - Attendance save icon class cleanup and header panel flattening
    Baseline: M4L v87.2 Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
@@ -645,7 +645,7 @@ function renderAttendanceHeaderAction(options = {}) {
   return `
     <button
       type="button"
-      class="attendance-header-action-btn attendance-${escapeHtml(action)}-btn${action === "save-register" ? " attendance-save-btn" : ""}"
+      class="attendance-header-action-btn attendance-${escapeHtml(action)}-btn${action === "save-register" ? " attendance-header-save-btn" : ""}"
       ${dataAttribute}="${escapeHtml(action)}"
       aria-label="${escapeHtml(ariaLabel)}"
     >
@@ -902,7 +902,7 @@ function getAttendanceRegisterDateValue() {
 }
 
 function setAttendanceSaveButtonState(isSaving) {
-  const saveButton = document.querySelector("#attendance-register-content .attendance-save-btn");
+  const saveButton = document.querySelector("#attendance-register-content .attendance-header-save-btn");
   if (!saveButton) return false;
 
   const isBusy = Boolean(isSaving);
