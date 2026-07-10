@@ -18,7 +18,7 @@
   min-height: 0;
   margin: 0;
   padding: 0;
-  display: flex;
+  display: grid;
   gap: 8px;
   justify-items: center;
   align-content: start;
@@ -71,7 +71,7 @@
   max-width: 82px;
   color: var(--text-muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.12;
   text-align: center;
   overflow-wrap: anywhere;
