@@ -15,8 +15,8 @@ export default {
     if (url.pathname === "/") {
       return json({
         success: true,
-        service: "devrebootworker",
-        version: "dev"
+        service: "rebootworker",
+        version: "1.0"
       });
     }
     if (url.pathname === "/api/resources/list") {
