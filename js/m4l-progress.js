@@ -1,14 +1,11 @@
-/* M4L v90.9.5.1 - Progress mobile swipe relief + desktop containment
-   Baseline: V90.9.5 Progress JS cleanup wave 2, confirmed deployed and working.
-   Scope: correct Admin Progress swipe guards before continuing cleanup. Mobile
-   Class Progress must use native horizontal scrolling with no extra document
-   touchmove guard. Medium/large screens keep horizontal boundary protection,
-   now targeting the active Class continuous task scroller and Individual pane
-   containers rather than old/legacy scrollers only.
-   Protected: V90.9.5 cleanup, confirmed batch save chain, Student autosave,
-   Admin background save, Class Progress grid, selected-student Individual
-   Progress opened from Class Progress student names, backend/API files,
-   Attendance, Library, Home, Recorder, nav, and auth banner.
+/* M4L v90.9.6 - Progress JS cleanup wave 3
+   Baseline: V90.9.5 Progress JS cleanup wave 2, deployed and tested good.
+   Scope: remove legacy Progress summary percentage/statistic logic and old
+   progress/status-bar rendering from the JS. Keep the active Class grid,
+   selected-student Individual Progress, Student autosave, and batch save chain.
+   Protected: confirmed save behaviour, Student autosave, Admin background
+   save, Class Progress, selected-student Individual Progress, backend/API
+   files, Attendance, Library, Home, Recorder, nav, and auth banner.
 */
 
 /* =========================  
@@ -121,24 +118,9 @@ function bindProgressUiHandlers(containerOrId) {
   return !!getDomElement(containerOrId);  
 }  
   
-function isAdminProgressSwipeEscapeGuardViewport() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return true;
-  }
-
-  return window.matchMedia("(min-width: 768px)").matches;
-}
-
 function bindAdminProgressSwipeEscapeGuard() {
   if (adminProgressSwipeEscapeGuardBound === true) return true;
   if (typeof document === "undefined" || typeof document.addEventListener !== "function") return false;
-
-  // V90.9.5.1: do not bind the blocking document-level touchmove guard on
-  // mobile. Mobile Class Progress already owns native horizontal scrolling,
-  // and the extra guard made the task/module swipe feel heavy and erratic.
-  if (!isAdminProgressSwipeEscapeGuardViewport()) {
-    return true;
-  }
 
   adminProgressSwipeEscapeGuardBound = true;
 
@@ -148,8 +130,6 @@ function bindAdminProgressSwipeEscapeGuard() {
   ].join(", ");
 
   const horizontalScrollSelector = [
-    ".admin-progress-class-continuous-task-scroll",
-    ".admin-progress-class-pane-viewport",
     ".admin-progress-class-grid-scroll",
     ".admin-individual-progress-pane-viewport",
     ".admin-individual-progress-module-numbers",
@@ -182,10 +162,6 @@ function bindAdminProgressSwipeEscapeGuard() {
   };
 
   const shouldAbsorbHorizontalEscape = (target, deltaX, deltaY) => {
-    if (!isAdminProgressSwipeEscapeGuardViewport()) {
-      return false;
-    }
-
     const absX = Math.abs(Number(deltaX || 0));
     const absY = Math.abs(Number(deltaY || 0));
 
@@ -205,8 +181,8 @@ function bindAdminProgressSwipeEscapeGuard() {
     const atEnd = currentScrollLeft >= maxScrollLeft - 1;
 
     // Touch: deltaX > 0 means the finger is moving right and trying to move the
-    // scroll container before its first pane/task column. Wheel/trackpad is
-    // handled separately with native wheel delta direction.
+    // scroll container before its first pane. Wheel/trackpad: the caller passes
+    // deltaX in native wheel direction, so normalize before calling this helper.
     const swipingRight = deltaX > 0;
     const swipingLeft = deltaX < 0;
 
@@ -214,11 +190,6 @@ function bindAdminProgressSwipeEscapeGuard() {
   };
 
   document.addEventListener("touchstart", event => {
-    if (!isAdminProgressSwipeEscapeGuardViewport()) {
-      gesture = null;
-      return;
-    }
-
     const target = event && event.target;
     if (!target || typeof target.closest !== "function") {
       gesture = null;
@@ -242,10 +213,6 @@ function bindAdminProgressSwipeEscapeGuard() {
   }, { capture: true, passive: true });
 
   document.addEventListener("touchmove", event => {
-    if (!isAdminProgressSwipeEscapeGuardViewport()) {
-      return;
-    }
-
     if (!gesture || !gesture.root || !gesture.target) return;
 
     if (!document.body || !document.body.contains(gesture.root)) {
@@ -265,10 +232,6 @@ function bindAdminProgressSwipeEscapeGuard() {
   }, { capture: true, passive: false });
 
   document.addEventListener("wheel", event => {
-    if (!isAdminProgressSwipeEscapeGuardViewport()) {
-      return;
-    }
-
     const target = event && event.target;
     if (!target || typeof target.closest !== "function") return;
 
@@ -1987,9 +1950,8 @@ function renderStudentProgressGlobalActions(modules, activeModuleKey) {
   `;
 }  
   
-/* Compatibility wrapper retained for older calls. The V70.2 layout no longer  
-   uses a global frozen module heading/progress bar; each module panel owns its  
-   own heading and progress indicator. */  
+/* Compatibility wrapper retained for older calls. The current layout no longer  
+   uses a separate global frozen module heading or legacy percentage indicator. */  
 function renderStudentProgressFrozenHeader(modules, activeModuleKey) {  
   return renderStudentProgressGlobalActions(modules, activeModuleKey);  
 }  
@@ -3006,9 +2968,7 @@ function normalizeProgressSubject(subject) {
     subjectid: moduleId,  
     subjectname: moduleName,  
     moduleid: moduleId,  
-    modulename: moduleName,  
-    completedPercent: Number(subject.completedPercent || subject.completePercent || 0),  
-    verifiedPercent: Number(subject.verifiedPercent || subject.verifyPercent || 0)  
+    modulename: moduleName  
   };  
 }  
   
@@ -3545,12 +3505,6 @@ async function loadAdminProgressDashboard() {
 }  
   
 
-function getProgressPercentValue(value) {  
-  const number = Number(value);  
-  if (!Number.isFinite(number)) return 0;  
-  return Math.max(0, Math.min(100, Math.round(number)));  
-}  
-  
 function getAdminTaskKey(row) {  
   return String(row.taskid || row.taskname || "");  
 }  
@@ -3563,19 +3517,8 @@ function getAdminModuleName(row) {
   return String(row.modulename || row.subjectname || "General");  
 }  
   
-function getAdminProgressSummaryFromRows(rows) {  
-  const list = Array.isArray(rows) ? rows : [];  
-  const total = list.length;  
-  const completed = list.filter(row => isStatusOn(row.completestatus)).length;  
-  const verified = list.filter(row => isStatusOn(row.verifystatus)).length;  
-  
-  return {  
-    total,  
-    completed,  
-    verified,  
-    completedPercent: total === 0 ? 0 : Math.round((completed / total) * 100),  
-    verifiedPercent: total === 0 ? 0 : Math.round((verified / total) * 100)  
-  };  
+function getAdminProgressRowCount(rows) {  
+  return Array.isArray(rows) ? rows.length : 0;  
 }  
   
 function buildAdminTaskSummariesFromRows(rows) {  
@@ -3603,15 +3546,10 @@ function buildAdminTaskSummariesFromRows(rows) {
       taskMap[taskKey].rows.push(row);  
     });  
   
-  return Object.values(taskMap).map(task => {  
-    const summary = getAdminProgressSummaryFromRows(task.rows);  
-    return {  
-      ...task,  
-      completedPercent: summary.completedPercent,  
-      verifiedPercent: summary.verifiedPercent,  
-      studentCount: summary.total  
-    };  
-  });  
+  return Object.values(taskMap).map(task => ({  
+    ...task,  
+    studentCount: getAdminProgressRowCount(task.rows)  
+  }));  
 }  
   
 function findAdminDashboardTask(subjectid, taskid, taskname) {  
@@ -3704,7 +3642,7 @@ function buildAdminProgressModules(tasks, rows) {
     .forEach(task => {  
       const taskKey = getAdminTaskKey(task);  
       const summaryRows = rowsByTask[taskKey] || task.rows || [];  
-      const summary = getAdminProgressSummaryFromRows(summaryRows);  
+      const studentTaskCount = getAdminProgressRowCount(summaryRows);  
       const moduleKey = getAdminModuleKey(task);  
       const moduleName = getAdminModuleName(task);  
       const subjectid = task.subjectid || task.moduleid || moduleKey;  
@@ -3720,13 +3658,6 @@ function buildAdminProgressModules(tasks, rows) {
         };  
       }  
   
-      const completedPercentRaw = task.completedPercent !== undefined  
-        ? task.completedPercent  
-        : task.completePercent;  
-      const verifiedPercentRaw = task.verifiedPercent !== undefined  
-        ? task.verifiedPercent  
-        : task.verifyPercent;  
-  
       moduleMap[moduleKey].tasks.push({  
         ...task,  
         subjectid,  
@@ -3734,13 +3665,7 @@ function buildAdminProgressModules(tasks, rows) {
         moduleid: task.moduleid || moduleKey,  
         modulename: moduleName,  
         rows: Array.isArray(summaryRows) ? summaryRows.map(normalizeProgressStudentRow) : [],  
-        completedPercent: completedPercentRaw !== undefined  
-          ? getProgressPercentValue(completedPercentRaw)  
-          : summary.completedPercent,  
-        verifiedPercent: verifiedPercentRaw !== undefined  
-          ? getProgressPercentValue(verifiedPercentRaw)  
-          : summary.verifiedPercent,  
-        studentCount: task.studentCount || summary.total  
+        studentCount: task.studentCount || studentTaskCount  
       });  
     });  
   
@@ -3750,13 +3675,9 @@ function buildAdminProgressModules(tasks, rows) {
       const moduleRows = (Array.isArray(rows) ? rows : [])  
         .map(normalizeProgressStudentRow)  
         .filter(row => getAdminModuleKey(row) === moduleKey && String(row.classgroup || "").trim() !== "0");  
-      const moduleSummary = getAdminProgressSummaryFromRows(moduleRows);  
-  
       return {  
         ...module,  
-        moduleCompletedPercent: moduleSummary.completedPercent,  
-        moduleVerifiedPercent: moduleSummary.verifiedPercent,  
-        moduleStudentTaskCount: moduleSummary.total,  
+        moduleStudentTaskCount: getAdminProgressRowCount(moduleRows),  
         tasks: module.tasks.sort(sortProgressTasks)  
       };  
     })  
@@ -3808,8 +3729,6 @@ function buildAdminProgressClassOverviewModel(modules, rows) {
       modulename: module.modulename || module.subjectname || getAdminModuleName(module),  
       subjectid: module.subjectid || module.moduleid || moduleKey,  
       subjectname: module.subjectname || module.modulename || getAdminModuleName(module),  
-      moduleCompletedPercent: getProgressPercentValue(module.moduleCompletedPercent),  
-      moduleVerifiedPercent: getProgressPercentValue(module.moduleVerifiedPercent),  
       tasksByKey  
     };  
   });  
@@ -3825,8 +3744,6 @@ function buildAdminProgressClassOverviewModel(modules, rows) {
         modulename: row.modulename || row.subjectname || getAdminModuleName(row),  
         subjectid: row.subjectid || row.moduleid || moduleKey,  
         subjectname: row.subjectname || row.modulename || getAdminModuleName(row),  
-        moduleCompletedPercent: 0,  
-        moduleVerifiedPercent: 0,  
         tasksByKey: {}  
       };  
     }  
@@ -3842,14 +3759,11 @@ function buildAdminProgressClassOverviewModel(modules, rows) {
   const moduleList = Object.values(moduleMap)  
     .map(module => {  
       const moduleRows = activeRows.filter(row => getAdminModuleKey(row) === getAdminModuleKey(module));  
-      const summary = getAdminProgressSummaryFromRows(moduleRows);  
       const tasks = Object.values(module.tasksByKey || {}).sort(sortProgressTasks);  
   
       return {  
         ...module,  
-        moduleCompletedPercent: module.moduleCompletedPercent || summary.completedPercent,  
-        moduleVerifiedPercent: module.moduleVerifiedPercent || summary.verifiedPercent,  
-        moduleStudentTaskCount: summary.total,  
+        moduleStudentTaskCount: getAdminProgressRowCount(moduleRows),  
         tasks  
       };  
     })  
@@ -6167,7 +6081,6 @@ async function loadProgressSubjects() {
         data-subjectname="${escapeForAttribute(subject.subjectname)}"  
       >  
         <span class="progress-list-title">${escapeHtml(subject.subjectname)}</span>  
-        ${renderProgressBars(subject.completedPercent, subject.verifiedPercent)}  
       </button>  
     `).join(""));  
     bindProgressUiHandlers(subjectsList);  
@@ -6243,7 +6156,6 @@ async function loadProgressTasks() {
         data-taskname="${escapeForAttribute(task.taskname)}"  
       >  
         <span class="progress-list-title">${escapeHtml(task.taskname)}</span>  
-        ${renderProgressBars(task.completedPercent, task.verifiedPercent)}  
       </button>  
     `).join(""));  
     bindProgressUiHandlers(tasksList);  
@@ -7478,44 +7390,6 @@ function isStatusOn(value) {
   if (value === true) return true;  
   const text = String(value || "").trim().toLowerCase();  
   return text === "yes" || text === "true" || text === "complete" || text === "verified" || text === "1";  
-}  
-  
-function renderCompleteProgressBar(completedPercent) {  
-  const completeWidth = Math.max(0, Math.min(100, Number(completedPercent) || 0));  
-  
-  return `  
-    <span class="progress-bars">  
-      <span class="progress-bar-row">  
-        <span class="progress-bar-label">Complete</span>  
-        <span class="progress-track">  
-          <span class="progress-fill progress-fill-complete" style="width:${completeWidth}%"></span>  
-        </span>  
-      </span>  
-    </span>  
-  `;  
-}  
-  
-function renderProgressBars(completedPercent, verifiedPercent) {  
-  const completeWidth = Math.max(0, Math.min(100, Number(completedPercent) || 0));  
-  const verifiedWidth = Math.max(0, Math.min(100, Number(verifiedPercent) || 0));  
-  
-  return `  
-    <span class="progress-bars">  
-      <span class="progress-bar-row">  
-        <span class="progress-bar-label">Complete</span>  
-        <span class="progress-track">  
-          <span class="progress-fill progress-fill-complete" style="width:${completeWidth}%"></span>  
-        </span>  
-      </span>  
-  
-      <span class="progress-bar-row">  
-        <span class="progress-bar-label">Verified</span>  
-        <span class="progress-track">  
-          <span class="progress-fill progress-fill-verified" style="width:${verifiedWidth}%"></span>  
-        </span>  
-      </span>  
-    </span>  
-  `;  
 }  
   
 function renderTaskLinks(task) {  
