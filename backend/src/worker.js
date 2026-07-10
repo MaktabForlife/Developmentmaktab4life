@@ -1,8 +1,7 @@
-/* M4L v90.8.8 - Progress batch update backend trial
-   Baseline: worker(18).js. Existing progress endpoints remain unchanged
-   in URL, but now accept either a single progress update or an updates array.
+/* M4L v90.8.8-dev - Development Worker progress batch update trial.
+   Baseline: uploaded Cloudflare development worker.
+   Scope: keep existing routes/service metadata and update only Progress completion/verification saves to accept single or updates-array payloads.
 */
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -16,8 +15,8 @@ export default {
     if (url.pathname === "/") {
       return json({
         success: true,
-        service: "rebootworker",
-        version: "1.0"
+        service: "devrebootworker",
+        version: "dev"
       });
     }
     if (url.pathname === "/api/resources/list") {
