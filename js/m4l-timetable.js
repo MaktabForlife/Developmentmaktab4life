@@ -751,7 +751,7 @@ function ensureAdminHomePanel() {
 
         <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="record">
           <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-          <span class="home-cover-icon-label">Record</span>
+          <span class="home-cover-icon-label">Record Lesson</span>
         </button>
 
         <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="library">
