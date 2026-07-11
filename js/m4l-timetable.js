@@ -739,6 +739,15 @@ function ensureAdminHomePanel() {
   <section class="home-icons-band" aria-label="Admin home app icons">
     <div class="home-icons-band__inner">
       <div class="home-cover-icon-grid" aria-label="Admin home app icons">
+            
+            
+            <button type="button" class="home-cover-icon-btn is-home-active" aria-current="page">
+              <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph home-cover-icon-glyph--home"></span></span>
+               <span class="home-cover-icon-label">Home</span>
+               </button>
+        
+      
+        
         <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="attendance">
           <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
           <span class="home-cover-icon-label">Attendance</span>
