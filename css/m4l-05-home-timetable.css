@@ -44,7 +44,7 @@
 
 .home-duas-section {
   padding: 8px 10px 10px;
-  background: var(--surface-contrast);
+  background: var(--surface-soft);
 }
 
 .home-icons-section {
@@ -58,7 +58,7 @@
 
 .home-timetable-section {
   padding: 12px;
-  background: var(--surface-contrast);
+  background: var(--surface-soft);
 }
 
 #student-home .home-cover-icon-grid,
