@@ -1,4 +1,4 @@
-/* M4L v84 - Timetable board + V84 Home vertical stack support
+/* M4L v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
