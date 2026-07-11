@@ -67,6 +67,7 @@
 .home-cover-icon-btn.is-home-active .home-cover-icon-tile,
 .home-cover-icon-btn[aria-current="page"] .home-cover-icon-tile {
   background: var(--surface-contrast);
+   border: 1px solid var(--surface-card)
 }
 
 .home-cover-icon-glyph {
