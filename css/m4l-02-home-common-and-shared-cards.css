@@ -55,10 +55,10 @@
   height: 64px;
   min-width: 60px;
   min-height: 60px;
-  border-radius: 12px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px solid var(--primary);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.16);
   background: var(--surface-card);
   color: var(--text);
@@ -66,7 +66,7 @@
 
 .home-cover-icon-btn.is-home-active .home-cover-icon-tile,
 .home-cover-icon-btn[aria-current="page"] .home-cover-icon-tile {
-  background: var(--surface-contrast);
+  background: var(--primary);
    border: 1px solid var(--surface-card)
 }
 
