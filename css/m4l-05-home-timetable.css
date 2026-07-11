@@ -44,7 +44,7 @@
 
 .home-duas-section {
   padding: 8px 10px 10px;
-  background: var(--surface-soft);
+  background: var(--surface-track);
 }
 
 .home-icons-section {
@@ -58,7 +58,7 @@
 
 .home-timetable-section {
   padding: 12px;
-  background: var(--surface-soft);
+  background: var(--surface-track);
 }
 
 #student-home .home-cover-icon-grid,
@@ -105,7 +105,7 @@
 }
 
 .home-swipe-panel {
-  background: var(--surface-app);
+  background: var(--surface-chip);
   border-radius: 18px;
   padding: 12px;
   box-shadow: 0 8px 18px var(--shadow);
@@ -134,7 +134,7 @@
 
 .class-duas-card__title {
   margin: 0 0 6px;
-  color: var(--primary);
+  color: var(--text);
   font-family: var(--font-heading);
   font-size: clamp(1rem, 4.2vw, 1.28rem);
   font-weight: 700;
