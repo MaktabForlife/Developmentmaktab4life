@@ -732,46 +732,54 @@ function ensureAdminHomePanel() {
     panel.dataset.homeSwipeTrack = "";
     panel.setAttribute("aria-label", "Admin Home panels");
     panel.innerHTML = `
-      <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
-        <p class="helper-text">Loading class duas...</p>
-      </section>
+     panel.innerHTML = `
+  <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
+    <p class="helper-text">Loading class duas...</p>
+  </section>
 
-      <section class="home-section home-icons-section" aria-label="Admin home app icons">
-        <div class="home-cover-icon-grid" aria-label="Admin home app icons">
-          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="attendance">
-            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-            <span class="home-cover-icon-label">Attendance</span>
-          </button>
-          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="record">
-            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-            <span class="home-cover-icon-label">Record</span>
-          </button>
-          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="library">
-            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-            <span class="home-cover-icon-label">Library</span>
-          </button>
-          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="progress">
-            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-            <span class="home-cover-icon-label">Progress</span>
-          </button>
-          <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="admin">
-            <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-            <span class="home-cover-icon-label">Admin</span>
-          </button>
-        </div>
-      </section>
+  <section class="home-icons-band" aria-label="Admin home app icons">
+    <div class="home-icons-band__inner">
+      <div class="home-cover-icon-grid" aria-label="Admin home app icons">
+        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="attendance">
+          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+          <span class="home-cover-icon-label">Attendance</span>
+        </button>
 
-      <section class="home-section home-timetable-section" aria-label="Timetable">
-        <section class="timetable-card">
-          <div class="timetable-card-header">
-            <h3>Reboot Your Maktab</h3>
-          </div>
-          <div id="admin-home-timetable-content">
-            <p class="helper-text">Loading timetable...</p>
-          </div>
-        </section>
-      </section>
-    `;
+        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="record">
+          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+          <span class="home-cover-icon-label">Record</span>
+        </button>
+
+        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="library">
+          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+          <span class="home-cover-icon-label">Library</span>
+        </button>
+
+        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="progress">
+          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+          <span class="home-cover-icon-label">Progress</span>
+        </button>
+
+        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="admin">
+          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
+          <span class="home-cover-icon-label">Admin</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section home-timetable-section" aria-label="Timetable">
+    <section class="timetable-card">
+      <div class="timetable-card-header">
+        <h3>Reboot Your Maktab</h3>
+      </div>
+
+      <div id="admin-home-timetable-content">
+        <p class="helper-text">Loading timetable...</p>
+      </div>
+    </section>
+  </section>
+`;
     panel.className = "home-stack admin-home-panel student-home-panel";
     panel.dataset.homeStack = "admin";
     swipeShell = null;
