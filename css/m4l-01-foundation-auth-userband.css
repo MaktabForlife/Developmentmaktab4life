@@ -13,11 +13,14 @@
      BRAND PALETTE (Sage & Lavender)  --banner: 
      ========================================== */
 
-
+ --primary: #A8B992;          /* SAGE DUST  - Core brand identifier */
+ 
+ --banner-color:  #F2C6DE;    /* pink */  
+ --surface-contrast: #c9b2d1;       /* #c9b2d1 dusty lavender */
   /* ==========================================
      SAGE PALETTE
      ========================================== */
-    --primary: #A8B992;          /* SAGE DUST  - Core brand identifier */
+   
     --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
     --primary-light: color-mix(in srgb, var(--primary) 80%, white 35%);
     --primary-lighter: color-mix(in srgb, var(--primary) 80%, white 50%);
@@ -33,8 +36,7 @@
      ========================================== */
   --surface-chip:  #EEEBF4;     /* Ultra-light lavender for surfaces */
   --surface-track: #D0C8E0;    /* Mid-lavender for pills  */
-    --banner-color:  #c9b2d1;       /* #c9b2d1 dusty lavender */
-
+   
   --zoom-colour: #0A437A;       /* Zoom action blue */
   --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
 
@@ -45,9 +47,7 @@
   --surface-app: #f1f5f9;      /* Off-white page background (prevents eye strain) */
   --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
 
- --surface-contrast: FFE57C;    /* pastel yellow */
 
-   
   /* ==========================================
      TEXT (Organic Typography Hierarchy)
      ========================================== */
