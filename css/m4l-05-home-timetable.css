@@ -176,7 +176,7 @@
   min-height: clamp(148px, 24vh, 214px);
   padding: 10px 11px;
   border-radius: 16px;
-  background: var(--surface-app);
+  background: var(--surface-chip);
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
@@ -225,7 +225,7 @@
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--surface-track);
+  background: var(--surface-contrast);
   box-shadow: none;
   opacity: 0.75;
 }
