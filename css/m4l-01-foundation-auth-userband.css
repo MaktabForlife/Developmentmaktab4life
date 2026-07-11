@@ -31,9 +31,10 @@
      LAVENDER PALETTE
      ========================================== */
   --surface-chip:  #EEEBF4;     /* Ultra-light lavender for surfaces */
-   --surface-banner: #D5CEE3;    /* lavender banner */
+   
   --surface-track: #D0C8E0;    /* Mid-lavender for pills  */
    --banner-color: #AB9DC8;     /* Dusty Lavender - Soft contrast for headers/banners */
+   --surface-banner:  #AB9DC8;    /* lavender banner */
   --zoom-colour: #0A437A;       /* Zoom action blue */
   --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
 
