@@ -33,7 +33,6 @@
      ========================================== */
   --surface-chip:  #EEEBF4;     /* Ultra-light lavender for surfaces */
   --surface-track: #D0C8E0;    /* Mid-lavender for pills  */
-
     --banner-color:  #c9b2d1;       /* #c9b2d1 dusty lavender */
 
   --zoom-colour: #0A437A;       /* Zoom action blue */
@@ -109,7 +108,6 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--surface-soft);
   color: var(--text);
   font-family: var(--font-main);
   font-weight: 400;
@@ -132,7 +130,7 @@ body {
 .screen {
   display: none;
   width: 100%;
-  background: var(--surface-app);
+/*  background: var(--surface-app);*/
   border-radius: 18px;
   box-shadow: 0 8px 18px var(--shadow);
   padding: 18px;
