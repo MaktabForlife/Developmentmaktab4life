@@ -46,7 +46,24 @@
   padding: 8px 10px 10px;
   background: var(--surface-card);
 }
+.home-icons-band {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 14px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--surface-contrast);
+  border-top: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-bottom: 1px solid rgba(var(--primary-rgb), 0.14);
+}
 
+.home-icons-band__inner {
+  width: min(100%, 720px);
+  margin-inline: auto;
+}
+
+
+
+/*
 .home-icons-section {
   width: 100%;
       padding: 20px 20px;
@@ -55,7 +72,7 @@
   border-color: transparent;
   box-shadow: none;*/
 }
-
+*/
 .home-timetable-section {
   padding: 12px;
   background: var(--surface-card);
