@@ -123,7 +123,6 @@ body {
   width: 100%;
   max-width: 520px;
   min-height: calc(100vh - 20px);
-   background: var(--surface-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -286,10 +285,10 @@ select {
   padding: 12px 14px;
   border-radius: 7px;
   background: var(--banner-color);
-  color: var(--text-strong);
+  color: var(--text);
   font-family: var(--font-heading);
   font-size: clamp(1.15rem, 5vw, 1.55rem);
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.15;
   text-align: center;
  
