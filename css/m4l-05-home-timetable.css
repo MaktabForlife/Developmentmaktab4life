@@ -176,7 +176,7 @@
   min-height: clamp(148px, 24vh, 214px);
   padding: 10px 11px;
   border-radius: 16px;
-  background: var(--surface-chip);
+  background: var(--surface-soft);
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
@@ -218,7 +218,7 @@
 }
 
 .class-duas-card__dot {
-  width: 8px;
+  width: 12px;
   min-width: 8px;
   height: 8px;
   min-height: 8px;
@@ -491,7 +491,7 @@
   bottom: 0;
   left: var(--m4l-timetable-time-column);
   width: 1px;
-  background: var(--surface-video);
+  background: var(--surface-dark);
   pointer-events: none;
 }
 
@@ -609,7 +609,7 @@ button.m4l-timetable-subject {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  background: var(--surface-chip);
+  background: var(--surface-soft);
   border: 0;
   border-radius: 18px;
 }
