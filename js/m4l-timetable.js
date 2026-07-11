@@ -712,6 +712,53 @@ function ensureAdminHomePanel() {
     adminWelcome.remove();
   }
 
+
+/*
+new section added 
+   */
+
+   
+screen
+  .querySelectorAll(":scope > .staff-dashboard-grid, :scope > .card-grid, :scope > .list-stack"  )
+ 
+   .forEach(section => {
+    section.remove();
+  });
+
+const panel = document.getElementById("admin-home-panel");
+
+if (!panel || !screen.contains(panel)) {
+  console.warn(
+    "Admin Home panel is missing from admin/index.html: #admin-home-panel"
+  );
+  return null;
+}
+
+const timetableContent = panel.querySelector(
+  "#admin-home-timetable-content"
+);
+
+if (!timetableContent) {
+  console.warn(
+    "Admin Home timetable target is missing from admin/index.html: #admin-home-timetable-content"
+  );
+}
+
+const duasPanel = panel.querySelector(
+  "#admin-home-duas-panel"
+);
+
+if (!duasPanel) {
+  console.warn(
+    "Admin Home duas panel is missing from admin/index.html: #admin-home-duas-panel"
+  );
+}
+
+
+   
+
+   /*
+   home icon in admin index
   screen.querySelectorAll(".staff-dashboard-grid, .card-grid, .list-stack").forEach(section => {
     if (section.id !== "admin-home-panel") {
       section.remove();
@@ -794,7 +841,7 @@ function ensureAdminHomePanel() {
   } else if (!panel.parentNode) {
     screen.prepend(panel);
   }
-
+*/
   // V82.4.2 QUARANTINED_HOME_ZOOM_BUTTON: removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
 
   if (typeof hydrateCoverHomeNavigationButtons === "function") {
