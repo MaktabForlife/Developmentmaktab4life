@@ -1,14 +1,27 @@
-/* Home cover-sheet app icons - V82
-   Uses the same icon assets as the nav bar, supplied by m4l-shell.js via --cover-home-icon. */
+/* Home cover-sheet app icons - V91.8
+   Student: 4 icons in one row.
+   Admin: 6 icons; 3 x 2 on mobile, 6 x 1 on larger screens.
+   The active Home tile uses --surface-contrast. */
 .home-cover-icon-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 22px 16px;
-  width: min(100%, 430px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 10px;
+  width: 100%;
+  max-width: 430px;
   margin: 12px auto 6px;
-  padding: 4px 8px 8px;
+  padding: 4px 0 8px;
   justify-items: center;
   align-items: start;
+}
+
+.home-cover-icon-grid--student {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 520px;
+}
+
+.home-cover-icon-grid--admin {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 430px;
 }
 
 .home-cover-icon-btn {
@@ -42,16 +55,18 @@
   height: 64px;
   min-width: 60px;
   min-height: 60px;
-     border-radius: 12px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255,255,255,0.3);
-     box-shadow: 0 8px 32px 0 rgba(31,38,135,0.2);
-
-   background: var(--surface-contrast);
-
-   
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.16);
+  background: var(--surface-card);
   color: var(--text);
+}
+
+.home-cover-icon-btn.is-home-active .home-cover-icon-tile,
+.home-cover-icon-btn[aria-current="page"] .home-cover-icon-tile {
+  background: var(--surface-contrast);
 }
 
 .home-cover-icon-glyph {
@@ -63,6 +78,11 @@
   mask: var(--cover-home-icon) center / contain no-repeat;
 }
 
+.home-cover-icon-glyph--home {
+  -webkit-mask: url('/icons/home.svg') center / contain no-repeat;
+  mask: url('/icons/home.svg') center / contain no-repeat;
+}
+
 .home-cover-icon-label {
   max-width: 82px;
   color: var(--text-muted);
@@ -71,6 +91,13 @@
   line-height: 1.12;
   text-align: center;
   overflow-wrap: anywhere;
+}
+
+@media (min-width: 768px) {
+  .home-cover-icon-grid--admin {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-width: 720px;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -86,24 +113,24 @@
 
 @media (max-width: 360px) {
   .home-cover-icon-grid {
-    gap: 18px 12px;
+    gap: 16px 8px;
   }
 
   .home-cover-icon-tile {
-    width: 58px;
-    height: 58px;
-    min-width: 58px;
-    min-height: 58px;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
     border-radius: 16px;
   }
 
   .home-cover-icon-glyph {
-    width: 28px;
-    height: 28px;
+    width: 27px;
+    height: 27px;
   }
 
   .home-cover-icon-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
   }
 }
 
