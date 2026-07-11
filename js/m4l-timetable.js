@@ -731,8 +731,7 @@ function ensureAdminHomePanel() {
     panel.className = "student-home-panel admin-home-panel home-swipe-track";
     panel.dataset.homeSwipeTrack = "";
     panel.setAttribute("aria-label", "Admin Home panels");
-    panel.innerHTML = `
-     panel.innerHTML = `
+   panel.innerHTML = `
   <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
     <p class="helper-text">Loading class duas...</p>
   </section>
