@@ -27,14 +27,15 @@
     --surface-tint: #DFE7D7;     /* Mid-tone sage tint for disabled fields/borders */
     --surface-video:#3B472A;    /* Deep earthy olive-black  */
 
+    --banner-color: #A8B992;       /* sage banner */
+
   /* ==========================================
      LAVENDER PALETTE
      ========================================== */
   --surface-chip:  #EEEBF4;     /* Ultra-light lavender for surfaces */
-   
   --surface-track: #D0C8E0;    /* Mid-lavender for pills  */
-   --banner-color: #A8B992;       /* soft lavender banner */
-   --surface-banner:  #AB9DC8;    /* soft lavender banner */
+  --surface-highlight #9b8fb5  /* dusty lavender*?
+
   --zoom-colour: #0A437A;       /* Zoom action blue */
   --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
 
@@ -45,6 +46,9 @@
   --surface-app: #FAF9F6;      /* Off-white page background (prevents eye strain) */
   --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
 
+ --surface-contrast:  #FFAE7B ;    /* orange contrast */
+
+   
   /* ==========================================
      TEXT (Organic Typography Hierarchy)
      ========================================== */
