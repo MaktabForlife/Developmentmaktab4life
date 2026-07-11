@@ -105,7 +105,7 @@
 }
 
 .home-swipe-panel {
-  background: var(--surface-chip);
+  background: var(--surface-soft);
   border-radius: 18px;
   padding: 12px;
   box-shadow: 0 8px 18px var(--shadow);
@@ -433,7 +433,7 @@
   padding: clamp(8px, 2.2vw, 12px);
   border: 0;
   border-radius: 18px;
-  background: var(--surface-chip);
+  background: var(--surface-soft);
   box-shadow: none;
 }
 
@@ -491,7 +491,7 @@
   bottom: 0;
   left: var(--m4l-timetable-time-column);
   width: 1px;
-  background: var(--primary);
+  background: var(--surface-video);
   pointer-events: none;
 }
 
@@ -546,7 +546,7 @@
   min-height: clamp(34px, 10vw, 48px);
   padding: 0 clamp(0.5px, 0.4vw, 5px);
   color: var(--surface-dark);
-  background: transparent;  /* transparent*/
+  background: var(--surface-card);  /* transparent*/
   border: 0;
   border-radius: 0;
   box-shadow: none;
