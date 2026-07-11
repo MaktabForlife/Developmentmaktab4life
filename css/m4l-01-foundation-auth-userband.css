@@ -280,7 +280,34 @@ select {
 
 
 .auth-welcome-banner {
-  margin: -4px -4px 16px;
+ position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000; /* Keeps it above all other content */
+
+      background: var(--banner-color);
+      
+      /* Flexbox keeps the text left and button right */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      /* Sizing and Spacing */
+      box-sizing: border-box; /* Ensures padding doesn't widen the banner off-screen */
+      padding: 15px 20px;
+      
+      /* Mobile Notch Support */
+      padding-top: max(15px, env(safe-area-inset-top));
+      
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+   color: var(--text-strong);
+  font-family: var(--font-heading);
+  font-size: clamp(1.15rem, 5vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.15; 
+   /* 
+   margin: -4px -4px 16px;
   padding: 12px 14px;
   border-radius: 7px;
   background: var(--banner-color);
@@ -290,6 +317,7 @@ select {
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
+   */
 }
 
 .auth-brand-block {
@@ -531,7 +559,32 @@ button:active {
 
 /* Permanent authenticated user band - V82.4 */
 .app-user-band {
-  position: fixed;
+ position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 110; /* Keeps it above all other content */
+
+      background: var(--banner-color);
+      
+       display: grid;
+   grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 15px 20px;
+   .right-item {
+    justify-self: end;
+      /* Sizing and Spacing */
+      box-sizing: border-box; /* Ensures padding doesn't widen the banner off-screen */
+      padding: 15px 20px;
+      
+      /* Mobile Notch Support */
+      padding-top: max(15px, env(safe-area-inset-top));
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  color: var(--text);
+   will-change: transform;
+}
+   
+ /* position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -549,6 +602,7 @@ button:active {
   color: var(--text);
   box-shadow: 0 5px 16px rgba(var(--black-rgb), 0.18);
   transform: translateZ(0);
+   */
 }
 
 .app-user-band.hidden {
@@ -563,7 +617,7 @@ button:active {
   align-items: center;
   color: var(--text);
 }
-
+/*
 .app-user-band__profile-btn {
   appearance: none;
   width: auto;
@@ -588,7 +642,7 @@ button:active {
 .app-user-band__identity-icon {
   color: var(--text);
 }
-
+*/
 .app-user-band__identity {
   min-width: 0;
   display: grid;
@@ -653,14 +707,14 @@ button:active {
 }
 
 .app-user-band__menu-btn .app-icon {
-  width: 25px;
-  height: 25px;
+  width: 30px;
+  height: 30px;
 }
 
 .app-user-band__action-label {
   display: block;
   color: currentColor;
-  font-size: 0.56rem;
+  font-size: 0.7rem;
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.04em;
