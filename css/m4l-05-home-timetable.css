@@ -46,7 +46,7 @@
   padding: 8px 10px 10px;
   background: var(--surface-card);
 }
-.home-icons-band {
+.home-icons-section{
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
@@ -56,7 +56,7 @@
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.14);
 }
 
-.home-icons-band__inner {
+.home-icons-section__inner {
   width: min(100%, 720px);
   margin-inline: auto;
   padding: 0 20px;
