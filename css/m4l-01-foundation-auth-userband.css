@@ -33,7 +33,7 @@
   --surface-chip:  #EEEBF4;     /* Ultra-light lavender for surfaces */
    
   --surface-track: #D0C8E0;    /* Mid-lavender for pills  */
-   --banner-color: radial-gradient(circle at 50% 50%, #ffde59, #f914dd);     /* Orange - Banner */
+   --banner-color: radial-gradient(circle at 50% 50%, #ffde59, #ff914d);     /* Orange - Banner */
    --surface-banner:  #AB9DC8;    /* soft lavender banner */
   --zoom-colour: #0A437A;       /* Zoom action blue */
   --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
@@ -278,7 +278,7 @@ select {
 .auth-welcome-banner {
   margin: -4px -4px 16px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 7px;
   background: var(--banner-color);
   color: var(--text-strong);
   font-family: var(--font-heading);
