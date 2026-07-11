@@ -59,6 +59,7 @@
 .home-icons-band__inner {
   width: min(100%, 720px);
   margin-inline: auto;
+  padding: 0 20px;
 }
 
 
