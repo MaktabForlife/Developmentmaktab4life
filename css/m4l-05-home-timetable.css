@@ -44,13 +44,13 @@
 
 .home-duas-section {
   padding: 8px 10px 10px;
-  background: var(--surface-card);
+  background: var(--surface-track);
 }
 
 .home-icons-section {
   width: 100%;
       padding: 20px 20px;
-    background: var(--surface-contrast);
+    background: var(--surface-card);
  /* padding: 8px 8px 6px;
   border-color: transparent;
   box-shadow: none;*/
@@ -58,7 +58,7 @@
 
 .home-timetable-section {
   padding: 12px;
-  background: var(--surface-card);
+  background: var(--surface-track);
 }
 
 #student-home .home-cover-icon-grid,
@@ -176,7 +176,7 @@
   min-height: clamp(148px, 24vh, 214px);
   padding: 10px 11px;
   border-radius: 16px;
-  background: var(--surface-chip);
+  background: var(--surface-app);
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
