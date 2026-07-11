@@ -48,10 +48,12 @@
 }
 
 .home-icons-section {
-  padding: 8px 8px 6px;
-  background: var(--surface-contrast);
+  width: 100%;
+      padding: 20px 20px;
+    background: var(--disabled);
+ /* padding: 8px 8px 6px;
   border-color: transparent;
-  box-shadow: none;
+  box-shadow: none;*/
 }
 
 .home-timetable-section {
