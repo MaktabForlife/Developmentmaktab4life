@@ -2,7 +2,7 @@
    Uses the same icon assets as the nav bar, supplied by m4l-shell.js via --cover-home-icon. */
 .home-cover-icon-grid {
   width: 100%;
-  min-width: 0;
+
   display: grid;
   align-items: start;
   justify-items: center;
