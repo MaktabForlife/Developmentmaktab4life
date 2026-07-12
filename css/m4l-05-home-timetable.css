@@ -225,14 +225,14 @@
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--surface-contrast);
+  background: var(--primary-lighter);
   box-shadow: none;
   opacity: 0.75;
 }
 
 .class-duas-card__dot.is-active {
   width: 22px;
-  background: var(--primary);
+  background: var(--surface-dark);
   opacity: 1;
 }
 
