@@ -175,7 +175,7 @@
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   font: inherit;
   font-size: 0.8rem;
@@ -227,9 +227,9 @@
   align-content: stretch;
   gap: var(--admin-individual-progress-panel-gap, 4px);
   padding: 7px;
-  border-radius: 22px;
-  background: rgba(var(--white-rgb), 0.72);
-  box-shadow: 0 7px 16px rgba(var(--black-rgb), 0.08);
+  border-radius: 10px;
+  background: var(--surface-card);
+  box-shadow: 0 7px 16px var(--surface-track);
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
@@ -245,13 +245,13 @@
   gap: 10px;
   border-radius: 20px;
   background: var(--surface-card);
-  color: var(--text-muted);
-  box-shadow: 0 6px 16px rgba(var(--black-rgb), 0.08);
+  color: var(--text);
+  box-shadow: 0 6px 16px var(--surface-track) ;
 }
 
 #progress-report.admin-theme .admin-individual-progress-module-title {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: clamp(1.1rem, 5vw, 1.42rem);
   font-weight: 820;
   line-height: 1.08;
@@ -271,7 +271,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   font: inherit;
   text-align: center;
@@ -284,7 +284,7 @@
 
 #progress-report.admin-theme .admin-individual-progress-edit-toggle.is-editing,
 #progress-report.admin-theme .admin-individual-progress-edit-toggle.is-saving {
-  color: var(--text-muted);
+  color: var(--text);
 }
 
 #progress-report.admin-theme .admin-individual-progress-edit-toggle.has-save-error {
@@ -312,7 +312,7 @@
   padding: 9px;
   border: 1px solid rgba(var(--primary-rgb), 0.10);
   border-radius: 22px;
-  background: var(--surface-chip);
+  background: var(--surface-track);
   box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.03), 0 4px 12px rgba(var(--black-rgb), 0.08);
   overflow: hidden;
 }
@@ -323,8 +323,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 58px;
   grid-auto-rows: minmax(var(--student-progress-task-row-height, 40px), auto);
-  border: 1px solid rgba(var(--primary-rgb), 0.10);
-  border-radius: 18px;
+  border: 1px solid var(--surface-app);
+  border-radius: 10px;
   background: var(--surface-card);
   overflow-y: auto;
   overflow-x: hidden;
@@ -348,7 +348,7 @@
   display: flex;
   align-items: center;
   padding: 5px 10px;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.96rem;
   font-weight: 500;
   line-height: 1.12;
@@ -363,10 +363,10 @@
   display: inline-grid;
   place-items: center;
   border: 0;
-  border-left: 1px solid rgba(var(--primary-rgb), 0.08);
+  border-left: 1px solid var(--surface-track);
   border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
 }
 
@@ -380,14 +380,14 @@
 
 #progress-report.admin-theme .admin-individual-progress-status-cell:focus-visible,
 #progress-report.admin-theme .admin-individual-progress-status-cell:focus {
-  outline: 2px solid rgba(var(--primary-rgb), 0.36);
+  outline: 2px var(--surface-track);
   outline-offset: -2px;
 }
 
 #progress-report.admin-theme .admin-individual-progress-status-cell .admin-progress-class-grid-status-symbol--empty-edit-text {
   font-size: 1.34rem;
   font-weight: 400;
-  color: var(--text-muted);
+  color: var(--text);
 }
 
 #progress-report.admin-theme .admin-individual-progress-status-cell .status-tick {
@@ -434,7 +434,7 @@
     z-index: 3;
     transform: scale(1);
     opacity: 1;
-    outline: 2px solid rgba(var(--primary-rgb), 0.32);
+    outline: 2px var(--surface-track);
     outline-offset: 2px;
     box-shadow: 0 14px 30px rgba(var(--black-rgb), 0.18);
   }
@@ -548,7 +548,7 @@
 #progress-report.admin-theme .admin-individual-progress-module-panel {
   padding: 0;
   gap: 0;
-  background: transparent;
+  background: var(--surface-app);
   box-shadow: none;
   overflow: visible;
 }
