@@ -40,10 +40,10 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: clamp(1.5rem, 9.5vw, 3.1rem);
-  font-weight: 600;
+  font-size: clamp(1.0rem, 9.5vw, 3.1rem);
+  font-weight: 500;
   line-height: 1.02;
-  letter-spacing: 0.01em;
+
 }
 
 .m4l-recorder-book-card,
@@ -179,7 +179,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   min-height: 36px;
   margin-bottom: 0;
 }
-
+/* Quarantined legacy back button
 .m4l-recorder-back-btn {
   width: auto;
   min-width: 0;
@@ -195,7 +195,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   font-weight: 850;
   letter-spacing: 0;
 }
-
+*/
 .m4l-recorder-back-icon-btn {
   appearance: none;
   width: 42px;
@@ -216,12 +216,20 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 }
 
 .m4l-recorder-back-icon {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   display: block;
   background: currentColor;
   -webkit-mask: url('/icons/back.svg') center / contain no-repeat;
   mask: url('/icons/back.svg') center / contain no-repeat;
+}
+.m4l-recorder-back-label {
+  display: block;
+  max-width: 120px;
+  color: currentColor;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.1;
 }
 
 .m4l-recorder-view-title {
