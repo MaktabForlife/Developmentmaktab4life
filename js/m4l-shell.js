@@ -1,7 +1,8 @@
-/* M4L v91.3 - Shell / Navigation / User Band module.
-   Owns app browser-back history, cover-home navigation,
-   V91.3: medium/large browser Back/edge-swipe guard keeps active app pages in place.
-   banner Zoom, slide-down menu grid, and shared refresh feedback.
+/* M4L v92.1 - Shell / Navigation / User Band module.
+   Owns app browser-back history, cover-home navigation, banner Zoom,
+   slide-down menu grid, and shared refresh feedback.
+   V92.1 connects the Recorder Pages → Record → Preview history stack while
+   preserving Library, Progress, Attendance, and medium/large section guards.
    /js/m4l-swipe.js is no longer required. */
 
 /* =========================
@@ -217,19 +218,44 @@ function showScreen(screenId) {
 
 
 /* =========================
-   APP BROWSER BACK HISTORY - V80
-   Keeps Android/Samsung/iPhone browser Back inside the app where possible.
+   APP BROWSER BACK HISTORY - V91.8
+   Section-aware history for Library, Progress, Recorder, and Attendance.
+   Browser Back closes the current child/detail view and restores that
+   section's home view before any cross-section navigation is considered.
 ========================= */
 
 const M4L_APP_HISTORY_FLAG = "maktab4life";
-const M4L_APP_HISTORY_VERSION = 87;
+const M4L_APP_HISTORY_VERSION = 921;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
 const M4L_APP_HISTORY_DESKTOP_GUARD_QUERY = "(min-width: 768px)";
+
+const M4L_APP_HISTORY_SECTION_ROOTS = Object.freeze({
+  library: {
+    default: "student-resources-subjects"
+  },
+  progress: {
+    student: "progress-subjects-screen",
+    admin: "progress-report",
+    default: "progress-subjects-screen"
+  },
+  recorder: {
+    default: "record-lesson-screen"
+  },
+  attendance: {
+    default: "attendance-screen"
+  }
+});
+
+const m4lAppHistorySectionHandlers = Object.create(null);
 
 let m4lAppHistoryBound = false;
 let m4lAppHistoryHandlingPopState = false;
 let m4lAppHistoryExitArmed = false;
 let m4lAppHistoryLastExitPromptAt = 0;
+let m4lAppHistoryLastKnownState = null;
+let m4lAppHistoryModuleAdaptersBound = false;
+let m4lAppHistoryModuleAdapterRetryTimer = 0;
+let m4lAppHistoryModuleAdapterRetryCount = 0;
 
 function isM4LAppHistorySupported() {
   return typeof window !== "undefined" &&
@@ -261,11 +287,97 @@ function isM4LAppAuthScreen(screenId) {
 }
 
 function isM4LAppLayerScreen(screenId) {
-  return String(screenId || "") === "pdf-viewer-screen";
+  return [
+    "pdf-viewer-screen",
+    "resource-viewer-screen",
+    "audio-player-screen",
+    "video-player-screen"
+  ].includes(String(screenId || ""));
+}
+
+function normalizeM4LAppHistorySection(sectionValue) {
+  const value = String(sectionValue || "").trim().toLowerCase();
+
+  if (["library", "resources", "resource"].includes(value)) return "library";
+  if (["progress"].includes(value)) return "progress";
+  if (["record", "recorder", "lesson-recorder"].includes(value)) return "recorder";
+  if (["attendance", "register"].includes(value)) return "attendance";
+
+  return "";
 }
 
 function getM4LAppHistoryRole() {
   return typeof getBottomNavRole === "function" ? String(getBottomNavRole() || "") : "";
+}
+
+function getM4LAppSectionForScreen(screenId, roleValue) {
+  const id = String(screenId || "");
+  const role = String(roleValue || getM4LAppHistoryRole() || "").toLowerCase();
+
+  if (!id) return "";
+
+  if (
+    id === "pdf-viewer-screen" ||
+    id === "resource-viewer-screen" ||
+    id === "audio-player-screen" ||
+    id === "video-player-screen" ||
+    id.startsWith("student-resource") ||
+    id.startsWith("student-resources") ||
+    id.startsWith("library-")
+  ) {
+    return "library";
+  }
+
+  if (
+    id === "attendance-screen" ||
+    id.startsWith("attendance-")
+  ) {
+    return "attendance";
+  }
+
+  if (
+    id === "record-lesson-screen" ||
+    id.startsWith("record-") ||
+    id.startsWith("recorder-")
+  ) {
+    return "recorder";
+  }
+
+  if (
+    id === "progress-report" ||
+    id === "progress-subjects-screen" ||
+    id === "progress-tasks-screen" ||
+    id === "progress-task-students-screen" ||
+    id === "teacher-student-tasks" ||
+    id.startsWith("progress-") ||
+    id.startsWith("admin-progress")
+  ) {
+    return "progress";
+  }
+
+  // Role is accepted so future role-specific section names can be resolved
+  // without changing callers.
+  void role;
+  return "";
+}
+
+function getM4LAppSectionHomeScreenId(sectionValue, roleValue) {
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  const role = String(roleValue || getM4LAppHistoryRole() || "").toLowerCase();
+  const config = M4L_APP_HISTORY_SECTION_ROOTS[section];
+
+  if (!config) return "";
+
+  return String(config[role] || config.default || "");
+}
+
+function isM4LAppSectionHomeScreen(screenId, sectionValue, roleValue) {
+  const section = normalizeM4LAppHistorySection(
+    sectionValue || getM4LAppSectionForScreen(screenId, roleValue)
+  );
+  const homeScreenId = getM4LAppSectionHomeScreenId(section, roleValue);
+
+  return !!homeScreenId && String(screenId || "") === homeScreenId;
 }
 
 function getM4LAppHistoryToken() {
@@ -280,12 +392,59 @@ function getM4LAppHistoryToken() {
   }
 }
 
+function getM4LAppHistorySafeContext(value) {
+  if (value === undefined || value === null) return null;
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    console.warn("App history context was not serializable and was omitted.", error);
+    return null;
+  }
+}
+
+function getM4LAppHistoryContextKey(context) {
+  if (context === undefined || context === null) return "";
+
+  try {
+    return JSON.stringify(context);
+  } catch (error) {
+    return "";
+  }
+}
+
 function getM4LAppHistoryStateForScreen(screenId, options = {}) {
   const id = String(screenId || "");
-  const role = getM4LAppHistoryRole();
-  const kind = isM4LAppLayerScreen(id)
-    ? "layer"
-    : (isM4LAppHomeScreen(id) ? "home" : (isM4LAppAuthScreen(id) ? "auth" : "screen"));
+  const role = String(options.role || getM4LAppHistoryRole() || "");
+  const section = normalizeM4LAppHistorySection(
+    options.section || getM4LAppSectionForScreen(id, role)
+  );
+  const sectionHome = String(
+    options.sectionHome ||
+    getM4LAppSectionHomeScreenId(section, role) ||
+    ""
+  );
+  const viewId = String(options.viewId || "").trim();
+
+  let kind = String(options.kind || "").trim();
+
+  if (!kind) {
+    if (isM4LAppLayerScreen(id)) {
+      kind = "layer";
+    } else if (isM4LAppHomeScreen(id)) {
+      kind = "home";
+    } else if (isM4LAppAuthScreen(id)) {
+      kind = "auth";
+    } else if (section && viewId && viewId !== "home") {
+      kind = "section-view";
+    } else if (section && id === sectionHome) {
+      kind = "section-home";
+    } else if (section) {
+      kind = "section-screen";
+    } else {
+      kind = "screen";
+    }
+  }
 
   const stateData = {
     app: M4L_APP_HISTORY_FLAG,
@@ -295,9 +454,25 @@ function getM4LAppHistoryStateForScreen(screenId, options = {}) {
     kind
   };
 
-  if (kind === "layer") {
-    const from = String(options.from || "");
-    stateData.returnTo = from && from !== id ? from : getM4LAppHomeScreenId(role);
+  if (section) {
+    stateData.section = section;
+    stateData.sectionHome = sectionHome;
+  }
+
+  if (viewId) {
+    stateData.viewId = viewId;
+  }
+
+  if (options.context !== undefined) {
+    stateData.context = getM4LAppHistorySafeContext(options.context);
+    stateData.contextKey = getM4LAppHistoryContextKey(stateData.context);
+  }
+
+  if (kind === "layer" || kind === "section-view" || kind === "section-screen") {
+    const from = String(options.returnTo || options.from || "");
+    stateData.returnTo = from && from !== id
+      ? from
+      : (sectionHome || getM4LAppHomeScreenId(role));
   }
 
   if (options.guard === true) {
@@ -318,14 +493,32 @@ function bindM4LAppHistoryBackHandler() {
 
 function replaceM4LAppHistoryState(screenId, options = {}) {
   if (!isM4LAppHistorySupported()) return false;
-  window.history.replaceState(getM4LAppHistoryStateForScreen(screenId, options), "", window.location.href);
-  return true;
+
+  const nextState = getM4LAppHistoryStateForScreen(screenId, options);
+
+  try {
+    window.history.replaceState(nextState, "", window.location.href);
+    m4lAppHistoryLastKnownState = nextState;
+    return true;
+  } catch (error) {
+    console.error("Could not replace app history state.", error);
+    return false;
+  }
 }
 
 function pushM4LAppHistoryState(screenId, options = {}) {
   if (!isM4LAppHistorySupported()) return false;
-  window.history.pushState(getM4LAppHistoryStateForScreen(screenId, options), "", window.location.href);
-  return true;
+
+  const nextState = getM4LAppHistoryStateForScreen(screenId, options);
+
+  try {
+    window.history.pushState(nextState, "", window.location.href);
+    m4lAppHistoryLastKnownState = nextState;
+    return true;
+  } catch (error) {
+    console.error("Could not push app history state.", error);
+    return false;
+  }
 }
 
 function ensureM4LAppHomeHistory(screenId) {
@@ -336,6 +529,7 @@ function ensureM4LAppHomeHistory(screenId) {
       currentState.screenId === id &&
       currentState.kind === "home" &&
       currentState.guard === true) {
+    m4lAppHistoryLastKnownState = currentState;
     return true;
   }
 
@@ -344,13 +538,166 @@ function ensureM4LAppHomeHistory(screenId) {
   return true;
 }
 
-function shouldSkipM4LAppHistoryDuplicate(screenId) {
+function shouldSkipM4LAppHistoryDuplicate(screenId, options = {}) {
   const currentState = getM4LAppHistoryCurrentState();
   if (!isM4LAppHistoryState(currentState)) return false;
 
-  return currentState.screenId === String(screenId || "") &&
-    currentState.kind !== "layer" &&
+  const targetId = String(screenId || "");
+  const targetSection = normalizeM4LAppHistorySection(
+    options.section || getM4LAppSectionForScreen(targetId)
+  );
+  const hasExplicitViewId = Object.prototype.hasOwnProperty.call(options, "viewId");
+  const targetViewId = String(options.viewId || "");
+
+  if (
+    currentState.screenId !== targetId ||
+    String(currentState.section || "") !== targetSection ||
+    currentState.kind === "layer" ||
+    currentState.guard === true
+  ) {
+    return false;
+  }
+
+  // showScreen() may be called again while a module changes an internal view
+  // inside the same screen (Attendance panels and Admin Individual Progress).
+  // That internal view is recorded separately by recordM4LAppSectionView(), so
+  // do not create an extra generic same-screen entry first.
+  if (!hasExplicitViewId) {
+    return true;
+  }
+
+  return String(currentState.viewId || "") === targetViewId;
+}
+
+function isSameM4LAppSectionHistoryView(currentState, sectionValue, viewId, screenId, context) {
+  if (!isM4LAppHistoryState(currentState)) return false;
+
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  const targetScreenId = String(screenId || "");
+  const targetViewId = String(viewId || "");
+  const targetContextKey = getM4LAppHistoryContextKey(getM4LAppHistorySafeContext(context));
+
+  return String(currentState.section || "") === section &&
+    String(currentState.screenId || "") === targetScreenId &&
+    String(currentState.viewId || "") === targetViewId &&
+    String(currentState.contextKey || "") === targetContextKey &&
     currentState.guard !== true;
+}
+
+function recordM4LAppSectionHome(sectionValue, options = {}) {
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  if (!section || !isM4LAppHistorySupported()) return false;
+  if (m4lAppHistoryHandlingPopState === true) return false;
+
+  const role = String(options.role || getM4LAppHistoryRole() || "");
+  const screenId = String(
+    options.screenId ||
+    getM4LAppSectionHomeScreenId(section, role) ||
+    getActiveScreenId() ||
+    ""
+  );
+
+  if (!screenId) return false;
+
+  const currentState = getM4LAppHistoryCurrentState();
+
+  if (
+    isM4LAppHistoryState(currentState) &&
+    String(currentState.section || "") === section &&
+    String(currentState.screenId || "") === screenId
+  ) {
+    return replaceM4LAppHistoryState(screenId, {
+      section,
+      sectionHome: screenId,
+      viewId: "home",
+      kind: "section-home",
+      context: options.context
+    });
+  }
+
+  if (options.replace === true) {
+    return replaceM4LAppHistoryState(screenId, {
+      section,
+      sectionHome: screenId,
+      viewId: "home",
+      kind: "section-home",
+      context: options.context
+    });
+  }
+
+  return pushM4LAppHistoryState(screenId, {
+    section,
+    sectionHome: screenId,
+    viewId: "home",
+    kind: "section-home",
+    context: options.context
+  });
+}
+
+function recordM4LAppSectionView(sectionValue, viewIdValue, options = {}) {
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  const viewId = String(viewIdValue || "").trim();
+
+  if (!section || !viewId || !isM4LAppHistorySupported()) return false;
+  if (m4lAppHistoryHandlingPopState === true) return false;
+
+  const role = String(options.role || getM4LAppHistoryRole() || "");
+  const sectionHome = String(
+    options.sectionHome ||
+    getM4LAppSectionHomeScreenId(section, role) ||
+    ""
+  );
+  const screenId = String(
+    options.screenId ||
+    getActiveScreenId() ||
+    sectionHome
+  );
+
+  if (!screenId) return false;
+
+  const currentState = getM4LAppHistoryCurrentState();
+
+  if (isSameM4LAppSectionHistoryView(currentState, section, viewId, screenId, options.context)) {
+    return false;
+  }
+
+  const historyOptions = {
+    section,
+    sectionHome,
+    viewId,
+    kind: viewId === "home" ? "section-home" : "section-view",
+    context: options.context,
+    returnTo: options.returnTo || sectionHome
+  };
+
+  const shouldReplaceSiblingView =
+    options.nested !== true &&
+    isM4LAppHistoryState(currentState) &&
+    String(currentState.section || "") === section &&
+    String(currentState.kind || "") === "section-view";
+
+  if (options.replace === true || viewId === "home" || shouldReplaceSiblingView) {
+    return replaceM4LAppHistoryState(screenId, historyOptions);
+  }
+
+  return pushM4LAppHistoryState(screenId, historyOptions);
+}
+
+function registerM4LAppHistorySection(sectionValue, handlers = {}) {
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  if (!section || !handlers || typeof handlers !== "object") return false;
+
+  m4lAppHistorySectionHandlers[section] = {
+    ...m4lAppHistorySectionHandlers[section],
+    ...handlers
+  };
+
+  return true;
+}
+
+function getM4LAppHistorySectionHandler(sectionValue) {
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  return section ? (m4lAppHistorySectionHandlers[section] || null) : null;
 }
 
 function recordM4LAppHistoryScreen(screenId, options = {}) {
@@ -372,6 +719,14 @@ function recordM4LAppHistoryScreen(screenId, options = {}) {
     return false;
   }
 
+  const role = getM4LAppHistoryRole();
+  const originScreenId = String(options.from || "");
+  const detectedSection = getM4LAppSectionForScreen(id, role);
+  const originSection = getM4LAppSectionForScreen(originScreenId, role);
+  const section = isM4LAppLayerScreen(id)
+    ? (originSection || detectedSection)
+    : detectedSection;
+  const sectionHome = getM4LAppSectionHomeScreenId(section, role);
   const currentState = getM4LAppHistoryCurrentState();
 
   // If an in-app close button closes a temporary layer, replace the layer entry
@@ -380,7 +735,30 @@ function recordM4LAppHistoryScreen(screenId, options = {}) {
   if (isM4LAppHistoryState(currentState) &&
       currentState.kind === "layer" &&
       String(currentState.returnTo || "") === id) {
-    replaceM4LAppHistoryState(id);
+    replaceM4LAppHistoryState(id, {
+      section,
+      sectionHome,
+      viewId: section && id === sectionHome ? "home" : ""
+    });
+    return true;
+  }
+
+  // Same-screen child views such as Admin Individual Progress and Attendance
+  // panels use section-view states. If their own close action restores the
+  // section root, replace that child entry rather than leaving stale Back state.
+  if (
+    isM4LAppHistoryState(currentState) &&
+    currentState.kind === "section-view" &&
+    section &&
+    String(currentState.section || "") === section &&
+    id === sectionHome
+  ) {
+    replaceM4LAppHistoryState(id, {
+      section,
+      sectionHome,
+      viewId: "home",
+      kind: "section-home"
+    });
     return true;
   }
 
@@ -389,11 +767,36 @@ function recordM4LAppHistoryScreen(screenId, options = {}) {
     return true;
   }
 
-  if (shouldSkipM4LAppHistoryDuplicate(id)) {
+  if (shouldSkipM4LAppHistoryDuplicate(id, { section })) {
     return false;
   }
 
-  pushM4LAppHistoryState(id, { from: options.from });
+  // A temporary media/viewer layer is a direct child of the section home.
+  // If another same-section child is currently open, collapse that child first
+  // so one browser Back returns to Library/Progress/Recorder/Attendance home.
+  if (
+    isM4LAppLayerScreen(id) &&
+    section &&
+    sectionHome &&
+    isM4LAppHistoryState(currentState) &&
+    String(currentState.section || "") === section &&
+    String(currentState.kind || "") === "section-view"
+  ) {
+    replaceM4LAppHistoryState(sectionHome, {
+      section,
+      sectionHome,
+      viewId: "home",
+      kind: "section-home"
+    });
+  }
+
+  pushM4LAppHistoryState(id, {
+    from: options.from,
+    returnTo: sectionHome || options.from,
+    section,
+    sectionHome,
+    viewId: section && id === sectionHome ? "home" : ""
+  });
   return true;
 }
 
@@ -466,14 +869,24 @@ function shouldGuardM4LAppHistoryPopState(targetState, activeScreenId) {
   if (!isM4LAppHistoryDesktopGuardViewport()) return false;
   if (!getM4LAppHistoryToken()) return false;
 
-  // V91.3: medium and large layouts should not let browser Back/edge-swipe
-  // move ordinary app pages back to Home. App Home/menu/nav buttons remain the
-  // explicit way to leave the current page. Mobile keeps the existing behavior.
+  const activeSection = getM4LAppSectionForScreen(activeId);
+  const targetSection = normalizeM4LAppHistorySection(
+    targetState.section || getM4LAppSectionForScreen(targetId, targetState.role)
+  );
+
+  // Back inside Library, Progress, Attendance, or Recorder is always allowed.
+  // The desktop guard only prevents an edge swipe from escaping the section.
+  if (activeSection && targetSection && activeSection === targetSection) {
+    return false;
+  }
+
+  // V91.3 behaviour remains for ordinary cross-section page movement:
+  // medium/large layouts should not let browser Back/edge-swipe move an app
+  // section directly to Home. Home/menu/nav buttons remain the explicit exit.
   if (isM4LAppAuthScreen(activeId) || isM4LAppHomeScreen(activeId) || isM4LAppLayerScreen(activeId)) {
     return false;
   }
 
-  // Temporary overlay/layer history still uses Back as a close/return mechanism.
   if (targetState.kind === "layer") {
     return false;
   }
@@ -489,7 +902,266 @@ function rearmM4LAppHistoryCurrentScreen(activeScreenId) {
   const id = String(activeScreenId || "");
   if (!id || !isM4LAppHistorySupported()) return false;
 
-  pushM4LAppHistoryState(id, { guard: true });
+  const current = m4lAppHistoryLastKnownState;
+  const section = getM4LAppSectionForScreen(id);
+
+  pushM4LAppHistoryState(id, {
+    guard: true,
+    section,
+    sectionHome: getM4LAppSectionHomeScreenId(section),
+    viewId: current && current.screenId === id ? current.viewId : "",
+    context: current && current.screenId === id ? current.context : null
+  });
+  return true;
+}
+
+function cleanupM4LAppHistoryLayerBeforeRestore(activeScreenId, targetScreenId) {
+  const activeId = String(activeScreenId || "");
+  const targetId = String(targetScreenId || "");
+
+  if (activeId === "pdf-viewer-screen" && targetId !== "pdf-viewer-screen") {
+    const viewerFrame = document.getElementById("pdf-viewer-frame");
+    if (viewerFrame) {
+      viewerFrame.src = "";
+    }
+
+    if (document.body) {
+      document.body.classList.remove("pdf-viewer-open");
+    }
+  }
+
+  return true;
+}
+
+function callM4LAppHistoryOptionalFunction(functionName, args = []) {
+  const fn = typeof window !== "undefined" ? window[String(functionName || "")] : null;
+
+  if (typeof fn !== "function") {
+    return false;
+  }
+
+  return fn(...(Array.isArray(args) ? args : []));
+}
+
+function restoreM4LAppLibraryHistoryState(targetState) {
+  const viewId = String(targetState.viewId || "home");
+  const context = targetState.context || {};
+  const rootScreenId = String(targetState.sectionHome || "student-resources-subjects");
+
+  if (typeof showScreen === "function" && document.getElementById(rootScreenId)) {
+    showScreen(rootScreenId);
+  }
+
+  if (viewId === "inline-media" && context.resourceId) {
+    if (
+      window.M4LResources &&
+      typeof window.M4LResources.openLibraryResourceById === "function"
+    ) {
+      return window.M4LResources.openLibraryResourceById(context.resourceId);
+    }
+
+    return callM4LAppHistoryOptionalFunction("openLibraryResourceById", [context.resourceId]);
+  }
+
+  if (
+    window.M4LResources &&
+    typeof window.M4LResources.clearInlineResourcePreviews === "function"
+  ) {
+    window.M4LResources.clearInlineResourcePreviews();
+  } else {
+    callM4LAppHistoryOptionalFunction("clearInlineResourcePreviews");
+  }
+
+  return true;
+}
+
+function restoreM4LAppAttendanceHistoryState(targetState) {
+  const viewId = String(targetState.viewId || "home");
+
+  if (viewId === "records" && typeof window.openViewAttendance === "function") {
+    return window.openViewAttendance();
+  }
+
+  if (viewId === "stats" && typeof window.openAttendanceStats === "function") {
+    return window.openAttendanceStats();
+  }
+
+  if (typeof window.openMarkRegister === "function") {
+    return window.openMarkRegister();
+  }
+
+  const rootScreenId = String(targetState.sectionHome || "attendance-screen");
+  return typeof showScreen === "function" ? showScreen(rootScreenId) : false;
+}
+
+function restoreM4LAppProgressHistoryState(targetState) {
+  const viewId = String(targetState.viewId || "home");
+  const context = targetState.context || {};
+  const role = String(targetState.role || getM4LAppHistoryRole() || "").toLowerCase();
+
+  if (
+    viewId === "individual" &&
+    context.studentid &&
+    typeof window.openAdminIndividualStudentCard === "function"
+  ) {
+    return window.openAdminIndividualStudentCard(
+      context.studentid,
+      context.username || context.studentName || "Student"
+    );
+  }
+
+  if (
+    viewId === "student-module" &&
+    context.moduleKey &&
+    typeof window.openStudentSubjectTasks === "function"
+  ) {
+    return window.openStudentSubjectTasks(context.moduleKey);
+  }
+
+  if (role === "admin" && typeof window.requestCloseAdminIndividualStudentView === "function") {
+    return window.requestCloseAdminIndividualStudentView({ fromBrowserHistory: true });
+  }
+
+  if (role === "admin" && typeof window.showProgressReport === "function") {
+    return window.showProgressReport();
+  }
+
+  if (role !== "admin" && typeof window.showStudentTasks === "function") {
+    return window.showStudentTasks();
+  }
+
+  const rootScreenId = String(
+    targetState.sectionHome ||
+    getM4LAppSectionHomeScreenId("progress", role)
+  );
+
+  return typeof showScreen === "function" ? showScreen(rootScreenId) : false;
+}
+
+function restoreM4LAppRecorderHistoryState(targetState) {
+  const rootScreenId = String(targetState.sectionHome || "record-lesson-screen");
+  const requestedViewId = String(targetState.viewId || "pages");
+  const viewId = ["home", "pages", "record", "preview"].includes(requestedViewId)
+    ? requestedViewId
+    : "pages";
+
+  if (typeof showScreen === "function" && document.getElementById(rootScreenId)) {
+    showScreen(rootScreenId);
+  }
+
+  const recorder = window.M4LRecorder;
+
+  if (recorder && typeof recorder.restoreHistoryState === "function") {
+    return recorder.restoreHistoryState({
+      viewId,
+      context: targetState.context || null,
+      historyState: targetState
+    });
+  }
+
+  if (recorder && typeof recorder.open === "function") {
+    return recorder.open();
+  }
+
+  return true;
+}
+
+function restoreM4LAppSectionHistoryState(targetState) {
+  const section = normalizeM4LAppHistorySection(targetState && targetState.section);
+  const handler = getM4LAppHistorySectionHandler(section);
+
+  if (handler && typeof handler.restore === "function") {
+    return handler.restore(targetState);
+  }
+
+  if (section === "library") {
+    return restoreM4LAppLibraryHistoryState(targetState);
+  }
+
+  if (section === "attendance") {
+    return restoreM4LAppAttendanceHistoryState(targetState);
+  }
+
+  if (section === "progress") {
+    return restoreM4LAppProgressHistoryState(targetState);
+  }
+
+  if (section === "recorder") {
+    return restoreM4LAppRecorderHistoryState(targetState);
+  }
+
+  const targetScreenId = String(targetState.screenId || "");
+  return targetScreenId && typeof showScreen === "function"
+    ? showScreen(targetScreenId)
+    : false;
+}
+
+function restoreM4LAppHistoryState(targetState, activeScreenId) {
+  const targetScreenId = String(
+    targetState.screenId ||
+    getM4LAppHomeScreenId(targetState.role)
+  );
+
+  cleanupM4LAppHistoryLayerBeforeRestore(activeScreenId, targetScreenId);
+
+  if (targetState.kind === "layer") {
+    return document.getElementById(targetScreenId) && typeof showScreen === "function"
+      ? showScreen(targetScreenId)
+      : false;
+  }
+
+  if (targetState.section) {
+    return restoreM4LAppSectionHistoryState(targetState);
+  }
+
+  if (!document.getElementById(targetScreenId)) {
+    return false;
+  }
+
+  return typeof showScreen === "function" ? showScreen(targetScreenId) : false;
+}
+
+function restoreM4LAppSectionHomeFallback(activeScreenId) {
+  const section = getM4LAppSectionForScreen(activeScreenId);
+  const sectionHome = getM4LAppSectionHomeScreenId(section);
+
+  if (!section || !sectionHome) {
+    return false;
+  }
+
+  const fallbackState = getM4LAppHistoryStateForScreen(sectionHome, {
+    section,
+    sectionHome,
+    viewId: "home",
+    kind: "section-home"
+  });
+
+  m4lAppHistoryHandlingPopState = true;
+
+  let result;
+  try {
+    result = restoreM4LAppSectionHistoryState(fallbackState);
+  } catch (error) {
+    m4lAppHistoryHandlingPopState = false;
+    throw error;
+  }
+
+  const finish = () => {
+    m4lAppHistoryHandlingPopState = false;
+    pushM4LAppHistoryState(sectionHome, {
+      section,
+      sectionHome,
+      viewId: "home",
+      kind: "section-home"
+    });
+  };
+
+  if (result && typeof result.then === "function") {
+    result.finally(finish);
+  } else {
+    finish();
+  }
+
   return true;
 }
 
@@ -500,13 +1172,28 @@ function handleM4LAppHistoryPopState(event) {
   }
 
   const targetState = event ? event.state : null;
+  const activeScreenId = typeof getActiveScreenId === "function" ? getActiveScreenId() : "";
 
   if (!isM4LAppHistoryState(targetState)) {
+    const lastState = m4lAppHistoryLastKnownState;
+
+    // A child/detail view should never fall out of the app because an older or
+    // external history entry sits underneath it. Restore the section home.
+    if (
+      isM4LAppHistoryState(lastState) &&
+      ["layer", "section-view", "section-screen"].includes(String(lastState.kind || "")) &&
+      restoreM4LAppSectionHomeFallback(activeScreenId)
+    ) {
+      return;
+    }
+
     return;
   }
 
-  const targetScreenId = String(targetState.screenId || getM4LAppHomeScreenId(targetState.role));
-  const activeScreenId = typeof getActiveScreenId === "function" ? getActiveScreenId() : "";
+  const targetScreenId = String(
+    targetState.screenId ||
+    getM4LAppHomeScreenId(targetState.role)
+  );
 
   if (shouldGuardM4LAppHistoryPopState(targetState, activeScreenId)) {
     rearmM4LAppHistoryCurrentScreen(activeScreenId);
@@ -518,23 +1205,67 @@ function handleM4LAppHistoryPopState(event) {
     return;
   }
 
-  if (!document.getElementById(targetScreenId)) {
+  const previousState = m4lAppHistoryLastKnownState;
+
+  m4lAppHistoryHandlingPopState = true;
+  m4lAppHistoryLastKnownState = targetState;
+
+  let result;
+
+  try {
+    result = restoreM4LAppHistoryState(targetState, activeScreenId);
+  } catch (error) {
+    m4lAppHistoryHandlingPopState = false;
+    m4lAppHistoryLastKnownState = previousState;
+    console.error("Could not restore app history state.", error);
     return;
   }
 
-  m4lAppHistoryHandlingPopState = true;
-  try {
-    showScreen(targetScreenId);
-  } finally {
+  const finish = restored => {
     m4lAppHistoryHandlingPopState = false;
+
+    // A module may reject Back because the user cancelled an unsaved-change
+    // confirmation. Restore the history entry that still matches the visible
+    // child view instead of leaving browser history and UI out of sync.
+    if (restored === false && isM4LAppHistoryState(previousState)) {
+      try {
+        window.history.pushState(previousState, "", window.location.href);
+        m4lAppHistoryLastKnownState = previousState;
+      } catch (error) {
+        console.error("Could not restore the cancelled app history entry.", error);
+      }
+      return;
+    }
+
+    m4lAppHistoryLastKnownState = targetState;
+  };
+
+  if (result && typeof result.then === "function") {
+    result.then(finish, error => {
+      finish(false);
+      console.error("Could not restore app history state.", error);
+    });
+  } else {
+    finish(result);
   }
+}
+
+function getM4LAppHistoryPublicState() {
+  return getM4LAppHistoryCurrentState();
 }
 
 function closeM4LAppHistoryLayer(returnToScreenId) {
   const currentState = getM4LAppHistoryCurrentState();
-  const target = String(returnToScreenId || (isM4LAppHistoryState(currentState) ? currentState.returnTo : "") || getM4LAppHomeScreenId());
+  const target = String(
+    returnToScreenId ||
+    (isM4LAppHistoryState(currentState) ? currentState.returnTo : "") ||
+    getM4LAppHomeScreenId()
+  );
 
-  if (isM4LAppHistoryState(currentState) && currentState.kind === "layer") {
+  if (
+    isM4LAppHistoryState(currentState) &&
+    ["layer", "section-view", "section-screen"].includes(String(currentState.kind || ""))
+  ) {
     window.history.back();
     return true;
   }
@@ -547,8 +1278,341 @@ function closeM4LAppHistoryLayer(returnToScreenId) {
   return false;
 }
 
+function closeM4LAppSectionView(sectionValue) {
+  const section = normalizeM4LAppHistorySection(sectionValue);
+  const currentState = getM4LAppHistoryCurrentState();
+
+  if (
+    section &&
+    isM4LAppHistoryState(currentState) &&
+    String(currentState.section || "") === section &&
+    String(currentState.kind || "") === "section-view"
+  ) {
+    window.history.back();
+    return true;
+  }
+
+  const sectionHome = getM4LAppSectionHomeScreenId(section);
+  if (!sectionHome) return false;
+
+  const fallbackState = getM4LAppHistoryStateForScreen(sectionHome, {
+    section,
+    sectionHome,
+    viewId: "home",
+    kind: "section-home"
+  });
+
+  return restoreM4LAppSectionHistoryState(fallbackState);
+}
+
+function scheduleM4LAppHistoryCommit(callback) {
+  if (typeof callback !== "function") return false;
+
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(callback);
+    return true;
+  }
+
+  if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(callback, 0);
+    return true;
+  }
+
+  callback();
+  return true;
+}
+
+function wrapM4LAppHistoryGlobalFunction(functionName, afterCall) {
+  if (typeof window === "undefined") return false;
+
+  const original = window[String(functionName || "")];
+
+  if (typeof original !== "function") return false;
+  if (original.__m4lAppHistoryWrapped === true) return true;
+
+  const wrapped = function wrappedM4LAppHistoryFunction(...args) {
+    const result = original.apply(this, args);
+
+    const commit = resolvedValue => {
+      if (m4lAppHistoryHandlingPopState === true) return;
+      if (typeof afterCall === "function") {
+        afterCall(args, resolvedValue);
+      }
+    };
+
+    if (result && typeof result.then === "function") {
+      result.then(
+        value => commit(value),
+        () => {}
+      );
+    } else {
+      scheduleM4LAppHistoryCommit(() => commit(result));
+    }
+
+    return result;
+  };
+
+  try {
+    Object.defineProperty(wrapped, "name", {
+      value: original.name || functionName,
+      configurable: true
+    });
+  } catch (error) {
+    // Function names are cosmetic; wrapping remains valid without this.
+  }
+
+  wrapped.__m4lAppHistoryWrapped = true;
+  wrapped.__m4lAppHistoryOriginal = original;
+  window[functionName] = wrapped;
+  return true;
+}
+
+function syncM4LAppHistoryLibraryInlinePreview(resourceId) {
+  const id = String(resourceId || "");
+  const visiblePreview = Array.from(
+    document.querySelectorAll(".library-inline-preview")
+  ).find(preview => {
+    return preview &&
+      preview.classList &&
+      !preview.classList.contains("hidden") &&
+      String(preview.dataset.currentResourceId || "") === id;
+  });
+
+  if (visiblePreview && id) {
+    recordM4LAppSectionView("library", "inline-media", {
+      screenId: "student-resources-subjects",
+      context: {
+        resourceId: id
+      }
+    });
+    return true;
+  }
+
+  recordM4LAppSectionHome("library", {
+    screenId: "student-resources-subjects",
+    replace: true
+  });
+  return false;
+}
+
+function installM4LAppHistoryGlobalFunctionAdapters() {
+  let installedCount = 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("showStudentResources", () => {
+    recordM4LAppSectionHome("library", {
+      screenId: "student-resources-subjects",
+      replace: true
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("showAdminResources", () => {
+    recordM4LAppSectionHome("library", {
+      screenId: "student-resources-subjects",
+      replace: true
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("openInlineResourcePreview", args => {
+    syncM4LAppHistoryLibraryInlinePreview(args[1]);
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("openMarkRegister", () => {
+    recordM4LAppSectionHome("attendance", {
+      screenId: "attendance-screen",
+      replace: true,
+      context: {
+        panel: "register"
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("openViewAttendance", () => {
+    recordM4LAppSectionView("attendance", "records", {
+      screenId: "attendance-screen",
+      context: {
+        panel: "records"
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("openAttendanceStats", () => {
+    recordM4LAppSectionView("attendance", "stats", {
+      screenId: "attendance-screen",
+      context: {
+        panel: "stats"
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("showProgressReport", () => {
+    recordM4LAppSectionHome("progress", {
+      screenId: "progress-report",
+      replace: true,
+      context: {
+        view: "class"
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("showStudentTasks", () => {
+    recordM4LAppSectionHome("progress", {
+      screenId: "progress-subjects-screen",
+      replace: true,
+      context: {
+        view: "modules"
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("openAdminIndividualStudentCard", args => {
+    recordM4LAppSectionView("progress", "individual", {
+      screenId: "progress-report",
+      context: {
+        studentid: String(args[0] || ""),
+        username: String(args[1] || "Student")
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("requestCloseAdminIndividualStudentView", () => {
+    recordM4LAppSectionHome("progress", {
+      screenId: "progress-report",
+      replace: true,
+      context: {
+        view: "class"
+      }
+    });
+  }) ? 1 : 0;
+
+  installedCount += wrapM4LAppHistoryGlobalFunction("openStudentSubjectTasks", args => {
+    recordM4LAppSectionView("progress", "student-module", {
+      screenId: "progress-subjects-screen",
+      context: {
+        moduleKey: String(args[0] || "")
+      }
+    });
+  }) ? 1 : 0;
+
+  return installedCount;
+}
+
+function handleM4LAppHistoryModuleClick(event) {
+  const target = event && event.target;
+  if (!target || typeof target.closest !== "function") return;
+
+  const resourceCard = target.closest(".library-resource-card");
+
+  if (resourceCard) {
+    const resourceId = String(resourceCard.dataset.resourceId || "");
+
+    window.setTimeout(() => {
+      if (getActiveScreenId() === "pdf-viewer-screen") {
+        return;
+      }
+
+      syncM4LAppHistoryLibraryInlinePreview(resourceId);
+    }, 0);
+
+    return;
+  }
+
+  const attendanceAction = target.closest("[data-attendance-action]");
+
+  if (attendanceAction) {
+    const action = String(attendanceAction.dataset.attendanceAction || "");
+
+    window.setTimeout(() => {
+      if (action === "open-register-panel") {
+        recordM4LAppSectionHome("attendance", {
+          screenId: "attendance-screen",
+          replace: true,
+          context: { panel: "register" }
+        });
+      } else if (action === "open-records-panel") {
+        recordM4LAppSectionView("attendance", "records", {
+          screenId: "attendance-screen",
+          context: { panel: "records" }
+        });
+      } else if (action === "open-stats-panel") {
+        recordM4LAppSectionView("attendance", "stats", {
+          screenId: "attendance-screen",
+          context: { panel: "stats" }
+        });
+      }
+    }, 0);
+
+    return;
+  }
+
+  const progressAction = target.closest("[data-progress-action]");
+
+  if (!progressAction) return;
+
+  const action = String(progressAction.dataset.progressAction || "");
+
+  window.setTimeout(() => {
+    if (action === "open-admin-individual-student-card") {
+      recordM4LAppSectionView("progress", "individual", {
+        screenId: "progress-report",
+        context: {
+          studentid: String(progressAction.dataset.studentid || ""),
+          username: String(progressAction.dataset.username || "Student")
+        }
+      });
+    } else if (action === "close-admin-individual-student-view") {
+      recordM4LAppSectionHome("progress", {
+        screenId: "progress-report",
+        replace: true,
+        context: { view: "class" }
+      });
+    } else if (action === "open-student-subject-tasks") {
+      recordM4LAppSectionView("progress", "student-module", {
+        screenId: "progress-subjects-screen",
+        context: {
+          moduleKey: String(progressAction.dataset.subjectKey || "")
+        }
+      });
+    }
+  }, 0);
+}
+
+function installM4LAppHistoryModuleAdapters() {
+  installM4LAppHistoryGlobalFunctionAdapters();
+
+  if (
+    m4lAppHistoryModuleAdaptersBound !== true &&
+    typeof document !== "undefined" &&
+    typeof document.addEventListener === "function"
+  ) {
+    m4lAppHistoryModuleAdaptersBound = true;
+    document.addEventListener("click", handleM4LAppHistoryModuleClick, {
+      capture: true,
+      passive: true
+    });
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    m4lAppHistoryModuleAdapterRetryCount < 20
+  ) {
+    window.clearTimeout(m4lAppHistoryModuleAdapterRetryTimer || 0);
+    m4lAppHistoryModuleAdapterRetryTimer = window.setTimeout(() => {
+      m4lAppHistoryModuleAdapterRetryCount += 1;
+      installM4LAppHistoryModuleAdapters();
+    }, 500);
+  }
+
+  return true;
+}
+
 function initM4LAppHistory() {
   bindM4LAppHistoryBackHandler();
+  installM4LAppHistoryModuleAdapters();
+
+  const currentState = getM4LAppHistoryCurrentState();
+  if (isM4LAppHistoryState(currentState)) {
+    m4lAppHistoryLastKnownState = currentState;
+  }
 
   const activeScreenId = typeof getActiveScreenId === "function" ? getActiveScreenId() : "";
   if (activeScreenId) {
@@ -564,6 +1628,10 @@ if (typeof document !== "undefined") {
   } else {
     initM4LAppHistory();
   }
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("load", installM4LAppHistoryModuleAdapters, { once: true });
 }
 
 
@@ -2460,12 +3528,26 @@ window.M4LShell = {
   isOptionalFunctionLoaded: typeof isOptionalFunctionLoaded === "function" ? isOptionalFunctionLoaded : undefined,
   getUserBandRefreshAction: typeof getUserBandRefreshAction === "function" ? getUserBandRefreshAction : undefined,
   recordAppHistoryScreen: typeof recordM4LAppHistoryScreen === "function" ? recordM4LAppHistoryScreen : undefined,
+  recordAppSectionHome: typeof recordM4LAppSectionHome === "function" ? recordM4LAppSectionHome : undefined,
+  recordAppSectionView: typeof recordM4LAppSectionView === "function" ? recordM4LAppSectionView : undefined,
+  getAppHistoryState: typeof getM4LAppHistoryPublicState === "function" ? getM4LAppHistoryPublicState : undefined,
+  registerAppHistorySection: typeof registerM4LAppHistorySection === "function" ? registerM4LAppHistorySection : undefined,
   closeAppHistoryLayer: typeof closeM4LAppHistoryLayer === "function" ? closeM4LAppHistoryLayer : undefined,
+  closeAppSectionView: typeof closeM4LAppSectionView === "function" ? closeM4LAppSectionView : undefined,
+  installAppHistoryModuleAdapters: typeof installM4LAppHistoryModuleAdapters === "function" ? installM4LAppHistoryModuleAdapters : undefined,
   initAppHistory: typeof initM4LAppHistory === "function" ? initM4LAppHistory : undefined
 };
 
 window.M4LAppHistory = {
   recordScreen: typeof recordM4LAppHistoryScreen === "function" ? recordM4LAppHistoryScreen : undefined,
+  recordSectionHome: typeof recordM4LAppSectionHome === "function" ? recordM4LAppSectionHome : undefined,
+  recordSectionView: typeof recordM4LAppSectionView === "function" ? recordM4LAppSectionView : undefined,
+  getCurrentState: typeof getM4LAppHistoryPublicState === "function" ? getM4LAppHistoryPublicState : undefined,
+  registerSection: typeof registerM4LAppHistorySection === "function" ? registerM4LAppHistorySection : undefined,
+  getSectionForScreen: typeof getM4LAppSectionForScreen === "function" ? getM4LAppSectionForScreen : undefined,
+  getSectionHomeScreen: typeof getM4LAppSectionHomeScreenId === "function" ? getM4LAppSectionHomeScreenId : undefined,
   closeLayer: typeof closeM4LAppHistoryLayer === "function" ? closeM4LAppHistoryLayer : undefined,
+  closeSectionView: typeof closeM4LAppSectionView === "function" ? closeM4LAppSectionView : undefined,
+  installModuleAdapters: typeof installM4LAppHistoryModuleAdapters === "function" ? installM4LAppHistoryModuleAdapters : undefined,
   init: typeof initM4LAppHistory === "function" ? initM4LAppHistory : undefined
 };
