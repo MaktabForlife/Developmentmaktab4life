@@ -14,50 +14,76 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)  --banner: 
      ========================================== */
- --banner-color: #9E83B8;       /* Core brand identifier African violoet #c9b2d1 dusty lavender #CCBDEA */ 
 
- --primary: #CCBBDB;          /* SAGE DUST  -  */
- 
- --surface-contrast:#9E83B8;    /* pink */  
-  /* ==========================================
-     SAGE PALETTE
+   /* ==========================================
+     Banner & Contrast
      ========================================== */
+       --banner-color: #9E83B8 ;       /* Core brand identifier African violoet #c9b2d1 dusty lavender #CCBDEA */ 
+         --surface-video:#9E83B8     /* Deep earthy olive-black  */
+
+      /* ==========================================
+     Background
+     ========================================== */
+       --surface-app: #EBE5D9;      /* Alabaster background (prevents eye strain) */
+       --primary-rgb: #EBE5D9  ;    /* Alabaster backgrounds */
+       --primary-light: #EBE5D9  ;   /* Alabaster backgrounds;*/
+      --surface-chip:  #EBE5D9 ;     /* Alabaster backgrounds */
+      --primary-lightest: #EBE5D9 ;  /*Alabaster backgrounds */
    
-    --primary-rgb: #CCBBDB ;    /* 168, 185, 146; /* Sage RGB for background opacity modifiers */
-    --primary-light: #CCBBDB ;   /* color-mix(in srgb, var(--primary) 80%, white 35%);*/
-    --primary-lighter: #CCBBDB ;   /* color-mix(in srgb, var(--primary) 80%, white 50%);*/
-    --primary-lighter: #CCBBDB  ;  /* color-mix(in srgb, var(--primary) 80%, white 50%);*/
-     --primary-lightest: #CCBBDB ;  /*color-mix(in srgb, var(--primary) 80%, white 70%); */
-    --surface-soft:#FFFFFF;       /* White content */
-    --surface-tint: #DFE7D7;      /* Mid-tone sage tint for disabled fields/borders */
-    --surface-video:#3B472A;     /* Deep earthy olive-black  */
+         /* ==========================================
+         Cards
+        ========================================== */
+        --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
+         --surface-soft:#FFFFFF;  
+       --surface-tint: #FFFFFF;    
+
+   
+         /* ==========================================
+         Strucural contrast
+        ========================================== */
+         --surface-track: #A2ABA1;    /* Ash grey for strcuture  */
 
 
-  /* ==========================================
-     LAVENDER PALETTE
+   
+         /* ==========================================
+        Contrast
      ========================================== */
-  --surface-chip:  #EBE5D9 ;     /* Alabaster backgrounds */
-  --surface-track: #A2ABA1;    /* Ash gres  */
+       --primary: #75896;          /* Reseda Green -  */
+
+       --surface-contrast: #75896;    /*Reseda Green -  */  
+     --surface-dark: #758976;     /* D dark modes or dark overlays */
+   
+         /* ==========================================
+        Text
+     ========================================== */
+
+   --text:#2C352D;             /* charoal primary body text */
+   --text-strong: #758976;      /* Rich deep forest - crisp visibility for H1/H2 headings */
+  --text-muted: #75896;       /* Medium sage-gray for secondary label hints */
+  --text-subtle: #EBE5D9;      /* Softer tone for captions, dates, and metadata */
+  --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
+  /* ==========================================
+     Active State
+     ========================================== */
+     
+    --primary-lighter: #CCBBDB ;   /* Thistle*/
+    
+   
+  
+  
    
   --zoom-colour: #0A437A;       /* Zoom action blue */
-  --surface-dark: #758976;     /* Deep dusty lavender for dark modes or dark overlays */
 
 
-  /* ==========================================
-    WHITEs
-     ========================================== */
-  --surface-app: #A2ABA1;      /* Ashh grey borderingOff-white page background (prevents eye strain) */
-  --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
 
+
+   
 
   /* ==========================================
      TEXT (Organic Typography Hierarchy)
      ========================================== */
-  --text:#2C352D;             /* Earthy dark sage - standard body copy reading color */
-  --text-strong: #758976;      /* Rich deep forest - crisp visibility for H1/H2 headings */
-  --text-muted: #5E6D49;       /* Medium sage-gray for secondary label hints */
-  --text-subtle: #7A8965;      /* Softer tone for captions, dates, and metadata */
-  --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
+  
+  
 
   /* Status */
   --success: #32cd32;
