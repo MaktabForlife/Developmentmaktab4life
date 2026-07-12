@@ -60,7 +60,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
         Text
      ========================================== */
 
-   --text:#2C352D;             /* charoal primary body text */
+   --text: #141c15;             /* charoal primary body text */
    --text-strong: #758976;      /* Rich deep forest - crisp visibility for H1/H2 headings */
   --text-muted: #EBE5D9;       /* Medium sage-gray for secondary label hints */
   --text-subtle: #EBE5D9;      /* Softer tone for captions, dates, and metadata */
@@ -69,6 +69,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   /* ==========================================
      Active State
      ========================================== */
+   
       --surface-chip:  #CCBBDB;     /* Alabaster backgrounds */
     --primary-lighter: #CCBBDB ;   /* Thistle*/
     
