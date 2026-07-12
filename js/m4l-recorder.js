@@ -1,5 +1,7 @@
-/* M4L v86.2 - Integrated Recorder module.
-   Clean app-native recorder; standalone /recorder remains untouched. */
+/* M4L v92.1 - Recorder browser-history integration.
+   Keeps V92.0 Android VP8/Opus WebM and iOS MP4 recording compatibility,
+   adds section-aware browser Back support for Pages → Record → Preview,
+   and keeps sharing file-only. Standalone /recorder remains untouched. */
 (() => {
   "use strict";
 
@@ -26,11 +28,13 @@
     startedAt: 0,
     timerId: 0,
     stopTimeoutId: 0,
+    frameRefreshId: 0,
     recordingBlob: null,
     recordingFile: null,
     recordingUrl: "",
     selectedMimeType: "",
-    uploadedObjectUrls: []
+    uploadedObjectUrls: [],
+    currentView: "pages"
   };
 
   const els = {};
@@ -71,16 +75,77 @@
     return true;
   }
 
-  function showView(viewName) {
+  function isRecorderScreenActive() {
+    const screen = document.getElementById("record-lesson-screen");
+    return !!(screen && screen.classList.contains("active"));
+  }
+
+  function getRecorderHistoryApi() {
+    return window.M4LAppHistory || window.M4LShell || null;
+  }
+
+  function getRecorderHistoryContext() {
+    const pageIndex = state.selectedPage
+      ? state.pages.findIndex(page => page && page.id === state.selectedPage.id)
+      : -1;
+
+    return {
+      bookId: String(state.selectedBookId || ""),
+      pageId: String(state.selectedPage && state.selectedPage.id || ""),
+      pageIndex,
+      pageTitle: String(state.selectedPage && state.selectedPage.title || "")
+    };
+  }
+
+  function recordRecorderHistory(viewName, options = {}) {
+    if (options.recordHistory === false || !isRecorderScreenActive()) {
+      return false;
+    }
+
+    const historyApi = getRecorderHistoryApi();
+    if (!historyApi) return false;
+
+    if (viewName === "pages") {
+      const recordHome = historyApi.recordSectionHome || historyApi.recordAppSectionHome;
+      return typeof recordHome === "function"
+        ? recordHome("recorder", {
+            screenId: "record-lesson-screen",
+            replace: options.replace !== false,
+            context: {
+              view: "pages",
+              bookId: String(state.selectedBookId || "")
+            }
+          })
+        : false;
+    }
+
+    const recordView = historyApi.recordSectionView || historyApi.recordAppSectionView;
+    if (typeof recordView !== "function") return false;
+
+    return recordView("recorder", viewName, {
+      screenId: "record-lesson-screen",
+      context: getRecorderHistoryContext(),
+      nested: options.nested === true,
+      replace: options.replace === true
+    });
+  }
+
+  function showView(viewName, options = {}) {
     const views = {
       pages: els.pageView,
       record: els.recordView,
       preview: els.previewView
     };
 
+    if (!views[viewName]) return false;
+
     Object.values(views).forEach(view => {
       if (view) view.classList.toggle("active", view === views[viewName]);
     });
+
+    state.currentView = viewName;
+    recordRecorderHistory(viewName, options);
+    return true;
   }
 
   function escapeHtml(value) {
@@ -409,6 +474,109 @@
     return true;
   }
 
+  function updateSelectedPageTitles(page) {
+    if (!page) return false;
+
+    const title = `${page.bookTitle ? `${page.bookTitle} · ` : ""}${page.title}`;
+    if (els.recordTitle) els.recordTitle.textContent = title;
+    if (els.previewTitle) els.previewTitle.textContent = `Preview · ${page.title}`;
+    return true;
+  }
+
+  async function restoreSelectedPageFromHistory(context = {}) {
+    const requestedBookId = String(context.bookId || "");
+    const requestedPageId = String(context.pageId || "");
+    const requestedPageIndex = Number(context.pageIndex);
+
+    if (requestedBookId && requestedBookId !== state.selectedBookId) {
+      const requestedBook = state.books.find(book => String(book.id || "") === requestedBookId);
+      if (requestedBook) {
+        state.selectedBookId = requestedBook.id;
+        state.pages = requestedBook.pages;
+        renderBookSelector();
+        renderPageGrid();
+      }
+    }
+
+    let page = requestedPageId
+      ? state.pages.find(candidate => String(candidate && candidate.id || "") === requestedPageId)
+      : null;
+
+    if (!page && Number.isInteger(requestedPageIndex) && requestedPageIndex >= 0) {
+      page = state.pages[requestedPageIndex] || null;
+    }
+
+    if (!page && state.selectedPage) {
+      page = state.selectedPage;
+    }
+
+    if (!page) {
+      return false;
+    }
+
+    state.selectedPage = page;
+
+    if (!state.selectedImage || state.selectedImage.src !== page.src) {
+      state.selectedImage = await loadImage(page.src);
+    }
+
+    drawSelectedPage();
+    resetTimer();
+    updateSelectedPageTitles(page);
+    setStatus("Ready");
+    return true;
+  }
+
+  function isRecordingActive() {
+    return !!(
+      state.mediaRecorder &&
+      state.mediaRecorder.state === "recording"
+    );
+  }
+
+  async function restoreHistoryState(payload = {}) {
+    const viewId = String(payload.viewId || "pages");
+    const context = payload.context || {};
+
+    if (viewId !== "record" && isRecordingActive()) {
+      alert("Stop the recording before leaving this page.");
+      return false;
+    }
+
+    if (viewId === "pages" || viewId === "home") {
+      cleanup({ keepPages: true });
+      showView("pages", { recordHistory: false });
+      return true;
+    }
+
+    if (viewId === "record") {
+      const restored = await restoreSelectedPageFromHistory(context);
+      if (!restored) {
+        showView("pages", { recordHistory: false });
+        return true;
+      }
+
+      showView("record", { recordHistory: false });
+      return true;
+    }
+
+    if (viewId === "preview") {
+      const restored = await restoreSelectedPageFromHistory(context);
+      if (!restored || !state.recordingFile || !state.recordingUrl) {
+        return false;
+      }
+
+      if (els.previewVideo) {
+        els.previewVideo.src = state.recordingUrl;
+      }
+      showView("preview", { recordHistory: false });
+      return true;
+    }
+
+    showView("pages", { recordHistory: false });
+    return true;
+  }
+
   function formatTime(msRemaining) {
     const totalSeconds = Math.max(0, Math.ceil(msRemaining / 1000));
     const minutes = Math.floor(totalSeconds / 60);
@@ -423,8 +591,10 @@
   function clearTimers() {
     if (state.timerId) window.clearInterval(state.timerId);
     if (state.stopTimeoutId) window.clearTimeout(state.stopTimeoutId);
+    if (state.frameRefreshId) window.clearInterval(state.frameRefreshId);
     state.timerId = 0;
     state.stopTimeoutId = 0;
+    state.frameRefreshId = 0;
   }
 
   function updateTimer() {
@@ -443,21 +613,58 @@
     }
   }
 
+  function isIOSDevice() {
+    const userAgent = String(navigator.userAgent || "");
+    const platform = String(navigator.platform || "");
+    return /iPad|iPhone|iPod/i.test(userAgent)
+      || (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
   function getSupportedMimeType() {
     if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
       return "";
     }
 
-    const candidates = [
+    const iosCandidates = [
       "video/mp4;codecs=h264,aac",
       "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
       "video/mp4",
-      "video/webm;codecs=vp9,opus",
       "video/webm;codecs=vp8,opus",
       "video/webm"
     ];
 
+    const androidAndOtherCandidates = [
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+      "video/webm;codecs=vp9,opus",
+      "video/mp4;codecs=h264,aac",
+      "video/mp4"
+    ];
+
+    const candidates = isIOSDevice() ? iosCandidates : androidAndOtherCandidates;
     return candidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  function redrawRecordingFrame(videoTrack) {
+    if (!state.selectedImage || !els.canvas || !state.canvasContext) return false;
+
+    const width = els.canvas.width;
+    const height = els.canvas.height;
+    if (!width || !height) return false;
+
+    state.canvasContext.fillStyle = "#ffffff";
+    state.canvasContext.fillRect(0, 0, width, height);
+    state.canvasContext.drawImage(state.selectedImage, 0, 0, width, height);
+
+    if (videoTrack && typeof videoTrack.requestFrame === "function") {
+      try {
+        videoTrack.requestFrame();
+      } catch (error) {
+        console.warn("Could not request a canvas frame", error);
+      }
+    }
+
+    return true;
   }
 
   function getFileExtension(mimeType) {
@@ -508,8 +715,14 @@
       });
 
       state.canvasStream = els.canvas.captureStream(CANVAS_FPS);
+      const canvasVideoTrack = state.canvasStream.getVideoTracks()[0];
+
+      if (!canvasVideoTrack || canvasVideoTrack.readyState !== "live") {
+        throw new Error("The page image video track could not be created on this device.");
+      }
+
       state.combinedStream = new MediaStream([
-        ...state.canvasStream.getVideoTracks(),
+        canvasVideoTrack,
         ...state.audioStream.getAudioTracks()
       ]);
       state.chunks = [];
@@ -528,6 +741,12 @@
 
       state.mediaRecorder.start(1000);
       state.startedAt = Date.now();
+
+      redrawRecordingFrame(canvasVideoTrack);
+      state.frameRefreshId = window.setInterval(() => {
+        redrawRecordingFrame(canvasVideoTrack);
+      }, 1000);
+
       if (els.recordBtn) els.recordBtn.hidden = true;
       if (els.stopBtn) {
         els.stopBtn.hidden = false;
@@ -563,6 +782,7 @@
 
   function finalizeRecording() {
     clearTimers();
+    const recorderMimeType = state.mediaRecorder && state.mediaRecorder.mimeType;
     const durationMs = state.startedAt ? Date.now() - state.startedAt : 0;
     state.startedAt = 0;
 
@@ -581,7 +801,7 @@
     }
     resetTimer();
 
-    const mimeType = state.selectedMimeType || "video/webm";
+    const mimeType = recorderMimeType || state.selectedMimeType || "video/webm";
     state.recordingBlob = new Blob(state.chunks, { type: mimeType });
     const extension = getFileExtension(mimeType);
     const safeTitle = String(state.selectedPage && state.selectedPage.title || "page")
@@ -599,7 +819,7 @@
       els.recordingMeta.textContent = `${state.selectedPage ? state.selectedPage.title : "Selected page"} · ${Math.min(120, Math.round(durationMs / 1000))} seconds · ${extension.toUpperCase()}`;
     }
 
-    showView("preview");
+    showView("preview", { nested: true });
   }
 
   function cleanup(options = {}) {
@@ -629,6 +849,7 @@
     if (!options.keepSelectedPage) {
       state.selectedPage = null;
       state.selectedImage = null;
+      state.currentView = "pages";
     }
 
     if (els.recordBtn) els.recordBtn.hidden = false;
@@ -646,36 +867,86 @@
       return;
     }
 
+    if (!navigator.share) {
+      alert("Sharing files is not supported in this browser.");
+      return;
+    }
+
+    if (navigator.canShare && !navigator.canShare({ files: [state.recordingFile] })) {
+      alert("This device cannot share the recording file.");
+      return;
+    }
+
     try {
-      if (navigator.canShare && navigator.canShare({ files: [state.recordingFile] }) && navigator.share) {
-        await navigator.share({
-          title: "Reader recording",
-          text: "Reader recording",
-          files: [state.recordingFile]
-        });
-        return;
-      }
-
-      if (navigator.share) {
-        await navigator.share({ title: "Reader recording", text: "Download the recording from this page." });
-        return;
-      }
-
-      alert("Sharing files is not supported in this browser. Use the Download button, then share the file from your device.");
+      await navigator.share({
+        files: [state.recordingFile]
+      });
     } catch (error) {
       if (error && error.name === "AbortError") return;
-      console.error(error);
-      alert("The recording could not be shared. Use Download as a fallback.");
+      console.error("Recording share failed", {
+        name: error && error.name,
+        message: error && error.message,
+        mimeType: state.recordingFile.type,
+        fileName: state.recordingFile.name,
+        fileSize: state.recordingFile.size
+      });
+      alert("The recording could not be shared on this device.");
     }
   }
 
   function goToPages() {
-    if (state.mediaRecorder && state.mediaRecorder.state === "recording") {
+    if (isRecordingActive()) {
       alert("Stop the recording before changing page.");
-      return;
+      return false;
     }
+
+    const previousView = state.currentView;
+    const currentHistoryState = window.history && window.history.state;
+    const isRecorderHistoryState = !!(
+      currentHistoryState &&
+      currentHistoryState.app === "maktab4life" &&
+      String(currentHistoryState.section || "") === "recorder"
+    );
+
     cleanup({ keepPages: true });
-    showView("pages");
+
+    if (isRecorderHistoryState && previousView === "preview" && typeof window.history.go === "function") {
+      window.history.go(-2);
+      return true;
+    }
+
+    if (isRecorderHistoryState && previousView === "record" && typeof window.history.back === "function") {
+      window.history.back();
+      return true;
+    }
+
+    showView("pages", { replace: true });
+    return true;
+  }
+
+  function rerecordSelectedPage() {
+    if (!state.selectedPage || !state.selectedImage) {
+      return goToPages();
+    }
+
+    cleanup({ keepPages: true, keepSelectedPage: true });
+    drawSelectedPage();
+
+    const currentHistoryState = window.history && window.history.state;
+    const isPreviewHistoryState = !!(
+      currentHistoryState &&
+      currentHistoryState.app === "maktab4life" &&
+      String(currentHistoryState.section || "") === "recorder" &&
+      String(currentHistoryState.viewId || "") === "preview"
+    );
+
+    if (isPreviewHistoryState && typeof window.history.back === "function") {
+      window.history.back();
+      return true;
+    }
+
+    showView("record", { replace: true });
+    return true;
   }
 
   function bindEvents() {
@@ -711,11 +982,7 @@
     if (els.recordBtn) els.recordBtn.addEventListener("click", startRecording);
     if (els.stopBtn) els.stopBtn.addEventListener("click", () => stopRecording("manual"));
     if (els.rerecordBtn) {
-      els.rerecordBtn.addEventListener("click", () => {
-        cleanup({ keepPages: true, keepSelectedPage: true });
-        drawSelectedPage();
-        showView("record");
-      });
+      els.rerecordBtn.addEventListener("click", rerecordSelectedPage);
     }
     if (els.shareBtn) els.shareBtn.addEventListener("click", shareRecording);
 
@@ -746,10 +1013,16 @@
 
   function open() {
     init();
+
     if (!state.manifestLoaded && !state.books.length) {
       loadManifest();
     }
-    showView(state.selectedImage ? "record" : "pages");
+
+    const viewName = state.selectedImage && state.currentView !== "pages"
+      ? state.currentView
+      : "pages";
+
+    showView(viewName);
     return true;
   }
 
@@ -763,6 +1036,11 @@
     init,
     open,
     cleanup,
-    loadManifest
+    loadManifest,
+    restoreHistoryState,
+    getCurrentView() {
+      return state.currentView;
+    },
+    isRecordingActive
   };
 })();
