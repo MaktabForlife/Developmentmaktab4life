@@ -69,7 +69,7 @@
 .admin-progress-class-global-edit-toggle.is-editing,
 .admin-progress-class-global-edit-toggle.is-saving {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
 }
 
@@ -111,7 +111,7 @@
   justify-items: start;
   padding: 8px 9px;
   border-radius: 13px;
-  background: var(--surface-app);
+  background: var(--surface-track);
 }
 
 .admin-progress-class-student-column-key .admin-progress-matrix-key-line {
@@ -145,7 +145,7 @@
   position: absolute;
   top: 5px;
   right: 7px;
-  color: var(--surface-chip);
+  color: var(--text);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -353,7 +353,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   justify-items: start;
   padding: 0 0 0 4px;
   background: var(--admin-progress-class-grid-header-surface);
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-bottom: 1px solid rvar(--surface-track);
 }
 
 .admin-progress-class-student-column-key .admin-progress-matrix-key-block--a1 {
@@ -389,7 +389,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   place-items: center;
   padding: 0 3px 1px;
   background: var(--admin-progress-class-grid-header-surface);
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-bottom: 1px solid var(--surface-track);
 }
 
 .admin-progress-class-student-column-action .admin-progress-matrix-action-block--a2 {
@@ -602,17 +602,17 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid rgba(var(--primary-rgb), 0.10);
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-right: 1px solid var(--surface-track);
+  border-bottom: 1px solid var(--surface-track);
   background: var(--surface-card);
-  color: var(--text-muted);
+  color: var(--text;
   text-align: center;
   overflow: hidden;
 }
 
 .admin-progress-class-merged-module-title {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: clamp(1.02rem, 4.4vw, 1.32rem);
   font-weight: 850;
   line-height: 1.06;
@@ -805,7 +805,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   justify-content: space-between;
   gap: 6px;
   background: var(--surface-card);
-  color: var(--text-muted);
+  color: var(--text);
   font-weight: 700;
   cursor: pointer;
 }
@@ -832,8 +832,8 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-accordion-task-placeholder {
   min-height: var(--admin-progress-class-task-header-height);
   background: var(--admin-progress-class-grid-module-band-surface, var(--admin-progress-class-grid-header-surface));
-  border-right: 1px solid rgba(var(--primary-rgb), 0.09);
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-right: 1px solid var(--surface-track);
+  border-bottom: 1px solid rvar(--surface-track);
 }
 
 .admin-progress-class-overview--accordion .admin-progress-class-grid-task-header {
@@ -903,7 +903,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading .admin-progress-class-merged-module-title,
 .admin-progress-class-overview--accordion .admin-progress-class-module-heading-label {
   max-width: 100%;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.08;
@@ -913,7 +913,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 }
 
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-chevron {
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.78em;
   font-weight: 700;
 }
