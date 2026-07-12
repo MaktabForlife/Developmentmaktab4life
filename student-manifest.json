@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#A8B992",
+  "theme_color": "#D9CADD",
   "icons": [
     {
       "src": "/student-icon-192.png",
