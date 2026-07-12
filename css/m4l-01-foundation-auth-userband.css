@@ -12,10 +12,10 @@
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)  --banner: 
      ========================================== */
+ --banner-color: #D9CADD;       /* Core brand identifier #c9b2d1 dusty lavender #CCBDEA */ 
 
- --primary: #A8B992;          /* SAGE DUST  - Core brand identifier */
+ --primary: #A8B992;          /* SAGE DUST  -  */
  
- --banner-color: #D9CADD;       /* #c9b2d1 dusty lavender #CCBDEA */ 
  --surface-contrast: #edd5e2;    /* pink */  
   /* ==========================================
      SAGE PALETTE
