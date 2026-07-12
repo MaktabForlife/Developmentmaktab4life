@@ -1,4 +1,5 @@
-/* Home cover-sheet app icons - V91.8
+/* V92.1 increased  home icon radiums
+Home cover-sheet app icons - V91.8
    Student: 4 icons in one row.
    Admin: 6 icons; 3 x 2 on mobile, 6 x 1 on larger screens.
    The active Home tile uses --surface-contrast. */
@@ -55,7 +56,7 @@
   height: 64px;
   min-width: 60px;
   min-height: 60px;
-  border-radius: 10px;
+  border-radius: 13px;
   display: grid;
   place-items: center;
   border: 1px solid var(--primary);
