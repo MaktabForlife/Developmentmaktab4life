@@ -1,5 +1,5 @@
 /* ==========================================
-   M4L V92.2  removed duplicate headings.  Added text under icons
+   M4L V92.2a  removed duplicate headings.  Added text under icons
  Integrated Recorder
    Native app screen. Standalone /recorder remains untouched.
    ========================================== */
@@ -41,7 +41,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: clamp(1.0rem, 9.5vw, 3.1rem);
+  font-size: clamp(0.7rem, 9.5vw, 1.0rem);
   font-weight: 500;
   line-height: 1.02;
 
