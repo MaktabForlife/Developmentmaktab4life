@@ -22,16 +22,16 @@
   min-width: 42px;
   height: auto;
   min-height: 38px;
-  padding: 3px 2px 2px;
+  padding: 3px 2px 4px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  gap: 2px;
+  border: 0;
   border-radius: 999px;
-  background: var(--surface-card);
-  color: var(--text-muted);
+  background: transparent;
+  color: var(--text);
   box-shadow: none;
 }
 
@@ -48,7 +48,7 @@
   display: block;
   color: currentColor;
   font-size: 0.5rem;
-  font-weight: 820;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -58,10 +58,10 @@
   justify-content: center;
   gap: 3px;
   min-width: 0;
-  color: var(--text-muted);
-  font-size: 0.52rem;
+  color: var(--text);
+  font-size: 0.6rem;
   font-weight: 760;
-  line-height: 1;
+  line-height: 1.02;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -90,7 +90,7 @@
 
 .admin-progress-class-overview.is-editing .admin-progress-class-grid-scroll,
 .admin-progress-group-overview.is-editing .admin-progress-group-grid-scroll {
-  box-shadow: inset 0 0 0 2px rgba(var(--primary-rgb), 0.35);
+  box-shadow: inset 0 0 0 2px var(--surface-app);
 }
 
 .admin-progress-class-overview.is-viewing .admin-progress-class-grid-status-button,
@@ -109,10 +109,10 @@
   --admin-progress-group-student-col-width: 34px;
   --admin-progress-group-student-header-height: 108px;
   --admin-progress-group-row-height: 40px;
-  --admin-progress-group-header-surface: var(--surface-chip);
+  --admin-progress-group-header-surface: var(--surface-track);
   --admin-progress-group-cell-surface: var(--surface-card);
-  --admin-progress-group-alt-surface: color-mix(in srgb, var(--disabled) 18%, var(--surface-card));
-  --admin-progress-group-active-surface: var(--surface-soft);
+  --admin-progress-group-alt-surface: var(--surface-card);
+  --admin-progress-group-active-surface: var(--surface-chip);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -130,7 +130,7 @@
 
 .admin-progress-group-grid-card {
   min-height: 0;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px var(--surface-track);
   border-radius: 20px;
   background: var(--surface-card);
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
@@ -149,7 +149,7 @@
   min-width: max-content;
   border-collapse: separate;
   border-spacing: 0;
-  color: var(--text-muted);
+  color: var(--text);
   table-layout: fixed;
 }
 
@@ -170,15 +170,15 @@
 
 .admin-progress-group-grid th,
 .admin-progress-group-grid td {
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
-  border-right: 1px solid rgba(var(--primary-rgb), 0.09);
+  border-bottom: 1px var(--surface-track);
+  border-right: 1px var(--surface-track);
   vertical-align: middle;
 }
 
 .admin-progress-group-grid th {
   position: sticky;
   background: var(--admin-progress-group-header-surface);
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.66rem;
   font-weight: 720;
   line-height: 1.02;
@@ -193,7 +193,7 @@
   max-width: var(--admin-progress-group-module-col-width);
   z-index: 14;
   background: var(--admin-progress-group-header-surface);
-  border-right: 2px solid rgba(var(--primary-rgb), 0.14);
+  border-right: 2px var(--surface-track);
 }
 
 .admin-progress-group-grid-module-corner {
@@ -210,7 +210,7 @@
   min-width: var(--admin-progress-group-task-col-width);
   max-width: var(--admin-progress-group-task-col-width);
   background: var(--admin-progress-group-header-surface);
-  border-right: 2px solid rgba(var(--primary-rgb), 0.15);
+  border-right: 2px solid var(--surface-track);
 }
 
 .admin-progress-group-grid-task-corner {
@@ -243,7 +243,7 @@
   display: inline-block;
   width: calc(var(--admin-progress-group-student-header-height) - 14px);
   max-width: calc(var(--admin-progress-group-student-header-height) - 14px);
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.6rem;
   font-weight: 760;
   line-height: 0.98;
@@ -264,8 +264,8 @@
 
 .admin-progress-group-grid-task-name {
   display: block;
-  color: var(--text-muted);
-  font-size: 0.63rem;
+  color: var(--text);
+  font-size: 0.7rem;
   font-weight: 560;
   line-height: 1.05;
   text-align: left;
@@ -287,7 +287,7 @@
   display: block;
   width: max-content;
   max-width: 180px;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.62rem;
   font-weight: 850;
   line-height: 1;
@@ -331,7 +331,7 @@
   justify-content: center;
   background: transparent;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -368,7 +368,7 @@
 
 .admin-progress-group-grid-caption {
   padding: 7px 10px 9px;
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.7rem;
   line-height: 1.2;
   text-align: center;
@@ -407,7 +407,7 @@
   justify-content: center;
   gap: 4px;
   justify-self: end;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px solid var(--surface-track);
   border-radius: 18px;
   background: var(--surface-card);
   color: var(--text-muted);
@@ -418,7 +418,7 @@
 .student-progress-module-edit-toggle.is-editing {
   background: var(--surface-card);
   color: var(--text-muted);
-  border-color: rgba(var(--primary-rgb), 0.22);
+  border-color: var(--surface-track);
 }
 
 .student-progress-module-edit-toggle.is-saving {
@@ -491,7 +491,7 @@
   min-width: 0;
   min-height: var(--student-progress-task-row-height, 54px);
   align-items: stretch;
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.10);
+  border-bottom: var(--surface-track));
 }
 
 .student-progress-grid-row:last-child {
@@ -511,7 +511,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.58rem;
   font-weight: 650;
   line-height: 1.04;
@@ -524,7 +524,7 @@
   padding: 8px 9px;
   display: flex;
   align-items: center;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.78rem;
   font-weight: 500;
   line-height: 1.12;
@@ -546,7 +546,7 @@
   align-items: center;
   justify-content: center;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   font-size: 0.92rem;
   touch-action: manipulation;
@@ -573,7 +573,7 @@
 
 .student-progress-grid-status-cell:focus-visible,
 .student-progress-grid-status-cell:focus {
-  outline: 2px solid rgba(var(--primary-rgb), 0.30);
+  outline: 2px var(--surface-track)
   outline-offset: -2px;
   background: var(--surface-soft);
 }
@@ -710,7 +710,7 @@
   --admin-progress-class-row-height: 40px;
   --admin-progress-class-grid-body-card: var(--surface-card);
   --admin-progress-class-grid-body-app: var(--surface-app);
-  --admin-progress-class-grid-header-surface: var(--surface-chip);
+  --admin-progress-class-grid-header-surface: var(--surface-track);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -728,10 +728,10 @@
 
 .admin-progress-class-grid-card {
   min-height: 0;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px var(--surface-track));
   border-radius: 20px;
   background: var(--surface-card);
-  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+  box-shadow: 0 2px 5px var(--surface-app);
   overflow: hidden;
 }
 
@@ -747,7 +747,7 @@
   min-width: max-content;
   border-collapse: separate;
   border-spacing: 0;
-  color: var(--text-muted);
+  color: var(--text);
   table-layout: fixed;
 }
 
@@ -776,15 +776,15 @@
 
 .admin-progress-class-grid th,
 .admin-progress-class-grid td {
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
-  border-right: 1px solid rgba(var(--primary-rgb), 0.09);
+  border-bottom: 1px solid var(--surface-app);
+  border-right: 1px solid var(--surface-app);
   vertical-align: middle;
 }
 
 .admin-progress-class-grid th {
   position: sticky;
   background: var(--admin-progress-class-grid-header-surface);
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.72rem;
   font-weight: 760;
   line-height: 1.06;
@@ -798,7 +798,7 @@
   width: var(--admin-progress-class-student-col-width);
   min-width: var(--admin-progress-class-student-col-width);
   max-width: var(--admin-progress-class-student-col-width);
-  border-right: 2px solid rgba(var(--primary-rgb), 0.16);
+  border-right: 2px var(--surface-track);
 }
 
 .admin-progress-class-grid-corner-top {
@@ -899,7 +899,7 @@
 .admin-progress-class-grid-task-title {
   display: inline-block;
   max-height: calc(var(--admin-progress-class-task-header-height) - 12px);
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.7rem;
   font-weight: 400;
   line-height: 0.98;
@@ -950,7 +950,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   text-align: left;
   letter-spacing: 0;
@@ -959,7 +959,7 @@
 .admin-progress-class-grid-student-prefix {
   flex: 0 0 auto;
   min-width: 1.18em;
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.74rem;
   font-weight: 680;
   line-height: 1;
@@ -968,9 +968,9 @@
 
 .admin-progress-class-grid-student-name {
   min-width: 0;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.8rem;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.08;
   overflow-wrap: anywhere;
 }
@@ -996,7 +996,7 @@
   justify-content: center;
   background: transparent;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1049,7 +1049,7 @@
 
 .admin-progress-class-grid-caption {
   padding: 7px 10px 9px;
-  color: var(--text-subtle);
+  color: var(--text-inverse);
   font-size: 0.7rem;
   line-height: 1.2;
   text-align: center;
@@ -1164,7 +1164,7 @@
   --admin-progress-class-edge-space: 0px;
   --admin-progress-class-track-offset: 0px;
   --admin-progress-class-grid-body-height: calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--bottom-nav-height) - var(--bottom-nav-safe-area) - 286px);
-  --admin-progress-class-grid-header-surface: var(--surface-chip);
+  --admin-progress-class-grid-header-surface: var(--surface-track);
   --admin-progress-class-grid-body-card: var(--surface-card);
   --admin-progress-class-grid-body-app: var(--surface-app);
   width: 100%;
@@ -1187,10 +1187,10 @@
   display: grid;
   gap: 8px;
   align-content: start;
-  border: 1px solid rgba(var(--primary-rgb), 0.10);
+  border: 1px solid var(--surface-track);
   border-radius: 22px;
   background: var(--surface-card);
-  box-shadow: 0 4px 14px rgba(var(--black-rgb), 0.08);
+  box-shadow: 0 4px 14px var(--surface-app);
   overflow: hidden;
 }
 
@@ -1293,7 +1293,7 @@
   display: grid;
   grid-template-columns: var(--admin-progress-class-student-col-width) minmax(0, 1fr);
   align-items: stretch;
-  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border: 1px var(--surface-track);
   border-radius: 19px;
   background: var(--surface-card);
   overflow: hidden;
@@ -1303,7 +1303,7 @@
   min-width: 0;
   display: grid;
   grid-template-rows: calc(var(--admin-progress-class-module-header-height) + var(--admin-progress-class-task-header-height)) minmax(0, 1fr);
-  border-right: 2px solid rgba(var(--primary-rgb), 0.16);
+  border-right: 2px solid rvar(--surface-track);
   background: var(--admin-progress-class-grid-header-surface);
   position: relative;
   z-index: 5;
@@ -1316,7 +1316,7 @@
   justify-content: flex-start;
   padding: 7px 8px 9px;
   background: var(--admin-progress-class-grid-header-surface);
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-bottom: 1px solid var(--surface-track);
 }
 
 .admin-progress-class-student-column-key .admin-progress-matrix-key-block--a1 {
@@ -1361,10 +1361,10 @@
   justify-content: flex-start;
   gap: 5px;
   border: 0;
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.11);
+  border-bottom: 1px var(--surface-track);
   border-radius: 0;
   background: var(--admin-progress-class-grid-header-surface);
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   text-align: left;
   letter-spacing: 0;
@@ -1436,7 +1436,7 @@
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
   border-radius: 0;
   background: var(--surface-card);
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
 }
 
@@ -1451,7 +1451,7 @@
 .admin-progress-class-module-title {
   min-width: 0;
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: clamp(1.02rem, 4.4vw, 1.32rem);
   font-weight: 850;
   line-height: 1.06;
@@ -1472,7 +1472,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   touch-action: manipulation;
 }
@@ -1525,7 +1525,7 @@
 .admin-progress-class-module-edit-toggle.is-editing,
 .admin-progress-class-module-edit-toggle.is-saving {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
 }
 
@@ -1614,10 +1614,10 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
-  border-right: 1px solid rgba(var(--primary-rgb), 0.09);
+  border-bottom: 1px var(--surface-track);
+  border-right: 1px var(--surface-track);
   background: var(--admin-progress-class-grid-header-surface);
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.72rem;
   font-weight: 760;
   line-height: 1.06;
@@ -1636,7 +1636,7 @@
 .admin-progress-class-grid-task-title {
   display: inline-block;
   max-height: calc(var(--admin-progress-class-task-header-height) - 12px);
-  color: var(--text-muted);
+  color: var(--text;
   font-size: 0.7rem;
   font-weight: 400;
   line-height: 0.98;
@@ -1657,8 +1657,8 @@
   display: flex;
   align-items: stretch;
   justify-content: stretch;
-  border-bottom: 1px solid rgba(var(--primary-rgb), 0.11);
-  border-right: 1px solid rgba(var(--primary-rgb), 0.09);
+  border-bottom: 1px solid var(--surface-track);
+  border-right: 1px var(--surface-track);
   background: var(--admin-progress-class-grid-body-surface, var(--admin-progress-class-grid-body-card));
   background-clip: padding-box;
 }
@@ -1684,7 +1684,7 @@
   justify-content: center;
   background: transparent;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: default;
   touch-action: manipulation;
 }
