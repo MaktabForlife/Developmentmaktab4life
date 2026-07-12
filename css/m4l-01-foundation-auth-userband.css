@@ -1,4 +1,5 @@
-/* M4L v92.1 made banner narrower, shades of lavender
+/* M4L v92.5 colour pallete change
+made banner narrower, shades of lavender
 v91.4 - Attendance save icon class cleanup and header panel flattening
    Baseline: M4L v90.9.5.1 Progress swipe containment support
    Baseline: V90.9.2 stylesheet used with V90.9.5 Progress JS cleanup.
@@ -13,47 +14,47 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   /* ==========================================
      BRAND PALETTE (Sage & Lavender)  --banner: 
      ========================================== */
- --banner-color: #D9CADD;       /* Core brand identifier #c9b2d1 dusty lavender #CCBDEA */ 
+ --banner-color: #9E83B8;       /* Core brand identifier African violoet #c9b2d1 dusty lavender #CCBDEA */ 
 
- --primary: #A8B992;          /* SAGE DUST  -  */
+ --primary: #CCBBDB;          /* SAGE DUST  -  */
  
- --surface-contrast: #edd5e2;    /* pink */  
+ --surface-contrast:#9E83B8;    /* pink */  
   /* ==========================================
      SAGE PALETTE
      ========================================== */
    
-    --primary-rgb: 168, 185, 146; /* Sage RGB for background opacity modifiers */
-    --primary-light: color-mix(in srgb, var(--primary) 80%, white 35%);
-    --primary-lighter: color-mix(in srgb, var(--primary) 80%, white 50%);
-     --primary-lightest: color-mix(in srgb, var(--primary) 80%, white 70%);
-
-    --surface-soft: #F0F4EC;     /* Light pastel sage for backgrounds */
-    --surface-tint: #DFE7D7;     /* Mid-tone sage tint for disabled fields/borders */
-    --surface-video:#3B472A;    /* Deep earthy olive-black  */
+    --primary-rgb: #CCBBDB ;    /* 168, 185, 146; /* Sage RGB for background opacity modifiers */
+    --primary-light: #CCBBDB ;   /* color-mix(in srgb, var(--primary) 80%, white 35%);*/
+    --primary-lighter: #CCBBDB ;   /* color-mix(in srgb, var(--primary) 80%, white 50%);*/
+    --primary-lighter: #CCBBDB  ;  /* color-mix(in srgb, var(--primary) 80%, white 50%);*/
+     --primary-lightest: #CCBBDB ;  /*color-mix(in srgb, var(--primary) 80%, white 70%); */
+    --surface-soft:#FFFFFF;       /* White content */
+    --surface-tint: #DFE7D7;      /* Mid-tone sage tint for disabled fields/borders */
+    --surface-video:#3B472A;     /* Deep earthy olive-black  */
 
 
   /* ==========================================
      LAVENDER PALETTE
      ========================================== */
-  --surface-chip:  #F0EAF1 ;     /* Ultra-light lavender for surfaces */
-  --surface-track: #E8DFEB;    /* Mid-lavender for pills  */
+  --surface-chip:  #EBE5D9 ;     /* Alabaster backgrounds */
+  --surface-track: #A2ABA1;    /* Ash gres  */
    
   --zoom-colour: #0A437A;       /* Zoom action blue */
-  --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
+  --surface-dark: #758976;     /* Deep dusty lavender for dark modes or dark overlays */
 
 
   /* ==========================================
     WHITEs
      ========================================== */
-  --surface-app: #f1f5f9;      /* Off-white page background (prevents eye strain) */
+  --surface-app: #A2ABA1;      /* Ashh grey borderingOff-white page background (prevents eye strain) */
   --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
 
 
   /* ==========================================
      TEXT (Organic Typography Hierarchy)
      ========================================== */
-  --text: #3B472A;             /* Earthy dark sage - standard body copy reading color */
-  --text-strong: #222B17;      /* Rich deep forest - crisp visibility for H1/H2 headings */
+  --text:#2C352D;             /* Earthy dark sage - standard body copy reading color */
+  --text-strong: #758976;      /* Rich deep forest - crisp visibility for H1/H2 headings */
   --text-muted: #5E6D49;       /* Medium sage-gray for secondary label hints */
   --text-subtle: #7A8965;      /* Softer tone for captions, dates, and metadata */
   --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
