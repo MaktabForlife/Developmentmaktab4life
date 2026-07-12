@@ -1,4 +1,6 @@
-/* M4L v98 - Timetable board + V84 Home vertical stack support
+/* M4L v92.1 Removed home page icon builder and other quarantiend comments
+
+v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -597,83 +599,6 @@ function handleTimetableUiClick(event) {
   }
 }
 
-/* =========================
-   V82.4.2 QUARANTINED LEGACY HOME PAGE ZOOM BUTTON
-   --------------------------------------------------
-   The app now uses the banner Zoom icon only. The old Home page
-   sticky Zoom button, its decorators, and its layout recalculation
-   calls are preserved below as comments for audit/history only.
-   They are intentionally not executable.
-========================= */
-// function removeHomeStickyZoomAction(screenId, buttonId) {
-//   const screen = document.getElementById(screenId);
-//   if (!screen) return false;
-//
-//   const selectorParts = [
-//     buttonId ? `#${buttonId}` : "",
-//     ".home-sticky-action-bar[data-home-sticky-action='zoom']",
-//     ".home-sticky-zoom-button",
-//     ".zoom-link-button"
-//   ].filter(Boolean);
-//
-//   screen.querySelectorAll(selectorParts.join(", ")).forEach(element => {
-//     if (element && element.parentNode) {
-//       element.parentNode.removeChild(element);
-//     }
-//   });
-//
-//   scheduleHomeTopStackMetricsUpdate(screen);
-//   return true;
-// }
-//
-// /* V82.4.1 compatibility wrappers: Home Zoom is now banner-only. */
-// function createHomeStickyZoomButton(buttonId) {
-//   return null;
-// }
-//
-// function ensureHomeStickyZoomAction(screenId, buttonId, options = {}) {
-//   removeHomeStickyZoomAction(screenId, buttonId);
-//   return null;
-// }
-//
-// function setTimetableZoomButtonState(buttonId, zoomLink) {
-//   const button = document.getElementById(buttonId);
-//
-//   if (!button) {
-//     return;
-//   }
-//
-//   button.removeAttribute("onclick");
-//   button.dataset.timetableAction = "open-zoom";
-//
-//   if (button.dataset.zoomDecorated !== "true") {
-//     button.dataset.zoomDecorated = "true";
-//     button.innerHTML = `
-//       <img src="/icons/zoom.svg" alt="" class="zoom-link-button__icon" aria-hidden="true" />
-//       <span>Join Zoom Class</span>
-//     `;
-//   }
-//
-//   const normalizedZoomLink = normalizeTimetableText(zoomLink);
-//   const hasLink = !!normalizedZoomLink;
-//
-//   if (hasLink) {
-//     button.dataset.zoomLink = normalizedZoomLink;
-//   } else {
-//     delete button.dataset.zoomLink;
-//   }
-//
-//   button.disabled = !hasLink;
-//   button.classList.toggle("is-disabled", !hasLink);
-//   button.setAttribute("aria-disabled", hasLink ? "false" : "true");
-//   button.title = hasLink ? "Open Zoom link" : "Zoom link has not been added yet";
-//
-//   const homeScreen = button.closest ? button.closest("#student-home, #admin-home") : null;
-//   if (homeScreen) {
-//     scheduleHomeTopStackMetricsUpdate(homeScreen);
-//   }
-// }
-
 /* Class duas home-card helpers remain in app.js; timetable module only calls the duas placement helper after rendering. */
 
 function scheduleAdminHomeTimetableLoad() {
@@ -757,92 +682,7 @@ if (!duasPanel) {
 
    
 
-   /*
-   home icon in admin index
-  screen.querySelectorAll(".staff-dashboard-grid, .card-grid, .list-stack").forEach(section => {
-    if (section.id !== "admin-home-panel") {
-      section.remove();
-    }
-  });
-
-  let panel = document.getElementById("admin-home-panel");
-  let swipeShell = null;
-
-  if (!panel) {
-    swipeShell = document.createElement("div");
-    swipeShell.className = "home-swipe-shell";
-    swipeShell.dataset.homeSwipe = "admin-home";
-
-    panel = document.createElement("div");
-    panel.id = "admin-home-panel";
-    panel.className = "student-home-panel admin-home-panel home-swipe-track";
-    panel.dataset.homeSwipeTrack = "";
-    panel.setAttribute("aria-label", "Admin Home panels");
-   panel.innerHTML = `
-  <section id="admin-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
-    <p class="helper-text">Loading class duas...</p>
-  </section>
-
-  <section class="home-icons-band" aria-label="Admin home app icons">
-    <div class="home-icons-band__inner">
-      <div class="home-cover-icon-grid home-cover-icon-grid--admin" aria-label="Admin home app icons">
-        <button type="button" class="home-cover-icon-btn is-home-active" aria-current="page">
-          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph home-cover-icon-glyph--home"></span></span>
-          <span class="home-cover-icon-label">Home</span>
-        </button>
-
-        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="attendance">
-          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-          <span class="home-cover-icon-label">Attendance</span>
-        </button>
-
-        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="record">
-          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-          <span class="home-cover-icon-label">Record Lesson</span>
-        </button>
-
-        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="library">
-          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-          <span class="home-cover-icon-label">Library</span>
-        </button>
-
-        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="progress">
-          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-          <span class="home-cover-icon-label">Progress</span>
-        </button>
-
-        <button type="button" class="home-cover-icon-btn" data-cover-home-role="admin" data-cover-home-nav="admin">
-          <span class="home-cover-icon-tile" aria-hidden="true"><span class="home-cover-icon-glyph"></span></span>
-          <span class="home-cover-icon-label">Admin</span>
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <section class="home-section home-timetable-section" aria-label="Timetable">
-    <section class="timetable-card">
-      <div class="timetable-card-header">
-        <h3>Reboot Your Maktab</h3>
-      </div>
-
-      <div id="admin-home-timetable-content">
-        <p class="helper-text">Loading timetable...</p>
-      </div>
-    </section>
-  </section>
-`;
-    panel.className = "home-stack admin-home-panel student-home-panel";
-    panel.dataset.homeStack = "admin";
-    swipeShell = null;
-  }
-
-  if (swipeShell) {
-    screen.prepend(swipeShell);
-  } else if (!panel.parentNode) {
-    screen.prepend(panel);
-  }
-*/
-  // V82.4.2 QUARANTINED_HOME_ZOOM_BUTTON: removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
+     // V82.4.2 QUARANTINED_HOME_ZOOM_BUTTON: removeHomeStickyZoomAction("admin-home", "admin-home-zoom-link-btn");
 
   if (typeof hydrateCoverHomeNavigationButtons === "function") {
     hydrateCoverHomeNavigationButtons(panel);
