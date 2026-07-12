@@ -29,7 +29,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
        --surface-app: #EBE5D9;      /* Alabaster background (prevents eye strain) */
        --primary-rgb: #EBE5D9  ;    /* Alabaster backgrounds */
        --primary-light: #EBE5D9  ;   /* Alabaster backgrounds;*/
-       --surface-chip: #EBE5D9 ;     /* Alabaster backgrounds */
+      
        --primary-lightest: #EBE5D9 ;  /*Alabaster backgrounds */
        --surface-soft:#EBE5D9;  
         --surface-tint:#EBE5D9;
@@ -69,7 +69,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   /* ==========================================
      Active State
      ========================================== */
-     
+      --surface-chip:  #CCBBDB;     /* Alabaster backgrounds */
     --primary-lighter: #CCBBDB ;   /* Thistle*/
     
    
