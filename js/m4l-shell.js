@@ -2607,7 +2607,7 @@ function attachUserBandRefreshHandler(band, refreshAction) {
 const USER_BAND_MENU_ITEMS = {
   student: [
     { action: "home", label: "Home", icon: "/icons/home.svg" },
-    { action: "record", label: "Record", icon: "/icons/navrecord.svg?v=92.3" },
+    { action: "record", label: "VoiceNote", icon: "/icons/navrecord.svg?v=92.3a" },
     { action: "library", label: "Library", icon: "/icons/resources.svg" },
     { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
     { action: "refresh", label: "Refresh", icon: "/icons/refresh.svg" },
@@ -2616,7 +2616,7 @@ const USER_BAND_MENU_ITEMS = {
   admin: [
     { action: "home", label: "Home", icon: "/icons/home.svg" },
     { action: "attendance", label: "Attendance", icon: "/icons/attendance.svg" },
-    { action: "record", label: "Record", icon: "/icons/navrecord.svg?v=92.3" },
+    { action: "record", label: "VoiceNote", icon: "/icons/navrecord.svg?v=92.3a" },
     { action: "library", label: "Library", icon: "/icons/resources.svg" },
     { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
     { action: "admin", label: "Admin", icon: "/icons/admin.svg" },
