@@ -59,7 +59,7 @@ Home cover-sheet app icons - V91.8
   border-radius: 14px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--primary-lightest);
+  border: 1px solid var(--surface-track);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.16);
   background: var(--surface-card);
   color: var(--text);
@@ -68,8 +68,8 @@ Home cover-sheet app icons - V91.8
 .home-cover-icon-btn.is-home-active .home-cover-icon-tile,
 .home-cover-icon-btn[aria-current="page"] .home-cover-icon-tile {
   color: var(--text);
-   background: var(--primary);
-   border: 2px solid var(--primary-lightest)
+   background: var(--surface-chip;
+   border: 2px solid var(--surface-track)
 }
 
 .home-cover-icon-glyph {
