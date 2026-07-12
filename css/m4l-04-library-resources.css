@@ -18,13 +18,13 @@
   gap: 10px;
   min-width: 0;
   padding: 14px;
-  background: var(--surface-soft);
+  background: var(--surface-card);
     /*
     radial-gradient(circle at top left, rgba(var(--primary-rgb), 0.28), transparent 42%),
     radial-gradient(circle at bottom right, var(--surface-track), transparent 48%),
     linear-gradient(135deg, var(--surface-soft), var(--surface-track));
     */
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px solid var(--surface-track);
   border-radius: 18px;
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
@@ -91,7 +91,7 @@
 }
 
 .library-resource-card--part-video:focus-visible {
-  outline-color: rgba(var(--primary-rgb), 0.42);
+  outline-color: var(--surface-card));
 }
 
 .library-resource-icon-wrap {
@@ -145,7 +145,7 @@
   margin-top: 2px;
   padding: 12px;
   background: rgba(var(--white-rgb), 0.62);
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px solid var(--surface-card);
   border-radius: 14px;
 }
 
@@ -184,7 +184,7 @@
   display: block;
   margin-top: 8px;
   border-radius: 10px;
-  background: var(--surface-video);
+  background: var(--surface-dark);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
