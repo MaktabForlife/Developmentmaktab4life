@@ -1,4 +1,5 @@
-/* M4L v92.1 - Recorder browser-history integration.
+/* M4L v92.2  removed duplicate page titles
+- Recorder browser-history integration.
    Keeps V92.0 Android VP8/Opus WebM and iOS MP4 recording compatibility,
    adds section-aware browser Back support for Pages → Record → Preview,
    and keeps sharing file-only. Standalone /recorder remains untouched. */
@@ -327,22 +328,32 @@
     }
 
     state.pages.forEach((page, index) => {
-      const subtitle = page.type === "cover"
+     /* 
+     const subtitle = page.type === "cover"
         ? "Cover"
         : page.lesson
           ? `Lesson ${page.lesson}`
           : `Page ${page.pageNo || index + 1}`;
-
+       */
       const button = document.createElement("button");
       button.type = "button";
       button.className = "m4l-recorder-page-card";
       button.dataset.pageIndex = String(index);
       button.setAttribute("aria-label", `Select ${page.title}`);
+      
+      /*
       button.innerHTML = `
         <span class="m4l-recorder-page-thumb"><img src="${escapeAttribute(page.src)}" alt="" loading="lazy"></span>
         <span class="m4l-recorder-page-title">${escapeHtml(page.title)}</span>
         <span class="m4l-recorder-page-subtitle">${escapeHtml(subtitle)}</span>
       `;
+      */
+     button.innerHTML = `
+  <span class="m4l-recorder-page-thumb">
+    <img src="${escapeAttribute(page.src)}" alt="" loading="lazy">
+  </span>
+  <span class="m4l-recorder-page-title">${escapeHtml(page.title)}</span>
+`;
       els.pageGrid.appendChild(button);
     });
 
