@@ -20,7 +20,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
      ========================================== */
    
        --banner-color: #9E83B8 ;       /* Core brand identifier African violoet #c9b2d1 dusty lavender #CCBDEA */ 
-       --surface-video:#9E83B8 ;    /* Deep earthy olive-black  */
+      --surface-contrast: #9E83B8;   
 
       /* ==========================================
      Background
@@ -45,7 +45,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
          Strucural contrast
         ========================================== */
          --surface-track: #A2ABA1;    /* Ash grey for strcuture  */
-
+ --surface-video:#A2ABA1 ;   
 
    
          /* ==========================================
@@ -53,7 +53,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
      ========================================== */
    
        --primary: #758976;          /* Reseda Green -  */
-       --surface-contrast: #758976;    /*Reseda Green -  */  
+       
      --surface-dark: #758976;     /* D dark modes or dark overlays */
    
          /* ==========================================
@@ -63,14 +63,14 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
    --text: #141c15;             /* charoal primary body text */
    --text-strong: #141c15;      /* Rich deep forest - crisp visibility for H1/H2 headings */
   --text-muted: #141c15;       /* Medium sage-gray for secondary label hints */
-  --text-subtle: #EBE5D9;      /* Softer tone for captions, dates, and metadata */
+  --text-subtle: #FBFBF9;      /* Softer tone for captions, dates, and metadata */
   --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
    
   /* ==========================================
      Active State
      ========================================== */
    
-      --surface-chip:  #CCBBDB;     /* Alabaster backgrounds */
+      --surface-chip:  #CCBBDB;     
     --primary-lighter: #CCBBDB ;   /* Thistle*/
     
    
