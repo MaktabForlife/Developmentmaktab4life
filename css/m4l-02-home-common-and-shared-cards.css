@@ -39,7 +39,7 @@ Home cover-sheet app icons - V91.8
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   box-shadow: none;
   font: inherit;
   letter-spacing: 0;
@@ -68,7 +68,7 @@ Home cover-sheet app icons - V91.8
 .home-cover-icon-btn.is-home-active .home-cover-icon-tile,
 .home-cover-icon-btn[aria-current="page"] .home-cover-icon-tile {
   color: var(--text);
-   background: var(--surface-chip;
+   background: var(--surface-chip);
    border: 2px solid var(--surface-track)
 }
 
