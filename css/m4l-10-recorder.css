@@ -41,8 +41,8 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: clamp(0.7rem, 9.5vw, 1.0rem);
-  font-weight: 500;
+  font-size: clamp(1.0 rem, 9.5vw, 1.5rem);
+  font-weight: 600;
   line-height: 1.02;
 
 }
