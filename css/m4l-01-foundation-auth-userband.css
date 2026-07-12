@@ -18,24 +18,27 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
    /* ==========================================
      Banner & Contrast
      ========================================== */
+   
        --banner-color: #9E83B8 ;       /* Core brand identifier African violoet #c9b2d1 dusty lavender #CCBDEA */ 
-         --surface-video:#9E83B8     /* Deep earthy olive-black  */
+       --surface-video:#9E83B8 ;    /* Deep earthy olive-black  */
 
       /* ==========================================
      Background
      ========================================== */
+            
        --surface-app: #EBE5D9;      /* Alabaster background (prevents eye strain) */
        --primary-rgb: #EBE5D9  ;    /* Alabaster backgrounds */
        --primary-light: #EBE5D9  ;   /* Alabaster backgrounds;*/
-      --surface-chip:  #EBE5D9 ;     /* Alabaster backgrounds */
-      --primary-lightest: #EBE5D9 ;  /*Alabaster backgrounds */
+       --surface-chip: #EBE5D9 ;     /* Alabaster backgrounds */
+       --primary-lightest: #EBE5D9 ;  /*Alabaster backgrounds */
+       --surface-soft:#EBE5D9;  
+        --surface-tint:#EBE5D9;
    
          /* ==========================================
          Cards
         ========================================== */
         --surface-card: #FFFFFF;     /* Pure white for elevated content cards */
-         --surface-soft:#FFFFFF;  
-       --surface-tint: #FFFFFF;    
+         
 
    
          /* ==========================================
@@ -48,8 +51,8 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
          /* ==========================================
         Contrast
      ========================================== */
+   
        --primary: #75896;          /* Reseda Green -  */
-
        --surface-contrast: #75896;    /*Reseda Green -  */  
      --surface-dark: #758976;     /* D dark modes or dark overlays */
    
@@ -62,6 +65,7 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   --text-muted: #75896;       /* Medium sage-gray for secondary label hints */
   --text-subtle: #EBE5D9;      /* Softer tone for captions, dates, and metadata */
   --text-inverse: #FBFBF9;     /* Off-white readable text sitting on dark backgrounds */
+   
   /* ==========================================
      Active State
      ========================================== */
