@@ -61,8 +61,8 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   /* Status */
   --success: #32cd32;
   --success-bg: #eaf8ed;
-  --danger: #c01832;
-  --danger-bg: #fff0f1;
+  --danger: #FF2C2C;
+  --danger-bg: #FF2C2C;
   --error: #8b0000;
   --complete: #32cd32;
   --verified: #ffd700;
