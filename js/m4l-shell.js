@@ -1,8 +1,9 @@
-/* M4L v92.1 - Shell / Navigation / User Band module.
+/* M4L v92.3 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation, banner Zoom,
    slide-down menu grid, and shared refresh feedback.
-   V92.1 connects the Recorder Pages → Record → Preview history stack while
-   preserving Library, Progress, Attendance, and medium/large section guards.
+   V92.3 keeps the Recorder Pages → Record → Preview history stack, contains
+   bottom-nav swipe gestures inside the scrollable nav, highlights the active
+   slide-down menu item, and cache-busts the shared Record navigation icon.
    /js/m4l-swipe.js is no longer required. */
 
 /* =========================
@@ -14,32 +15,46 @@
 let bottomNavigationGestureActive = false;
 let bottomNavigationGestureResetTimer = 0;
 let bottomNavigationGestureBoundaryInstalled = false;
+let bottomNavigationGestureNav = null;
+let bottomNavigationGestureStartX = 0;
+let bottomNavigationGestureStartY = 0;
+let bottomNavigationGestureStartScrollLeft = 0;
 
-function isBottomNavNode(node) {
-  if (!node) return false;
+function getBottomNavNode(node) {
+  if (!node) return null;
 
   if (node.nodeType !== 1) {
     node = node.parentElement;
   }
 
-  return !!(
-    node &&
-    typeof node.closest === "function" &&
-    node.closest("#bottom-nav, .bottom-nav")
-  );
+  return node && typeof node.closest === "function"
+    ? node.closest("#bottom-nav, .bottom-nav")
+    : null;
 }
 
-function isBottomNavGestureTarget(event) {
-  if (!event) return false;
+function isBottomNavNode(node) {
+  return !!getBottomNavNode(node);
+}
+
+function getBottomNavGestureElement(event) {
+  if (!event) return null;
 
   if (typeof event.composedPath === "function") {
     const path = event.composedPath();
-    if (Array.isArray(path) && path.some(isBottomNavNode)) {
-      return true;
+
+    if (Array.isArray(path)) {
+      for (const node of path) {
+        const nav = getBottomNavNode(node);
+        if (nav) return nav;
+      }
     }
   }
 
-  return isBottomNavNode(event.target);
+  return getBottomNavNode(event.target);
+}
+
+function isBottomNavGestureTarget(event) {
+  return !!getBottomNavGestureElement(event);
 }
 
 function setBottomNavGestureActive(isActive) {
@@ -48,6 +63,13 @@ function setBottomNavGestureActive(isActive) {
   if (typeof window !== "undefined" && bottomNavigationGestureResetTimer) {
     window.clearTimeout(bottomNavigationGestureResetTimer);
     bottomNavigationGestureResetTimer = 0;
+  }
+
+  if (!bottomNavigationGestureActive) {
+    bottomNavigationGestureNav = null;
+    bottomNavigationGestureStartX = 0;
+    bottomNavigationGestureStartY = 0;
+    bottomNavigationGestureStartScrollLeft = 0;
   }
 
   if (document && document.body) {
@@ -77,8 +99,12 @@ function isBottomNavGestureActive() {
   return bottomNavigationGestureActive === true;
 }
 
-function stopBottomNavGesturePropagation(event) {
+function containBottomNavGestureEvent(event) {
   if (!event) return false;
+
+  if (event.cancelable && typeof event.preventDefault === "function") {
+    event.preventDefault();
+  }
 
   if (typeof event.stopImmediatePropagation === "function") {
     event.stopImmediatePropagation();
@@ -89,24 +115,69 @@ function stopBottomNavGesturePropagation(event) {
   return true;
 }
 
-function handleGlobalBottomNavGestureStart(event) {
-  if (!isBottomNavGestureTarget(event)) return;
+function clampBottomNavScrollLeft(nav, scrollLeft) {
+  if (!nav) return 0;
 
+  const maxScrollLeft = Math.max(0, (nav.scrollWidth || 0) - (nav.clientWidth || 0));
+  return Math.max(0, Math.min(maxScrollLeft, Number(scrollLeft || 0)));
+}
+
+function handleGlobalBottomNavGestureStart(event) {
+  const nav = getBottomNavGestureElement(event);
+  if (!nav) return;
+
+  const touch = event.touches && event.touches[0];
+
+  bottomNavigationGestureNav = nav;
+  bottomNavigationGestureStartX = touch ? Number(touch.clientX || 0) : Number(event.clientX || 0);
+  bottomNavigationGestureStartY = touch ? Number(touch.clientY || 0) : Number(event.clientY || 0);
+  bottomNavigationGestureStartScrollLeft = Number(nav.scrollLeft || 0);
   setBottomNavGestureActive(true);
-  stopBottomNavGesturePropagation(event);
 }
 
 function handleGlobalBottomNavGestureMove(event) {
-  if (!isBottomNavGestureActive() && !isBottomNavGestureTarget(event)) return;
+  const nav = bottomNavigationGestureNav || getBottomNavGestureElement(event);
+  if (!nav || (!isBottomNavGestureActive() && !isBottomNavGestureTarget(event))) return;
 
   setBottomNavGestureActive(true);
-  stopBottomNavGesturePropagation(event);
+  bottomNavigationGestureNav = nav;
+
+  if (event.type === "wheel") {
+    const deltaX = Number(event.deltaX || 0);
+    const deltaY = Number(event.deltaY || 0);
+    const scrollDelta = Math.abs(deltaX) >= Math.abs(deltaY)
+      ? deltaX
+      : (event.shiftKey ? deltaY : 0);
+
+    if (scrollDelta) {
+      nav.scrollLeft = clampBottomNavScrollLeft(nav, (nav.scrollLeft || 0) + scrollDelta);
+      containBottomNavGestureEvent(event);
+    }
+    return;
+  }
+
+  const touch = event.touches && event.touches[0];
+  if (!touch) return;
+
+  const deltaX = Number(touch.clientX || 0) - bottomNavigationGestureStartX;
+  const deltaY = Number(touch.clientY || 0) - bottomNavigationGestureStartY;
+  const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
+
+  // V92.3: the shell owns the complete touch gesture while it is inside the
+  // extended bottom nav. Horizontal movement scrolls only the nav; vertical
+  // movement is absorbed so the page and browser history cannot move instead.
+  if (isHorizontalSwipe) {
+    nav.scrollLeft = clampBottomNavScrollLeft(
+      nav,
+      bottomNavigationGestureStartScrollLeft - deltaX
+    );
+  }
+
+  containBottomNavGestureEvent(event);
 }
 
 function handleGlobalBottomNavGestureEnd(event) {
   if (!isBottomNavGestureActive() && !isBottomNavGestureTarget(event)) return;
-
-  stopBottomNavGesturePropagation(event);
   clearBottomNavGestureActiveSoon();
 }
 
@@ -123,11 +194,14 @@ function installGlobalBottomNavigationGestureBoundary() {
     });
   });
 
-  ["touchmove", "pointermove", "wheel"].forEach(eventName => {
-    document.addEventListener(eventName, handleGlobalBottomNavGestureMove, {
-      capture: true,
-      passive: true
-    });
+  document.addEventListener("touchmove", handleGlobalBottomNavGestureMove, {
+    capture: true,
+    passive: false
+  });
+
+  document.addEventListener("wheel", handleGlobalBottomNavGestureMove, {
+    capture: true,
+    passive: false
   });
 
   ["touchend", "touchcancel", "pointerup", "pointercancel"].forEach(eventName => {
@@ -225,7 +299,7 @@ function showScreen(screenId) {
 ========================= */
 
 const M4L_APP_HISTORY_FLAG = "maktab4life";
-const M4L_APP_HISTORY_VERSION = 921;
+const M4L_APP_HISTORY_VERSION = 923;
 const M4L_APP_HISTORY_EXIT_WINDOW_MS = 1800;
 const M4L_APP_HISTORY_DESKTOP_GUARD_QUERY = "(min-width: 768px)";
 
@@ -2533,7 +2607,7 @@ function attachUserBandRefreshHandler(band, refreshAction) {
 const USER_BAND_MENU_ITEMS = {
   student: [
     { action: "home", label: "Home", icon: "/icons/home.svg" },
-    { action: "record", label: "Record", icon: "/icons/navrecord.svg" },
+    { action: "record", label: "Record", icon: "/icons/navrecord.svg?v=92.3" },
     { action: "library", label: "Library", icon: "/icons/resources.svg" },
     { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
     { action: "refresh", label: "Refresh", icon: "/icons/refresh.svg" },
@@ -2542,7 +2616,7 @@ const USER_BAND_MENU_ITEMS = {
   admin: [
     { action: "home", label: "Home", icon: "/icons/home.svg" },
     { action: "attendance", label: "Attendance", icon: "/icons/attendance.svg" },
-    { action: "record", label: "Record", icon: "/icons/navrecord.svg" },
+    { action: "record", label: "Record", icon: "/icons/navrecord.svg?v=92.3" },
     { action: "library", label: "Library", icon: "/icons/resources.svg" },
     { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
     { action: "admin", label: "Admin", icon: "/icons/admin.svg" },
@@ -2570,21 +2644,33 @@ function getUserBandMenuProfileMarkup(username, role) {
   `;
 }
 
-function getUserBandMenuMarkup(username, role) {
+function getUserBandMenuMarkup(username, role, screenId) {
   const items = getUserBandMenuItems(role);
+  const activeKey = typeof getBottomNavActiveKey === "function"
+    ? String(getBottomNavActiveKey(screenId || getActiveScreenId(), role) || "")
+    : "";
+
   return `
     ${getUserBandMenuProfileMarkup(username, role)}
-    ${items.map(item => `
-      <button
-        type="button"
-        class="app-user-menu__tile"
-        data-app-menu-action="${escapeForAttribute(item.action)}"
-        role="menuitem"
-      >
-        <span class="app-user-menu__tile-icon" style="--app-menu-icon: url('${escapeForAttribute(item.icon)}')" aria-hidden="true"></span>
-        <span class="app-user-menu__tile-label">${escapeHtml(item.label)}</span>
-      </button>
-    `).join("")}
+    ${items.map(item => {
+      const isActive = item.action === activeKey;
+      const activeClass = isActive ? " is-active" : "";
+      const activeStyle = isActive ? " color: var(--primary-light);" : "";
+      const ariaCurrent = isActive ? ' aria-current="page"' : "";
+
+      return `
+        <button
+          type="button"
+          class="app-user-menu__tile${activeClass}"
+          data-app-menu-action="${escapeForAttribute(item.action)}"
+          role="menuitem"${ariaCurrent}
+          style="${activeStyle}"
+        >
+          <span class="app-user-menu__tile-icon" style="--app-menu-icon: url('${escapeForAttribute(item.icon)}')" aria-hidden="true"></span>
+          <span class="app-user-menu__tile-label">${escapeHtml(item.label)}</span>
+        </button>
+      `;
+    }).join("")}
   `;
 }
 
@@ -2878,7 +2964,7 @@ function updateUserBand(screenId) {
         <span class="app-user-band__action-label">MENU</span>
       </button>
       <div id="app-user-band-menu" class="app-user-menu hidden" role="menu" aria-label="App menu" aria-hidden="true">
-        ${getUserBandMenuMarkup(username, role)}
+        ${getUserBandMenuMarkup(username, role, screenId)}
       </div>
     </div>
     <div id="app-user-band-loading" class="app-user-band__loading" role="status" aria-live="polite" aria-hidden="true">
@@ -2922,7 +3008,7 @@ const BOTTOM_NAV_ITEMS = {
     {
       key: "record",
       label: "Record",
-      icon: "/icons/navrecord.svg",
+      icon: "/icons/navrecord.svg?v=92.3",
       targetScreen: "record-lesson-screen"
     },
     {
@@ -2950,7 +3036,7 @@ const BOTTOM_NAV_ITEMS = {
     {
       key: "record",
       label: "Record",
-      icon: "/icons/navrecord.svg",
+      icon: "/icons/navrecord.svg?v=92.3",
       targetScreen: "record-lesson-screen"
     },
     {
