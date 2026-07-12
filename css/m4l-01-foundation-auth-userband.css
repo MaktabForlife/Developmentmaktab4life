@@ -1,4 +1,4 @@
-/* M4L v92.1 made banner narrower
+/* M4L v92.1 made banner narrower, shades of lavender
 v91.4 - Attendance save icon class cleanup and header panel flattening
    Baseline: M4L v90.9.5.1 Progress swipe containment support
    Baseline: V90.9.2 stylesheet used with V90.9.5 Progress JS cleanup.
@@ -35,8 +35,8 @@ v91.4 - Attendance save icon class cleanup and header panel flattening
   /* ==========================================
      LAVENDER PALETTE
      ========================================== */
-  --surface-chip:  #EEEBF4;     /* Ultra-light lavender for surfaces */
-  --surface-track: #D0C8E0;    /* Mid-lavender for pills  */
+  --surface-chip:  #F0EAF1 ;     /* Ultra-light lavender for surfaces */
+  --surface-track: #E8DFEB;    /* Mid-lavender for pills  */
    
   --zoom-colour: #0A437A;       /* Zoom action blue */
   --surface-dark: #916496;     /* Deep dusty lavender for dark modes or dark overlays */
