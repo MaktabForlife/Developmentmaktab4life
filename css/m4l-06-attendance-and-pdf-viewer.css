@@ -1,6 +1,6 @@
 /* Attendance native scroll panels - V66.1 */
 #attendance-screen.screen {
-  background: transparent;
+  background: var(--surface-app);
   box-shadow: none;
   border-radius: 0;
   overflow: visible;
@@ -355,12 +355,12 @@ body.is-attendance-section #attendance-screen.screen {
 /* Admin Attendance */
 #attendance-screen,
 .student-admin-screen {
-  background: var(--surface-app);
+  background: var(--surface-card);
 }
 
 #attendance-screen.screen {
   padding: 18px 14px;
-  background: transparent;
+  background: var(--surface-app);
   border-radius: 0;
   box-shadow: none;
 }
@@ -373,7 +373,7 @@ body.is-attendance-section #attendance-screen.screen {
   gap: 8px;
   padding: 0;
   margin-bottom: 14px;
-  background: transparent;
+  background: var(--surface-card);
   border: 0;
   box-shadow: none;
 }
@@ -410,7 +410,7 @@ body.is-attendance-section #attendance-screen.screen {
   margin: 0;
   min-width: 0;
   align-self: center;
-  color: var(--primary);
+  color: var(--text);
   font-size: clamp(1.05rem, 4.6vw, 1.35rem);
   line-height: 1.15;
   letter-spacing: 0.01em;
@@ -475,7 +475,7 @@ body.is-attendance-section #attendance-screen.screen {
   align-content: start;
   margin: 0;
   padding: 0;
-  background: transparent;
+  background: var(--surface-card);
   border: 0;
   box-shadow: none;
 }
@@ -486,7 +486,7 @@ body.is-attendance-section #attendance-screen.screen {
   grid-template-columns: 1fr 1px 1fr;
   align-items: stretch;
   gap: 12px;
-  background: transparent;
+  background: var(--surface-card);
   border: 0;
   border-radius: 0;
   padding: 0;
@@ -510,7 +510,7 @@ body.is-attendance-section #attendance-screen.screen {
   justify-content: center;
   border-radius: 0;
   background: transparent;
-  color: var(--primary);
+  color: var(--text);
   font-size: 1.05rem;
 }
 
@@ -522,9 +522,9 @@ body.is-attendance-section #attendance-screen.screen {
 
 .attendance-summary-label,
 .attendance-date-label {
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -538,7 +538,7 @@ body.is-attendance-section #attendance-screen.screen {
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--surface-card);
   color: var(--primary);
   font-size: 1.02rem;
   font-weight: 800;
@@ -548,7 +548,7 @@ body.is-attendance-section #attendance-screen.screen {
 
 .attendance-summary-divider {
   width: 1px;
-  background: rgba(var(--black-rgb), 0.12);
+  background: var(--surface-dark);
 }
 
 .attendance-summary-card .attendance-absence-feedback {
@@ -560,7 +560,7 @@ body.is-attendance-section #attendance-screen.screen {
 }
 
 .attendance-summary-subtext {
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.82rem;
   line-height: 1.1;
 }
@@ -640,8 +640,8 @@ body.is-attendance-section #attendance-screen.screen {
 }
 
 .attendance-group-heading {
-  background: var(--primary);
-  color: var(--text-inverse);
+  background: var(--surface-chip);
+  color: var(--text);
   padding: 10px;
   border-radius: 10px;
   text-align: center;
@@ -652,7 +652,7 @@ body.is-attendance-section #attendance-screen.screen {
 
 .attendance-group-container {
   background: var(--surface-card);
-  border: 1px solid rgba(var(--primary-rgb), 0.10);
+  border: 1px solid var(--surface-track) ;
   border-radius: 16px;
   box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.05);
   padding: 6px 8px;
@@ -735,7 +735,7 @@ body.is-attendance-section #attendance-screen.screen {
 }
 
 .attendance-toggle.is-absent.is-absent {
-  background: var(--danger-bg);
+  background: var(--surface-app);
   color: var(--danger);
 }
 
@@ -777,11 +777,11 @@ body.is-attendance-section #attendance-screen.screen {
 .attendance-stat-label {
   font-family: var(--font-heading);
   letter-spacing: 0.02em;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .attendance-stat-number {
-  font-size: 2.2rem;
+  font-size: 1.0rem;
   font-weight: bold;
   font-family: var(--font-main);
 }
@@ -809,7 +809,7 @@ body.is-attendance-section #attendance-screen.screen {
 
 .attendance-bar-track {
   height: 10px;
-  background: var(--surface-track);
+  background: var(--surface-app);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -962,9 +962,9 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   z-index: 112;
   flex: 0 0 auto;
   margin: 0;
-  padding: 10px 12px;
+  padding: 5px 5px;
   background: var(--surface-app);
-  border-bottom: 2px solid rgba(var(--black-rgb), 0.18);
+  border-bottom: 2px var(--surface-track);
 }
 
 body.pdf-viewer-open.has-user-band .pdf-viewer-header {
@@ -980,7 +980,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 .pdf-viewer-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex: 0 0 auto;
 }
 
@@ -1000,13 +1000,13 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   min-height: 0;
   height: auto;
   border: 0;
-  background: var(--surface-soft);
+  background: var(--surface-app);
 }
 
 @media (max-width: 520px) {
   .pdf-viewer-header {
     flex-wrap: nowrap;
-    gap: 8px;
+    gap: 4px;
     padding: 8px;
   }
 
@@ -1019,13 +1019,15 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   }
 
   .pdf-viewer-actions {
-    gap: 6px;
+    gap: 4px;
   }
 
   .pdf-viewer-actions .small-btn {
     min-width: 56px;
     padding: 8px 9px;
     font-size: 0.78rem;
+    background: var(--surface-dark);
+    colour: var(--text-subtle);
   }
 
   .pdf-viewer-frame {
