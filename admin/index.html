@@ -390,91 +390,245 @@
 
 
     <!-- RECORD LESSON -->
-<section id="record-lesson-screen" class="screen admin-theme m4l-recorder-screen" data-m4l-recorder-role="admin">
+<!-- RECORD LESSON -->
+<section
+  id="record-lesson-screen"
+  class="screen admin-theme m4l-recorder-screen"
+  data-m4l-recorder-role="admin"
+>
   <div class="m4l-recorder-root" data-m4l-recorder-root>
-    <section id="m4l-recorder-page-select" class="m4l-recorder-view m4l-recorder-view--pages active" aria-labelledby="m4l-recorder-title">
-      <h2 id="m4l-recorder-title" class="m4l-recorder-title">Record your reading and share</h2>
+
+    <!-- PAGE SELECTOR -->
+    <section
+      id="m4l-recorder-page-select"
+      class="m4l-recorder-view m4l-recorder-view--pages active"
+      aria-labelledby="m4l-recorder-title"
+    >
+      <h2 id="m4l-recorder-title" class="m4l-recorder-title">
+        Record your reading and share
+      </h2>
 
       <div class="m4l-recorder-book-card">
-        <label class="visually-hidden" for="m4l-recorder-book-select">Select your kitaab</label>
-        <select id="m4l-recorder-book-select" class="m4l-recorder-book-select" aria-label="Image Selector">
+        <label class="visually-hidden" for="m4l-recorder-book-select">
+          Select your kitaab
+        </label>
+
+        <select
+          id="m4l-recorder-book-select"
+          class="m4l-recorder-book-select"
+          aria-label="Select your kitaab"
+        >
           <option value="">Loading image sets...</option>
         </select>
-        <p class="m4l-recorder-selector-label" aria-hidden="true">Image Selector</p>
-        <input id="m4l-recorder-page-upload" class="visually-hidden" type="file" accept="image/*" multiple />
+
+        <p class="m4l-recorder-selector-label" aria-hidden="true">
+          Image Selector
+        </p>
+
+        <input
+          id="m4l-recorder-page-upload"
+          class="visually-hidden"
+          type="file"
+          accept="image/*"
+          multiple
+        />
       </div>
 
-      <p id="m4l-recorder-status" class="m4l-recorder-status helper-text" role="status" aria-live="polite">Loading image sets...</p>
-      <div id="m4l-recorder-page-grid" class="m4l-recorder-page-grid" aria-label="Available reader pages"></div>
+      <p
+        id="m4l-recorder-status"
+        class="m4l-recorder-status helper-text"
+        role="status"
+        aria-live="polite"
+      >
+        Loading image sets...
+      </p>
+
+      <div
+        id="m4l-recorder-page-grid"
+        class="m4l-recorder-page-grid"
+        aria-label="Available reader pages"
+      ></div>
     </section>
 
-    <section id="m4l-recorder-record-view" class="m4l-recorder-view m4l-recorder-view--record" aria-labelledby="m4l-recorder-record-title">
+    <!-- RECORD VIEW -->
+    <section
+      id="m4l-recorder-record-view"
+      class="m4l-recorder-view m4l-recorder-view--record"
+      aria-labelledby="m4l-recorder-record-title"
+    >
       <div class="m4l-recorder-view-header m4l-recorder-view-header--clean">
-     
-        <<h2 id="m4l-recorder-record-title" class="m4l-recorder-view-title">Record</h2>
-        
-        
-       <button
-  id="m4l-recorder-back-to-pages"
-  class="m4l-recorder-back-icon-btn"
-  type="button"
-  aria-label="Return to page selector"
-  title="Return to page selector"
->
-  <span class="m4l-recorder-back-icon" aria-hidden="true"></span>
-  <span class="m4l-recorder-back-label">Return to page selector</span>
-</button>
+        <h2
+          id="m4l-recorder-record-title"
+          class="m4l-recorder-view-title"
+        >
+          Record
+        </h2>
+
+        <button
+          id="m4l-recorder-back-to-pages"
+          class="m4l-recorder-back-icon-btn"
+          type="button"
+          aria-label="Return to page selector"
+          title="Return to page selector"
+        >
+          <span
+            class="m4l-recorder-back-icon"
+            aria-hidden="true"
+          ></span>
+
+          <span class="m4l-recorder-back-label">
+            Return to page selector
+          </span>
+        </button>
       </div>
 
       <div class="m4l-recorder-reader-frame">
-        <canvas id="m4l-recorder-canvas" aria-label="Selected reader page"></canvas>
+        <canvas
+          id="m4l-recorder-canvas"
+          aria-label="Selected reader page"
+        ></canvas>
       </div>
 
-      <div class="m4l-recorder-controls" aria-label="Recording controls">
-        <button id="m4l-recorder-record-btn" class="m4l-recorder-record-action" type="button" aria-label="Start recording">
-          <img class="m4l-recorder-native-icon" src="/icons/record.svg" alt="" aria-hidden="true" />
-          <span class="m4l-recorder-record-label">Record</span>
+      <div
+        class="m4l-recorder-controls"
+        aria-label="Recording controls"
+      >
+        <button
+          id="m4l-recorder-record-btn"
+          class="m4l-recorder-record-action"
+          type="button"
+          aria-label="Start recording"
+        >
+          <img
+            class="m4l-recorder-native-icon"
+            src="/icons/record.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span class="m4l-recorder-record-label">
+            Record
+          </span>
         </button>
-        <button id="m4l-recorder-stop-btn" class="m4l-recorder-record-action" type="button" aria-label="Stop recording" hidden>
-          <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg" alt="" aria-hidden="true" />
-          <span class="m4l-recorder-record-meta">Recording · <output id="m4l-recorder-countdown" aria-live="polite">02:00</output></span>
+
+        <button
+          id="m4l-recorder-stop-btn"
+          class="m4l-recorder-record-action"
+          type="button"
+          aria-label="Stop recording"
+          hidden
+        >
+          <img
+            class="m4l-recorder-native-icon"
+            src="/icons/stoprecord.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span class="m4l-recorder-record-meta">
+            Recording ·
+            <output
+              id="m4l-recorder-countdown"
+              aria-live="polite"
+            >
+              02:00
+            </output>
+          </span>
         </button>
-        <p id="m4l-recorder-helper" class="m4l-recorder-helper helper-text">Microphone permission will be requested when you tap Record.</p>
+
+        <p
+          id="m4l-recorder-helper"
+          class="m4l-recorder-helper helper-text"
+        >
+          Microphone permission will be requested when you tap Record.
+        </p>
       </div>
     </section>
 
-    <section id="m4l-recorder-preview-view" class="m4l-recorder-view m4l-recorder-view--preview" aria-labelledby="m4l-recorder-preview-title">
+    <!-- PREVIEW VIEW -->
+    <section
+      id="m4l-recorder-preview-view"
+      class="m4l-recorder-view m4l-recorder-view--preview"
+      aria-labelledby="m4l-recorder-preview-title"
+    >
       <div class="m4l-recorder-view-header m4l-recorder-view-header--clean">
-        <h2 id="m4l-recorder-preview-title" class="m4l-recorder-view-title">Preview</h2>
+        <h2
+          id="m4l-recorder-preview-title"
+          class="m4l-recorder-view-title"
+        >
+          Preview
+        </h2>
+
         <button
           id="m4l-recorder-preview-pages"
           class="m4l-recorder-back-icon-btn"
           type="button"
-          aria-label="Back to page selection"
-          title="Back to page selection"
+          aria-label="Return to page selector"
+          title="Return to page selector"
         >
-          <span class="m4l-recorder-back-icon" aria-hidden="true"></span>
+          <span
+            class="m4l-recorder-back-icon"
+            aria-hidden="true"
+          ></span>
+
+          <span class="m4l-recorder-back-label">
+            Return to page selector
+          </span>
         </button>
       </div>
 
-      <video id="m4l-recorder-preview-video" class="m4l-recorder-preview-video" controls playsinline></video>
-      <p id="m4l-recorder-recording-meta" class="m4l-recorder-helper helper-text">Review before sharing.</p>
+      <video
+        id="m4l-recorder-preview-video"
+        class="m4l-recorder-preview-video"
+        controls
+        playsinline
+      ></video>
 
-      <div class="m4l-recorder-preview-actions" aria-label="Recording actions">
-        <button id="m4l-recorder-rerecord-btn" class="m4l-recorder-preview-action" type="button">
-          <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg" alt="" aria-hidden="true" />
+      <p
+        id="m4l-recorder-recording-meta"
+        class="m4l-recorder-helper helper-text"
+      >
+        Review before sharing.
+      </p>
+
+      <div
+        class="m4l-recorder-preview-actions"
+        aria-label="Recording actions"
+      >
+        <button
+          id="m4l-recorder-rerecord-btn"
+          class="m4l-recorder-preview-action"
+          type="button"
+        >
+          <img
+            class="m4l-recorder-preview-icon"
+            src="/icons/cancelredo.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
           <span>Redo</span>
         </button>
-        <button id="m4l-recorder-share-btn" class="m4l-recorder-preview-action" type="button">
-          <img class="m4l-recorder-preview-icon" src="/icons/share.svg" alt="" aria-hidden="true" />
+
+        <button
+          id="m4l-recorder-share-btn"
+          class="m4l-recorder-preview-action"
+          type="button"
+        >
+          <img
+            class="m4l-recorder-preview-icon"
+            src="/icons/share.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
           <span>Share</span>
         </button>
       </div>
     </section>
+
   </div>
 </section>
-
-
     <!-- PDF VIEWER -->
     <section id="pdf-viewer-screen" class="screen admin-theme">
       <div class="nav-header pdf-viewer-header">
