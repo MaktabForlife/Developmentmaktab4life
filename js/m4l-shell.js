@@ -1,4 +1,4 @@
-/* M4L v92.3 - Shell / Navigation / User Band module.
+/* M4L v93.0 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation, banner Zoom,
    slide-down menu grid, and shared refresh feedback.
    V92.3 keeps the Recorder Pages → Record → Preview history stack, contains
@@ -2483,12 +2483,12 @@ async function refreshCurrentResourceView(button) {
     const shouldUseAdminResources = resourceMode === "admin" || role === "admin";
 
     if (shouldUseAdminResources && isOptionalFunctionLoaded("showAdminResources")) {
-      await window.showAdminResources();
+      await window.showAdminResources({ force: true });
       return;
     }
 
     if (isOptionalFunctionLoaded("showStudentResources")) {
-      await window.showStudentResources();
+      await window.showStudentResources({ force: true });
       return;
     }
 
