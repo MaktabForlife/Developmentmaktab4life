@@ -312,7 +312,7 @@
   padding: 9px;
   border: 1px solid rgba(var(--primary-rgb), 0.10);
   border-radius: 22px;
-  background: var(--surface-track);
+  background: var(--surface-card);
   box-shadow: inset 0 0 0 1px rgba(var(--black-rgb), 0.03), 0 4px 12px rgba(var(--black-rgb), 0.08);
   overflow: hidden;
 }
@@ -323,7 +323,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 58px;
   grid-auto-rows: minmax(var(--student-progress-task-row-height, 40px), auto);
-  border: 1px solid var(--surface-app);
+  border: 1px solid var(--surface-card);
   border-radius: 10px;
   background: var(--surface-card);
   overflow-y: auto;
@@ -562,9 +562,9 @@
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0;
   padding: 8px;
-  border-radius: 24px;
-  background: rgba(var(--white-rgb), 0.76);
-  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.08);
+  border-radius: 16px;
+  background: var(--surface-track);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 
