@@ -650,18 +650,6 @@
 }
 
 
-/* M4L v90.8.7.2 - Individual sticky global pane and legacy Progress cleanup */
-#progress-report.admin-theme .admin-progress-aig-shell,
-#progress-report.admin-theme [data-admin-progress-aig-shell],
-body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-aig-shell {
-  display: none;
-}
-
-#progress-report.admin-theme .admin-progress-placeholder-card,
-#progress-report.admin-theme .admin-progress-individual-cleanup-placeholder {
-  display: none;
-}
-
 #progress-report.admin-theme .admin-individual-progress-shell {
   --admin-individual-progress-global-pane-height: 96px;
   --admin-individual-progress-global-pane-gap: 8px;

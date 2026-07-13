@@ -1,9 +1,5 @@
 /* M4L v90.3 - Admin Class Progress GUI refinements
    Build on the stable V90.2 global student-column architecture. */
-.admin-progress-view-picker {
-  background: var(--surface-card);
-}
-
 .admin-progress-class-overview--module-panes,
 .admin-progress-class-overview--attached {
   --admin-progress-class-module-header-height: 56px;
@@ -38,14 +34,6 @@
   padding: 2px 4px;
   background: var(--admin-progress-class-grid-header-surface);
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
-}
-
-.admin-progress-class-student-column-action .admin-progress-matrix-action-block--a1 {
-  width: 100%;
-  min-width: 0;
-  display: grid;
-  place-items: center;
-  gap: 0;
 }
 
 .admin-progress-class-student-column-action .admin-progress-class-global-edit-toggle,
@@ -101,17 +89,6 @@
   align-items: center;
   justify-content: center;
   padding: 5px;
-}
-
-.admin-progress-class-student-column-key .admin-progress-matrix-key-block--a2 {
-  width: min(100%, 96px);
-  display: grid;
-  gap: 5px;
-  align-content: center;
-  justify-items: start;
-  padding: 8px 9px;
-  border-radius: 13px;
-  background: var(--surface-app);
 }
 
 .admin-progress-class-student-column-key .admin-progress-matrix-key-line {
@@ -283,10 +260,6 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 
   body.is-admin-progress-section #progress-report.admin-progress-screen {
     padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px));
-  }
-
-  body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-aig-shell {
-    padding-inline: 8px;
   }
 
   body.is-admin-progress-section #progress-report.admin-progress-screen .admin-progress-class-overview--module-panes,
@@ -1012,4 +985,3 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   background: var(--surface-card);
   background-clip: padding-box;
 }
-

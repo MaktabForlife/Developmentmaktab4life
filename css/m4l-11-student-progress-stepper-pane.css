@@ -20,8 +20,7 @@
   padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 6px);
 }
 
-#progress-subjects-screen.student-theme .nav-header,
-#progress-subjects-screen.student-theme .student-progress-active-module-header {
+#progress-subjects-screen.student-theme .nav-header {
   display: none;
 }
 
@@ -128,34 +127,6 @@ body.is-student-progress-section .app-shell {
   transform: scale(0.96);
 }
 
-#progress-subjects-screen.student-theme .student-progress-close-btn {
-  appearance: none;
-  grid-column: 1;
-  width: var(--icon-size);
-  min-width: var(--icon-size);
-  max-width: var(--icon-size);
-  height: var(--icon-size);
-  min-height: var(--icon-size);
-  margin: 0;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  justify-self: start;
-  align-self: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-muted);
-  box-shadow: none;
-  pointer-events: auto;
-}
-
-#progress-subjects-screen.student-theme .student-progress-close-btn .app-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
-}
-
 #progress-subjects-screen.student-theme .student-progress-top-control-dots,
 #progress-subjects-screen.student-theme .student-progress-stepper-number-strip {
   grid-column: 2;
@@ -167,15 +138,6 @@ body.is-student-progress-section .app-shell {
   align-items: center;
   pointer-events: auto;
   overflow: hidden;
-}
-
-#progress-subjects-screen.student-theme .student-progress-top-control-spacer {
-  grid-column: 3;
-  display: block;
-  width: 100%;
-  min-width: 44px;
-  height: 1px;
-  pointer-events: none;
 }
 
 #progress-subjects-screen.student-theme .student-progress-swipe-dots,
@@ -232,11 +194,6 @@ body.is-student-progress-section .app-shell {
   border-color: rgba(var(--primary-rgb), 0.38);
   background: rgba(var(--primary-rgb), 0.16);
   color: var(--text-strong);
-}
-
-#progress-subjects-screen.student-theme .student-progress-global-save-row,
-#progress-subjects-screen.student-theme .student-progress-save-btn {
-  display: none;
 }
 
 #progress-subjects-screen.student-theme .student-progress-swipe-track {
@@ -960,5 +917,4 @@ body.is-student-progress-section .app-shell {
     max-height: none;
   }
 }
-
 
