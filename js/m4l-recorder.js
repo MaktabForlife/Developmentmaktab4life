@@ -1,6 +1,6 @@
-/* M4L v93.1
+/* M4L v93.3
    Shared student/admin recorder interface with shared manifest caching.
-   Page recordings use MP4 when viable, otherwise adaptive audio plus JPEG.
+   Apple Safari uses MP4 when viable; other browsers use audio plus JPEG.
    Audio-only is an explicit source choice. WebM video is never created. */
 (() => {
   "use strict";
@@ -906,8 +906,22 @@
       || (platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }
 
+  function isAppleSafariBrowser() {
+    const userAgent = String(navigator.userAgent || "");
+    const vendor = String(navigator.vendor || "");
+    const isAlternativeBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA/i.test(userAgent);
+
+    if (!/AppleWebKit/i.test(userAgent) || isAlternativeBrowser) return false;
+    if (isIOSDevice()) return true;
+    return /Safari/i.test(userAgent) && /Apple/i.test(vendor);
+  }
+
   function getSupportedMp4MimeType() {
     if (typeof MediaRecorder === "undefined") return "";
+    // Chromium can report MP4 recording support while producing a file that
+    // WhatsApp does not accept as a playable video. Use the proven Apple
+    // Safari path only; every other browser records audio plus a JPEG.
+    if (!isAppleSafariBrowser()) return "";
     if (typeof MediaRecorder.isTypeSupported !== "function") {
       return isIOSDevice() ? "video/mp4" : "";
     }
@@ -919,6 +933,12 @@
     ];
 
     return candidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  function shouldAttemptCombinedPairShare() {
+    // Mixed image/audio shares are destination-dependent. On the non-Safari
+    // fallback path, present the reliable separate actions immediately.
+    return isAppleSafariBrowser();
   }
 
   function getSupportedAudioMimeType() {
@@ -1314,7 +1334,7 @@
   function evaluateShareCapabilities() {
     const recording = state.recordingFile ? canShareFiles([state.recordingFile]) : false;
     const page = state.pageImageFile ? canShareFiles([state.pageImageFile]) : false;
-    const together = state.recordingFile && state.pageImageFile
+    const together = shouldAttemptCombinedPairShare() && state.recordingFile && state.pageImageFile
       ? canShareFiles([state.pageImageFile, state.recordingFile])
       : false;
     return { recording, page, together };
@@ -1465,6 +1485,13 @@
     }
 
     const pair = state.resultKind === "audio-image";
+    if (pair && !shouldAttemptCombinedPairShare()) {
+      if (els.shareBtn) els.shareBtn.hidden = true;
+      revealPairShareActions();
+      if (els.recordingMeta) els.recordingMeta.textContent = "Share the audio and page separately.";
+      return;
+    }
+
     const files = pair
       ? [state.pageImageFile, state.recordingFile].filter(Boolean)
       : [state.recordingFile];
