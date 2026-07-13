@@ -789,7 +789,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-accordion-chevron {
   display: inline-block;
   flex: 0 0 auto;
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.72em;
   font-weight: 700;
   line-height: 1;
@@ -805,7 +805,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   justify-content: space-between;
   gap: 6px;
   background: var(--surface-card);
-  color: var(--text-muted);
+  color: var(--text);
   font-weight: 700;
   cursor: pointer;
 }
@@ -903,7 +903,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-module-heading .admin-progress-class-merged-module-title,
 .admin-progress-class-overview--accordion .admin-progress-class-module-heading-label {
   max-width: 100%;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.08;
@@ -913,7 +913,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 }
 
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-chevron {
-  color: var(--text-subtle);
+  color: var(--text);
   font-size: 0.78em;
   font-weight: 700;
 }
