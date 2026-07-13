@@ -1,0 +1,649 @@
+/* Student/Admin Home: V84 vertical stack, timetable and class duas panels */
+.student-home-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.student-home-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+
+/* V82.4.1: Zoom is a banner-only action; remove any legacy/generated Home Zoom controls. */
+#student-home .home-sticky-action-bar[data-home-sticky-action="zoom"],
+#admin-home .home-sticky-action-bar[data-home-sticky-action="zoom"],
+#student-home .zoom-link-button,
+#admin-home .zoom-link-button {
+  display: none;
+}
+
+
+/* V84.1 Home vertical stack: compact duas carousel, transparent icon panel, timetable panel. */
+.home-stack {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  margin-top: 0;
+  text-align: left;
+}
+
+.home-section {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
+}
+
+.home-duas-section {
+  padding: 8px 10px 10px;
+  background: var(--surface-track);
+}
+
+.home-icons-section {
+  width: 100%;
+      padding: 20px 20px;
+    background: var(--surface-card);
+ /* padding: 8px 8px 6px;
+  border-color: transparent;
+  box-shadow: none;*/
+}
+
+.home-timetable-section {
+  padding: 12px;
+  background: var(--surface-track);
+}
+
+#student-home .home-cover-icon-grid,
+#admin-home .home-cover-icon-grid {
+  margin: 0 auto;
+}
+
+/* Home native scroll panels - V67.1 */
+.home-swipe-shell {
+  width: 100%;
+  min-width: 0;
+}
+
+.home-swipe-track {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  text-align: left;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-swipe-track::-webkit-scrollbar {
+  display: none;
+}
+
+.home-swipe-panel {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.home-swipe-panel {
+  background: var(--surface-soft);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 8px 18px var(--shadow);
+}
+
+.home-sticky-action-bar .zoom-link-button,
+.home-swipe-panel--timetable .zoom-link-button {
+  margin-top: 0;
+}
+
+.home-swipe-panel > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.home-swipe-panel--duas .class-duas-card {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--surface-card);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: none;
+  text-align: center;
+}
+
+.class-duas-card__title {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: clamp(1rem, 4.2vw, 1.28rem);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.class-duas-card__viewport {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.class-duas-card__track {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.class-duas-card__track::-webkit-scrollbar {
+  display: none;
+}
+
+.class-duas-card__panel {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-height: clamp(148px, 24vh, 214px);
+  padding: 10px 11px;
+  border-radius: 16px;
+  background: var(--surface-soft);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.class-duas-card__arabic {
+  margin: 0;
+  color: var(--text);
+  font-family: "Geeza Pro", "Tahoma", "Arial", var(--font-main);
+  font-size: clamp(1.0rem, 5.2vw, 1.85rem);
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.class-duas-card__transliteration {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: clamp(0.78rem, 3.05vw, 0.92rem);
+  font-weight: 400;
+  line-height: 1.34;
+  text-align: center;
+}
+
+.class-duas-card__translation {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.76rem, 2.95vw, 0.9rem);
+  line-height: 1.34;
+  text-align: center;
+}
+
+.class-duas-card__dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 20px;
+  margin-top: 6px;
+}
+
+.class-duas-card__dot {
+  width: 12px;
+  min-width: 8px;
+  height: 8px;
+  min-height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary-lighter);
+  box-shadow: none;
+  opacity: 0.75;
+}
+
+.class-duas-card__dot.is-active {
+  width: 22px;
+  background: var(--surface-dark);
+  opacity: 1;
+}
+
+/* Home: compact timetable layout */
+#student-home .top-bar,
+#admin-home .top-bar {
+  display: none;
+}
+
+
+#student-home.screen,
+#admin-home.screen {
+  padding-inline: 12px;
+}
+
+#student-home .student-home-panel,
+#admin-home .student-home-panel {
+  margin-top: 0;
+  gap: 12px;
+}
+
+#student-home .home-sticky-action-bar,
+#admin-home .home-sticky-action-bar {
+  order: -1;
+}
+
+#student-home .home-swipe-panel--timetable .timetable-card,
+#admin-home .home-swipe-panel--timetable .timetable-card {
+  overflow: visible;
+  background: transparent;
+  border-left: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+#student-home .home-swipe-panel--timetable .timetable-card-header,
+#admin-home .home-swipe-panel--timetable .timetable-card-header {
+  margin: 0 0 6px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#student-home .home-swipe-panel--timetable .timetable-card-header h3,
+#admin-home .home-swipe-panel--timetable .timetable-card-header h3 {
+  display: block;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.92rem, 3.2vw, 1.05rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+
+@media (max-width: 767px) {
+  #student-home.screen,
+  #admin-home.screen {
+    padding-top: 12px;
+  }
+
+  #attendance-screen.screen {
+    padding-top: calc(var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 14px);
+  }
+
+  .attendance-sticky-control-pane {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--swipe-dot-band-gap) + var(--swipe-dot-bar-height) + 8px);
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: 980px;
+  }
+}
+
+/* Home stays native-scroll/swipe on mobile and tablet.
+   It only becomes side-by-side on large desktop, matching the Attendance model. */
+@media (min-width: 768px) and (max-width: 1179px),
+  (hover: hover) and (pointer: fine) and (max-width: 1179px) {
+  #student-home.screen,
+  #admin-home.screen {
+    padding-top: 12px;
+  }
+
+  .home-swipe-dots {
+    top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + var(--swipe-dot-band-gap));
+  }
+
+  .home-sticky-action-bar {
+    top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--swipe-dot-band-gap) +
+      var(--swipe-dot-bar-height) +
+      var(--home-sticky-action-gap)
+    );
+  }
+}
+
+@media (min-width: 1180px) {
+  .home-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .home-swipe-panel {
+    flex: initial;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    scroll-snap-align: none;
+  }
+
+  .home-swipe-dots {
+    display: none;
+  }
+
+  .home-sticky-action-bar {
+    top: calc(
+      var(--user-band-height) +
+      var(--user-band-safe-area-top) +
+      var(--top-nav-height) +
+      var(--home-sticky-action-gap)
+    );
+    margin-bottom: 18px;
+  }
+}
+
+
+
+/* V84: Home timetable owns its own container. */
+#student-home .home-timetable-section .timetable-card,
+#admin-home .home-timetable-section .timetable-card {
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#student-home .home-timetable-section .timetable-card-header,
+#admin-home .home-timetable-section .timetable-card-header {
+  margin: 0 0 8px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#student-home .home-timetable-section .timetable-card-header h3,
+#admin-home .home-timetable-section .timetable-card-header h3 {
+  display: block;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(0.92rem, 3.2vw, 1.05rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+@media (max-width: 520px) {
+  .home-stack {
+    gap: 9px;
+  }
+
+  .home-duas-section {
+    padding: 7px 9px 9px;
+  }
+
+  .home-icons-section {
+    padding: 6px 4px 4px;
+  }
+
+  .home-timetable-section {
+    padding: 10px;
+  }
+
+  .class-duas-card__panel {
+    min-height: clamp(142px, 23vh, 204px);
+    padding: 9px 9px;
+  }
+}
+
+/* Timetable board - V69.2 clean styling */
+.m4l-timetable-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(8px, 2.2vw, 12px);
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+
+.m4l-timetable-board {
+  --m4l-timetable-time-column: clamp(42px, 13vw, 64px);
+  --m4l-timetable-column-gap: clamp(3px, 1.15vw, 8px);
+  --m4l-timetable-row-pad: clamp(10px, 2.8vw, 16px);
+  --m4l-timetable-text-size: clamp(0.72rem, 2.8vw, 0.9rem);
+  --m4l-timetable-pill-text-size: clamp(0.72rem, 2.3vw, 0.9rem);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 0;
+  padding: 0;
+  color: var(--text-strong);
+  background:transparent; /* transparent  */
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  font-family: var(--font-main);
+  font-size: var(--m4l-timetable-text-size);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-transform: none;
+}
+
+.m4l-timetable-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, var(--m4l-timetable-time-column)) repeat(var(--timetable-day-count, 5), minmax(0, 1fr));
+  column-gap: var(--m4l-timetable-column-gap);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--m4l-timetable-row-pad) 0;
+  border-bottom: 1px solid var(--primary);
+}
+
+.m4l-timetable-row--head {
+  padding-top: 0;
+}
+
+.m4l-timetable-row:last-child {
+  border-bottom: 0;
+}
+
+.m4l-timetable-row:not(.m4l-timetable-row--head)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--m4l-timetable-time-column);
+  width: 1px;
+  background: var(--surface-dark);
+  pointer-events: none;
+}
+
+
+.m4l-timetable-heading-pill,
+.m4l-timetable-break-pill {
+  min-width: 0;
+  min-height: clamp(26px, 7vw, 34px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(5px, 0.75vw, 8px) clamp(4px, 0.75vw, 9px);
+  color: var(--text-strong);
+  background: var(--surface-track);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  font-size: var(--m4l-timetable-pill-text-size);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.m4l-timetable-time-label,
+.m4l-timetable-subject {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: var(--m4l-timetable-text-size);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.m4l-timetable-subject-cell {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: clamp(34px, 10vw, 48px);
+  padding: 0 clamp(0.5px, 0.4vw, 5px);
+  color: var(--surface-dark);
+  background: var(--surface-card);  /* transparent*/
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  text-align: center;
+  overflow: hidden;
+}
+
+.m4l-timetable-subject-cell--merged {
+  grid-column: span var(--timetable-day-count, 5);
+  min-height: clamp(36px, 10.8vw, 52px);
+  padding: clamp(7px, 2vw, 10px) clamp(8px, 2.6vw, 14px);
+  background: var(--surface-card);
+  border: 0;
+  border-radius: 0px;
+  box-shadow: none;
+}
+
+.m4l-timetable-subject-cell--empty {
+  min-height: clamp(22px, 7vw, 34px);
+}
+
+button.m4l-timetable-subject {
+  min-height: 0;
+  padding: 0;
+  color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.m4l-timetable-break-pill {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  padding: 8px 12px;
+}
+
+#student-home .home-swipe-panel--timetable,
+#admin-home .home-swipe-panel--timetable {
+  background: var(--surface-card);
+}
+
+#student-home .home-swipe-panel--timetable .timetable-card,
+#admin-home .home-swipe-panel--timetable .timetable-card {
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#student-home .m4l-timetable-scroll,
+#admin-home .m4l-timetable-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface-soft);
+  border: 0;
+  border-radius: 18px;
+}
+
+#student-home .zoom-link-button,
+#admin-home .zoom-link-button {
+  display: none;
+  margin-bottom: 0;
+}
+
+
+@media (max-width: 520px) {
+  .m4l-timetable-board {
+    --m4l-timetable-time-column: clamp(36px, 12vw, 52px);
+    --m4l-timetable-column-gap: clamp(2px, 0.9vw, 5px);
+    --m4l-timetable-row-pad: clamp(9px, 2.7vw, 13px);
+    --m4l-timetable-text-size: clamp(0.58rem, 2.85vw, 0.78rem);
+    --m4l-timetable-pill-text-size: clamp(0.54rem, 2.35vw, 0.74rem);
+  }
+
+  .m4l-timetable-heading-pill {
+    min-height: 26px;
+    padding-inline: clamp(3px, 1vw, 6px);
+  }
+
+  .m4l-timetable-subject-cell {
+    min-height: clamp(30px, 9vw, 42px);
+    padding-inline: 1px;
+  }
+
+  .m4l-timetable-subject-cell--merged {
+    min-height: clamp(34px, 10vw, 46px);
+    padding-inline: clamp(6px, 2vw, 10px);
+  }
+}
+
+

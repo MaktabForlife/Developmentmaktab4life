@@ -1,4 +1,4 @@
-/* M4L v91.2 - Attendance save icon class cleanup and header panel flattening
+/* M4L v91.3 - Attendance save icon class cleanup and header panel flattening
    Baseline: M4L v87.2 Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.

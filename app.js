@@ -1,4 +1,5 @@
-/* M4L v86 - config
+/* v93.1 bootstrap correction
+M4L v86 - config
  - Core bootstrap guards and Home Class Duas carousel.
    Load before m4l-auth, m4l-shell, and any optional feature modules.
    Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
@@ -102,7 +103,9 @@ function callBootstrapFunction(functionName, args = [], options = {}) {
   }
 }
 
-function bindBootstrapUiHandlers() {
+function bindBootstrapUiHandlers(portalType = "") {
+  const role = String(portalType || state.portalType || "").trim().toLowerCase();
+
   callBootstrapFunction("setupPinDigitBoxes", [], {
     label: "PIN input handlers",
     required: true
@@ -117,9 +120,13 @@ function bindBootstrapUiHandlers() {
     label: "timetable UI handlers"
   });
 
-  callBootstrapFunction("bindAdminSubjectUiHandlers", [], {
-    label: "admin curriculum UI handlers"
-  });
+  // Admin curriculum code is intentionally not loaded by the Student app.
+  // Only request its handlers when the active route is the Admin portal.
+  if (role === "admin") {
+    callBootstrapFunction("bindAdminSubjectUiHandlers", [], {
+      label: "admin curriculum UI handlers"
+    });
+  }
 
   callBootstrapFunction("bindMediaViewerHandlers", [], {
     label: "media viewer handlers"
@@ -211,9 +218,9 @@ window.addEventListener("keydown", event => {
 function initApp() {
   try {
     checkForAppUpdate();
-    bindBootstrapUiHandlers();
 
     const route = getPortalRouteFromLocation();
+    bindBootstrapUiHandlers(route.portalType);
 
     if (route.portalType === "admin") {
       state.portalType = "admin";

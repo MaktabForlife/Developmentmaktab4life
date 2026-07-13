@@ -1,0 +1,934 @@
+/* =========================
+   Manage Students - modern mobile UI
+========================= */
+
+.student-admin-screen {
+  background: var(--surface-tint);
+  padding: 18px 14px;
+}
+
+.student-admin-modern-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.student-admin-modern-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.student-admin-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 18px;
+  padding: 8px;
+  box-shadow: 0 8px 18px rgba(var(--black-rgb), 0.07);
+  margin-bottom: 14px;
+}
+
+.student-admin-mode-btn {
+  min-height: 46px;
+  border-radius: 14px;
+  box-shadow: none;
+  background: var(--surface-chip);
+  color: var(--text-muted);
+}
+
+.student-admin-mode-btn.is-active {
+  background: var(--primary);
+  color: var(--text-inverse);
+}
+
+.student-admin-card,
+.student-admin-result-card {
+  background: var(--surface-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 18px;
+  padding: 15px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 22px rgba(var(--black-rgb), 0.08);
+  text-align: left;
+}
+
+.student-admin-card-title {
+  color: var(--primary);
+  font-weight: 900;
+  font-size: 1.08rem;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.student-admin-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.student-admin-help,
+.student-admin-feedback {
+  color: var(--text-subtle);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  margin: 4px 0 0;
+  text-align: left;
+}
+
+.student-admin-feedback {
+  color: var(--primary);
+  font-weight: 800;
+  min-height: 20px;
+  margin: 10px 0;
+}
+
+/* Reusable form choice rows: radio buttons and checkboxes */
+.student-admin-radio-group,
+.student-edit-status-radio-group {
+  display: grid;
+  gap: 8px;
+}
+
+.student-admin-radio-row,
+.student-edit-status-radio,
+.student-subject-check-row,
+.student-module-check-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  color: var(--text);
+  font-weight: 750;
+  margin: 8px 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.student-admin-radio-row input[type="radio"],
+.student-edit-status-radio input[type="radio"] {
+  display: inline-block;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid rgba(var(--primary-rgb), 0.45);
+  border-radius: 50%;
+  background: var(--surface-card);
+  box-shadow: inset 0 0 0 4px var(--surface-card);
+  accent-color: var(--primary);
+}
+
+.student-admin-radio-row input[type="radio"]:checked,
+.student-edit-status-radio input[type="radio"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.student-subject-check-row input[type="checkbox"],
+.student-module-check-row input[type="checkbox"] {
+  display: inline-block;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid rgba(var(--primary-rgb), 0.45);
+  border-radius: 6px;
+  background: var(--surface-card);
+  accent-color: var(--primary);
+}
+
+.student-subject-check-row input[type="checkbox"]:checked,
+.student-module-check-row input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 4px var(--surface-card);
+}
+
+.student-admin-radio-row:has(input:checked),
+.student-admin-radio-row.is-selected,
+.student-edit-status-radio:has(input:checked),
+.student-edit-status-radio.is-selected,
+.student-subject-check-row:has(input:checked),
+.student-module-check-row:has(input:checked) {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.student-assignment-options {
+  margin-top: 12px;
+}
+
+.student-assignment-subject-card {
+  background: var(--surface-tint);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-left: 6px solid var(--primary);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.student-subject-check-row {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.student-module-check-list {
+  display: grid;
+  gap: 7px;
+  margin-left: 8px;
+}
+
+.student-module-check-row {
+  grid-template-columns: auto 1fr auto;
+  background: var(--surface-card);
+  border-radius: 12px;
+  padding: 9px;
+  margin: 0;
+  font-size: 0.94rem;
+  border: 1px solid rgba(var(--primary-rgb), 0.08);
+}
+
+.student-module-check-row small {
+  color: var(--text-muted);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.student-admin-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  margin: 12px 0 14px;
+}
+
+.student-admin-action-grid.two-col,
+.student-admin-action-grid.three-col {
+  grid-template-columns: 1fr 1fr;
+}
+
+.student-admin-action-grid.three-col button:last-child {
+  grid-column: 1 / -1;
+}
+
+.student-link-box {
+  background: var(--surface-chip);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  border-left: 5px solid var(--primary);
+}
+
+.student-message-preview {
+  margin-top: 12px;
+  background: var(--surface-tint);
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(var(--primary-rgb), 0.10);
+}
+
+.student-message-preview summary {
+  color: var(--primary);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.student-message-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-main);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 10px 0 0;
+}
+
+.student-search-results {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.student-search-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--surface-card);
+  color: var(--text);
+  text-align: left;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 17px;
+  padding: 12px;
+  box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.06);
+}
+
+.student-search-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.student-search-main strong {
+  overflow-wrap: anywhere;
+}
+
+.student-search-main small {
+  color: var(--text-subtle);
+  font-weight: 700;
+}
+
+.student-status-badge {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.student-status-badge.is-active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.student-status-badge.is-inactive {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.selected-student-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-tint);
+  border-radius: 15px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.selected-student-heading div {
+  display: grid;
+  gap: 3px;
+}
+
+.selected-student-heading small {
+  color: var(--text-subtle);
+  font-weight: 700;
+}
+
+.student-active-toggle {
+  margin-top: 10px;
+  box-shadow: none;
+}
+
+.student-active-toggle.is-active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.student-active-toggle.is-inactive {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+@media (max-width: 520px) {
+  .student-admin-screen {
+    padding: 16px 12px;
+  }
+
+  .student-admin-modern-header h2 {
+    font-size: clamp(1.75rem, 8vw, 2.35rem);
+  }
+
+  .student-admin-modern-header .small-btn {
+    min-width: 82px;
+  }
+
+  .student-admin-card,
+  .student-admin-result-card {
+    padding: 13px;
+    border-radius: 17px;
+  }
+
+  .student-admin-action-grid.two-col,
+  .student-admin-action-grid.three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .student-admin-action-grid.three-col button:last-child {
+    grid-column: auto;
+  }
+
+  .student-search-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .student-status-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .student-module-check-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .student-module-check-row small {
+    grid-column: 2;
+  }
+}
+
+/* Manage Students: temporary disabled manual assignment + editable message */
+.student-admin-radio-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.student-admin-radio-row.is-disabled input,
+.student-admin-radio-row.is-disabled span {
+  cursor: not-allowed;
+}
+
+.student-admin-coming-soon {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-chip);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
+.student-message-textarea {
+  width: 100%;
+  min-height: 230px;
+  resize: vertical;
+  margin: 8px 0 6px;
+  padding: 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.25);
+  border-radius: 14px;
+  background: var(--surface-tint);
+  color: var(--text);
+  font-family: var(--font-main);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.student-message-textarea:focus {
+  outline: 2px solid rgba(var(--primary-rgb), 0.22);
+  border-color: var(--primary);
+}
+
+/* Manage Students result icons */
+.student-icon-field {
+  position: relative;
+  padding-right: 50px;
+}
+
+.student-link-text {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.student-message-box-wrap {
+  position: relative;
+}
+
+.student-icon-field-textarea {
+  padding-right: 50px;
+}
+
+.student-copy-icon-btn,
+.student-whatsapp-icon-btn {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: inherit;
+  min-height: 0;
+  padding: 0;
+}
+
+.student-copy-icon-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-copy-icon-btn:active,
+.student-whatsapp-icon-btn:active {
+  transform: scale(0.96);
+}
+
+.student-copy-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.student-whatsapp-icon-btn {
+  width: 86px;
+  min-width: 86px;
+  height: 86px;
+  margin: 14px auto 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-whatsapp-icon {
+  width: 76px;
+  height: 76px;
+  display: block;
+}
+
+
+/* V78.1.3: student header cleanup: no module progress indicators; save action remains neutral. */
+#progress-subjects-screen.student-theme .student-progress-active-module-header .admin-progress-module-bars,
+#progress-subjects-screen.student-theme .student-progress-panel-module-header .admin-progress-module-bars,
+#progress-subjects-screen.student-theme .student-progress-active-module-bars {
+  display: none;
+}
+
+#progress-subjects-screen.student-theme .student-progress-active-module-title-block {
+  align-content: center;
+  gap: 0;
+}
+
+.student-progress-module-edit-toggle.is-editing,
+.student-progress-module-edit-toggle.is-saving {
+  background: var(--surface-card);
+  color: var(--text-muted);
+  border-color: rgba(var(--primary-rgb), 0.22);
+}
+
+@media (max-width: 420px) {
+  .student-copy-icon-btn {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .student-copy-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .student-whatsapp-icon-btn {
+    width: 78px;
+    min-width: 78px;
+    height: 78px;
+  }
+
+  .student-whatsapp-icon {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+/* Manage Students: scrollable full student list and prefilled edit fields */
+.student-admin-action-grid.compact-actions {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.student-list-card {
+  padding-bottom: 10px;
+}
+
+.managed-student-list {
+  display: grid;
+  gap: 9px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding: 2px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.managed-student-group-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.16), rgba(var(--primary-rgb), 0.04));
+  color: var(--primary);
+  border-left: 6px solid var(--primary);
+  border-radius: 12px;
+  padding: 9px 12px;
+  margin: 8px 0 2px;
+  font-weight: 900;
+  text-align: left;
+}
+
+.managed-student-list .student-search-card {
+  margin: 0;
+}
+
+.student-prefilled-input {
+  color: var(--text-subtle);
+  background: var(--surface-soft);
+  border-color: rgba(var(--primary-rgb), 0.22);
+  font-weight: 650;
+}
+
+.student-prefilled-input:focus {
+  color: var(--text);
+  background: var(--surface-card);
+  outline: 2px solid rgba(var(--primary-rgb), 0.18);
+  border-color: var(--primary);
+}
+
+@media (max-width: 520px) {
+  .managed-student-list {
+    max-height: 54vh;
+  }
+
+  .managed-student-group-heading {
+    padding: 8px 10px;
+    margin-top: 7px;
+  }
+}
+
+/* Manage Students: revised search dropdown and separate edit/result screens */
+.student-search-panel {
+  overflow: visible;
+}
+
+.student-search-dropdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 8px;
+  align-items: center;
+}
+
+.student-search-dropdown-row input {
+  margin: 0;
+}
+
+.student-search-arrow-btn {
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 14px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.student-search-dropdown {
+  display: none;
+  margin-top: 10px;
+}
+
+.student-search-dropdown.is-open {
+  display: block;
+}
+
+.student-search-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface-dark);
+  color: var(--text-inverse);
+  border-radius: 8px;
+  padding: 10px 11px;
+  margin-top: 3px;
+  text-align: left;
+  box-shadow: none;
+  min-height: 42px;
+}
+
+.student-search-row-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.student-search-row-number {
+  color: var(--surface-chip);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.managed-student-list {
+  gap: 3px;
+  max-height: min(56vh, 520px);
+  padding: 0 2px 8px;
+}
+
+.managed-student-group-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-chip);
+  color: var(--primary);
+  border-left: 0;
+  border-bottom: 3px solid var(--primary);
+  border-radius: 0;
+  padding: 8px 6px;
+  margin: 10px 0 4px;
+  font-size: 0.88rem;
+}
+
+.compact-selected-student-heading {
+  background: var(--surface-soft);
+  border-left: 5px solid var(--primary);
+}
+
+.compact-selected-student-heading strong {
+  color: var(--text);
+}
+
+.compact-selected-student-heading small {
+  color: var(--text-subtle);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+#manage-students-result-screen .student-admin-result-card,
+#manage-student-edit-screen .student-admin-card,
+#manage-student-edit-screen .student-admin-result-card {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 520px) {
+  .student-search-dropdown-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+  }
+
+  .student-search-arrow-btn {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+  }
+
+  .student-search-row {
+    padding: 9px 9px;
+    font-size: 0.9rem;
+  }
+
+  .student-search-row-number {
+    font-size: 0.82rem;
+  }
+}
+
+/* Manage Students: final modify-list refinements */
+#manage-students-screen .student-search-panel .student-admin-help {
+  margin-top: 8px;
+}
+
+.managed-student-group-heading {
+  display: none !important;
+}
+
+.managed-student-group-separator {
+  height: 8px;
+  background: var(--primary);
+  border-radius: 999px;
+  margin: 12px 0 7px;
+}
+
+.managed-student-list .managed-student-group-separator:first-child {
+  margin-top: 2px;
+}
+
+.student-search-row {
+  background: var(--surface-dark);
+  color: var(--text-inverse);
+  grid-template-columns: minmax(0, 1fr) 78px;
+  min-height: 38px;
+  padding: 8px 10px;
+  margin-top: 2px;
+  border-radius: 7px;
+}
+
+.student-search-row-name {
+  font-size: 0.92rem;
+  line-height: 1.12;
+}
+
+.student-search-row-number {
+  color: var(--surface-chip);
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+}
+
+.student-reset-pin-btn,
+.student-active-toggle.is-active,
+.student-active-toggle.is-inactive {
+  background: var(--surface-chip);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  box-shadow: none;
+}
+
+.student-active-toggle {
+  width: 100%;
+  margin: 8px 0 14px;
+  background: var(--surface-chip);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  box-shadow: none;
+}
+
+.student-active-toggle.is-inactive {
+  color: var(--text-subtle);
+  border-color: rgba(var(--black-rgb), 0.18);
+}
+
+.selected-student-edit-card {
+  margin-top: 12px;
+}
+
+#manage-student-edit-screen .student-reset-pin-btn {
+  margin-bottom: 10px;
+}
+
+#manage-student-edit-screen .student-prefilled-input {
+  color: var(--text-subtle);
+  background: var(--surface-soft);
+}
+
+#manage-student-edit-screen .student-prefilled-input:focus {
+  color: var(--text);
+  background: var(--surface-card);
+}
+
+@media (max-width: 520px) {
+  .managed-student-group-separator {
+    height: 8px;
+    margin: 10px 0 6px;
+  }
+
+  .student-search-row {
+    grid-template-columns: minmax(0, 1fr) 70px;
+    padding: 8px 9px;
+    min-height: 36px;
+  }
+}
+
+/* Manage Students: selected student edit layout fixes */
+
+.student-edit-two-column-row {
+  display: grid;
+  grid-template-columns: minmax(105px, 140px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin-top: 4px;
+}
+
+
+.student-edit-field-half {
+  min-width: 0;
+}
+
+.student-edit-field-half .student-admin-label {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.student-edit-field-half input:not([type="radio"]):not([type="checkbox"]),
+.student-edit-field-half button {
+  width: 100%;
+  margin: 0;
+}
+
+
+/* Manage Students: Active/Inactive uses the shared radio component */
+.student-edit-status-radio-group {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+}
+
+.student-edit-status-radio {
+  margin: 0;
+  min-height: 44px;
+  align-content: center;
+}
+
+@media (max-width: 360px) {
+  .student-edit-status-radio-group {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .student-edit-status-radio {
+    min-height: 36px;
+    font-size: 0.82rem;
+  }
+}
+
+#manage-student-edit-screen .student-reset-pin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  background: var(--surface-chip);
+  color: var(--primary) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow: none;
+}
+
+#manage-student-edit-screen .student-reset-pin-text {
+  color: var(--primary) !important;
+  display: inline-block;
+}
+
+@media (max-width: 360px) {
+  .student-edit-two-column-row {
+    gap: 8px;
+  }
+
+  .student-edit-field-half .student-admin-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.10em;
+  }
+}
+

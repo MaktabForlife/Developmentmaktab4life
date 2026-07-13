@@ -1,0 +1,141 @@
+/* M4L v91.7.4 - Attendance medium-grid and dot repair
+   Baseline: V91.7.3 split CSS repair.
+   Scope: Attendance only. Restore small swipe-dot styling on mobile, hide
+   Attendance dots from medium upward, and show all three Attendance panels
+   side-by-side from medium upward. Protected: Progress, Library, Home,
+   Recorder, auth banner, nav, Worker, Apps Script, and backend behaviour.
+*/
+
+/* Restore the Attendance dot controls as small dots instead of generic buttons. */
+.attendance-panel-dots {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--swipe-dot-band-gap));
+  z-index: 108;
+  min-height: var(--swipe-dot-bar-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 0;
+  background: var(--surface-app);
+  pointer-events: auto;
+}
+
+.attendance-panel-dot {
+  width: 12px;
+  min-width: 12px;
+  max-width: 12px;
+  height: 12px;
+  min-height: 12px;
+  max-height: 12px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+  color: transparent;
+  overflow: hidden;
+  appearance: none;
+}
+
+.attendance-panel-dot.is-active,
+.attendance-panel-dot[aria-current="true"] {
+  background: var(--primary);
+}
+
+.attendance-panel-dot:active {
+  transform: scale(0.92);
+}
+
+/* Medium and large Attendance are not swipe views: show all three panels. */
+@media (min-width: 768px) {
+  body.is-attendance-section .attendance-panel-dots {
+    display: none;
+  }
+
+  body.is-attendance-section .app-shell {
+    max-width: 1280px;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  body.is-attendance-section.has-bottom-nav .app-shell {
+    padding-top: calc(var(--top-nav-height) + 16px);
+  }
+
+  body.is-attendance-section.has-user-band.has-bottom-nav .app-shell {
+    padding-top: calc(var(--user-band-height) + var(--user-band-safe-area-top) + var(--top-nav-height) + 22px);
+  }
+
+  #attendance-screen.screen {
+    align-self: flex-start;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    padding: 18px 14px 12px;
+    overflow: visible;
+     
+  }
+
+  #attendance-screen .attendance-swipe-track {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    align-items: start;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  #attendance-screen .attendance-swipe-panel {
+    flex: initial;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+
+  #attendance-register-content,
+  #attendance-report-content,
+  #attendance-stats-content {
+    height: auto;
+    min-height: 0;
+    display: block;
+    overflow: visible;
+  }
+
+  #attendance-screen .attendance-sticky-control-pane {
+    position: static;
+    top: auto;
+    z-index: auto;
+    margin: 0 0 14px;
+    padding: 0;
+    background: var(--surface-card);
+    border: 0;
+    box-shadow: none;
+  }
+
+  #attendance-screen .attendance-panel-scroll-body {
+    min-height: 0;
+    overflow: visible;
+    padding: 0;
+  }
+}
