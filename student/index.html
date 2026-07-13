@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Maktab4Life Student</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- M4L v92.4 Moved Recorder build to js -->
 
   <!-- M4L v87.1: PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
@@ -168,6 +170,7 @@
 
 
 <!-- RECORD LESSON -->
+<!-- V92.4: compatibility fallback; shared recorder JavaScript replaces this mount at initialization. -->
 <section
   id="record-lesson-screen"
   class="screen student-theme m4l-recorder-screen"
@@ -182,7 +185,7 @@
       aria-labelledby="m4l-recorder-title"
     >
       <h2 id="m4l-recorder-title" class="m4l-recorder-title">
-        RECORD & SHARE
+        RECORD &amp; SHARE
       </h2>
 
       <div class="m4l-recorder-book-card">
@@ -446,9 +449,8 @@
 <script src="/js/m4l-auth.js?v=87.2"></script>
 <script src="/js/m4l-shell.js?v=92.3"></script>
 <script src="/js/m4l-timetable.js?v=92"></script>
-<script src="/js/m4l-recorder.js?v=92.2"></script>
+<script src="/js/m4l-recorder.js?v=92.4"></script>
 <script src="/js/m4l-resources.js?v=89.1"></script>
 <script src="/js/m4l-progress.js?v=92.1"></script>
 </body>
 </html>
-
