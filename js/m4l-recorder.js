@@ -1,7 +1,7 @@
-/* M4L v93.4
+/* M4L v93.5
    Shared student/admin recorder interface with shared manifest caching.
    Apple Safari uses MP4 when viable; other browsers use audio plus JPEG.
-   Audio attachments use portable MIME types. WebM video is never created. */
+   Non-Safari audio is shared as a generic file. WebM video is never created. */
 (() => {
   "use strict";
 
@@ -34,6 +34,7 @@
     frameRefreshId: 0,
     recordingBlob: null,
     recordingFile: null,
+    recordingShareFile: null,
     recordingUrl: "",
     pageImageBlob: null,
     pageImageFile: null,
@@ -1009,6 +1010,18 @@
       : cleanType || "application/octet-stream";
   }
 
+  function createRecordingShareFile(recordingFile, resultKind) {
+    if (!recordingFile) return null;
+    const shareAsDocument = !isAppleSafariBrowser()
+      && (resultKind === "audio-image" || resultKind === "audio-only");
+
+    if (!shareAsDocument) return recordingFile;
+    return new File([recordingFile], recordingFile.name, {
+      type: "application/octet-stream",
+      lastModified: recordingFile.lastModified || Date.now()
+    });
+  }
+
   function cleanObjectUrl(url) {
     if (!url) return;
     try { URL.revokeObjectURL(url); } catch (error) { console.warn("Could not revoke object URL", error); }
@@ -1308,6 +1321,7 @@
     cleanObjectUrl(state.recordingUrl);
     state.recordingUrl = URL.createObjectURL(state.recordingBlob);
     state.recordingFile = new File([state.recordingBlob], fileName, { type: fileMimeType });
+    state.recordingShareFile = createRecordingShareFile(state.recordingFile, resultKind);
     state.resultKind = resultKind;
     state.recordingDurationMs = durationMs;
     state.shareCapabilities = evaluateShareCapabilities();
@@ -1347,10 +1361,11 @@
   }
 
   function evaluateShareCapabilities() {
-    const recording = state.recordingFile ? canShareFiles([state.recordingFile]) : false;
+    const recordingFile = state.recordingShareFile || state.recordingFile;
+    const recording = recordingFile ? canShareFiles([recordingFile]) : false;
     const page = state.pageImageFile ? canShareFiles([state.pageImageFile]) : false;
-    const together = shouldAttemptCombinedPairShare() && state.recordingFile && state.pageImageFile
-      ? canShareFiles([state.pageImageFile, state.recordingFile])
+    const together = shouldAttemptCombinedPairShare() && recordingFile && state.pageImageFile
+      ? canShareFiles([state.pageImageFile, recordingFile])
       : false;
     return { recording, page, together };
   }
@@ -1473,6 +1488,7 @@
       state.recordingUrl = "";
       state.recordingBlob = null;
       state.recordingFile = null;
+      state.recordingShareFile = null;
       state.pageImageUrl = "";
       state.pageImageBlob = null;
       state.pageImageFile = null;
@@ -1515,9 +1531,10 @@
       return;
     }
 
+    const recordingFile = state.recordingShareFile || state.recordingFile;
     const files = pair
-      ? [state.pageImageFile, state.recordingFile].filter(Boolean)
-      : [state.recordingFile];
+      ? [state.pageImageFile, recordingFile].filter(Boolean)
+      : [recordingFile];
     const capability = canShareFiles(files);
     if (capability === false) {
       if (pair) {
@@ -1547,7 +1564,10 @@
 
   async function shareSingleFile(file, description) {
     if (!file) return alert(`${description} is not ready.`);
-    if (canShareFiles([file]) === false) {
+    const shareFile = description === "Audio"
+      ? state.recordingShareFile || file
+      : file;
+    if (canShareFiles([shareFile]) === false) {
       if (description === "Audio") {
         showAudioDownloadRecovery();
         alert("Direct audio sharing is unavailable. Use Download Audio, then share the file as a document.");
@@ -1557,7 +1577,7 @@
       return;
     }
     try {
-      await shareFiles([file]);
+      await shareFiles([shareFile]);
     } catch (error) {
       if (error && error.name === "AbortError") return;
       console.error(`${description} share failed`, error);
