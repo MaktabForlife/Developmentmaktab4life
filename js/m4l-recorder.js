@@ -1,7 +1,7 @@
-/* M4L v93.3
+/* M4L v93.4
    Shared student/admin recorder interface with shared manifest caching.
    Apple Safari uses MP4 when viable; other browsers use audio plus JPEG.
-   Audio-only is an explicit source choice. WebM video is never created. */
+   Audio attachments use portable MIME types. WebM video is never created. */
 (() => {
   "use strict";
 
@@ -995,6 +995,20 @@
     return "webm";
   }
 
+  function getPortableFileMimeType(mimeType, resultKind) {
+    const cleanType = String(mimeType || "")
+      .toLowerCase()
+      .split(";", 1)[0]
+      .trim();
+
+    if (resultKind === "video-mp4") return "video/mp4";
+    if (cleanType === "audio/mp4") return "audio/mp4";
+    if (cleanType.startsWith("audio/")) return cleanType;
+    return resultKind === "audio-only" || resultKind === "audio-image"
+      ? "audio/webm"
+      : cleanType || "application/octet-stream";
+  }
+
   function cleanObjectUrl(url) {
     if (!url) return;
     try { URL.revokeObjectURL(url); } catch (error) { console.warn("Could not revoke object URL", error); }
@@ -1289,10 +1303,11 @@
       ? "audio"
       : safeFilePart(state.selectedPage && state.selectedPage.title, "page");
     const fileName = `${OUTPUT_BASENAME}-${safeTitle}.${extension}`;
+    const fileMimeType = getPortableFileMimeType(mimeType, resultKind);
 
     cleanObjectUrl(state.recordingUrl);
     state.recordingUrl = URL.createObjectURL(state.recordingBlob);
-    state.recordingFile = new File([state.recordingBlob], fileName, { type: mimeType });
+    state.recordingFile = new File([state.recordingBlob], fileName, { type: fileMimeType });
     state.resultKind = resultKind;
     state.recordingDurationMs = durationMs;
     state.shareCapabilities = evaluateShareCapabilities();
@@ -1352,6 +1367,13 @@
     if (els.separateDownloadActions) els.separateDownloadActions.hidden = false;
   }
 
+  function showAudioDownloadRecovery() {
+    revealPairDownloadActions();
+    if (els.recordingMeta) {
+      els.recordingMeta.textContent = "Direct audio sharing is unavailable. Download Audio and share it as a document.";
+    }
+  }
+
   function updateResultActions() {
     const pair = state.resultKind === "audio-image";
     const capabilities = state.shareCapabilities || evaluateShareCapabilities();
@@ -1372,6 +1394,7 @@
       if (capabilities.together === false) {
         if (els.shareBtn) els.shareBtn.hidden = true;
         revealPairShareActions();
+        if (capabilities.recording === false) showAudioDownloadRecovery();
       }
       return;
     }
@@ -1524,12 +1547,25 @@
 
   async function shareSingleFile(file, description) {
     if (!file) return alert(`${description} is not ready.`);
-    if (canShareFiles([file]) === false) return alert(`This device cannot share the ${description.toLowerCase()}.`);
+    if (canShareFiles([file]) === false) {
+      if (description === "Audio") {
+        showAudioDownloadRecovery();
+        alert("Direct audio sharing is unavailable. Use Download Audio, then share the file as a document.");
+        return;
+      }
+      alert(`This device cannot share the ${description.toLowerCase()}.`);
+      return;
+    }
     try {
       await shareFiles([file]);
     } catch (error) {
       if (error && error.name === "AbortError") return;
       console.error(`${description} share failed`, error);
+      if (description === "Audio") {
+        showAudioDownloadRecovery();
+        alert("Chrome did not accept direct audio sharing. Use Download Audio, then share the file as a document.");
+        return;
+      }
       alert(`The ${description.toLowerCase()} could not be shared on this device.`);
     }
   }
