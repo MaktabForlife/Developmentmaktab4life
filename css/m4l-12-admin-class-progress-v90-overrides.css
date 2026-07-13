@@ -949,23 +949,23 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 }
 
 /* Row 2: keep the A2/edit-control band and the aligned task-header band on
-   surface-chip. Individual task/header cells can still carry their own header
+   surface-track. Individual task/header cells can still carry their own header
    styling when a module is opened. */
 .admin-progress-class-overview--accordion .admin-progress-class-student-column-action,
 .admin-progress-class-overview--accordion .admin-progress-class-continuous-task-header-row {
-  background: var(--surface-chip);
+  background: var(--surface-track);
 }
 
 .admin-progress-class-overview--accordion .admin-progress-class-continuous-task-header-row .admin-progress-class-accordion-task-placeholder {
-  background: var(--surface-chip);
+  background: var(--surface-track);
 }
 
-/* Group labels use the chip surface only in the fixed left column. The
+/* Group labels use the track surface only in the fixed left column. The
    matching right-side grid row stays surface-card so the group colour does not
    spill into the editable grid body. */
 .admin-progress-class-overview--accordion .admin-progress-class-group-heading-row,
 .admin-progress-class-overview--accordion .admin-progress-class-student-row.admin-progress-class-group-heading-row {
-  background: var(--surface-chip);
+  background: var(--surface-track);
   color: var(--text-muted);
   font-size: 0.88rem;
   font-weight: 700;
@@ -1000,7 +1000,7 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   border-right: 2px solid rgba(var(--primary-rgb), 0.22);
 }
 
-/* The fixed left group labels stay chip-coloured, but their aligned right-side
+/* The fixed left group labels stay track-coloured, but their aligned right-side
    summary rows no longer spill that colour into the grid body. */
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row,
 .admin-progress-class-overview--accordion .admin-progress-class-accordion-group-grid-row .admin-progress-class-accordion-blank-cell,
@@ -1012,6 +1012,4 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   background: var(--surface-card);
   background-clip: padding-box;
 }
-
-
 
