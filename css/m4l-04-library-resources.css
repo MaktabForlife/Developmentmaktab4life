@@ -91,7 +91,7 @@
 }
 
 .library-resource-card--part-video:focus-visible {
-  outline-color: var(--surface-card));
+  outline-color: var(--surface-card);
 }
 
 .library-resource-icon-wrap {
@@ -244,4 +244,3 @@
     height: 36px;
   }
 }
-

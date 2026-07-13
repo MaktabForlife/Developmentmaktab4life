@@ -491,7 +491,7 @@
   min-width: 0;
   min-height: var(--student-progress-task-row-height, 54px);
   align-items: stretch;
-  border-bottom: var(--surface-track));
+  border-bottom: 1px solid var(--surface-track);
 }
 
 .student-progress-grid-row:last-child {
@@ -573,7 +573,7 @@
 
 .student-progress-grid-status-cell:focus-visible,
 .student-progress-grid-status-cell:focus {
-  outline: 2px var(--surface-track)
+  outline: 2px solid var(--surface-track);
   outline-offset: -2px;
   background: var(--surface-soft);
 }
@@ -728,7 +728,7 @@
 
 .admin-progress-class-grid-card {
   min-height: 0;
-  border: 1px var(--surface-track));
+  border: 1px solid var(--surface-track);
   border-radius: 20px;
   background: var(--surface-card);
   box-shadow: 0 2px 5px var(--surface-app);
@@ -1636,7 +1636,7 @@
 .admin-progress-class-grid-task-title {
   display: inline-block;
   max-height: calc(var(--admin-progress-class-task-header-height) - 12px);
-  color: var(--text;
+  color: var(--text);
   font-size: 0.7rem;
   font-weight: 400;
   line-height: 0.98;
@@ -1902,4 +1902,3 @@
     font-size: 0.72rem;
   }
 }
-

@@ -1,4 +1,7 @@
-/* 93.2 recorder css
+/* 93.4 CSS correctness and cache alignment
+   Repairs malformed declarations in the Library and Progress stylesheets.
+   No legacy selectors removed and no intentional visual redesign included.
+
 M4L -v92.1  changed brand colour to lavender - updated app icons
 
 v91.7.4 - CSS split phase 1 loader
@@ -11,12 +14,12 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-01-foundation-auth-userband.css?v=91.5");
 @import url("/css/m4l-02-home-common-and-shared-cards.css?v=91.5");
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=91.5");
-@import url("/css/m4l-04-library-resources.css?v=91.5");
+@import url("/css/m4l-04-library-resources.css?v=93.4");
 @import url("/css/m4l-05-home-timetable.css?v=91.5");
 @import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=91.5");
 @import url("/css/m4l-07-manage-students.css?v=91.5");
 @import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=91.5");
-@import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=91.5");
+@import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.4");
 @import url("/css/m4l-10-recorder.css?v=93.2");
 @import url("/css/m4l-11-student-progress-stepper-pane.css?v=91.5");
 @import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=91.5");
