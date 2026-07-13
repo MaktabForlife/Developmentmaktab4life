@@ -1,4 +1,4 @@
-/* M4L v89.1 - Resources order: eBooks first
+/* M4L v93.0 - Resources order + shared cache integration
    Baseline: V83.1 Resources JS legacy compatibility quarantine.
    Scope: change Library module rail resource order to eBook → Video → Audio → Printable → Other.
    Protected: active direct Library ribbon cards, PDF viewer, inline audio/video preview, resource opening, and V83 quarantine markers.
@@ -84,16 +84,19 @@ function resetStudentResourceSelection() {
   libraryResourceSequence = 0;
 }
 
-async function showStudentResources() {
+const LIBRARY_CACHE_KEY = "resources:list:v1";
+const LIBRARY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function showStudentResources(options = {}) {
   studentResourceViewMode = "student";
   setResourceScreensForStudent();
-  await loadResourceCategories("/api/resources/list", {});
+  await loadResourceCategories("/api/resources/list", {}, options);
 }
 
-async function showAdminResources() {
+async function showAdminResources(options = {}) {
   studentResourceViewMode = "admin";
   setResourceScreensForAdmin();
-  await loadResourceCategories("/api/resources/list", {});
+  await loadResourceCategories("/api/resources/list", {}, options);
 }
 
 function setResourceScreensForStudent() {
@@ -166,7 +169,7 @@ async function fetchResourceCategories(apiPath, body = {}) {
   return result;
 }
 
-async function loadResourceCategories(apiPath, body = {}) {
+async function loadResourceCategories(apiPath, body = {}, options = {}) {
   if (!showScreen("student-resources-subjects")) {
     console.warn("Resources screen is missing; resource ribbons were not shown.");
     return;
@@ -181,12 +184,53 @@ async function loadResourceCategories(apiPath, body = {}) {
 
   bindResourceUiHandlers();
   bindMediaViewerHandlers();
-  setDomHtml(container, `<p class="helper-text">Loading resources...</p>`);
+
+  const applyResult = result => {
+    resetStudentResourceSelection();
+    studentResourceSubjects = Array.isArray(result && result.subjects) ? result.subjects : [];
+    libraryResourceSubjects = buildLibraryResourceSubjects(result || {});
+    renderStudentResourceSubjects();
+  };
+
+  const fetchFresh = async () => {
+    const result = await fetchResourceCategories(apiPath, body);
+    return result;
+  };
 
   try {
-    resetStudentResourceSelection();
-    await fetchResourceCategories(apiPath, body);
-    renderStudentResourceSubjects();
+    if (!window.M4LCache) {
+      setDomHtml(container, `<p class="helper-text">Loading resources...</p>`);
+      const result = await fetchFresh();
+      applyResult(result);
+      return;
+    }
+
+    const cached = window.M4LCache.getEntry(LIBRARY_CACHE_KEY, {
+      scope: "shared",
+      ttl: LIBRARY_CACHE_TTL_MS,
+      allowStale: true
+    });
+
+    if (!cached || options.force === true) {
+      setDomHtml(container, `<p class="helper-text">Loading resources...</p>`);
+    }
+
+    const result = await window.M4LCache.getOrFetch(LIBRARY_CACHE_KEY, fetchFresh, {
+      scope: "shared",
+      ttl: LIBRARY_CACHE_TTL_MS,
+      force: options.force === true,
+      background: options.force !== true,
+      onCached: applyResult,
+      onUpdate: fresh => {
+        if (document.getElementById("student-resources-subjects")?.classList.contains("active")) {
+          applyResult(fresh);
+        }
+      }
+    });
+
+    if (!cached || options.force === true) {
+      applyResult(result);
+    }
   } catch (err) {
     setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`);
   }
