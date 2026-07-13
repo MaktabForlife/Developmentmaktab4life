@@ -425,14 +425,11 @@
   #progress-report.admin-theme .admin-individual-progress-module-panel {
     height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 160px), 660px);
     scroll-snap-stop: normal;
-    transform: scale(0.965);
     opacity: 0.82;
-    transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
-  }
+transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;  }
 
   #progress-report.admin-theme .admin-individual-progress-module-panel.is-active {
     z-index: 3;
-    transform: scale(1);
     opacity: 1;
     outline: 2px var(--surface-track);
     outline-offset: 2px;
@@ -441,13 +438,11 @@
 
   #progress-report.admin-theme .admin-individual-progress-module-panel.is-adjacent {
     z-index: 2;
-    transform: scale(0.975);
     opacity: 0.9;
   }
 
   #progress-report.admin-theme .admin-individual-progress-module-panel.is-far {
     z-index: 1;
-    transform: scale(0.94);
     opacity: 0.66;
   }
 }
