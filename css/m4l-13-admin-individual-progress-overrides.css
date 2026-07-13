@@ -425,12 +425,10 @@
   #progress-report.admin-theme .admin-individual-progress-module-panel {
     height: clamp(420px, calc(100dvh - var(--user-band-height) - var(--user-band-safe-area-top) - var(--top-nav-height) - 160px), 660px);
     scroll-snap-stop: normal;
-    opacity: 0.82;
-transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;  }
+  }
 
   #progress-report.admin-theme .admin-individual-progress-module-panel.is-active {
     z-index: 3;
-    opacity: 1;
     outline: 2px var(--surface-track);
     outline-offset: 2px;
     box-shadow: 0 14px 30px rgba(var(--black-rgb), 0.18);
@@ -438,12 +436,10 @@ transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
 
   #progress-report.admin-theme .admin-individual-progress-module-panel.is-adjacent {
     z-index: 2;
-    opacity: 0.9;
   }
 
   #progress-report.admin-theme .admin-individual-progress-module-panel.is-far {
     z-index: 1;
-    opacity: 0.66;
   }
 }
 
@@ -771,8 +767,6 @@ transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
   overscroll-behavior-x: contain;
 }
 
-#progress-report.admin-theme .admin-progress-class-grid-card,
-#progress-report.admin-theme .admin-progress-class-grid-scroll,
 #progress-report.admin-theme .admin-individual-progress-swipe-shell,
 #progress-report.admin-theme .admin-individual-progress-pane-viewport,
 #progress-report.admin-theme .admin-individual-progress-module-card-shell,
@@ -781,7 +775,6 @@ transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
   overscroll-behavior-x: contain;
 }
 
-#progress-report.admin-theme .admin-progress-class-grid-scroll,
 #progress-report.admin-theme .admin-individual-progress-pane-viewport,
 #progress-report.admin-theme .admin-individual-progress-module-numbers {
   overscroll-behavior-inline: contain;
@@ -795,7 +788,6 @@ transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
     touch-action: pan-y;
   }
 
-  #progress-report.admin-theme .admin-progress-class-grid-scroll,
   #progress-report.admin-theme .admin-individual-progress-pane-viewport,
   #progress-report.admin-theme .admin-individual-progress-module-numbers {
     touch-action: pan-x pan-y;
@@ -896,8 +888,6 @@ transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
 }
 #progress-report.admin-theme .admin-progress-class-overview,
 #progress-report.admin-theme .admin-individual-progress-shell,
-#progress-report.admin-theme .admin-progress-class-grid-card,
-#progress-report.admin-theme .admin-progress-class-grid-scroll,
 #progress-report.admin-theme .admin-individual-progress-swipe-shell,
 #progress-report.admin-theme .admin-individual-progress-pane-viewport,
 #progress-report.admin-theme .admin-individual-progress-module-card-shell,
@@ -914,7 +904,6 @@ transition: opacity 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
   touch-action: pan-y;
 }
 
-#progress-report.admin-theme .admin-progress-class-grid-scroll,
 #progress-report.admin-theme .admin-individual-progress-pane-viewport,
 #progress-report.admin-theme .admin-individual-progress-module-numbers {
   touch-action: pan-x pan-y;
