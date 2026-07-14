@@ -1,5 +1,5 @@
 /* ==========================================
-   M4L V93.2 Integrated Recorder
+   M4L V93.7.3 Integrated Recorder
    Mobile-first shared student/admin interface.
    Bounded media and internally scrolling page selector.
    ========================================== */
@@ -88,9 +88,9 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-title {
   margin: 0;
   color: var(--text-strong);
-  font-size: clamp(1rem, 6vw, 1.35rem);
-  font-weight: 700;
-  line-height: 1.05;
+  font-size: clamp(1rem, 4.5vw, 1.2rem);
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .m4l-recorder-book-card,
@@ -130,11 +130,19 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-selector-label {
   margin: 0 4px;
   color: var(--text-subtle);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   text-align: right;
-  text-transform: uppercase;
+}
+
+.m4l-recorder-upload-limits {
+  margin: 1px 4px 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
 }
 
 .m4l-recorder-status {
