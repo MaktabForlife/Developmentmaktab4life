@@ -385,13 +385,9 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
             <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=93.7.2" alt="" aria-hidden="true" />
             <span id="m4l-recorder-share-label">Share</span>
           </button>
-          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button">
+          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button" hidden >
             <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=93.7.2" alt="" aria-hidden="true" hidden />
-            
-         /*  
-         <span>Save</span> 
-         */
-         
+         <span hidden>Save</span> 
           </button>
           
         </div>
