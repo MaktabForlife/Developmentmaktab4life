@@ -1,7 +1,7 @@
-/* M4L v93.5
+/* M4L v93.7.0
    Shared student/admin recorder interface with shared manifest caching.
-   Apple Safari uses MP4 when viable; other browsers use audio plus JPEG.
-   Non-Safari audio is shared as a generic file. WebM video is never created. */
+   Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
+   Uses unified Redo, Share and Save actions. WebM video is never created. */
 (() => {
   "use strict";
 
@@ -34,7 +34,6 @@
     frameRefreshId: 0,
     recordingBlob: null,
     recordingFile: null,
-    recordingShareFile: null,
     recordingUrl: "",
     pageImageBlob: null,
     pageImageFile: null,
@@ -46,6 +45,7 @@
     actualMimeType: "",
     stopReason: "manual",
     recordingDurationMs: 0,
+    outputBaseName: "",
     shareCapabilities: null,
     uploadedObjectUrls: [],
     currentView: "pages"
@@ -104,12 +104,12 @@
           </div>
 
           <button id="m4l-recorder-record-btn" class="m4l-recorder-record-action" type="button" aria-label="Start recording">
-            <img class="m4l-recorder-native-icon" src="/icons/record.svg?v=92.4" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-native-icon" src="/icons/record.svg?v=93.7.0" alt="" aria-hidden="true" />
             <span class="m4l-recorder-record-label">Record</span>
           </button>
 
           <button id="m4l-recorder-stop-btn" class="m4l-recorder-record-action" type="button" aria-label="Stop recording" hidden>
-            <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg?v=92.4" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg?v=93.7.0" alt="" aria-hidden="true" />
             <span class="m4l-recorder-record-label">Stop</span>
           </button>
         </div>
@@ -139,32 +139,25 @@
 
         <div class="m4l-recorder-preview-actions" aria-label="Recording actions">
           <button id="m4l-recorder-rerecord-btn" class="m4l-recorder-preview-action" type="button">
-            <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg?v=92.4" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg?v=93.7.0" alt="" aria-hidden="true" />
             <span>Redo</span>
           </button>
           <button id="m4l-recorder-share-btn" class="m4l-recorder-preview-action" type="button">
-            <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=92.4" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=93.7.0" alt="" aria-hidden="true" />
             <span id="m4l-recorder-share-label">Share</span>
           </button>
-          <button id="m4l-recorder-download-btn" class="m4l-recorder-preview-action" type="button">
-            <span class="m4l-recorder-action-glyph m4l-recorder-action-glyph--download" aria-hidden="true"></span>
-            <span>Download</span>
+          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button">
+            <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=93.7.0" alt="" aria-hidden="true" />
+            <span>Save</span>
           </button>
         </div>
 
-        <div id="m4l-recorder-pair-actions" class="m4l-recorder-pair-actions" hidden>
-          <div id="m4l-recorder-separate-share-actions" class="m4l-recorder-pair-action-group" hidden>
-            <p>Share separately</p>
+        <div id="m4l-recorder-save-reminder" class="m4l-recorder-pair-actions" aria-live="polite" hidden>
+          <div class="m4l-recorder-pair-action-group">
+            <p id="m4l-recorder-save-reminder-text">Your recording files are being saved.</p>
             <div>
-              <button id="m4l-recorder-share-audio-btn" class="m4l-recorder-secondary-action" type="button">Share Audio</button>
-              <button id="m4l-recorder-share-page-btn" class="m4l-recorder-secondary-action" type="button">Share Page</button>
-            </div>
-          </div>
-          <div id="m4l-recorder-separate-download-actions" class="m4l-recorder-pair-action-group" hidden>
-            <p>Download separately</p>
-            <div>
-              <button id="m4l-recorder-download-audio-btn" class="m4l-recorder-secondary-action" type="button">Download Audio</button>
-              <button id="m4l-recorder-download-page-btn" class="m4l-recorder-secondary-action" type="button">Download Page</button>
+              <button id="m4l-recorder-open-whatsapp-btn" class="m4l-recorder-secondary-action" type="button">Open WhatsApp</button>
+              <button id="m4l-recorder-dismiss-save-reminder" class="m4l-recorder-secondary-action" type="button">Not now</button>
             </div>
           </div>
         </div>
@@ -203,14 +196,11 @@
     els.rerecordBtn = $("m4l-recorder-rerecord-btn");
     els.shareBtn = $("m4l-recorder-share-btn");
     els.shareLabel = $("m4l-recorder-share-label");
-    els.downloadBtn = $("m4l-recorder-download-btn");
-    els.pairActions = $("m4l-recorder-pair-actions");
-    els.separateShareActions = $("m4l-recorder-separate-share-actions");
-    els.separateDownloadActions = $("m4l-recorder-separate-download-actions");
-    els.shareAudioBtn = $("m4l-recorder-share-audio-btn");
-    els.sharePageBtn = $("m4l-recorder-share-page-btn");
-    els.downloadAudioBtn = $("m4l-recorder-download-audio-btn");
-    els.downloadPageBtn = $("m4l-recorder-download-page-btn");
+    els.saveBtn = $("m4l-recorder-save-btn");
+    els.saveReminder = $("m4l-recorder-save-reminder");
+    els.saveReminderText = $("m4l-recorder-save-reminder-text");
+    els.openWhatsappBtn = $("m4l-recorder-open-whatsapp-btn");
+    els.dismissSaveReminderBtn = $("m4l-recorder-dismiss-save-reminder");
     els.recordingMeta = $("m4l-recorder-recording-meta");
     els.backToPages = $("m4l-recorder-back-to-pages");
     els.previewPages = $("m4l-recorder-preview-pages");
@@ -907,39 +897,20 @@
       || (platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }
 
-  function isAppleSafariBrowser() {
-    const userAgent = String(navigator.userAgent || "");
-    const vendor = String(navigator.vendor || "");
-    const isAlternativeBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA/i.test(userAgent);
-
-    if (!/AppleWebKit/i.test(userAgent) || isAlternativeBrowser) return false;
-    if (isIOSDevice()) return true;
-    return /Safari/i.test(userAgent) && /Apple/i.test(vendor);
-  }
-
   function getSupportedMp4MimeType() {
     if (typeof MediaRecorder === "undefined") return "";
-    // Chromium can report MP4 recording support while producing a file that
-    // WhatsApp does not accept as a playable video. Use the proven Apple
-    // Safari path only; every other browser records audio plus a JPEG.
-    if (!isAppleSafariBrowser()) return "";
     if (typeof MediaRecorder.isTypeSupported !== "function") {
       return isIOSDevice() ? "video/mp4" : "";
     }
 
     const candidates = [
       "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+      "video/mp4;codecs=avc1,mp4a.40.2",
       "video/mp4;codecs=h264,aac",
       "video/mp4"
     ];
 
     return candidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
-  }
-
-  function shouldAttemptCombinedPairShare() {
-    // Mixed image/audio shares are destination-dependent. On the non-Safari
-    // fallback path, present the reliable separate actions immediately.
-    return isAppleSafariBrowser();
   }
 
   function getSupportedAudioMimeType() {
@@ -1010,18 +981,6 @@
       : cleanType || "application/octet-stream";
   }
 
-  function createRecordingShareFile(recordingFile, resultKind) {
-    if (!recordingFile) return null;
-    const shareAsDocument = !isAppleSafariBrowser()
-      && (resultKind === "audio-image" || resultKind === "audio-only");
-
-    if (!shareAsDocument) return recordingFile;
-    return new File([recordingFile], recordingFile.name, {
-      type: "application/octet-stream",
-      lastModified: recordingFile.lastModified || Date.now()
-    });
-  }
-
   function cleanObjectUrl(url) {
     if (!url) return;
     try { URL.revokeObjectURL(url); } catch (error) { console.warn("Could not revoke object URL", error); }
@@ -1037,6 +996,20 @@
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || fallback;
+  }
+
+  function createOutputBaseName() {
+    const now = new Date();
+    const pad = value => String(value).padStart(2, "0");
+    const timestamp = [
+      now.getFullYear(),
+      pad(now.getMonth() + 1),
+      pad(now.getDate())
+    ].join("") + `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const safeTitle = state.sourceMode === "audio-only"
+      ? "audio"
+      : safeFilePart(state.selectedPage && state.selectedPage.title, "page");
+    return `${OUTPUT_BASENAME}-${safeTitle}-${timestamp}`;
   }
 
   function canvasToJpegBlob(canvas, quality = 0.9) {
@@ -1063,8 +1036,7 @@
 
     drawSelectedPage();
     const imageBlob = await canvasToJpegBlob(els.canvas);
-    const safeTitle = safeFilePart(state.selectedPage && state.selectedPage.title, "page");
-    const fileName = `${safeTitle}.jpg`;
+    const fileName = `${state.outputBaseName || createOutputBaseName()}.jpg`;
 
     cleanObjectUrl(state.pageImageUrl);
     state.pageImageBlob = imageBlob;
@@ -1166,6 +1138,7 @@
         keepSelectedPage: !audioOnly,
         keepSourceMode: true
       });
+      state.outputBaseName = createOutputBaseName();
       updateRecordStage();
       if (!audioOnly) drawSelectedPage();
 
@@ -1282,6 +1255,18 @@
 
     setRecordingUi(false);
 
+    if (state.stopReason === "error") {
+      if (resultKind === "video-mp4") state.forceAudioImage = true;
+      cleanup({
+        keepPages: true,
+        keepSelectedPage: state.sourceMode === "page",
+        keepSourceMode: true
+      });
+      if (els.helper) els.helper.textContent = "Please record again.";
+      alert("The recording could not be completed on this device. Please record again.");
+      return;
+    }
+
     const fallbackMimeType = resultKind === "video-mp4"
       ? "video/mp4"
       : isIOSDevice()
@@ -1312,16 +1297,12 @@
     }
 
     const extension = getFileExtension(mimeType, resultKind);
-    const safeTitle = state.sourceMode === "audio-only"
-      ? "audio"
-      : safeFilePart(state.selectedPage && state.selectedPage.title, "page");
-    const fileName = `${OUTPUT_BASENAME}-${safeTitle}.${extension}`;
+    const fileName = `${state.outputBaseName || createOutputBaseName()}.${extension}`;
     const fileMimeType = getPortableFileMimeType(mimeType, resultKind);
 
     cleanObjectUrl(state.recordingUrl);
     state.recordingUrl = URL.createObjectURL(state.recordingBlob);
     state.recordingFile = new File([state.recordingBlob], fileName, { type: fileMimeType });
-    state.recordingShareFile = createRecordingShareFile(state.recordingFile, resultKind);
     state.resultKind = resultKind;
     state.recordingDurationMs = durationMs;
     state.shareCapabilities = evaluateShareCapabilities();
@@ -1360,68 +1341,41 @@
     }
   }
 
-  function evaluateShareCapabilities() {
-    const recordingFile = state.recordingShareFile || state.recordingFile;
-    const recording = recordingFile ? canShareFiles([recordingFile]) : false;
-    const page = state.pageImageFile ? canShareFiles([state.pageImageFile]) : false;
-    const together = shouldAttemptCombinedPairShare() && recordingFile && state.pageImageFile
-      ? canShareFiles([state.pageImageFile, recordingFile])
-      : false;
-    return { recording, page, together };
-  }
-
-  function revealPairShareActions() {
-    if (els.pairActions) els.pairActions.hidden = false;
-    if (els.separateShareActions) els.separateShareActions.hidden = false;
-    if (els.shareAudioBtn) els.shareAudioBtn.disabled = state.shareCapabilities && state.shareCapabilities.recording === false;
-    if (els.sharePageBtn) els.sharePageBtn.disabled = state.shareCapabilities && state.shareCapabilities.page === false;
-  }
-
-  function revealPairDownloadActions() {
-    if (els.pairActions) els.pairActions.hidden = false;
-    if (els.separateDownloadActions) els.separateDownloadActions.hidden = false;
-  }
-
-  function showAudioDownloadRecovery() {
-    revealPairDownloadActions();
-    if (els.recordingMeta) {
-      els.recordingMeta.textContent = "Direct audio sharing is unavailable. Download Audio and share it as a document.";
+  function getResultFiles() {
+    if (!state.recordingFile) return [];
+    if (state.resultKind === "audio-image") {
+      return [state.pageImageFile, state.recordingFile].filter(Boolean);
     }
+    return [state.recordingFile];
+  }
+
+  function evaluateShareCapabilities() {
+    const files = getResultFiles();
+    return { result: files.length ? canShareFiles(files) : false };
   }
 
   function updateResultActions() {
-    const pair = state.resultKind === "audio-image";
     const capabilities = state.shareCapabilities || evaluateShareCapabilities();
     state.shareCapabilities = capabilities;
 
-    if (els.pairActions) els.pairActions.hidden = true;
-    if (els.separateShareActions) els.separateShareActions.hidden = true;
-    if (els.separateDownloadActions) els.separateDownloadActions.hidden = true;
     if (els.shareBtn) {
       els.shareBtn.hidden = false;
-      els.shareBtn.disabled = false;
-      els.shareBtn.removeAttribute("title");
+      els.shareBtn.disabled = capabilities.result === false;
+      if (capabilities.result === false) {
+        els.shareBtn.title = "Native file sharing is unavailable. Use Save.";
+        els.shareBtn.setAttribute("aria-label", "Share unavailable; use Save");
+      } else {
+        els.shareBtn.removeAttribute("title");
+        els.shareBtn.setAttribute("aria-label", "Share recording");
+      }
     }
     if (els.shareLabel) els.shareLabel.textContent = "Share";
-    if (els.downloadBtn) els.downloadBtn.disabled = !state.recordingFile;
-
-    if (pair) {
-      if (capabilities.together === false) {
-        if (els.shareBtn) els.shareBtn.hidden = true;
-        revealPairShareActions();
-        if (capabilities.recording === false) showAudioDownloadRecovery();
-      }
-      return;
-    }
-
-    if (els.shareBtn && capabilities.recording === false) {
-      els.shareBtn.disabled = true;
-      els.shareBtn.title = "Native file sharing is unavailable on this device.";
-    }
+    if (els.saveBtn) els.saveBtn.disabled = getResultFiles().length === 0;
   }
 
   function renderResultPreview() {
     resetPreviewMedia();
+    hideSaveReminder();
     const seconds = Math.min(120, Math.max(0, Math.round(state.recordingDurationMs / 1000)));
     const pageTitle = state.selectedPage ? state.selectedPage.title : "Audio recording";
 
@@ -1488,13 +1442,14 @@
       state.recordingUrl = "";
       state.recordingBlob = null;
       state.recordingFile = null;
-      state.recordingShareFile = null;
       state.pageImageUrl = "";
       state.pageImageBlob = null;
       state.pageImageFile = null;
       state.resultKind = "";
       state.recordingDurationMs = 0;
+      state.outputBaseName = "";
       resetPreviewMedia();
+      hideSaveReminder();
     }
 
     if (!options.keepSelectedPage) {
@@ -1518,32 +1473,17 @@
   }
 
   async function shareRecording() {
-    if (!state.recordingFile) {
+    const files = getResultFiles();
+    if (!files.length) {
       alert("No recording is ready to share.");
       return;
     }
 
-    const pair = state.resultKind === "audio-image";
-    if (pair && !shouldAttemptCombinedPairShare()) {
-      if (els.shareBtn) els.shareBtn.hidden = true;
-      revealPairShareActions();
-      if (els.recordingMeta) els.recordingMeta.textContent = "Share the audio and page separately.";
-      return;
-    }
-
-    const recordingFile = state.recordingShareFile || state.recordingFile;
-    const files = pair
-      ? [state.pageImageFile, recordingFile].filter(Boolean)
-      : [recordingFile];
     const capability = canShareFiles(files);
     if (capability === false) {
-      if (pair) {
-        if (els.shareBtn) els.shareBtn.hidden = true;
-        revealPairShareActions();
-      } else {
-        updateResultActions();
-        alert("This device cannot share the recording file.");
-      }
+      state.shareCapabilities = { result: false };
+      updateResultActions();
+      alert("Native sharing is unavailable for these files. Use Save, then attach the saved files in WhatsApp.");
       return;
     }
 
@@ -1552,45 +1492,11 @@
     } catch (error) {
       if (error && error.name === "AbortError") return;
       console.error("Recording share failed", error);
-      if (pair) {
-        if (els.shareBtn) els.shareBtn.hidden = true;
-        revealPairShareActions();
-        if (els.recordingMeta) els.recordingMeta.textContent = "Share the audio and page separately.";
-      } else {
-        alert("The recording could not be shared on this device.");
-      }
+      alert("Sharing could not be completed. Use Save, then attach the saved files in WhatsApp.");
     }
   }
 
-  async function shareSingleFile(file, description) {
-    if (!file) return alert(`${description} is not ready.`);
-    const shareFile = description === "Audio"
-      ? state.recordingShareFile || file
-      : file;
-    if (canShareFiles([shareFile]) === false) {
-      if (description === "Audio") {
-        showAudioDownloadRecovery();
-        alert("Direct audio sharing is unavailable. Use Download Audio, then share the file as a document.");
-        return;
-      }
-      alert(`This device cannot share the ${description.toLowerCase()}.`);
-      return;
-    }
-    try {
-      await shareFiles([shareFile]);
-    } catch (error) {
-      if (error && error.name === "AbortError") return;
-      console.error(`${description} share failed`, error);
-      if (description === "Audio") {
-        showAudioDownloadRecovery();
-        alert("Chrome did not accept direct audio sharing. Use Download Audio, then share the file as a document.");
-        return;
-      }
-      alert(`The ${description.toLowerCase()} could not be shared on this device.`);
-    }
-  }
-
-  function downloadFile(file, objectUrl) {
+  function saveFile(file, objectUrl) {
     if (!file) return false;
     const url = objectUrl || URL.createObjectURL(file);
     const link = document.createElement("a");
@@ -1604,12 +1510,57 @@
     return true;
   }
 
-  function downloadRecording() {
+  function hideSaveReminder() {
+    if (els.saveReminder) els.saveReminder.hidden = true;
+  }
+
+  function showSaveReminder(files) {
+    if (!els.saveReminder) return false;
+    const fileNames = files.map(file => file.name).join(", ");
+    let instruction = "Your browser has started saving the recording.";
     if (state.resultKind === "audio-image") {
-      revealPairDownloadActions();
-      return true;
+      instruction = "Your browser has started saving both files. If Chrome asks, allow multiple files. Open WhatsApp, choose the recipient, and attach both saved files as Documents.";
+    } else if (state.resultKind === "audio-only") {
+      instruction = "Your browser has started saving the audio. Open WhatsApp, choose the recipient, and attach the saved audio as a Document.";
+    } else if (state.resultKind === "video-mp4") {
+      instruction = "Your browser has started saving the MP4. Open WhatsApp, choose the recipient, and attach the saved video.";
     }
-    return downloadFile(state.recordingFile, state.recordingUrl);
+    if (els.saveReminderText) {
+      els.saveReminderText.textContent = `${instruction} Saved name${files.length === 1 ? "" : "s"}: ${fileNames}`;
+    }
+    els.saveReminder.hidden = false;
+    return true;
+  }
+
+  function saveRecording() {
+    const files = getResultFiles();
+    if (!files.length) {
+      alert("No recording is ready to save.");
+      return false;
+    }
+
+    files.forEach(file => {
+      const objectUrl = file === state.recordingFile
+        ? state.recordingUrl
+        : file === state.pageImageFile
+          ? state.pageImageUrl
+          : "";
+      saveFile(file, objectUrl);
+    });
+    showSaveReminder(files);
+    return true;
+  }
+
+  function openWhatsapp() {
+    const title = state.selectedPage ? state.selectedPage.title : "Audio recording";
+    const message = state.selectedPage ? `${title} reading` : "Audio recording";
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    const opened = window.open(whatsappUrl, "_blank");
+    if (opened) {
+      try { opened.opener = null; } catch (error) { console.warn("Could not clear WhatsApp window opener", error); }
+    } else {
+      window.location.assign(whatsappUrl);
+    }
   }
 
   function goToPages() {
@@ -1715,19 +1666,9 @@
       els.rerecordBtn.addEventListener("click", rerecordSelectedPage);
     }
     if (els.shareBtn) els.shareBtn.addEventListener("click", shareRecording);
-    if (els.downloadBtn) els.downloadBtn.addEventListener("click", downloadRecording);
-    if (els.shareAudioBtn) {
-      els.shareAudioBtn.addEventListener("click", () => shareSingleFile(state.recordingFile, "Audio"));
-    }
-    if (els.sharePageBtn) {
-      els.sharePageBtn.addEventListener("click", () => shareSingleFile(state.pageImageFile, "Page"));
-    }
-    if (els.downloadAudioBtn) {
-      els.downloadAudioBtn.addEventListener("click", () => downloadFile(state.recordingFile, state.recordingUrl));
-    }
-    if (els.downloadPageBtn) {
-      els.downloadPageBtn.addEventListener("click", () => downloadFile(state.pageImageFile, state.pageImageUrl));
-    }
+    if (els.saveBtn) els.saveBtn.addEventListener("click", saveRecording);
+    if (els.openWhatsappBtn) els.openWhatsappBtn.addEventListener("click", openWhatsapp);
+    if (els.dismissSaveReminderBtn) els.dismissSaveReminderBtn.addEventListener("click", hideSaveReminder);
 
     window.addEventListener("pagehide", () => cleanup({
       keepPages: true,
