@@ -1,0 +1,48 @@
+/* 93.6.1 Individual Progress header controls
+   Replaces the numbered module stepper and arrows with swipe dots beneath the
+   fixed student header. Adds a right-aligned back.svg action labelled Return to
+   Class Progress and left-aligns the student name with additional padding.
+
+   93.6 Progress architecture consolidation
+   Removes the hidden Class module-pane path and old table-grid CSS while
+   retaining the live continuous accordion. Individual card focus opacity is
+   removed so every surface-card pane renders at the same opacity.
+
+   93.5 confirmed Progress CSS legacy removal
+   Removes CSS with no current HTML or JavaScript producer: old AIG and
+   Individual landing, standalone Group Progress, bars/percentages, removed
+   support screens, obsolete Student header/player controls, copied legacy
+   suppressors, and dead Class A1/A2 variants.
+   Active Student, Class continuous-grid, and Individual Progress remain.
+
+   93.4.1 Class Progress surface alignment
+   Changes the Class Progress task-header band and group-label rows from
+   surface-chip to surface-track.
+
+   93.4 CSS correctness and cache alignment
+   Repairs malformed declarations in the Library and Progress stylesheets.
+   No legacy selectors removed and no intentional visual redesign included.
+
+M4L -v92.1  changed brand colour to lavender - updated app icons
+
+v91.7.4 - CSS split phase 1 loader
+   Generated from styles(85).css / M4L v91.4.
+   Deploy this file as /styles.css only after deploying every file below to /css/.
+   The import order exactly preserves the original cascade.
+   No CSS declarations were changed in the split files.
+*/
+
+@import url("/css/m4l-01-foundation-auth-userband.css?v=91.5");
+@import url("/css/m4l-02-home-common-and-shared-cards.css?v=93.5");
+@import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
+@import url("/css/m4l-04-library-resources.css?v=93.5");
+@import url("/css/m4l-05-home-timetable.css?v=91.5");
+@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=91.5");
+@import url("/css/m4l-07-manage-students.css?v=93.5");
+@import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=93.5");
+@import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
+@import url("/css/m4l-10-recorder.css?v=93.2");
+@import url("/css/m4l-11-student-progress-stepper-pane.css?v=93.5");
+@import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=93.6.1");
+@import url("/css/m4l-13-admin-individual-progress-overrides.css?v=93.6.1");
+@import url('/css/m4l-14-attendance-responsive-repair.css?v=91.7.4');
