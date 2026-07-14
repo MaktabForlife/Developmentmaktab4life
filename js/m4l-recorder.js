@@ -1,5 +1,5 @@
-/* v93.7.2b temp hid save iocon and text
-M4L v93.7.2 · embedded MP4 compatibility helper */
+/* M4L v93.7.3 · single-image upload and recorder prompt update
+   Embedded MP4 compatibility helper retained unchanged. */
 (()=>{/*!
  * Copyright (c) 2026-present, Vanilagy and contributors
  *
@@ -235,8 +235,8 @@ Check the discardedTracks field for more info.`)}return e}async execute(){if(!th
  */var Do=Symbol.for("mediabunny loaded");globalThis[Do]&&M._error(`[WARNING]
 Mediabunny was loaded twice. This will likely cause Mediabunny not to work correctly. Check if multiple dependencies are importing different versions of Mediabunny, or if something is being bundled incorrectly.`);globalThis[Do]=!0;async function Oc(t){if(!(t instanceof Blob)||t.size===0)throw new TypeError("A non-empty MP4 Blob is required.");let e=new Et({formats:[Xi],source:new pr(t)});try{let r=new tt,i=new ft({format:new dt({fastStart:"in-memory"}),target:r}),s=await Ir.init({input:e,output:i,tracks:"primary",video:{forceTranscode:!1},audio:{forceTranscode:!1},showWarnings:!1});if(!s.isValid||!s.utilizedTracks.some(o=>o.type==="video"))throw new Error("The MP4 could not be prepared for sharing.");if(await s.execute(),!r.buffer||r.buffer.byteLength===0)throw new Error("The MP4 remux produced no data.");return new Blob([r.buffer],{type:"video/mp4"})}finally{e.dispose()}}globalThis.M4LRecorderMp4Compat=Object.freeze({flattenMp4Blob:Oc});})();
 
-/* M4L v93.7.2
-   Shared student/admin recorder interface with shared manifest caching.
+/* M4L v93.7.3
+   Shared student/admin recorder interface with validated local image upload and shared manifest caching.
    Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
    Flattens fragmented browser MP4 recordings before preview, Share or Save.
    Uses unified Redo, Share and Save actions. WebM video is never created. */
@@ -250,6 +250,14 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
   const PAGE_ASSET_BASE = "/recorder/pages/";
   const RECORDER_MANIFEST_CACHE_KEY = "recorder:manifest:v1";
   const RECORDER_MANIFEST_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  const RECORDER_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
+  const RECORDER_UPLOAD_MAX_PIXELS = 50 * 1000 * 1000;
+  const RECORDER_UPLOAD_MIME_TYPES = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp"
+  ]);
+  const RECORDER_UPLOAD_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 
   const state = {
     initialized: false,
@@ -301,15 +309,26 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     root.innerHTML = `
       <section id="m4l-recorder-page-select" class="m4l-recorder-view m4l-recorder-view--pages active" aria-labelledby="m4l-recorder-title">
-        <h2 id="m4l-recorder-title" class="m4l-recorder-title">RECORD &amp; SHARE</h2>
+        <h2 id="m4l-recorder-title" class="m4l-recorder-title">Select a lesson to Record</h2>
 
         <div class="m4l-recorder-book-card">
-          <label class="visually-hidden" for="m4l-recorder-book-select">Select your kitaab or recording type</label>
-          <select id="m4l-recorder-book-select" class="m4l-recorder-book-select" aria-label="Select your kitaab or recording type">
+          <label class="visually-hidden" for="m4l-recorder-book-select">Select a Kitab or recording type</label>
+          <select
+            id="m4l-recorder-book-select"
+            class="m4l-recorder-book-select"
+            aria-label="Select a Kitab or recording type"
+            aria-describedby="m4l-recorder-selector-label m4l-recorder-upload-limits"
+          >
             <option value="">Loading image sets...</option>
           </select>
-          <p class="m4l-recorder-selector-label" aria-hidden="true">Choose recording source</p>
-          <input id="m4l-recorder-page-upload" class="visually-hidden" type="file" accept="image/*" multiple />
+          <p id="m4l-recorder-selector-label" class="m4l-recorder-selector-label">Select a Kitab</p>
+          <p id="m4l-recorder-upload-limits" class="m4l-recorder-upload-limits">Own image: one JPG, PNG or WebP file, up to 15 MB. It stays on this device.</p>
+          <input
+            id="m4l-recorder-page-upload"
+            class="visually-hidden"
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          />
         </div>
 
         <p id="m4l-recorder-status" class="m4l-recorder-status helper-text" role="status" aria-live="polite">Loading image sets...</p>
@@ -658,9 +677,22 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       });
     }
 
+    const activeUploadedPage = state.selectedBookId === "__upload"
+      ? (state.pages[0] || null)
+      : null;
+
+    if (activeUploadedPage) {
+      const currentUploadOption = document.createElement("option");
+      currentUploadOption.value = "__current_upload";
+      currentUploadOption.textContent = `Own image · ${activeUploadedPage.title || "Selected image"}`;
+      els.bookSelect.appendChild(currentUploadOption);
+    }
+
     const uploadOption = document.createElement("option");
     uploadOption.value = "__upload";
-    uploadOption.textContent = "Select your own image";
+    uploadOption.textContent = activeUploadedPage
+      ? "Select another image"
+      : "Select your own image";
     els.bookSelect.appendChild(uploadOption);
 
     const audioOnlyOption = document.createElement("option");
@@ -668,7 +700,12 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     audioOnlyOption.textContent = "Record audio only";
     els.bookSelect.appendChild(audioOnlyOption);
 
-    els.bookSelect.value = state.selectedBookId || (state.books[0] ? state.books[0].id : "");
+    if (activeUploadedPage) {
+      els.bookSelect.value = "__current_upload";
+    } else {
+      els.bookSelect.value = state.selectedBookId || (state.books[0] ? state.books[0].id : "");
+    }
+
     return true;
   }
 
@@ -864,39 +901,144 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     }
   }
 
-  function addUploadedPages(fileList) {
-    const files = Array.from(fileList || []).filter(file => file && file.type && file.type.startsWith("image/"));
-    if (!files.length) {
+  function getRecorderUploadExtension(fileName) {
+    const match = String(fileName || "").trim().toLowerCase().match(/\.([a-z0-9]+)$/);
+    return match ? match[1] : "";
+  }
+
+  function getRecorderUploadValidationMessage(file) {
+    if (!file) {
+      return "No image was selected.";
+    }
+
+    if (!Number.isFinite(file.size) || file.size <= 0) {
+      return "This image file is empty. Choose a JPG, PNG or WebP image.";
+    }
+
+    if (file.size > RECORDER_UPLOAD_MAX_BYTES) {
+      return "This image is larger than 15 MB. Choose a smaller JPG, PNG or WebP image.";
+    }
+
+    const mimeType = String(file.type || "").trim().toLowerCase();
+    const extension = getRecorderUploadExtension(file.name);
+    const acceptedMimeType = mimeType ? RECORDER_UPLOAD_MIME_TYPES.has(mimeType) : false;
+    const acceptedExtension = RECORDER_UPLOAD_EXTENSIONS.has(extension);
+
+    if (!acceptedMimeType && !acceptedExtension) {
+      return "Unsupported image format. Choose one JPG, PNG or WebP image.";
+    }
+
+    if (mimeType && !RECORDER_UPLOAD_MIME_TYPES.has(mimeType)) {
+      return "Unsupported image format. Choose one JPG, PNG or WebP image.";
+    }
+
+    return "";
+  }
+
+  function resetRecorderUploadInput() {
+    if (els.pageUpload) {
+      els.pageUpload.value = "";
+    }
+    return true;
+  }
+
+  function getRecorderUploadReadyStatus(file) {
+    const sizeMb = Math.max(0.01, Number(file && file.size || 0) / (1024 * 1024));
+    const formattedSize = sizeMb < 1 ? `${Math.round(sizeMb * 1024)} KB` : `${sizeMb.toFixed(1)} MB`;
+    return `Own image ready · ${formattedSize} · kept on this device`;
+  }
+
+  async function addUploadedImage(file) {
+    const validationMessage = getRecorderUploadValidationMessage(file);
+
+    if (validationMessage) {
       renderBookSelector();
+      setStatus(validationMessage, { kind: "error" });
+      alert(validationMessage);
       return false;
     }
 
-    cleanupUploadedObjectUrls();
-    const pages = files.map((file, index) => {
-      const objectUrl = URL.createObjectURL(file);
-      state.uploadedObjectUrls.push(objectUrl);
-      return {
-        id: `upload-${Date.now()}-${index}`,
-        title: file.name.replace(/\.[^.]+$/, "") || `Image ${index + 1}`,
-        pageNo: index + 1,
+    setStatus("Checking your image...");
+
+    const objectUrl = URL.createObjectURL(file);
+    let decodedImage = null;
+
+    try {
+      decodedImage = await loadImage(objectUrl);
+
+      const naturalWidth = Number(decodedImage.naturalWidth || decodedImage.width || 0);
+      const naturalHeight = Number(decodedImage.naturalHeight || decodedImage.height || 0);
+      const pixelCount = naturalWidth * naturalHeight;
+
+      if (!naturalWidth || !naturalHeight) {
+        throw new Error("The selected image has no readable dimensions.");
+      }
+
+      if (pixelCount > RECORDER_UPLOAD_MAX_PIXELS) {
+        throw new Error("The selected image is too large to prepare safely on this device.");
+      }
+
+      // Commit only after validation and decoding succeed. This preserves the
+      // current uploaded page when a replacement file is cancelled or invalid.
+      cleanupUploadedObjectUrls();
+      state.uploadedObjectUrls = [objectUrl];
+
+      const page = {
+        id: `upload-${Date.now()}`,
+        title: String(file.name || "Own image").replace(/\.[^.]+$/, "") || "Own image",
+        pageNo: 1,
         lesson: null,
         type: "upload",
         src: objectUrl,
         source: "upload",
         bookTitle: "Own image"
       };
-    });
 
-    state.sourceMode = "page";
-    state.selectedBookId = "__upload";
-    state.pages = pages;
-    state.selectedPage = null;
-    state.selectedImage = null;
-    renderBookSelector();
-    renderPageGrid();
-    setStatus(`Own image loaded · ${pages.length} page${pages.length === 1 ? "" : "s"}`);
-    showView("pages");
-    return true;
+      state.sourceMode = "page";
+      state.selectedBookId = "__upload";
+      state.pages = [page];
+      state.selectedPage = page;
+      state.selectedImage = decodedImage;
+
+      renderBookSelector();
+      renderPageGrid();
+      updateSelectedPageTitles(page);
+      drawSelectedPage();
+      resetTimer();
+      updateRecordStage();
+      setStatus(getRecorderUploadReadyStatus(file));
+      showView("record");
+      return true;
+    } catch (error) {
+      try { URL.revokeObjectURL(objectUrl); } catch (revokeError) { console.warn("Could not revoke rejected upload URL", revokeError); }
+
+      console.error("Recorder image upload failed", error);
+      renderBookSelector();
+
+      const message = error && /too large/i.test(String(error.message || ""))
+        ? "This image is too large to prepare on this device. Choose a smaller JPG, PNG or WebP image."
+        : "This image could not be opened. Choose one JPG, PNG or WebP image up to 15 MB.";
+
+      setStatus(message, { kind: "error" });
+      alert(message);
+      return false;
+    }
+  }
+
+  async function handleUploadedImageSelection(fileList) {
+    const files = Array.from(fileList || []);
+
+    try {
+      if (!files.length) {
+        renderBookSelector();
+        return false;
+      }
+
+      return await addUploadedImage(files[0]);
+    } finally {
+      // Allows the same file to be selected again after Cancel, Redo or error.
+      resetRecorderUploadInput();
+    }
   }
 
   function loadImage(src) {
@@ -1955,8 +2097,18 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       els.bookSelect.addEventListener("change", event => {
         const value = String(event.target.value || "");
         if (value === "__upload") {
-          event.target.value = state.selectedBookId || "";
+          event.target.value = state.selectedBookId === "__upload"
+            ? "__current_upload"
+            : (state.selectedBookId || "");
+
+          setStatus("Choose one JPG, PNG or WebP image, up to 15 MB. The image stays on this device.");
+          resetRecorderUploadInput();
           if (els.pageUpload) els.pageUpload.click();
+          return;
+        }
+        if (value === "__current_upload") {
+          renderPageGrid();
+          setStatus("Own image selected · tap the image to record again");
           return;
         }
         if (value === "__audio_only") {
@@ -1968,7 +2120,15 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     }
 
     if (els.pageUpload) {
-      els.pageUpload.addEventListener("change", event => addUploadedPages(event.target.files));
+      els.pageUpload.addEventListener("change", event => {
+        handleUploadedImageSelection(event.target.files).catch(error => {
+          console.error("Recorder upload selection failed", error);
+          const message = "This image could not be opened. Choose one JPG, PNG or WebP image up to 15 MB.";
+          setStatus(message, { kind: "error" });
+          alert(message);
+          resetRecorderUploadInput();
+        });
+      });
     }
 
     if (els.pageGrid) {
