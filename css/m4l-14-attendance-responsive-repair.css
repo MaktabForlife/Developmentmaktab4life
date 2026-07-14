@@ -1,4 +1,10 @@
-/* M4L v91.7.4 - Attendance medium-grid and dot repair
+/* M4L v93.7.1 - Attendance medium-grid, header fit, and transparent dot band
+   Baseline: V91.7.4 Attendance responsive repair.
+   Scope: Attendance only. Makes the mobile swipe-dot band transparent, exposes
+   the rounded header panels from medium upward, and scales the medium header
+   content so date controls fit inside each of the three columns.
+
+   M4L v91.7.4 - Attendance medium-grid and dot repair
    Baseline: V91.7.3 split CSS repair.
    Scope: Attendance only. Restore small swipe-dot styling on mobile, hide
    Attendance dots from medium upward, and show all three Attendance panels
@@ -19,7 +25,7 @@
   justify-content: center;
   gap: 10px;
   padding: 6px 0;
-  background: var(--surface-app);
+  background: transparent;
   pointer-events: auto;
 }
 
@@ -128,14 +134,93 @@
     z-index: auto;
     margin: 0 0 14px;
     padding: 0;
-    background: var(--surface-card);
+    background: transparent;
     border: 0;
+    border-radius: 18px;
     box-shadow: none;
+  }
+
+  #attendance-screen .attendance-top-panel {
+    border-radius: 18px;
   }
 
   #attendance-screen .attendance-panel-scroll-body {
     min-height: 0;
     overflow: visible;
     padding: 0;
+  }
+}
+
+/* At medium widths each Attendance panel is roughly one third of the viewport.
+   Compact only the header controls; the register, records, and stats bodies keep
+   their existing type and spacing. */
+@media (min-width: 768px) and (max-width: 1179px) {
+  #attendance-screen .attendance-top-panel {
+    gap: clamp(8px, 1.25vw, 12px);
+    padding: clamp(11px, 1.55vw, 16px);
+  }
+
+  #attendance-screen .attendance-subscreen-header {
+    gap: clamp(4px, 0.8vw, 10px);
+  }
+
+  #attendance-screen .attendance-panel-heading,
+  #attendance-screen .attendance-subscreen-header h3 {
+    font-size: clamp(0.96rem, 2vw, 1.25rem);
+  }
+
+  #attendance-screen .attendance-header-action-btn {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 38px;
+  }
+
+  #attendance-screen .attendance-header-action-btn .app-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  #attendance-screen .attendance-header-action-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  #attendance-screen .attendance-summary-card,
+  #attendance-screen .attendance-date-range-card {
+    gap: clamp(3px, 0.65vw, 8px);
+  }
+
+  #attendance-screen .attendance-summary-item {
+    gap: 4px;
+  }
+
+  #attendance-screen .attendance-summary-icon {
+    flex-basis: 26px;
+    width: 26px;
+    height: 26px;
+    font-size: 0.82rem;
+  }
+
+  #attendance-screen .attendance-date-range-card .attendance-summary-icon,
+  #attendance-screen .attendance-register-control-block .attendance-summary-item:first-child .attendance-summary-icon {
+    display: none;
+  }
+
+  #attendance-screen .attendance-summary-label,
+  #attendance-screen .attendance-date-label {
+    font-size: clamp(0.54rem, 1vw, 0.68rem);
+    letter-spacing: 0.04em;
+  }
+
+  #attendance-screen .attendance-summary-card input[type="date"],
+  #attendance-screen .attendance-date-range-card input[type="date"],
+  #attendance-screen .attendance-summary-card .attendance-absence-feedback {
+    font-size: clamp(0.76rem, 1.35vw, 0.94rem);
+    letter-spacing: -0.02em;
+  }
+
+  #attendance-screen .attendance-summary-subtext {
+    font-size: clamp(0.66rem, 1.15vw, 0.78rem);
   }
 }

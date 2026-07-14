@@ -1,4 +1,10 @@
-/* Attendance native scroll panels - V66.1 */
+/* M4L v93.7.1 - Attendance card borders and responsive panel surfaces
+   Adds the shared 2px surface-track border to the white Attendance cards and
+   keeps the sticky header wrapper transparent so its rounded panel is visible.
+   Attendance behaviour, calculations, saving, and PDF viewer rules are
+   unchanged.
+
+   Attendance native scroll panels - V66.1 */
 #attendance-screen.screen {
   background: var(--surface-app);
   box-shadow: none;
@@ -373,7 +379,7 @@ body.is-attendance-section #attendance-screen.screen {
   gap: 8px;
   padding: 0;
   margin-bottom: 14px;
-  background: var(--surface-card);
+  background: transparent;
   border: 0;
   box-shadow: none;
 }
@@ -384,7 +390,7 @@ body.is-attendance-section #attendance-screen.screen {
   grid-template-rows: auto auto;
   gap: 12px;
   padding: 16px;
-  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border: 2px solid var(--surface-track);
   border-radius: 18px;
   background: var(--surface-card);
   box-shadow: none;
@@ -652,7 +658,7 @@ body.is-attendance-section #attendance-screen.screen {
 
 .attendance-group-container {
   background: var(--surface-card);
-  border: 1px solid var(--surface-track) ;
+  border: 2px solid var(--surface-track);
   border-radius: 16px;
   box-shadow: 0 5px 14px rgba(var(--black-rgb), 0.05);
   padding: 6px 8px;
@@ -768,6 +774,7 @@ body.is-attendance-section #attendance-screen.screen {
 .attendance-stat-card {
   background: var(--surface-card);
   color: var(--primary);
+  border: 2px solid var(--surface-track);
   border-radius: 14px;
   padding: 16px;
   text-align: center;
@@ -788,6 +795,7 @@ body.is-attendance-section #attendance-screen.screen {
 
 .attendance-breakdown-card {
   background: var(--surface-card);
+  border: 2px solid var(--surface-track);
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 16px;
@@ -1034,5 +1042,4 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
     height: auto;
   }
 }
-
 

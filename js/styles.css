@@ -1,9 +1,4 @@
-/* 93.7.1 Attendance UI alignment
-   Makes the swipe-dot band transparent, gives all inner white Attendance cards
-   a 2px surface-track border, exposes rounded header corners on medium/large
-   screens, and scales medium header controls to fit their three-column panels.
-
-   93.6.1 Individual Progress header controls
+/* 93.6.1 Individual Progress header controls
    Replaces the numbered module stepper and arrows with swipe dots beneath the
    fixed student header. Adds a right-aligned back.svg action labelled Return to
    Class Progress and left-aligns the student name with additional padding.
@@ -42,7 +37,7 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
 @import url("/css/m4l-04-library-resources.css?v=93.5");
 @import url("/css/m4l-05-home-timetable.css?v=91.5");
-@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=93.7.1");
+@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=91.5");
 @import url("/css/m4l-07-manage-students.css?v=93.5");
 @import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=93.5");
 @import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
@@ -50,4 +45,4 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-11-student-progress-stepper-pane.css?v=93.5");
 @import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=93.6.1");
 @import url("/css/m4l-13-admin-individual-progress-overrides.css?v=93.6.1");
-@import url('/css/m4l-14-attendance-responsive-repair.css?v=93.7.1');
+@import url('/css/m4l-14-attendance-responsive-repair.css?v=91.7.4');
