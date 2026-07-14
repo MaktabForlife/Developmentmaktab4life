@@ -652,7 +652,6 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 @media (min-width: 768px) {
   #progress-report.admin-theme .admin-progress-class-continuous-task-scroll,
   #progress-report.admin-theme .admin-individual-progress-pane-viewport,
-  #progress-report.admin-theme .admin-individual-progress-module-numbers,
   #progress-report.admin-theme .student-progress-stepper-number-strip {
     overscroll-behavior-x: contain;
     overscroll-behavior-inline: contain;

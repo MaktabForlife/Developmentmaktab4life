@@ -1,4 +1,9 @@
-/* 93.6 Progress architecture consolidation
+/* 93.6.1 Individual Progress header controls
+   Replaces the numbered module stepper and arrows with swipe dots beneath the
+   fixed student header. Adds a right-aligned back.svg action labelled Return to
+   Class Progress and left-aligns the student name with additional padding.
+
+   93.6 Progress architecture consolidation
    Removes the hidden Class module-pane path and old table-grid CSS while
    retaining the live continuous accordion. Individual card focus opacity is
    removed so every surface-card pane renders at the same opacity.
@@ -38,6 +43,6 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
 @import url("/css/m4l-10-recorder.css?v=93.2");
 @import url("/css/m4l-11-student-progress-stepper-pane.css?v=93.5");
-@import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=93.6");
-@import url("/css/m4l-13-admin-individual-progress-overrides.css?v=93.6");
+@import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=93.6.1");
+@import url("/css/m4l-13-admin-individual-progress-overrides.css?v=93.6.1");
 @import url('/css/m4l-14-attendance-responsive-repair.css?v=91.7.4');

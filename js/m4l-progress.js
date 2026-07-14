@@ -1,4 +1,9 @@
-/* M4L v93.6 - Progress architecture consolidation
+/* M4L v93.6.1 - Individual Progress header controls
+   Replaces the Admin Individual numbered stepper and arrows with synchronized
+   swipe dots, left-aligns the student name, and adds a labelled back.svg return
+   action. The v93.6 architecture consolidation remains the functional baseline.
+
+   M4L v93.6 - Progress architecture consolidation
    Baseline: deployed v93.5c after confirmed Progress CSS legacy removal.
    Scope: remove the hidden Class module-pane renderer and its obsolete module
    navigation, native-swipe, resize, and active-index machinery. Keep the live
@@ -141,7 +146,6 @@ function bindAdminProgressSwipeEscapeGuard() {
   const horizontalScrollSelector = [
     ".admin-progress-class-continuous-task-scroll",
     ".admin-individual-progress-pane-viewport",
-    ".admin-individual-progress-module-numbers",
     ".student-progress-stepper-number-strip"
   ].join(", ");
 
@@ -387,12 +391,6 @@ function handleProgressUiClick(event) {
     case "scroll-admin-individual-progress-module":
       scrollAdminIndividualProgressModuleToIndex(
         Number(actionEl.dataset.progressPanelIndex || 0)
-      );
-      break;
-
-    case "step-admin-individual-progress-module":
-      stepAdminIndividualProgressModuleBy(
-        Number(actionEl.dataset.progressStep || 0)
       );
       break;
 
@@ -3919,29 +3917,6 @@ function clampAdminIndividualProgressModuleIndex(index, modules) {
   return Math.max(0, Math.min(maxIndex, Number.isFinite(numberIndex) ? numberIndex : 0));
 }
 
-function renderAdminIndividualProgressStepperArrow(direction, isDisabled) {
-  const normalizedDirection = Number(direction || 0) < 0 ? -1 : 1;
-  const isPrevious = normalizedDirection < 0;
-  const label = isPrevious ? "Previous module" : "Next module";
-  const iconClass = isPrevious ? "app-icon-left" : "app-icon-right";
-
-  return `
-    <button
-      type="button"
-      class="student-progress-stepper-arrow admin-individual-progress-stepper-arrow admin-individual-progress-stepper-arrow--${isPrevious ? "previous" : "next"}"
-      data-progress-action="step-admin-individual-progress-module"
-      data-progress-step="${normalizedDirection}"
-      data-progress-step-direction="${isPrevious ? "previous" : "next"}"
-      aria-label="${label}"
-      title="${label}"
-      ${isDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'}
-    >
-      <span class="app-icon ${iconClass}" aria-hidden="true"></span>
-      <span class="visually-hidden">${label}</span>
-    </button>
-  `;
-}
-
 function renderAdminIndividualProgressSwipeDots(modules, activeIndex) {
   const list = Array.isArray(modules) ? modules : [];
   if (list.length < 1) return "";
@@ -3949,7 +3924,7 @@ function renderAdminIndividualProgressSwipeDots(modules, activeIndex) {
   const safeIndex = clampAdminIndividualProgressModuleIndex(activeIndex, list);
 
   return `
-    <div class="m4l-progress-swipe-dots student-progress-swipe-dots student-progress-module-numbers admin-individual-progress-module-numbers" data-admin-individual-progress-dots aria-label="Individual Progress modules">
+    <div class="m4l-progress-swipe-dots admin-individual-progress-swipe-dots" data-admin-individual-progress-dots aria-label="Individual Progress modules">
       ${list.map((module, index) => {
         const isActive = index === safeIndex;
         const numberLabel = String(index + 1);
@@ -3957,12 +3932,12 @@ function renderAdminIndividualProgressSwipeDots(modules, activeIndex) {
         return `
           <button
             type="button"
-            class="m4l-progress-swipe-dot student-progress-swipe-dot student-progress-module-number admin-individual-progress-module-number${isActive ? " is-active" : ""}"
+            class="m4l-progress-swipe-dot admin-individual-progress-swipe-dot${isActive ? " is-active" : ""}"
             data-progress-action="scroll-admin-individual-progress-module"
             data-progress-panel-index="${index}"
             aria-label="Show module ${numberLabel}: ${escapeForAttribute(title)}"
             aria-current="${isActive ? "true" : "false"}"
-          >${escapeHtml(numberLabel)}</button>
+          ></button>
         `;
       }).join("")}
     </div>
@@ -3972,31 +3947,25 @@ function renderAdminIndividualProgressSwipeDots(modules, activeIndex) {
 function renderAdminIndividualProgressGlobalPane(studentName, modules, activeIndex) {
   const list = Array.isArray(modules) ? modules : [];
   const safeIndex = clampAdminIndividualProgressModuleIndex(activeIndex, list);
-  const hasMultipleModules = list.length > 1;
   const safeStudentName = studentName || progressState.studentName || "Student";
 
   return `
     <section class="admin-individual-progress-global-pane" aria-label="${escapeForAttribute(safeStudentName)} Individual Progress controls">
       <div class="admin-individual-progress-student-row">
+        <h3 class="admin-individual-progress-student-name">${escapeHtml(safeStudentName)}</h3>
         <button
           type="button"
-          class="admin-progress-close-btn admin-individual-progress-close-btn"
+          class="admin-individual-progress-return-btn"
           data-progress-action="close-admin-individual-student-view"
-          aria-label="Return to Individual Progress student list"
-          title="Close"
+          aria-label="Return to Class Progress"
+          title="Return to Class Progress"
         >
-          <span class="app-icon app-icon-close" aria-hidden="true"></span>
-          <span class="visually-hidden">Close</span>
+          <span class="admin-individual-progress-return-icon" aria-hidden="true"></span>
+          <span class="admin-individual-progress-return-label">Return to Class Progress</span>
         </button>
-        <h3 class="admin-individual-progress-student-name">${escapeHtml(safeStudentName)}</h3>
-        <span class="admin-individual-progress-student-row-spacer" aria-hidden="true"></span>
       </div>
-      <div class="student-progress-top-control-row student-progress-stepper-row admin-individual-progress-stepper-row">
-        ${renderAdminIndividualProgressStepperArrow(-1, !hasMultipleModules || safeIndex <= 0)}
-        <div class="student-progress-top-control-dots student-progress-stepper-number-strip admin-individual-progress-stepper-number-strip" data-admin-individual-progress-number-nav>
-          ${renderAdminIndividualProgressSwipeDots(list, safeIndex)}
-        </div>
-        ${renderAdminIndividualProgressStepperArrow(1, !hasMultipleModules || safeIndex >= list.length - 1)}
+      <div class="admin-individual-progress-swipe-dots-row">
+        ${renderAdminIndividualProgressSwipeDots(list, safeIndex)}
       </div>
     </section>
   `;
@@ -4169,7 +4138,7 @@ function getAdminIndividualProgressActiveIndexFromViewport() {
   return closestIndex;
 }
 
-function updateAdminIndividualProgressModuleStepper(index = adminIndividualProgressActiveModuleIndex) {
+function updateAdminIndividualProgressSwipeDots(index = adminIndividualProgressActiveModuleIndex) {
   const panels = getAdminIndividualProgressPanels();
   const safeIndex = clampAdminIndividualProgressModuleIndex(index, panels);
   adminIndividualProgressActiveModuleIndex = safeIndex;
@@ -4180,25 +4149,11 @@ function updateAdminIndividualProgressModuleStepper(index = adminIndividualProgr
     panel.classList.toggle("is-far", Math.abs(panelIndex - safeIndex) > 1);
   });
 
-  document.querySelectorAll("#admin-progress-dashboard .admin-individual-progress-module-number").forEach((button, buttonIndex) => {
+  document.querySelectorAll("#admin-progress-dashboard .admin-individual-progress-swipe-dot").forEach((button, buttonIndex) => {
     const isActive = buttonIndex === safeIndex;
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-current", isActive ? "true" : "false");
   });
-
-  document.querySelectorAll("#admin-progress-dashboard .admin-individual-progress-stepper-arrow").forEach(button => {
-    const direction = Number(button.dataset.progressStep || 0);
-    const disabled = panels.length <= 1 || (direction < 0 && safeIndex <= 0) || (direction > 0 && safeIndex >= panels.length - 1);
-    button.disabled = disabled;
-    button.setAttribute("aria-disabled", disabled ? "true" : "false");
-  });
-
-  const nav = document.querySelector("#admin-progress-dashboard [data-admin-individual-progress-number-nav]");
-  const activeButton = document.querySelector("#admin-progress-dashboard .admin-individual-progress-module-number.is-active");
-  if (nav && activeButton && typeof nav.scrollTo === "function") {
-    const targetLeft = Math.max(0, (activeButton.offsetLeft || 0) - ((nav.clientWidth || 0) / 2) + ((activeButton.clientWidth || 0) / 2));
-    nav.scrollTo({ left: targetLeft, behavior: "smooth" });
-  }
 
   return true;
 }
@@ -4213,7 +4168,7 @@ function scrollAdminIndividualProgressModuleToIndex(index, options = {}) {
   if (!panel) return false;
 
   adminIndividualProgressActiveModuleIndex = safeIndex;
-  updateAdminIndividualProgressModuleStepper(safeIndex);
+  updateAdminIndividualProgressSwipeDots(safeIndex);
 
   const targetLeft = Math.max(0, Math.min(
     Math.max(0, (viewport.scrollWidth || 0) - (viewport.clientWidth || 0)),
@@ -4233,16 +4188,10 @@ function scrollAdminIndividualProgressModuleToIndex(index, options = {}) {
   return true;
 }
 
-function stepAdminIndividualProgressModuleBy(step) {
-  const panels = getAdminIndividualProgressPanels();
-  const nextIndex = clampAdminIndividualProgressModuleIndex(adminIndividualProgressActiveModuleIndex + Number(step || 0), panels);
-  return scrollAdminIndividualProgressModuleToIndex(nextIndex);
-}
-
 function bindAdminIndividualProgressSwipeControls() {
   const viewport = getAdminIndividualProgressViewport();
   if (!viewport || viewport.dataset.adminIndividualProgressSwipeBound === "true") {
-    updateAdminIndividualProgressModuleStepper(adminIndividualProgressActiveModuleIndex);
+    updateAdminIndividualProgressSwipeDots(adminIndividualProgressActiveModuleIndex);
     return !!viewport;
   }
 
@@ -4253,7 +4202,7 @@ function bindAdminIndividualProgressSwipeControls() {
     if (pendingFrame || typeof window === "undefined") return;
     pendingFrame = window.requestAnimationFrame(() => {
       pendingFrame = 0;
-      updateAdminIndividualProgressModuleStepper(getAdminIndividualProgressActiveIndexFromViewport());
+      updateAdminIndividualProgressSwipeDots(getAdminIndividualProgressActiveIndexFromViewport());
     });
   }, { passive: true });
 
@@ -4364,7 +4313,7 @@ function renderAdminIndividualSelectedStudentModules(rows, studentName) {
   bindProgressUiHandlers(dashboard);
   bindAdminIndividualProgressSwipeControls();
   syncAdminIndividualProgressModuleEditDom();
-  updateAdminIndividualProgressModuleStepper(adminIndividualProgressActiveModuleIndex);
+  updateAdminIndividualProgressSwipeDots(adminIndividualProgressActiveModuleIndex);
   return true;
 }
 

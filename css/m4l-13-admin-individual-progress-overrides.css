@@ -1,4 +1,4 @@
-/* M4L v90.8.7.1 - Admin Individual Progress polish: sticky compact header, close icon, fill-to-edit, background save */
+/* M4L v93.6.1 - Admin Individual Progress swipe dots and Class Progress return header */
 #progress-report.admin-theme .admin-individual-progress-shell {
   --student-progress-task-row-height: var(--admin-progress-class-row-height, 40px);
   --admin-individual-progress-panel-gap: 4px;
@@ -42,151 +42,92 @@
 
 #progress-report.admin-theme .admin-individual-progress-student-row {
   position: relative;
-  min-height: 38px;
+  min-height: 42px;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-}
-
-#progress-report.admin-theme .admin-individual-progress-close-btn {
-  grid-column: 1;
-  justify-self: start;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
-  padding: 0;
-  border-radius: 999px;
-  background: var(--disabled);
-  color: var(--text);
-  box-shadow: none;
-  font-weight: 800;
+  gap: 12px;
 }
 
 #progress-report.admin-theme .admin-individual-progress-student-name {
-  grid-column: 2;
+  grid-column: 1;
   min-width: 0;
   margin: 0;
+  padding-left: 18px;
   color: var(--text-muted);
   font-size: clamp(1.32rem, 5vw, 1.82rem);
   font-weight: 820;
   line-height: 1.08;
-  text-align: center;
+  text-align: left;
   overflow-wrap: anywhere;
 }
 
-#progress-report.admin-theme .admin-individual-progress-student-row-spacer {
-  grid-column: 3;
-  min-width: 42px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-stepper-row {
-  width: min(var(--student-progress-global-swipe-max-width, 410px), 100%);
-  max-width: min(var(--student-progress-global-swipe-max-width, 410px), 100%);
-  min-width: 0;
-  min-height: var(--student-progress-global-swipe-height, 32px);
-  display: grid;
-  grid-template-columns:
-    minmax(42px, var(--student-progress-global-swipe-left-width, 44px))
-    minmax(0, var(--student-progress-global-swipe-dots-width, min(260px, 62vw)))
-    minmax(42px, var(--student-progress-global-swipe-right-width, 44px));
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 0;
-  margin: 0 auto;
-}
-
-#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
+#progress-report.admin-theme .admin-individual-progress-return-btn {
   appearance: none;
-  width: 44px;
-  min-width: 44px;
-  max-width: 44px;
-  height: 44px;
-  min-height: 44px;
+  grid-column: 2;
+  width: auto;
+  min-width: 116px;
+  min-height: 40px;
   margin: 0;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  justify-self: center;
-  align-self: center;
+  padding: 1px 4px;
+  display: inline-grid;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  align-content: center;
+  justify-self: end;
+  gap: 1px;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   box-shadow: none;
+  font: inherit;
+  text-align: center;
 }
 
-#progress-report.admin-theme .admin-individual-progress-stepper-arrow .app-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
+#progress-report.admin-theme .admin-individual-progress-return-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  background: currentColor;
+  -webkit-mask: url('/icons/back.svg') center / contain no-repeat;
+  mask: url('/icons/back.svg') center / contain no-repeat;
 }
 
-#progress-report.admin-theme .admin-individual-progress-stepper-arrow:disabled {
-  opacity: 0.28;
-  cursor: default;
+#progress-report.admin-theme .admin-individual-progress-return-label {
+  display: block;
+  max-width: 132px;
+  color: currentColor;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.05;
 }
 
-#progress-report.admin-theme .admin-individual-progress-stepper-number-strip {
-  grid-column: 2;
-  min-width: 0;
-  width: min(var(--student-progress-global-swipe-dots-width, min(260px, 62vw)), 100%);
-  justify-self: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-numbers {
+#progress-report.admin-theme .admin-individual-progress-swipe-dots-row {
   width: 100%;
   min-width: 0;
-  min-height: 32px;
+  min-height: 22px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 5px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  padding: 0 2px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-numbers::-webkit-scrollbar {
-  display: none;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-number {
-  appearance: none;
-  flex: 0 0 auto;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
+  justify-content: center;
   margin: 0;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text);
-  box-shadow: none;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 800;
-  line-height: 1;
 }
 
-#progress-report.admin-theme .admin-individual-progress-module-number.is-active {
-  border-color: rgba(var(--primary-rgb), 0.38);
-  background: rgba(var(--primary-rgb), 0.16);
-  color: var(--text-strong);
+#progress-report.admin-theme .admin-individual-progress-swipe-dots {
+  --m4l-progress-swipe-dot-gap: 7px;
+  --m4l-progress-swipe-dot-band-height: 20px;
+  --m4l-progress-swipe-dot-size: 8px;
+  --m4l-progress-swipe-dot-active-width: 22px;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#progress-report.admin-theme .admin-individual-progress-swipe-dot {
+  appearance: none;
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 #progress-report.admin-theme .admin-individual-progress-pane-viewport {
@@ -478,26 +419,19 @@
 }
 
 #progress-report.admin-theme .admin-individual-progress-student-row {
-  min-height: 30px;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  min-height: 36px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
 }
 
-#progress-report.admin-theme .admin-individual-progress-close-btn {
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  min-height: 30px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-muted);
-  box-shadow: none;
+#progress-report.admin-theme .admin-individual-progress-return-btn {
+  min-width: 112px;
+  min-height: 36px;
 }
 
-#progress-report.admin-theme .admin-individual-progress-close-btn .app-icon {
-  width: 22px;
-  height: 22px;
+#progress-report.admin-theme .admin-individual-progress-return-icon {
+  width: 20px;
+  height: 20px;
 }
 
 #progress-report.admin-theme .admin-individual-progress-student-name {
@@ -505,31 +439,8 @@
   line-height: 1;
 }
 
-#progress-report.admin-theme .admin-individual-progress-student-row-spacer {
-  min-width: 34px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-stepper-row {
-  min-height: 30px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
-  width: 34px;
-  min-width: 34px;
-  max-width: 34px;
-  height: 34px;
-  min-height: 34px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-numbers {
-  min-height: 30px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-number {
-  width: 26px;
-  min-width: 26px;
-  height: 26px;
-  min-height: 26px;
+#progress-report.admin-theme .admin-individual-progress-swipe-dots-row {
+  min-height: 20px;
 }
 
 #progress-report.admin-theme .admin-individual-progress-pane-viewport {
@@ -667,34 +578,15 @@
 }
 
 #progress-report.admin-theme .admin-individual-progress-student-row {
-  min-height: 28px;
+  min-height: 36px;
 }
 
 #progress-report.admin-theme .admin-individual-progress-student-name {
   font-size: clamp(1.08rem, 4.2vw, 1.46rem);
 }
 
-#progress-report.admin-theme .admin-individual-progress-stepper-row {
-  min-height: 28px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-stepper-arrow {
-  width: 32px;
-  min-width: 32px;
-  max-width: 32px;
-  height: 32px;
-  min-height: 32px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-numbers {
-  min-height: 28px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-module-number {
-  width: 25px;
-  min-width: 25px;
-  height: 25px;
-  min-height: 25px;
+#progress-report.admin-theme .admin-individual-progress-swipe-dots-row {
+  min-height: 20px;
 }
 
 #progress-report.admin-theme .admin-individual-progress-module-card-shell {
@@ -775,8 +667,7 @@
   overscroll-behavior-x: contain;
 }
 
-#progress-report.admin-theme .admin-individual-progress-pane-viewport,
-#progress-report.admin-theme .admin-individual-progress-module-numbers {
+#progress-report.admin-theme .admin-individual-progress-pane-viewport {
   overscroll-behavior-inline: contain;
 }
 
@@ -788,8 +679,7 @@
     touch-action: pan-y;
   }
 
-  #progress-report.admin-theme .admin-individual-progress-pane-viewport,
-  #progress-report.admin-theme .admin-individual-progress-module-numbers {
+  #progress-report.admin-theme .admin-individual-progress-pane-viewport {
     touch-action: pan-x pan-y;
   }
 }
@@ -904,8 +794,7 @@
   touch-action: pan-y;
 }
 
-#progress-report.admin-theme .admin-individual-progress-pane-viewport,
-#progress-report.admin-theme .admin-individual-progress-module-numbers {
+#progress-report.admin-theme .admin-individual-progress-pane-viewport {
   touch-action: pan-x pan-y;
 }
 
