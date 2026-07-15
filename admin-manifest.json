@@ -1,8 +1,8 @@
 {
   "id": "/admin/",
-  "name": "Maktab4Life Admin",
-  "short_name": "Admin M4L",
-  "description": "Admin portal for Maktab4Life attendance, progress, library and maktab management.",
+  "name": "Reboot Your Maktab Admin Maktabhelper",
+  "short_name": "Admin Maktab",
+  "description": "Admin portal for Reboot Your Maktab",
   "lang": "en",
   "dir": "ltr",
   "scope": "/admin/",
