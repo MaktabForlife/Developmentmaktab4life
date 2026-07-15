@@ -1,4 +1,5 @@
-/* M4L v93.7.1 - Attendance card borders and responsive panel surfaces
+/* M4L v94.5  - pdfjs viewer panel ui
+M4L v93.7.1 - Attendance card borders and responsive panel surfaces
    Adds the shared 2px surface-track border to the white Attendance cards and
    keeps the sticky header wrapper transparent so its rounded panel is visible.
    Attendance behaviour, calculations, saving, and PDF viewer rules are
@@ -1024,6 +1025,43 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
 .pdf-direct-btn {
   opacity: 0.92;
 }
+.pdf-viewer-header {
+  gap: 6px;
+}
+
+.pdf-viewer-header h2 {
+  text-align: left;
+}
+
+.pdf-viewer-icon-btn {
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pdf-viewer-icon-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.pdf-viewer-icon-btn .app-icon {
+  width: 25px;
+  height: 25px;
+}
+
+/* Open is a lower-priority fallback while retaining a 44px touch target. */
+.pdf-viewer-icon-btn.pdf-direct-btn {
+  opacity: 0.68;
+}
+
+.pdf-direct-btn .app-icon {
+  width: 20px;
+  height: 20px;
+}
+
 
 .pdf-viewer-frame {
   display: block;
