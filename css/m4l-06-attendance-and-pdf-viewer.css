@@ -1,4 +1,5 @@
-/* M4L v93.7.1 - Attendance card borders and responsive panel surfaces
+/* M4L v94.5  - pdfjs viewer panel ui
+M4L v93.7.1 - Attendance card borders and responsive panel surfaces
    Adds the shared 2px surface-track border to the white Attendance cards and
    keeps the sticky header wrapper transparent so its rounded panel is visible.
    Attendance behaviour, calculations, saving, and PDF viewer rules are
@@ -919,7 +920,7 @@ body.is-attendance-section #attendance-screen.screen {
   }
 }
 
-/* PDF.js in-app viewer - V65.4.3 sticky app header */
+/* PDF.js in-app viewer - V94.3 compact header and visible PDF.js toolbar */
 body.pdf-viewer-open {
   padding: 0;
   overflow: hidden;
@@ -965,18 +966,15 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
 }
 
 .pdf-viewer-header {
-  position: sticky;
-  top: 0;
-  z-index: 112;
+  position: relative;
+  top: auto;
+  z-index: 1;
   flex: 0 0 auto;
+  min-height: 48px;
   margin: 0;
-  padding: 5px 5px;
+  padding: 2px max(8px, env(safe-area-inset-right, 0px)) 2px max(8px, env(safe-area-inset-left, 0px));
   background: var(--surface-app);
-  border-bottom: 2px var(--surface-track);
-}
-
-body.pdf-viewer-open.has-user-band .pdf-viewer-header {
-  top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
+  border-bottom: 1px solid var(--surface-track);
 }
 
 .pdf-viewer-header h2 {
@@ -988,18 +986,82 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
 .pdf-viewer-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 2px;
   flex: 0 0 auto;
 }
 
-.pdf-viewer-actions .small-btn {
-  width: auto;
-  min-width: 64px;
+.pdf-viewer-icon-btn {
+  appearance: none;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.pdf-viewer-icon-btn .app-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.pdf-open-icon {
+  --app-icon-url: url('/icons/open.svg');
+}
+
+.pdf-back-icon {
+  --app-icon-url: url('/icons/back.svg?v=94.6');
 }
 
 .pdf-direct-btn {
   opacity: 0.92;
 }
+.pdf-viewer-header {
+  gap: 6px;
+}
+
+.pdf-viewer-header h2 {
+  text-align: left;
+}
+
+.pdf-viewer-icon-btn {
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pdf-viewer-icon-label {
+  display: block;
+  color: currentColor;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.pdf-viewer-icon-btn .app-icon {
+  width: 25px;
+  height: 25px;
+}
+
+/* Open is a lower-priority fallback while retaining a 44px touch target. */
+.pdf-viewer-icon-btn.pdf-direct-btn {
+  opacity: 0.68;
+}
+
+.pdf-direct-btn .app-icon {
+  width: 20px;
+  height: 20px;
+}
+
 
 .pdf-viewer-frame {
   display: block;
@@ -1015,7 +1077,7 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   .pdf-viewer-header {
     flex-wrap: nowrap;
     gap: 4px;
-    padding: 8px;
+    padding-block: 2px;
   }
 
   .pdf-viewer-header h2 {
@@ -1027,19 +1089,10 @@ body.pdf-viewer-open.has-user-band .pdf-viewer-header {
   }
 
   .pdf-viewer-actions {
-    gap: 4px;
-  }
-
-  .pdf-viewer-actions .small-btn {
-    min-width: 56px;
-    padding: 8px 9px;
-    font-size: 0.78rem;
-    background: var(--surface-dark);
-    colour: var(--text-subtle);
+    gap: 0;
   }
 
   .pdf-viewer-frame {
     height: auto;
   }
 }
-

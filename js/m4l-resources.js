@@ -1,4 +1,8 @@
-/* M4L v93.0 - Resources order + shared cache integration
+/* M4L v94.6 - Session-stable Library cache and mobile rail scrolling
+   Uses the seven-day persistent resource cache once per app session, refreshes
+   only when missing, stale, or manually requested, and avoids repeat DOM builds.
+
+   M4L v93.0 - Resources order + shared cache integration
    Baseline: V83.1 Resources JS legacy compatibility quarantine.
    Scope: change Library module rail resource order to eBook → Video → Audio → Printable → Other.
    Protected: active direct Library ribbon cards, PDF viewer, inline audio/video preview, resource opening, and V83 quarantine markers.
@@ -13,6 +17,7 @@ let libraryResourceSubjects = [];
 let libraryResourceMap = new Map();
 let libraryResourceSequence = 0;
 let studentResourceViewMode = "student";
+let libraryResourceSessionReady = false;
 
 const PDFJS_VIEWER_PATH = "/pdf-viewer/web/viewer.html";
 
@@ -185,11 +190,18 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
   bindResourceUiHandlers();
   bindMediaViewerHandlers();
 
+  const forceRefresh = options.force === true;
+
+  if (libraryResourceSessionReady && !forceRefresh) {
+    return;
+  }
+
   const applyResult = result => {
     resetStudentResourceSelection();
     studentResourceSubjects = Array.isArray(result && result.subjects) ? result.subjects : [];
     libraryResourceSubjects = buildLibraryResourceSubjects(result || {});
     renderStudentResourceSubjects();
+    libraryResourceSessionReady = true;
   };
 
   const fetchFresh = async () => {
@@ -211,28 +223,34 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
       allowStale: true
     });
 
-    if (!cached || options.force === true) {
+    if (cached && !forceRefresh && (!cached.stale || navigator.onLine === false)) {
+      applyResult(cached.data);
+      return;
+    }
+
+    if (!cached || (cached.stale && !forceRefresh) || (forceRefresh && !libraryResourceSessionReady)) {
       setDomHtml(container, `<p class="helper-text">Loading resources...</p>`);
     }
 
-    const result = await window.M4LCache.getOrFetch(LIBRARY_CACHE_KEY, fetchFresh, {
+    let freshResultApplied = false;
+    const result = await window.M4LCache.fetchAndStore(LIBRARY_CACHE_KEY, fetchFresh, {
       scope: "shared",
       ttl: LIBRARY_CACHE_TTL_MS,
-      force: options.force === true,
-      background: options.force !== true,
-      onCached: applyResult,
       onUpdate: fresh => {
-        if (document.getElementById("student-resources-subjects")?.classList.contains("active")) {
-          applyResult(fresh);
-        }
+        applyResult(fresh);
+        freshResultApplied = true;
       }
     });
 
-    if (!cached || options.force === true) {
+    if (!libraryResourceSessionReady || (forceRefresh && !freshResultApplied)) {
       applyResult(result);
     }
   } catch (err) {
-    setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`);
+    if (!libraryResourceSessionReady) {
+      setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Unable to load resources. Please try again.")}</p>`);
+    } else {
+      console.warn("The Library refresh failed; the existing cached screen was retained.", err);
+    }
   }
 }
 
