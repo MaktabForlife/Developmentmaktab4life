@@ -1,4 +1,4 @@
-/* Resources / Library ribbon - V65.4.2 */
+/* Resources / Library ribbon - V94.6 vertical and horizontal touch scrolling */
 .library-resource-browser {
   --library-ribbon-gap: 10px;
   --library-card-width: 148px;
@@ -51,7 +51,7 @@
   overscroll-behavior-inline: contain;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
 }
 
 .library-resource-card {

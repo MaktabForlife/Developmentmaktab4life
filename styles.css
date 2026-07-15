@@ -1,4 +1,8 @@
-/* 94.3 PDF viewer toolbar repair
+/* 94.6 Library cache, rail gestures, and PDF Back icon cache alignment
+   Keeps the Library DOM for the session, permits vertical gestures over its
+   horizontal rails, and refreshes the updated PDF Back icon reference.
+
+   94.3 PDF viewer toolbar repair
    Restores the visible PDF.js toolbar and markup controls, removes the duplicate
    top offset, and uses the shared Open and Back icons in the compact app header.
 
@@ -44,9 +48,9 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-01-foundation-auth-userband.css?v=91.5");
 @import url("/css/m4l-02-home-common-and-shared-cards.css?v=93.5");
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
-@import url("/css/m4l-04-library-resources.css?v=93.5");
+@import url("/css/m4l-04-library-resources.css?v=94.6");
 @import url("/css/m4l-05-home-timetable.css?v=91.5");
-@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=94.3");
+@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=94.6");
 @import url("/css/m4l-07-manage-students.css?v=93.5");
 @import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=93.5");
 @import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
