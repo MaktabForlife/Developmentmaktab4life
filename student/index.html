@@ -413,30 +413,33 @@
 
 <!-- PDF VIEWER -->
     <section id="pdf-viewer-screen" class="screen student-theme">
-      <div class="nav-header pdf-viewer-header">
-        <h2 id="pdf-viewer-title">PDF Viewer</h2>
-        <div class="pdf-viewer-actions">
-          <button
-            type="button"
-            class="pdf-viewer-icon-btn pdf-direct-btn"
-            onclick="openCurrentPdfDirect()"
-            aria-label="Open PDF outside the app"
-            title="Open PDF"
-          >
-            <span class="app-icon pdf-open-icon" aria-hidden="true"></span>
-          </button>
-          <button
-            type="button"
-            class="pdf-viewer-icon-btn"
-            onclick="closePdfViewer()"
-            aria-label="Back to the library"
-            title="Back"
-          >
-            <span class="app-icon pdf-back-icon" aria-hidden="true"></span>
-          </button>
-        </div>
-      </div>
+     <div class="nav-header pdf-viewer-header">
+  <button
+    type="button"
+    class="pdf-viewer-icon-btn pdf-direct-btn"
+    onclick="openCurrentPdfDirect()"
+    aria-label="Open PDF outside the app"
+    title="Open PDF"
+  >
+    <span class="app-icon pdf-open-icon" aria-hidden="true"></span>
+    <span class="pdf-viewer-icon-label">OPEN</span>
+  </button>
 
+  <h2 id="pdf-viewer-title">PDF Viewer</h2>
+
+  <div class="pdf-viewer-actions">
+    <button
+      type="button"
+      class="pdf-viewer-icon-btn"
+      onclick="closePdfViewer()"
+      aria-label="Back to the library"
+      title="Back"
+    >
+      <span class="app-icon pdf-back-icon" aria-hidden="true"></span>
+      <span class="pdf-viewer-icon-label">BACK</span>
+    </button>
+  </div>
+</div>
       <iframe
         id="pdf-viewer-frame"
         class="pdf-viewer-frame"
