@@ -1,4 +1,4 @@
-/* v94 - domain name change rebootyourmaktab.maktabhelper.app
+/* M4L v94.1 - worker api.rebootyourmaktab.maktabhelper.app
 
 v93.1 bootstrap correction
 M4L v86 - config
@@ -6,7 +6,7 @@ M4L v86 - config
    Load before m4l-auth, m4l-shell, and any optional feature modules.
    Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
 const M4L_CONFIG = window.M4L_CONFIG || {};
-const API_BASE = String(M4L_CONFIG.API_BASE || "https://rebootworker.maktab4life.workers.dev").replace(/\/$/, "");
+const API_BASE = String(M4L_CONFIG.API_BASE || "https://api.rebootyourmaktab.maktabhelper.app").replace(/\/$/, "");
 const STUDENT_LOGIN_BASE = String(M4L_CONFIG.STUDENT_LOGIN_BASE || "https://rebootyourmaktab.maktabhelper.app/student/");
 const DEFAULT_STUDENT_GROUP = 1;
 const APP_VERSION_STORAGE_KEY = "maktab_app_version";
