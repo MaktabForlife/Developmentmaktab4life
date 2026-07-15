@@ -1,5 +1,4 @@
-/* v93.7.2b temp hid save iocon and text
-M4L v93.7.2 · embedded MP4 compatibility helper */
+/* M4L v93.7.4a · embedded MP4 compatibility helper */
 (()=>{/*!
  * Copyright (c) 2026-present, Vanilagy and contributors
  *
@@ -235,11 +234,12 @@ Check the discardedTracks field for more info.`)}return e}async execute(){if(!th
  */var Do=Symbol.for("mediabunny loaded");globalThis[Do]&&M._error(`[WARNING]
 Mediabunny was loaded twice. This will likely cause Mediabunny not to work correctly. Check if multiple dependencies are importing different versions of Mediabunny, or if something is being bundled incorrectly.`);globalThis[Do]=!0;async function Oc(t){if(!(t instanceof Blob)||t.size===0)throw new TypeError("A non-empty MP4 Blob is required.");let e=new Et({formats:[Xi],source:new pr(t)});try{let r=new tt,i=new ft({format:new dt({fastStart:"in-memory"}),target:r}),s=await Ir.init({input:e,output:i,tracks:"primary",video:{forceTranscode:!1},audio:{forceTranscode:!1},showWarnings:!1});if(!s.isValid||!s.utilizedTracks.some(o=>o.type==="video"))throw new Error("The MP4 could not be prepared for sharing.");if(await s.execute(),!r.buffer||r.buffer.byteLength===0)throw new Error("The MP4 remux produced no data.");return new Blob([r.buffer],{type:"video/mp4"})}finally{e.dispose()}}globalThis.M4LRecorderMp4Compat=Object.freeze({flattenMp4Blob:Oc});})();
 
-/* M4L v93.7.2
+/* M4L v93.7.4a
    Shared student/admin recorder interface with shared manifest caching.
    Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
    Flattens fragmented browser MP4 recordings before preview, Share or Save.
-   Uses unified Redo, Share and Save actions. WebM video is never created. */
+   Provides reader-page and audio-only recording sources.
+   Save remains implemented but is temporarily hidden from the preview. */
 (() => {
   "use strict";
 
@@ -286,7 +286,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     recordingDurationMs: 0,
     outputBaseName: "",
     shareCapabilities: null,
-    uploadedObjectUrls: [],
     currentView: "pages"
   };
 
@@ -301,15 +300,19 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     root.innerHTML = `
       <section id="m4l-recorder-page-select" class="m4l-recorder-view m4l-recorder-view--pages active" aria-labelledby="m4l-recorder-title">
-        <h2 id="m4l-recorder-title" class="m4l-recorder-title">RECORD &amp; SHARE</h2>
+        <h2 id="m4l-recorder-title" class="m4l-recorder-title">Select a lesson to Record</h2>
 
         <div class="m4l-recorder-book-card">
-          <label class="visually-hidden" for="m4l-recorder-book-select">Select your kitaab or recording type</label>
-          <select id="m4l-recorder-book-select" class="m4l-recorder-book-select" aria-label="Select your kitaab or recording type">
+          <label class="visually-hidden" for="m4l-recorder-book-select">Select a Kitab or recording type</label>
+          <select
+            id="m4l-recorder-book-select"
+            class="m4l-recorder-book-select"
+            aria-label="Select a Kitab or recording type"
+            aria-describedby="m4l-recorder-selector-label"
+          >
             <option value="">Loading image sets...</option>
           </select>
-          <p class="m4l-recorder-selector-label" aria-hidden="true">Choose recording source</p>
-          <input id="m4l-recorder-page-upload" class="visually-hidden" type="file" accept="image/*" multiple />
+          <p id="m4l-recorder-selector-label" class="m4l-recorder-selector-label">Select a Kitab</p>
         </div>
 
         <p id="m4l-recorder-status" class="m4l-recorder-status helper-text" role="status" aria-live="polite">Loading image sets...</p>
@@ -343,12 +346,12 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
           </div>
 
           <button id="m4l-recorder-record-btn" class="m4l-recorder-record-action" type="button" aria-label="Start recording">
-            <img class="m4l-recorder-native-icon" src="/icons/record.svg?v=93.7.2" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-native-icon" src="/icons/record.svg?v=93.7.3" alt="" aria-hidden="true" />
             <span class="m4l-recorder-record-label">Record</span>
           </button>
 
           <button id="m4l-recorder-stop-btn" class="m4l-recorder-record-action" type="button" aria-label="Stop recording" hidden>
-            <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg?v=93.7.2" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg?v=93.7.3" alt="" aria-hidden="true" />
             <span class="m4l-recorder-record-label">Stop</span>
           </button>
         </div>
@@ -378,18 +381,17 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
         <div class="m4l-recorder-preview-actions" aria-label="Recording actions">
           <button id="m4l-recorder-rerecord-btn" class="m4l-recorder-preview-action" type="button">
-            <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg?v=93.7.2" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg?v=93.7.3" alt="" aria-hidden="true" />
             <span>Redo</span>
           </button>
           <button id="m4l-recorder-share-btn" class="m4l-recorder-preview-action" type="button">
-            <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=93.7.2" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=93.7.3" alt="" aria-hidden="true" />
             <span id="m4l-recorder-share-label">Share</span>
           </button>
-          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button" hidden >
-            <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=93.7.2" alt="" aria-hidden="true" hidden />
-         <span hidden>Save</span> 
+          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button" hidden>
+            <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=93.7.3" alt="" aria-hidden="true" />
+            <span>Save</span>
           </button>
-          
         </div>
 
         <div id="m4l-recorder-save-reminder" class="m4l-recorder-pair-actions" aria-live="polite" hidden>
@@ -415,7 +417,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     els.recordView = $("m4l-recorder-record-view");
     els.previewView = $("m4l-recorder-preview-view");
     els.bookSelect = $("m4l-recorder-book-select");
-    els.pageUpload = $("m4l-recorder-page-upload");
     els.pageGrid = $("m4l-recorder-page-grid");
     els.status = $("m4l-recorder-status");
     els.canvas = $("m4l-recorder-canvas");
@@ -658,11 +659,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       });
     }
 
-    const uploadOption = document.createElement("option");
-    uploadOption.value = "__upload";
-    uploadOption.textContent = "Select your own image";
-    els.bookSelect.appendChild(uploadOption);
-
     const audioOnlyOption = document.createElement("option");
     audioOnlyOption.value = "__audio_only";
     audioOnlyOption.textContent = "Record audio only";
@@ -676,18 +672,10 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     return state.books.find(book => book.id === state.selectedBookId) || null;
   }
 
-  function cleanupUploadedObjectUrls() {
-    state.uploadedObjectUrls.forEach(url => {
-      try { URL.revokeObjectURL(url); } catch (error) { console.warn("Could not revoke upload URL", error); }
-    });
-    state.uploadedObjectUrls = [];
-  }
-
   function setBook(bookId) {
     const book = state.books.find(candidate => candidate.id === bookId);
     if (!book) return false;
 
-    cleanupUploadedObjectUrls();
     state.sourceMode = "page";
     state.selectedBookId = book.id;
     state.pages = book.pages;
@@ -707,7 +695,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     if (!state.pages.length) {
       const empty = document.createElement("div");
       empty.className = "m4l-recorder-empty-card";
-      empty.innerHTML = "No pages loaded yet.<br>Choose an image set, or select your own image.";
+      empty.innerHTML = "No pages loaded yet.<br>Choose an image set.";
       els.pageGrid.appendChild(empty);
       return true;
     }
@@ -750,14 +738,13 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     const applyManifest = manifest => {
       const books = normalizeManifest(manifest || {});
-      const preserveUploadedPages = state.selectedBookId === "__upload" && state.pages.length > 0;
       const preserveActiveSession = state.currentView !== "pages" || isRecordingActive();
 
       state.books = books;
       state.manifestLoaded = true;
 
       if (!books.length) {
-        if (preserveUploadedPages || preserveActiveSession) return true;
+        if (preserveActiveSession) return true;
 
         state.selectedBookId = "";
         state.pages = [];
@@ -773,20 +760,18 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
         : getDefaultBookId(manifest, books);
       const nextBook = books.find(book => book.id === nextBookId) || books[0];
 
-      if (!preserveUploadedPages && nextBook && (!preserveActiveSession || currentBook)) {
+      if (nextBook && (!preserveActiveSession || currentBook)) {
         state.selectedBookId = nextBook.id;
         state.pages = nextBook.pages;
       }
 
       // A shared-cache refresh must not navigate away from a recording or
-      // preview, replace an uploaded image, or reveal the selected media mode.
+      // preview or reveal the selected media mode.
       if (state.currentView === "pages" && !isRecordingActive()) {
         renderBookSelector();
         renderPageGrid();
 
-        if (preserveUploadedPages) {
-          setStatus(`Own image loaded · ${state.pages.length} page${state.pages.length === 1 ? "" : "s"}`);
-        } else if (nextBook) {
+        if (nextBook) {
           setStatus(`${nextBook.bookTitle} loaded · ${nextBook.pages.length} pages`);
         }
       }
@@ -862,41 +847,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       setStatus("Could not load /recorder/pages/manifest.json. Check that the file is deployed at that exact path.", { kind: "error" });
       return false;
     }
-  }
-
-  function addUploadedPages(fileList) {
-    const files = Array.from(fileList || []).filter(file => file && file.type && file.type.startsWith("image/"));
-    if (!files.length) {
-      renderBookSelector();
-      return false;
-    }
-
-    cleanupUploadedObjectUrls();
-    const pages = files.map((file, index) => {
-      const objectUrl = URL.createObjectURL(file);
-      state.uploadedObjectUrls.push(objectUrl);
-      return {
-        id: `upload-${Date.now()}-${index}`,
-        title: file.name.replace(/\.[^.]+$/, "") || `Image ${index + 1}`,
-        pageNo: index + 1,
-        lesson: null,
-        type: "upload",
-        src: objectUrl,
-        source: "upload",
-        bookTitle: "Own image"
-      };
-    });
-
-    state.sourceMode = "page";
-    state.selectedBookId = "__upload";
-    state.pages = pages;
-    state.selectedPage = null;
-    state.selectedImage = null;
-    renderBookSelector();
-    renderPageGrid();
-    setStatus(`Own image loaded · ${pages.length} page${pages.length === 1 ? "" : "s"}`);
-    showView("pages");
-    return true;
   }
 
   function loadImage(src) {
@@ -1954,21 +1904,12 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     if (els.bookSelect) {
       els.bookSelect.addEventListener("change", event => {
         const value = String(event.target.value || "");
-        if (value === "__upload") {
-          event.target.value = state.selectedBookId || "";
-          if (els.pageUpload) els.pageUpload.click();
-          return;
-        }
         if (value === "__audio_only") {
           selectAudioOnly();
           return;
         }
         setBook(value);
       });
-    }
-
-    if (els.pageUpload) {
-      els.pageUpload.addEventListener("change", event => addUploadedPages(event.target.files));
     }
 
     if (els.pageGrid) {

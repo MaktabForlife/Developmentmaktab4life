@@ -1,8 +1,8 @@
 {
   "id": "/student/",
-  "name": "Maktab4Life Student",
-  "short_name": "Student M4L ",
-  "description": "Student portal for Maktab4Life home, library, progress and lesson recording.",
+  "name": "Reboot Your Maktab Maktabhelper",
+  "short_name": "Maktab",
+  "description": "Student portal for Reboot Your Maktab",
   "lang": "en",
   "dir": "ltr",
   "scope": "/student/",

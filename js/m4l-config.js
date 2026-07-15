@@ -1,4 +1,6 @@
-/* M4L v86-dev-config - Runtime frontend environment config.
+/* M4L v94.1-dev-config Worker subdomain :  api.rebootyourmaktab.maktabhelper.app
+   M4L v94-dev-config Domain change rebootyourmaktab.maktabhelper.app
+   v86-dev-config - Runtime frontend environment config.
    Load before /app.js in both /admin/index.html and /student/index.html.
 
    Purpose:
@@ -15,9 +17,10 @@
 
   const host = String(window.location.hostname || "").toLowerCase();
 
-  const PRODUCTION_HOSTS = new Set([
-    "rebootyourmaktab.maktab4life.org"
-  ]);
+ const PRODUCTION_HOSTS = new Set([
+  "rebootyourmaktab.maktabhelper.app",
+  "rebootyourmaktab.maktab4life.org"
+]);
 
   const DEVELOPMENT_HOSTS = new Set([
     "developmentmaktab4life.pages.dev"
@@ -25,8 +28,8 @@
 
   const PROD_CONFIG = {
     ENV_NAME: "production",
-    API_BASE: "https://rebootworker.maktab4life.workers.dev",
-    STUDENT_LOGIN_BASE: "https://rebootyourmaktab.maktab4life.org/student/"
+   API_BASE: "https://api.rebootyourmaktab.maktabhelper.app",
+   STUDENT_LOGIN_BASE: "https://rebootyourmaktab.maktabhelper.app/student/"
   };
 
   const DEV_CONFIG = {
