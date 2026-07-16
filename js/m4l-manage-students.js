@@ -1258,24 +1258,36 @@ function buildStudentWelcomeMessage(loginLink) {
   return [
     " As-salamu alaykum wa rahmatullahi wa barakatuh",
     "",
-    "Your personal link to Maktab-mE (Maktab mobile & E-resources) is attached",
+      "Your personal link to Reboot Your Maktab maktabhelper  is attached.  We hope it will assist you in this journey إن شاء  الله "'
      "",
-    "Insha Allah it wil assist you in this journey. After you click the link....",
+    "The link may be used on phones, tablets and laptops.",
      "",
-    "1. CREATE an easy to remember pin if you are a new user",
+   "1. For the best experience on phones install as an app on your phone.",
+     "",
+       "Android phones: ",
+        "Use the CHROME  browser.  You can copy and paste the link in CHROME.  In  your menu (3dots ) if  you see the  option  ",
+         "****[ Install and create a shortcut ] **** ",
+         "This is the correct installation إن شاء  الله ",
+       " If you see [+ Add page to]  or similar , you are probably  in the wrong browser.",
+     "",
+     "  Iphone :   ",
+     "open the link, goto SHARE,  [+Add to Home screen]"'
+     "",
+    "2. CREATE an easy to remember pin",
     "",
-    "2. LOGIN with your pin ",
+    "3. LOGIN with your pin ",
     "",
-    "3. ADD the app to your homescreen",
+       "Please contact me for any queries or if you need to reset your PIN.",
+   "May Allah bless you on this journey and make your path to Jannah easy"
     "",
     loginLink,
     "",
-    "Please contact me for any queries or if you need to reset your PIN.",
-  
-   "May Allah bless you on this journey and make your path to Jannah easy"
+    "Wassalaam",
 
   ].join("\n");
 }
+
+
 
 async function copyStudentLoginLink(loginLink) {
   await copyTextToClipboard(loginLink);
