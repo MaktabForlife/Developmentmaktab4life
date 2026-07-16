@@ -1268,7 +1268,7 @@ function buildStudentWelcomeMessage(loginLink) {
         "Use the CHROME  browser.  You can copy and paste the link in CHROME.  In  your menu (3dots ) if  you see the  option  ",
          "****[ Install and create a shortcut ] **** ",
          "This is the correct installation إن شاء  الله ",
-       " If you see [+ Add page to]  or similar , you are probably  in the wrong browser.",
+       " If you see [+ Add page to]  or similar , you are probably  in the wrong browser",
      "",
      "  Iphone :   ",
      "open the link, goto SHARE,  [+Add to Home screen]",
@@ -1277,15 +1277,24 @@ function buildStudentWelcomeMessage(loginLink) {
     "",
     "3. LOGIN with your pin ",
     "",
-       "Please contact me for any queries or if you need to reset your PIN.",
+       "Please contact me for any queries or if you need to reset your PIN",
    "May Allah bless you on this journey and make your path to Jannah easy",
     "",
     loginLink,
     "",
-    "Wassalaam",
+    "Wassalaam"
 
   ].join("\n");
 }
+
+ 
+
+
+
+
+
+
+
 
 
 
