@@ -1,4 +1,4 @@
-/* M4L v93.7.4a · embedded MP4 compatibility helper */
+/* M4L v94.7 · embedded MP4 compatibility helper */
 (()=>{/*!
  * Copyright (c) 2026-present, Vanilagy and contributors
  *
@@ -234,7 +234,7 @@ Check the discardedTracks field for more info.`)}return e}async execute(){if(!th
  */var Do=Symbol.for("mediabunny loaded");globalThis[Do]&&M._error(`[WARNING]
 Mediabunny was loaded twice. This will likely cause Mediabunny not to work correctly. Check if multiple dependencies are importing different versions of Mediabunny, or if something is being bundled incorrectly.`);globalThis[Do]=!0;async function Oc(t){if(!(t instanceof Blob)||t.size===0)throw new TypeError("A non-empty MP4 Blob is required.");let e=new Et({formats:[Xi],source:new pr(t)});try{let r=new tt,i=new ft({format:new dt({fastStart:"in-memory"}),target:r}),s=await Ir.init({input:e,output:i,tracks:"primary",video:{forceTranscode:!1},audio:{forceTranscode:!1},showWarnings:!1});if(!s.isValid||!s.utilizedTracks.some(o=>o.type==="video"))throw new Error("The MP4 could not be prepared for sharing.");if(await s.execute(),!r.buffer||r.buffer.byteLength===0)throw new Error("The MP4 remux produced no data.");return new Blob([r.buffer],{type:"video/mp4"})}finally{e.dispose()}}globalThis.M4LRecorderMp4Compat=Object.freeze({flattenMp4Blob:Oc});})();
 
-/* M4L v93.7.4a
+/* M4L v94.7
    Shared student/admin recorder interface with shared manifest caching.
    Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
    Flattens fragmented browser MP4 recordings before preview, Share or Save.
@@ -271,12 +271,14 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     timerId: 0,
     stopTimeoutId: 0,
     frameRefreshId: 0,
+    microphoneAuthorized: false,
     recordingBlob: null,
     recordingFile: null,
     recordingUrl: "",
     pageImageBlob: null,
     pageImageFile: null,
     pageImageUrl: "",
+    previewPosterUrl: "",
     recordingMode: "",
     resultKind: "",
     forceAudioImage: false,
@@ -337,22 +339,16 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
         </div>
 
         <div class="m4l-recorder-controls" aria-label="Recording controls">
-          <div class="m4l-recorder-control-copy">
-            <p id="m4l-recorder-helper" class="m4l-recorder-helper helper-text">Microphone permission will be requested when you tap Record.</p>
-            <p id="m4l-recorder-recording-status" class="m4l-recorder-recording-status" hidden>
-              Recording stops automatically in
-              <output id="m4l-recorder-countdown" aria-live="polite">02:00</output>
-            </p>
-          </div>
+          <p id="m4l-recorder-helper" class="m4l-recorder-helper visually-hidden" role="status" aria-live="polite">Microphone permission is required.</p>
 
-          <button id="m4l-recorder-record-btn" class="m4l-recorder-record-action" type="button" aria-label="Start recording">
-            <img class="m4l-recorder-native-icon" src="/icons/record.svg?v=93.7.3" alt="" aria-hidden="true" />
-            <span class="m4l-recorder-record-label">Record</span>
+          <button id="m4l-recorder-record-btn" class="m4l-recorder-record-action" type="button" aria-label="Allow microphone access">
+            <img id="m4l-recorder-record-icon" class="m4l-recorder-native-icon" src="/icons/mic.svg?v=94.7" alt="" aria-hidden="true" />
+            <span id="m4l-recorder-record-label" class="m4l-recorder-record-label">Tap to grant permission for mic access</span>
           </button>
 
           <button id="m4l-recorder-stop-btn" class="m4l-recorder-record-action" type="button" aria-label="Stop recording" hidden>
-            <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg?v=93.7.3" alt="" aria-hidden="true" />
-            <span class="m4l-recorder-record-label">Stop</span>
+            <img class="m4l-recorder-native-icon" src="/icons/stoprecord.svg?v=94.7" alt="" aria-hidden="true" />
+            <span class="m4l-recorder-record-label">Stop recording in <output id="m4l-recorder-countdown" aria-live="polite">02:00</output></span>
           </button>
         </div>
       </section>
@@ -381,15 +377,15 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
         <div class="m4l-recorder-preview-actions" aria-label="Recording actions">
           <button id="m4l-recorder-rerecord-btn" class="m4l-recorder-preview-action" type="button">
-            <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg?v=93.7.3" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/cancelredo.svg?v=94.7" alt="" aria-hidden="true" />
             <span>Redo</span>
           </button>
           <button id="m4l-recorder-share-btn" class="m4l-recorder-preview-action" type="button">
-            <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=93.7.3" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=94.7" alt="" aria-hidden="true" />
             <span id="m4l-recorder-share-label">Share</span>
           </button>
           <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button" hidden>
-            <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=93.7.3" alt="" aria-hidden="true" />
+            <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=94.7" alt="" aria-hidden="true" />
             <span>Save</span>
           </button>
         </div>
@@ -423,10 +419,11 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     els.recordTitle = $("m4l-recorder-record-title");
     els.previewTitle = $("m4l-recorder-preview-title");
     els.recordBtn = $("m4l-recorder-record-btn");
+    els.recordIcon = $("m4l-recorder-record-icon");
+    els.recordLabel = $("m4l-recorder-record-label");
     els.stopBtn = $("m4l-recorder-stop-btn");
     els.countdown = $("m4l-recorder-countdown");
     els.helper = $("m4l-recorder-helper");
-    els.recordingStatus = $("m4l-recorder-recording-status");
     els.readerFrame = els.canvas && els.canvas.closest(".m4l-recorder-reader-frame");
     els.audioStage = $("m4l-recorder-audio-stage");
     els.previewVideo = $("m4l-recorder-preview-video");
@@ -900,7 +897,11 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     state.selectedImage = null;
     if (els.recordTitle) els.recordTitle.textContent = "Audio only";
     if (els.previewTitle) els.previewTitle.textContent = "Preview · Audio only";
-    if (els.helper) els.helper.textContent = "Microphone permission will be requested when you tap Record.";
+    if (els.helper) {
+      els.helper.textContent = state.microphoneAuthorized
+        ? "Microphone ready."
+        : "Microphone permission is required.";
+    }
     updateRecordStage();
     resetTimer();
     setStatus("Ready");
@@ -1181,6 +1182,17 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     stream.getTracks().forEach(track => track.stop());
   }
 
+  function getMicrophoneConstraints() {
+    return {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      },
+      video: false
+    };
+  }
+
   function safeFilePart(value, fallback = "recording") {
     return String(value || fallback)
       .toLowerCase()
@@ -1233,6 +1245,28 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     state.pageImageFile = new File([imageBlob], fileName, { type: "image/jpeg" });
     state.pageImageUrl = URL.createObjectURL(imageBlob);
     return state.pageImageFile;
+  }
+
+  async function prepareDimmedPreviewPoster() {
+    if (!state.selectedImage || !els.canvas) return "";
+
+    drawSelectedPage();
+    const context = state.canvasContext;
+    if (!context) throw new Error("Could not prepare the preview image.");
+
+    try {
+      context.save();
+      context.fillStyle = "rgba(45, 45, 45, 0.52)";
+      context.fillRect(0, 0, els.canvas.width, els.canvas.height);
+      context.restore();
+
+      const posterBlob = await canvasToJpegBlob(els.canvas, 0.88);
+      cleanObjectUrl(state.previewPosterUrl);
+      state.previewPosterUrl = URL.createObjectURL(posterBlob);
+      return state.previewPosterUrl;
+    } finally {
+      drawSelectedPage();
+    }
   }
 
   function readMp4BoxType(bytes) {
@@ -1359,8 +1393,68 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       els.stopBtn.hidden = !active;
       els.stopBtn.disabled = false;
     }
-    if (els.recordingStatus) els.recordingStatus.hidden = !active;
     if (!active) resetTimer();
+  }
+
+  function updateMicrophoneAction() {
+    const canRequestMicrophone = navigator.mediaDevices
+      && typeof navigator.mediaDevices.getUserMedia === "function";
+    const ready = state.microphoneAuthorized;
+
+    if (els.recordIcon) {
+      els.recordIcon.src = ready
+        ? "/icons/record.svg?v=94.7"
+        : "/icons/mic.svg?v=94.7";
+    }
+    if (els.recordLabel) {
+      els.recordLabel.textContent = ready
+        ? "Start recording"
+        : "Tap to grant permission for mic access";
+    }
+    if (els.recordBtn) {
+      els.recordBtn.setAttribute("aria-label", ready ? "Start recording" : "Allow microphone access");
+      els.recordBtn.disabled = !canRequestMicrophone;
+    }
+  }
+
+  async function requestMicrophonePermission() {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+      alert("This browser cannot access the microphone for recording.");
+      return false;
+    }
+
+    let permissionStream = null;
+    try {
+      if (els.recordBtn) els.recordBtn.disabled = true;
+      if (els.helper) els.helper.textContent = "Allow microphone access if prompted.";
+      permissionStream = await navigator.mediaDevices.getUserMedia(getMicrophoneConstraints());
+      state.microphoneAuthorized = true;
+      stopTracks(permissionStream);
+      permissionStream = null;
+      updateMicrophoneAction();
+      if (els.helper) els.helper.textContent = "Microphone ready. Tap Start recording.";
+      return true;
+    } catch (error) {
+      console.error(error);
+      state.microphoneAuthorized = false;
+      updateMicrophoneAction();
+      if (els.helper) els.helper.textContent = "Microphone permission is required.";
+      alert(error && error.name === "NotAllowedError"
+        ? "Microphone permission was not allowed. Please allow microphone access to record."
+        : "Microphone access could not be requested on this device/browser.");
+      return false;
+    } finally {
+      stopTracks(permissionStream);
+      updateMicrophoneAction();
+    }
+  }
+
+  async function handleRecordAction() {
+    if (!state.microphoneAuthorized) {
+      await requestMicrophonePermission();
+      return;
+    }
+    await startRecording();
   }
 
   async function startRecording() {
@@ -1391,17 +1485,10 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       updateRecordStage();
       if (!audioOnly) drawSelectedPage();
 
-      if (els.helper) els.helper.textContent = "Allow microphone access if prompted.";
+      if (els.helper) els.helper.textContent = "Starting recording.";
       if (els.recordBtn) els.recordBtn.disabled = true;
 
-      state.audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        },
-        video: false
-      });
+      state.audioStream = await navigator.mediaDevices.getUserMedia(getMicrophoneConstraints());
 
       let recorder;
       let canvasVideoTrack = null;
@@ -1457,6 +1544,9 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       state.stopTimeoutId = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS + 250);
     } catch (error) {
       console.error(error);
+      if (error && error.name === "NotAllowedError") {
+        state.microphoneAuthorized = false;
+      }
       cleanup({
         keepPages: true,
         keepSelectedPage: !audioOnly,
@@ -1554,6 +1644,11 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       if (resultKind === "video-mp4") {
         if (els.helper) els.helper.textContent = "Preparing preview...";
         recordingBlob = await preparePortableMp4Blob(recordingBlob);
+        try {
+          await prepareDimmedPreviewPoster();
+        } catch (posterError) {
+          console.warn("Could not prepare the dimmed preview image.", posterError);
+        }
       }
 
       state.chunks = [];
@@ -1592,6 +1687,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       els.previewVideo.pause();
       els.previewVideo.hidden = true;
       els.previewVideo.removeAttribute("src");
+      els.previewVideo.removeAttribute("poster");
       els.previewVideo.load();
     }
     if (els.previewAudio) {
@@ -1657,7 +1753,11 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     if (state.resultKind === "video-mp4") {
       if (els.previewVideo) {
+        if (state.previewPosterUrl) {
+          els.previewVideo.poster = state.previewPosterUrl;
+        }
         els.previewVideo.src = state.recordingUrl;
+        els.previewVideo.load();
         els.previewVideo.hidden = false;
       }
     } else {
@@ -1716,10 +1816,12 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     if (!options.keepRecordingFile) {
       cleanObjectUrl(state.recordingUrl);
       cleanObjectUrl(state.pageImageUrl);
+      cleanObjectUrl(state.previewPosterUrl);
       state.recordingUrl = "";
       state.recordingBlob = null;
       state.recordingFile = null;
       state.pageImageUrl = "";
+      state.previewPosterUrl = "";
       state.pageImageBlob = null;
       state.pageImageFile = null;
       state.resultKind = "";
@@ -1736,10 +1838,14 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     }
     if (!options.keepSourceMode) state.sourceMode = "page";
 
-    if (els.recordBtn) els.recordBtn.disabled = false;
     setRecordingUi(false);
+    updateMicrophoneAction();
     updateRecordStage();
-    if (els.helper) els.helper.textContent = "Microphone permission will be requested when you tap Record.";
+    if (els.helper) {
+      els.helper.textContent = state.microphoneAuthorized
+        ? "Microphone ready."
+        : "Microphone permission is required.";
+    }
   }
 
   async function shareFiles(files) {
@@ -1926,7 +2032,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     if (els.backToPages) els.backToPages.addEventListener("click", goToPages);
     if (els.previewPages) els.previewPages.addEventListener("click", goToPages);
-    if (els.recordBtn) els.recordBtn.addEventListener("click", startRecording);
+    if (els.recordBtn) els.recordBtn.addEventListener("click", handleRecordAction);
     if (els.stopBtn) els.stopBtn.addEventListener("click", () => stopRecording("manual"));
     if (els.rerecordBtn) {
       els.rerecordBtn.addEventListener("click", rerecordSelectedPage);
@@ -1956,6 +2062,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     state.canvasContext = els.canvas.getContext("2d", { alpha: false });
     resetTimer();
     updateRecordStage();
+    updateMicrophoneAction();
     bindEvents();
 
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
