@@ -6,7 +6,7 @@
 .weekly-planner-preview-screen {
   --planner-page: #efd7dc;
   --planner-cream: #eadfbd;
-  --planner-ink: #c238f2;
+  --planner-ink: #3780bf;
   --planner-line: #777b75;
   background: var(--planner-page);
 }
