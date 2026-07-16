@@ -1258,8 +1258,8 @@ function buildStudentWelcomeMessage(loginLink) {
   return [
     " As-salamu alaykum wa rahmatullahi wa barakatuh",
     "",
-      "Your personal link to Reboot Your Maktab maktabhelper  is attached.  We hope it will assist you in this journey إن شاء  الله "'
-     "",
+   "Your personal link to Reboot Your Maktab maktabhelper is attached. We hope it will assist you in this journey إن شاء الله ",
+"",
     "The link may be used on phones, tablets and laptops.",
      "",
    "1. For the best experience on phones install as an app on your phone.",
