@@ -1,4 +1,7 @@
-/* 94.7 Recorder microphone flow and dimmed MP4 preview poster
+/* 95.0 Weekly Planner
+   Adds the four-card Monday-to-Thursday editor and portrait image preview.
+
+   94.7 Recorder microphone flow and dimmed MP4 preview poster
    94.6 Library cache, rail gestures, and PDF Back icon cache alignment
    Keeps the Library DOM for the session, permits vertical gestures over its
    horizontal rails, and refreshes the updated PDF Back icon reference.
@@ -60,3 +63,4 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=93.6.1");
 @import url("/css/m4l-13-admin-individual-progress-overrides.css?v=93.6.1");
 @import url('/css/m4l-14-attendance-responsive-repair.css?v=93.7.1');
+@import url('/css/m4l-15-weekly-planner.css?v=95.0');

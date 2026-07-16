@@ -5,7 +5,7 @@
   <title>Maktab4Life Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- currently 93.3  progress cleanup-->
+  <!-- M4L v95.0 Weekly Planner -->
     <!-- PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=94.7">
+<link rel="stylesheet" href="/styles.css?v=95.0">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -83,7 +83,7 @@
         </section>
 
         <section class="home-section home-icons-section" aria-label="Admin home app icons">
-          <div aria-label="Admin home app icons" class="home-cover-icon-grid">
+          <div aria-label="Admin home app icons" class="home-cover-icon-grid home-cover-icon-grid--admin">
             
          <button 
            class="home-cover-icon-btn is-home-active" 
@@ -108,6 +108,12 @@
           <span class="home-cover-icon-glyph"></span>
           </span>
           <span class="home-cover-icon-label">VoiceNote</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="planner" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Planner</span>
           </button>
           <button class="home-cover-icon-btn" data-cover-home-nav="library" data-cover-home-role="admin" type="button">
           <span aria-hidden="true" class="home-cover-icon-tile">
@@ -156,6 +162,7 @@
       <div class="list-stack">
         <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
         <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
+        <button class="list-btn" onclick="showWeeklyPlanner()">Weekly Planner</button>
         <button class="list-btn" onclick="showAdminResources()">Library</button>
         <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
         <button class="list-btn" onclick="showAdminTimetableAdmin()">Timetable</button>
@@ -361,6 +368,105 @@
         <h3>Timetable Preview</h3>
         <div id="admin-timetable-admin-preview">
           <p class="helper-text">Loading timetable...</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- WEEKLY PLANNER - V95.0 -->
+    <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
+      <div class="nav-header weekly-planner-nav-header">
+        <h2>Weekly Planner</h2>
+        <button class="small-btn" type="button" onclick="showScreen('admin-academics')">Back</button>
+      </div>
+
+      <div class="weekly-planner-shell">
+        <section class="weekly-planner-controls" aria-label="Planner details">
+          <label class="weekly-planner-field">
+            <span>Teacher</span>
+            <select id="weekly-planner-teacher"></select>
+          </label>
+
+          <label class="weekly-planner-field">
+            <span>Week commencing</span>
+            <input id="weekly-planner-week" type="date" />
+          </label>
+
+          <label class="weekly-planner-field">
+            <span>Group</span>
+            <input id="weekly-planner-group" type="text" list="weekly-planner-groups" placeholder="Group" />
+            <datalist id="weekly-planner-groups"></datalist>
+          </label>
+        </section>
+
+        <div class="weekly-planner-summary" aria-live="polite">
+          <div>
+            <span class="weekly-planner-summary__label">Month</span>
+            <strong id="weekly-planner-month">—</strong>
+          </div>
+          <div>
+            <span class="weekly-planner-summary__label">Week</span>
+            <strong id="weekly-planner-date-range">—</strong>
+          </div>
+        </div>
+
+        <p id="weekly-planner-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+
+        <div class="weekly-planner-rail-shell">
+          <div
+            id="weekly-planner-rail"
+            class="weekly-planner-rail"
+            role="region"
+            aria-label="Monday to Thursday planner cards"
+            tabindex="0"
+          >
+            <p class="helper-text">Loading weekly planner...</p>
+          </div>
+          <div id="weekly-planner-dots" class="weekly-planner-dots" aria-label="Planner card position"></div>
+        </div>
+
+        <section class="weekly-planner-feedback-card">
+          <label for="weekly-planner-feedback">Weekly feedback</label>
+          <textarea
+            id="weekly-planner-feedback"
+            rows="4"
+            placeholder="Teacher or administrator feedback"
+          ></textarea>
+          <p id="weekly-planner-feedback-by" class="helper-text"></p>
+        </section>
+
+        <div class="weekly-planner-actions">
+          <button
+            id="weekly-planner-save"
+            class="save-btn weekly-planner-save-btn"
+            type="button"
+            onclick="saveWeeklyPlannerAndPreview(this)"
+          >
+            Save and Preview
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="weekly-planner-preview-screen" class="screen admin-theme weekly-planner-preview-screen">
+      <div class="nav-header weekly-planner-nav-header">
+        <h2>Planner Preview</h2>
+        <button class="small-btn" type="button" onclick="returnToWeeklyPlanner()">Back to Edit</button>
+      </div>
+
+      <div class="weekly-planner-preview-shell">
+        <div class="weekly-planner-preview-frame">
+          <img
+            id="weekly-planner-preview-image"
+            alt="Weekly planner image preview"
+          />
+        </div>
+
+        <p id="weekly-planner-preview-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+
+        <div class="weekly-planner-preview-actions">
+          <button class="save-btn" type="button" onclick="shareWeeklyPlannerImage(this)">Share Image</button>
+          <button class="small-btn" type="button" onclick="downloadWeeklyPlannerImage()">Download PNG</button>
         </div>
       </div>
     </section>
@@ -666,6 +772,7 @@
 <script src="/js/m4l-auth.js?v=87.2"></script>
 <script src="/js/m4l-shell.js?v=92.3"></script>
   <script src="/js/m4l-timetable.js?v=92"></script>
+  <script src="/js/m4l-weekly-planner.js?v=95.0"></script>
   <script src="/js/m4l-recorder.js?v=94.7"></script>
 <script src="/js/m4l-attendance.js?v=91.3"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
