@@ -1,4 +1,4 @@
-/* M4L v95.0-dev - Weekly Planner direct Google Sheets API path.
+/* M4L v95.1-dev - Weekly Planner direct Google Sheets API path.
    Baseline: uploaded Cloudflare development worker.
    Scope: keep every existing Apps Script route unchanged and add authenticated,
    cell-bounded WeeklyPlanners reads and writes through the Google Sheets API.
@@ -2206,11 +2206,13 @@ async function callGoogleSheetsValuesApi(env, range, options = {}) {
   const accessToken = await getGoogleSheetsAccessToken(env);
   const query = new URLSearchParams(options.query || {});
   const queryText = query.toString();
+  const actionSuffix = options.action === "append" ? ":append" : "";
   const url = [
     "https://sheets.googleapis.com/v4/spreadsheets/",
     encodeURIComponent(spreadsheetId),
     "/values/",
     encodeURIComponent(range),
+    actionSuffix,
     queryText ? `?${queryText}` : ""
   ].join("");
   const response = await fetch(url, {
@@ -2267,6 +2269,7 @@ async function updateGoogleSheetValues(env, range, values) {
 async function appendGoogleSheetValues(env, range, values) {
   return callGoogleSheetsValuesApi(env, range, {
     method: "POST",
+    action: "append",
     query: {
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS"

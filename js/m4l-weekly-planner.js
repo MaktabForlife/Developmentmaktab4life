@@ -1,4 +1,4 @@
-/* M4L v95.0 Weekly Planner
+/* M4L v95.1 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -135,9 +135,7 @@ function renderWeeklyPlannerTeacherOptions() {
 
   select.innerHTML = teachers.map(teacher => {
     const selected = teacher.teacherId === currentTeacherId ? " selected" : "";
-    const group = String(teacher.assignedGroup || "").trim();
-    const suffix = group && group.toUpperCase() !== "ALL" ? ` · Group ${group}` : "";
-    return `<option value="${weeklyPlannerEscapeAttribute(teacher.teacherId)}"${selected}>${weeklyPlannerEscapeHtml(teacher.teacherName)}${weeklyPlannerEscapeHtml(suffix)}</option>`;
+    return `<option value="${weeklyPlannerEscapeAttribute(teacher.teacherId)}"${selected}>${weeklyPlannerEscapeHtml(teacher.teacherName)}</option>`;
   }).join("");
 
   select.disabled = currentRole === "TEACHER" || teachers.length <= 1;
@@ -159,7 +157,6 @@ async function loadWeeklyPlanner() {
   weeklyPlannerState.week = week;
   weeklyPlannerState.activeCardIndex = 0;
   renderWeeklyPlannerLoadingState();
-  updateWeeklyPlannerSummary(week);
   setWeeklyPlannerMessage("Loading planner and timetable...", "");
 
   const result = await apiPost("/api/admin/weekly-planner/get", {
@@ -181,7 +178,6 @@ async function loadWeeklyPlanner() {
 
   const groupInput = document.getElementById("weekly-planner-group");
   const feedbackInput = document.getElementById("weekly-planner-feedback");
-  const feedbackBy = document.getElementById("weekly-planner-feedback-by");
   const groupNo = String(
     result.planner?.groupNo ||
     result.teacher?.assignedGroup ||
@@ -191,11 +187,6 @@ async function loadWeeklyPlanner() {
 
   if (groupInput) groupInput.value = groupNo.toUpperCase() === "ALL" ? "" : groupNo;
   if (feedbackInput) feedbackInput.value = String(result.planner?.feedback || "");
-  if (feedbackBy) {
-    feedbackBy.textContent = result.planner?.feedbackBy
-      ? `Last feedback by ${result.planner.feedbackBy}`
-      : "Feedback may be added by the teacher or an administrator.";
-  }
 
   let timetableResult = null;
 
@@ -221,11 +212,11 @@ async function loadWeeklyPlanner() {
   renderWeeklyPlannerCards();
 
   if (result.planner) {
-    setWeeklyPlannerMessage("Saved planner loaded.", "success");
+    setWeeklyPlannerMessage("Planner loaded.", "success");
   } else if (result.previousPlanner) {
-    setWeeklyPlannerMessage("Last week’s entries have been copied as a starting point.", "success");
+    setWeeklyPlannerMessage("Last week copied.", "success");
   } else {
-    setWeeklyPlannerMessage("Planner ready. Period subjects were taken from the current timetable.", "success");
+    setWeeklyPlannerMessage("Planner ready.", "success");
   }
 }
 
@@ -450,22 +441,6 @@ function renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periodCount) {
 
   return `
     <div class="weekly-planner-period-row" data-weekly-planner-period="${periodIndex}">
-      <div class="weekly-planner-period-name-cell">
-        <input
-          class="weekly-planner-period-label"
-          type="text"
-          value="${weeklyPlannerEscapeAttribute(period.label)}"
-          data-weekly-planner-field="label"
-          aria-label="Period label"
-        />
-        <button
-          class="weekly-planner-remove-period"
-          type="button"
-          data-weekly-planner-remove-period="${dayIndex}:${periodIndex}"
-          aria-label="Remove ${weeklyPlannerEscapeAttribute(period.label)}"
-          ${removeDisabled}
-        >Remove</button>
-      </div>
       <div class="weekly-planner-period-content">
         <input
           class="weekly-planner-period-subject"
@@ -482,6 +457,13 @@ function renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periodCount) {
           placeholder="Enter each activity on a new line"
           aria-label="Activities"
         >${weeklyPlannerEscapeHtml((period.entries || []).join("\n"))}</textarea>
+        <button
+          class="weekly-planner-remove-period"
+          type="button"
+          data-weekly-planner-remove-period="${dayIndex}:${periodIndex}"
+          aria-label="Remove ${weeklyPlannerEscapeAttribute(period.label)}"
+          ${removeDisabled}
+        >Remove</button>
       </div>
     </div>
   `;
@@ -619,11 +601,11 @@ async function saveWeeklyPlannerAndPreview(button) {
   }
 
   const week = getWeeklyPlannerWeekMeta(weekInput ? weekInput.value : "");
-  const originalText = button ? button.textContent : "";
+  const labelElement = button?.querySelector("[data-weekly-planner-save-label]");
+  const originalLabel = String(labelElement?.textContent || "Save & Preview");
 
   if (button) {
-    button.disabled = true;
-    button.textContent = "Saving...";
+    setWeeklyPlannerSaveButtonState(button, "Saving...", true);
   }
 
   setWeeklyPlannerMessage("Saving the planner...", "");
@@ -649,10 +631,6 @@ async function saveWeeklyPlannerAndPreview(button) {
     weeklyPlannerState.expectedUpdatedDate = String(result.planner?.updatedDate || "");
 
     if (feedbackInput) feedbackInput.value = String(result.planner?.feedback || "");
-    const feedbackBy = document.getElementById("weekly-planner-feedback-by");
-    if (feedbackBy && result.planner?.feedbackBy) {
-      feedbackBy.textContent = `Last feedback by ${result.planner.feedbackBy}`;
-    }
 
     setWeeklyPlannerMessage("Planner saved.", "success");
     try {
@@ -668,9 +646,19 @@ async function saveWeeklyPlannerAndPreview(button) {
     setWeeklyPlannerMessage(error.message || "Unable to save the planner.", "error");
   } finally {
     if (button) {
-      button.disabled = false;
-      button.textContent = originalText || "Save and Preview";
+      setWeeklyPlannerSaveButtonState(button, originalLabel, false);
     }
+  }
+}
+
+function setWeeklyPlannerSaveButtonState(button, label, disabled) {
+  if (!button) return;
+
+  button.disabled = disabled === true;
+  const labelElement = button.querySelector("[data-weekly-planner-save-label]");
+
+  if (labelElement) {
+    labelElement.textContent = String(label || "Save & Preview");
   }
 }
 
@@ -1080,13 +1068,6 @@ function getWeeklyPlannerWeekMeta(value) {
     : `${startMonth} / ${endMonth} ${date.getFullYear()}`;
 
   return { weekStart, weekEnd, month };
-}
-
-function updateWeeklyPlannerSummary(week) {
-  const month = document.getElementById("weekly-planner-month");
-  const range = document.getElementById("weekly-planner-date-range");
-  if (month) month.textContent = week.month;
-  if (range) range.textContent = formatWeeklyPlannerRange(week);
 }
 
 function formatWeeklyPlannerRange(week) {

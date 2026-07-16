@@ -2623,7 +2623,7 @@ const USER_BAND_MENU_ITEMS = {
     { action: "home", label: "Home", icon: "/icons/home.svg" },
     { action: "attendance", label: "Attendance", icon: "/icons/attendance.svg" },
     { action: "record", label: "VoiceNote", icon: "/icons/navrecord.svg?v=92.3a" },
-    { action: "planner", label: "Planner", icon: "/icons/planner.svg?v=95.0" },
+    { action: "planner", label: "Planner", icon: "/icons/planner.svg?v=95.1" },
     { action: "library", label: "Library", icon: "/icons/resources.svg" },
     { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
     { action: "admin", label: "Admin", icon: "/icons/admin.svg" },
@@ -3061,7 +3061,7 @@ const BOTTOM_NAV_ITEMS = {
     {
       key: "planner",
       label: "Planner",
-      icon: "/icons/planner.svg?v=95.0",
+      icon: "/icons/planner.svg?v=95.1",
       targetScreen: "weekly-planner-screen",
       actionName: "showWeeklyPlanner",
       hideFromBottomNav: true

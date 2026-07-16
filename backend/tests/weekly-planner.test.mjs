@@ -43,7 +43,12 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-google-token");
-    const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
+    const rangeAndAction = url.pathname.split("/values/")[1] || "";
+    const isAppendRequest = rangeAndAction.endsWith(":append");
+    const encodedRange = isAppendRequest
+      ? rangeAndAction.slice(0, -":append".length)
+      : rangeAndAction;
+    const range = decodeURIComponent(encodedRange);
 
     if (range.startsWith("AdminRecords!")) {
       return response({ values: adminRows });
@@ -57,7 +62,7 @@ globalThis.fetch = async (input, init = {}) => {
       return response({ values: weeklyRows });
     }
 
-    if (range === "WeeklyPlanners!A:N" && init.method === "POST") {
+    if (range === "WeeklyPlanners!A:N" && init.method === "POST" && isAppendRequest) {
       const payload = JSON.parse(init.body);
       weeklyRows.push(payload.values[0]);
       return response({ updates: { updatedRows: 1 } });
@@ -120,8 +125,15 @@ assert.equal(saved.data.planner.status, "READY");
 assert.equal(weeklyRows.length, 2);
 assert.equal(weeklyRows[1].length, 14);
 
-const appendCall = calls.find(call => call.method === "POST" && call.url.includes("WeeklyPlanners!A%3AN"));
-assert.ok(appendCall, "New planners must append one A:N row");
+const appendCall = calls.find(call => {
+  return call.method === "POST" && call.url.includes("WeeklyPlanners!A%3AN:append");
+});
+assert.ok(appendCall, "New planners must use the Sheets values:append endpoint for one A:N row");
+assert.equal(
+  calls.some(call => call.method === "POST" && /WeeklyPlanners!A%3AN\?/.test(call.url)),
+  false,
+  "New planners must not POST to the ordinary values range endpoint"
+);
 
 await new Promise(resolve => setTimeout(resolve, 2));
 const updated = await callWorker("/api/admin/weekly-planner/save", {
