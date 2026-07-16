@@ -1271,14 +1271,14 @@ function buildStudentWelcomeMessage(loginLink) {
        " If you see [+ Add page to]  or similar , you are probably  in the wrong browser.",
      "",
      "  Iphone :   ",
-     "open the link, goto SHARE,  [+Add to Home screen]"'
+     "open the link, goto SHARE,  [+Add to Home screen]",
      "",
     "2. CREATE an easy to remember pin",
     "",
     "3. LOGIN with your pin ",
     "",
        "Please contact me for any queries or if you need to reset your PIN.",
-   "May Allah bless you on this journey and make your path to Jannah easy"
+   "May Allah bless you on this journey and make your path to Jannah easy",
     "",
     loginLink,
     "",
