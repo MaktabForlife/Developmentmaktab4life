@@ -1,4 +1,18 @@
-/* 93.6.1 Individual Progress header controls
+/* 94.7 Recorder microphone flow and dimmed MP4 preview poster
+   94.6 Library cache, rail gestures, and PDF Back icon cache alignment
+   Keeps the Library DOM for the session, permits vertical gestures over its
+   horizontal rails, and refreshes the updated PDF Back icon reference.
+
+   94.3 PDF viewer toolbar repair
+   Restores the visible PDF.js toolbar and markup controls, removes the duplicate
+   top offset, and uses the shared Open and Back icons in the compact app header.
+
+   93.7.1 Attendance UI alignment
+   Makes the swipe-dot band transparent, gives all inner white Attendance cards
+   a 2px surface-track border, exposes rounded header corners on medium/large
+   screens, and scales medium header controls to fit their three-column panels.
+
+   93.6.1 Individual Progress header controls
    Replaces the numbered module stepper and arrows with swipe dots beneath the
    fixed student header. Adds a right-aligned back.svg action labelled Return to
    Class Progress and left-aligns the student name with additional padding.
@@ -35,14 +49,14 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-01-foundation-auth-userband.css?v=91.5");
 @import url("/css/m4l-02-home-common-and-shared-cards.css?v=93.5");
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
-@import url("/css/m4l-04-library-resources.css?v=93.5");
+@import url("/css/m4l-04-library-resources.css?v=94.6");
 @import url("/css/m4l-05-home-timetable.css?v=91.5");
-@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=91.5");
+@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=94.6");
 @import url("/css/m4l-07-manage-students.css?v=93.5");
 @import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=93.5");
 @import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
-@import url("/css/m4l-10-recorder.css?v=93.2");
+@import url("/css/m4l-10-recorder.css?v=94.7");
 @import url("/css/m4l-11-student-progress-stepper-pane.css?v=93.5");
 @import url("/css/m4l-12-admin-class-progress-v90-overrides.css?v=93.6.1");
 @import url("/css/m4l-13-admin-individual-progress-overrides.css?v=93.6.1");
-@import url('/css/m4l-14-attendance-responsive-repair.css?v=91.7.4');
+@import url('/css/m4l-14-attendance-responsive-repair.css?v=93.7.1');

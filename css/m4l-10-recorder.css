@@ -1,5 +1,5 @@
 /* ==========================================
-   M4L V93.7.3 Integrated Recorder
+   M4L V94.7 Integrated Recorder
    Mobile-first shared student/admin interface.
    Bounded media and internally scrolling page selector.
    ========================================== */
@@ -357,52 +357,43 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-controls {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 16px;
-  background: var(--surface-card);
-  box-shadow: 0 5px 16px rgba(var(--black-rgb), 0.08);
+  gap: 0;
+  padding: 2px 4px;
+  background: transparent;
+  box-shadow: none;
 }
 
-.m4l-recorder-control-copy {
-  min-width: 0;
-  text-align: left;
-}
-
-.m4l-recorder-helper,
-.m4l-recorder-recording-status {
+.m4l-recorder-helper {
   margin: 0;
   color: var(--text-muted);
   font-size: clamp(0.7rem, 3vw, 0.82rem);
   font-weight: 550;
   line-height: 1.22;
-  text-align: left;
-}
-
-.m4l-recorder-recording-status {
-  color: var(--text-strong);
+  text-align: center;
 }
 
 #m4l-recorder-countdown {
   color: inherit;
   font: inherit;
-  font-weight: 800;
+  font-weight: inherit;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .m4l-recorder-record-action {
   appearance: none;
-  min-width: 66px;
-  min-height: 62px;
+  width: min(100%, 260px);
+  min-width: 0;
+  min-height: 60px;
   margin: 0;
-  padding: 3px 5px;
+  padding: 2px 6px;
   display: inline-grid;
   justify-items: center;
   align-content: center;
-  gap: 2px;
+  gap: 4px;
   border: 0;
   border-radius: 14px;
   background: transparent;
@@ -412,19 +403,21 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 }
 
 .m4l-recorder-native-icon {
-  width: 45px;
-  height: 45px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   display: block;
 }
 
 .m4l-recorder-record-label {
   color: var(--text-strong);
-  font-size: 0.63rem;
-  font-weight: 850;
-  letter-spacing: 0.05em;
-  line-height: 1;
-  text-transform: uppercase;
+  max-width: 240px;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: none;
 }
 
 .m4l-recorder-preview-media {
@@ -447,7 +440,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   max-height: 100%;
   object-fit: contain;
   border-radius: 13px;
-  background: #000;
+  background: #454545;
 }
 
 .m4l-recorder-preview-audio-panel {
@@ -619,27 +612,6 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   outline-offset: 2px;
 }
 
-/* Phone landscape: preserve the page and keep controls alongside it. */
-@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
-  .m4l-recorder-view--record.active {
-    grid-template-columns: minmax(0, 1fr) minmax(190px, 34%);
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .m4l-recorder-view--record > .m4l-recorder-view-header {
-    grid-column: 1 / -1;
-  }
-
-  .m4l-recorder-controls {
-    align-self: stretch;
-  }
-
-  .m4l-recorder-reader-frame.is-audio-only,
-  .m4l-recorder-audio-stage {
-    min-height: 0;
-  }
-}
-
 /* Tablet view. */
 @media (min-width: 640px) and (max-width: 1023px) {
   #record-lesson-screen.m4l-recorder-screen {
@@ -674,15 +646,6 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
     border-radius: 22px;
   }
 
-  .m4l-recorder-controls {
-    padding: 9px 12px;
-  }
-
-  .m4l-recorder-native-icon {
-    width: 52px;
-    height: 52px;
-  }
-
   .m4l-recorder-preview-audio-panel:not(.is-audio-only) {
     grid-template-columns: minmax(0, 1fr) minmax(250px, 0.7fr);
     grid-template-rows: minmax(0, 1fr);
@@ -690,7 +653,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   }
 }
 
-/* Desktop view: page and controls use the available width independently. */
+/* Desktop view. */
 @media (min-width: 1024px) {
   #record-lesson-screen.m4l-recorder-screen {
     padding: 18px;
@@ -721,25 +684,6 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 
   .m4l-recorder-page-title {
     font-size: 0.76rem;
-  }
-
-  .m4l-recorder-view--record.active {
-    grid-template-columns: minmax(0, 1fr) 320px;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .m4l-recorder-view--record > .m4l-recorder-view-header {
-    grid-column: 1 / -1;
-  }
-
-  .m4l-recorder-controls {
-    align-self: center;
-    padding: 14px;
-  }
-
-  .m4l-recorder-native-icon {
-    width: 58px;
-    height: 58px;
   }
 
   .m4l-recorder-preview-audio-panel:not(.is-audio-only) {

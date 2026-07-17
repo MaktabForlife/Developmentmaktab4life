@@ -5,7 +5,7 @@
   <title>Maktab4Life Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- currently 93.3  progress cleanup-->
+  <!-- M4L v95.3.1 Weekly Planner preview styles -->
     <!-- PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=94.6">
+<link rel="stylesheet" href="/styles.css?v=95.3.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -83,7 +83,7 @@
         </section>
 
         <section class="home-section home-icons-section" aria-label="Admin home app icons">
-          <div aria-label="Admin home app icons" class="home-cover-icon-grid">
+          <div aria-label="Admin home app icons" class="home-cover-icon-grid home-cover-icon-grid--admin">
             
          <button 
            class="home-cover-icon-btn is-home-active" 
@@ -108,6 +108,12 @@
           <span class="home-cover-icon-glyph"></span>
           </span>
           <span class="home-cover-icon-label">VoiceNote</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="planner" data-cover-home-role="admin" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Planner</span>
           </button>
           <button class="home-cover-icon-btn" data-cover-home-nav="library" data-cover-home-role="admin" type="button">
           <span aria-hidden="true" class="home-cover-icon-tile">
@@ -156,6 +162,7 @@
       <div class="list-stack">
         <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
         <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
+        <button class="list-btn" onclick="showWeeklyPlanner()">Weekly Planner</button>
         <button class="list-btn" onclick="showAdminResources()">Library</button>
         <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
         <button class="list-btn" onclick="showAdminTimetableAdmin()">Timetable</button>
@@ -362,6 +369,186 @@
         <div id="admin-timetable-admin-preview">
           <p class="helper-text">Loading timetable...</p>
         </div>
+      </div>
+    </section>
+
+
+    <!-- WEEKLY PLANNER - V95.3.1 -->
+    <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
+      <div class="weekly-planner-global-panel">
+        <div class="weekly-planner-app-header" role="toolbar" aria-label="Weekly Planner actions">
+          <button
+            class="weekly-planner-header-action weekly-planner-header-action--back"
+            type="button"
+            onclick="showScreen('admin-academics')"
+            aria-label="Back to Admin"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Back</span>
+          </button>
+
+          <h2>Weekly Planner</h2>
+
+          <button
+            id="weekly-planner-save"
+            class="weekly-planner-header-action weekly-planner-header-action--save"
+            type="button"
+            onclick="saveWeeklyPlannerAndPreview(this)"
+            aria-label="Save and preview weekly planner"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label" data-weekly-planner-save-label>Save &amp; Preview</span>
+          </button>
+        </div>
+
+        <section class="weekly-planner-controls" aria-label="Planner details">
+          <label class="weekly-planner-field weekly-planner-field--teacher">
+            <span>Name</span>
+            <select id="weekly-planner-teacher"></select>
+          </label>
+
+          <label class="weekly-planner-field weekly-planner-field--week">
+            <span>Week commencing</span>
+            <input id="weekly-planner-week" type="date" />
+          </label>
+
+          <label class="weekly-planner-field weekly-planner-field--group">
+            <span>Group</span>
+            <input id="weekly-planner-group" type="text" list="weekly-planner-groups" placeholder="Group" />
+            <datalist id="weekly-planner-groups"></datalist>
+          </label>
+        </section>
+
+        <p id="weekly-planner-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+        <input id="weekly-planner-feedback" type="hidden" value="" />
+      </div>
+
+      <div class="weekly-planner-shell">
+        <div class="weekly-planner-rail-shell">
+          <div id="weekly-planner-dots" class="weekly-planner-dots" aria-label="Planner card position"></div>
+          <div
+            id="weekly-planner-rail"
+            class="weekly-planner-rail"
+            role="region"
+            aria-label="Monday to Thursday planner cards"
+            tabindex="0"
+          >
+            <p class="helper-text">Loading weekly planner...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="weekly-planner-preview-screen" class="screen admin-theme weekly-planner-preview-screen">
+      <div class="weekly-planner-app-header" role="toolbar" aria-label="Planner Preview actions">
+        <button
+          class="weekly-planner-header-action weekly-planner-header-action--back"
+          type="button"
+          onclick="returnToWeeklyPlanner()"
+          aria-label="Back to edit"
+        >
+          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+          <span class="weekly-planner-header-action__label">
+            <span class="weekly-planner-mobile-copy">Back</span>
+            <span class="weekly-planner-wide-copy">Back to Edit</span>
+          </span>
+        </button>
+
+        <div class="weekly-planner-preview-title-group">
+          <h2>
+            <span class="weekly-planner-mobile-copy">PREVIEW</span>
+            <span class="weekly-planner-wide-copy">Planner Preview</span>
+          </h2>
+
+          <button
+            id="weekly-planner-preview-settings-toggle"
+            class="weekly-planner-preview-settings-toggle"
+            type="button"
+            onclick="toggleWeeklyPlannerPreviewSettings(this)"
+            aria-label="Preview font and colour settings"
+            aria-controls="weekly-planner-preview-settings"
+            aria-expanded="false"
+          >
+            <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <button
+          class="weekly-planner-header-action weekly-planner-header-action--share"
+          type="button"
+          onclick="shareWeeklyPlannerImage(this)"
+          aria-label="Share planner image"
+        >
+          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+          <span class="weekly-planner-header-action__label">Share</span>
+        </button>
+      </div>
+
+      <section
+        id="weekly-planner-preview-settings"
+        class="weekly-planner-preview-settings"
+        aria-label="Preview font and colour settings"
+        hidden
+      >
+        <fieldset class="weekly-planner-preview-setting-group">
+          <legend>Text</legend>
+          <div class="weekly-planner-font-options">
+            <label class="weekly-planner-font-option weekly-planner-font-option--normal">
+              <input type="radio" name="weekly-planner-preview-font" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span>Standard</span>
+            </label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--comic">
+              <input type="radio" name="weekly-planner-preview-font" value="comic" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span>Comic Sans</span>
+            </label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--handwritten">
+              <input type="radio" name="weekly-planner-preview-font" value="handwritten" onchange="updateWeeklyPlannerPreviewStyle()" checked />
+              <span>Handwritten</span>
+            </label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--classic">
+              <input type="radio" name="weekly-planner-preview-font" value="classic" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span>Classic</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="weekly-planner-preview-setting-group">
+          <legend>Colour</legend>
+          <div class="weekly-planner-color-options">
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: var(--text)">
+              <input type="radio" name="weekly-planner-preview-color" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: var(--text)" aria-hidden="true"></i>Standard</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #a626aa">
+              <input type="radio" name="weekly-planner-preview-color" value="violet" onchange="updateWeeklyPlannerPreviewStyle()" checked />
+              <span><i style="--weekly-planner-swatch: #a626aa" aria-hidden="true"></i>Violet</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #0066a1">
+              <input type="radio" name="weekly-planner-preview-color" value="turquoise" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: #0066a1" aria-hidden="true"></i>Turquoise</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #000080">
+              <input type="radio" name="weekly-planner-preview-color" value="navy" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: #000080" aria-hidden="true"></i>Navy</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #7d7f7c">
+              <input type="radio" name="weekly-planner-preview-color" value="grey" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: #7d7f7c" aria-hidden="true"></i>Grey</span>
+            </label>
+          </div>
+        </fieldset>
+      </section>
+
+      <div class="weekly-planner-preview-shell">
+        <div class="weekly-planner-preview-frame">
+          <img
+            id="weekly-planner-preview-image"
+            alt="Weekly planner image preview"
+          />
+        </div>
+
+        <p id="weekly-planner-preview-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+
       </div>
     </section>
 
@@ -664,13 +851,14 @@
 <script src="/app.js?v=94.1"></script>
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=87.2"></script>
-<script src="/js/m4l-shell.js?v=92.3"></script>
+<script src="/js/m4l-shell.js?v=95.1"></script>
   <script src="/js/m4l-timetable.js?v=92"></script>
-  <script src="/js/m4l-recorder.js?v=93.7.4a"></script>
+  <script src="/js/m4l-weekly-planner.js?v=95.3.1"></script>
+  <script src="/js/m4l-recorder.js?v=94.7"></script>
 <script src="/js/m4l-attendance.js?v=91.3"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
   <script src="/js/m4l-resources.js?v=94.6"></script>
 <script src="/js/m4l-progress.js?v=93.6.1"></script>
-<script src="/js/m4l-manage-students.js?v=55"></script>
+<script src="/js/m4l-manage-students.js?v=94.7a"></script>
 </body>
 </html>

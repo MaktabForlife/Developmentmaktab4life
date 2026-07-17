@@ -2521,6 +2521,12 @@ function getUserBandRefreshAction(screenId, role) {
       : null;
   }
 
+  if (activeScreenId === "weekly-planner-screen") {
+    return typeof loadWeeklyPlanner === "function"
+      ? { label: "Refresh", title: "Refresh weekly planner", handler: loadWeeklyPlanner }
+      : null;
+  }
+
   if (activeScreenId === "progress-report") {
     return typeof showProgressReport === "function"
       ? { label: "Refresh", title: "Refresh progress menu", handler: showProgressReport }
@@ -2617,6 +2623,7 @@ const USER_BAND_MENU_ITEMS = {
     { action: "home", label: "Home", icon: "/icons/home.svg" },
     { action: "attendance", label: "Attendance", icon: "/icons/attendance.svg" },
     { action: "record", label: "VoiceNote", icon: "/icons/navrecord.svg?v=92.3a" },
+    { action: "planner", label: "Planner", icon: "/icons/planner.svg?v=95.1" },
     { action: "library", label: "Library", icon: "/icons/resources.svg" },
     { action: "progress", label: "Progress", icon: "/icons/progress.svg" },
     { action: "admin", label: "Admin", icon: "/icons/admin.svg" },
@@ -2646,9 +2653,13 @@ function getUserBandMenuProfileMarkup(username, role) {
 
 function getUserBandMenuMarkup(username, role, screenId) {
   const items = getUserBandMenuItems(role);
-  const activeKey = typeof getBottomNavActiveKey === "function"
+  let activeKey = typeof getBottomNavActiveKey === "function"
     ? String(getBottomNavActiveKey(screenId || getActiveScreenId(), role) || "")
     : "";
+
+  if (String(screenId || getActiveScreenId() || "").startsWith("weekly-planner")) {
+    activeKey = "planner";
+  }
 
   return `
     ${getUserBandMenuProfileMarkup(username, role)}
@@ -2848,6 +2859,7 @@ function handleUserBandMenuAction(action, role, triggerButton) {
   const actionKeyByMenuAction = {
     attendance: "attendance",
     record: "record",
+    planner: "planner",
     library: "library",
     progress: "progress",
     admin: "admin"
@@ -3045,6 +3057,14 @@ const BOTTOM_NAV_ITEMS = {
       icon: "/icons/attendance.svg",
       targetScreen: "attendance-screen",
       actionName: "openMarkRegister"
+    },
+    {
+      key: "planner",
+      label: "Planner",
+      icon: "/icons/planner.svg?v=95.1",
+      targetScreen: "weekly-planner-screen",
+      actionName: "showWeeklyPlanner",
+      hideFromBottomNav: true
     },
     {
       key: "library",
@@ -3390,7 +3410,9 @@ function isBottomNavItemAvailable(item) {
 }
 
 function getAvailableBottomNavItems(role) {
-  return getBottomNavItems(role).filter(isBottomNavItemAvailable);
+  return getBottomNavItems(role).filter(item => {
+    return item.hideFromBottomNav !== true && isBottomNavItemAvailable(item);
+  });
 }
 
 function createBottomNavButton(item, role) {
@@ -3494,6 +3516,8 @@ function getBottomNavActiveKey(screenId, role) {
     }
 
     if (id.startsWith("admin-timetable")) return "admin";
+
+    if (id.startsWith("weekly-planner")) return "admin";
 
     if (id.startsWith("manage-student")) return "admin";
 

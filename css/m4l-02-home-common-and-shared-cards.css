@@ -1,7 +1,7 @@
 /* V92.1 increased  home icon radiums
-Home cover-sheet app icons - V91.8
+Home cover-sheet app icons - V95.0
    Student: 4 icons in one row.
-   Admin: 6 icons; 3 x 2 on mobile, 6 x 1 on larger screens.
+   Admin: 7 icons; 3-column wrap on mobile, 7 x 1 on larger screens.
    The active Home tile uses --surface-contrast. */
 .home-cover-icon-grid {
   display: grid;
@@ -23,6 +23,10 @@ Home cover-sheet app icons - V91.8
 .home-cover-icon-grid--admin {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: 430px;
+}
+
+.home-cover-icon-grid--admin > :last-child:nth-child(3n + 1) {
+  grid-column: 2;
 }
 
 .home-cover-icon-btn {
@@ -98,8 +102,12 @@ Home cover-sheet app icons - V91.8
 
 @media (min-width: 768px) {
   .home-cover-icon-grid--admin {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    max-width: 720px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    max-width: 840px;
+  }
+
+  .home-cover-icon-grid--admin > :last-child:nth-child(3n + 1) {
+    grid-column: auto;
   }
 }
 
@@ -292,5 +300,4 @@ Home cover-sheet app icons - V91.8
 
 
 }
-
 
