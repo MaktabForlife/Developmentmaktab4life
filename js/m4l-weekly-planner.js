@@ -671,7 +671,7 @@ async function saveWeeklyPlannerAndPreview(button) {
     if (feedbackInput) feedbackInput.value = weeklyPlannerState.feedback;
     renderWeeklyPlannerCards();
 
-    setWeeklyPlannerMessage("Planner saved.", "success");
+    
     try {
       await generateWeeklyPlannerPreview();
       showScreen("weekly-planner-preview-screen");
@@ -1012,14 +1012,6 @@ function drawWeeklyPlannerFeedbackPanel(context, model, x, y, width, height, col
     minFontSize: 19,
     lineHeight: 1.16
   });
-
-  if (model.feedbackBy) {
-    context.fillStyle = colors.muted;
-    context.font = "600 18px Arial, sans-serif";
-    context.textAlign = "right";
-    context.fillText(`Feedback by ${model.feedbackBy}`, x + width - 24, y + height - 16);
-    context.textAlign = "left";
-  }
 }
 
 function weeklyPlannerDrawTextBox(context, text, x, y, width, height, options = {}) {
