@@ -1,6 +1,6 @@
-/* M4L v95.2 Weekly Planner
+/* M4L v95.3 Weekly Planner
    Mobile uses one compact swipe card. Medium and large screens show all four
-   equal day cards in one row. The generated planner image is unchanged. */
+   equal day cards in one row. Preview font and ink colour are locally selectable. */
 
 .weekly-planner-screen,
 .weekly-planner-preview-screen {
@@ -21,6 +21,7 @@
 .weekly-planner-global-panel,
 .weekly-planner-shell,
 .weekly-planner-preview-screen > .weekly-planner-app-header,
+.weekly-planner-preview-settings,
 .weekly-planner-preview-shell {
   width: min(100%, var(--weekly-planner-max-width));
   margin-inline: auto;
@@ -119,15 +120,59 @@
 }
 
 .weekly-planner-header-action--back {
-  --weekly-planner-header-icon: url('/icons/back.svg?v=95.2');
+  --weekly-planner-header-icon: url('/icons/back.svg?v=95.3');
 }
 
 .weekly-planner-header-action--save {
-  --weekly-planner-header-icon: url('/icons/save.svg?v=95.2');
+  --weekly-planner-header-icon: url('/icons/save.svg?v=95.3');
 }
 
 .weekly-planner-header-action--share {
-  --weekly-planner-header-icon: url('/icons/share.svg?v=95.2');
+  --weekly-planner-header-icon: url('/icons/share.svg?v=95.3');
+}
+
+.weekly-planner-preview-title-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+#weekly-planner-preview-settings-toggle {
+  display: inline-grid;
+  flex: 0 0 28px;
+  place-items: center;
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
+#weekly-planner-preview-settings-toggle:active {
+  transform: none;
+  box-shadow: none;
+}
+
+#weekly-planner-preview-settings-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.weekly-planner-preview-settings-icon {
+  width: 22px;
+  height: 22px;
+  background: currentColor;
+  -webkit-mask: url('/icons/settings.svg?v=95.3') center / contain no-repeat;
+  mask: url('/icons/settings.svg?v=95.3') center / contain no-repeat;
 }
 
 .weekly-planner-header-action__label {
@@ -458,6 +503,122 @@
   display: none !important;
 }
 
+.weekly-planner-preview-settings {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 2px solid var(--surface-track);
+  border-radius: 14px;
+  background: var(--surface-card);
+}
+
+.weekly-planner-preview-settings[hidden] {
+  display: none;
+}
+
+.weekly-planner-preview-setting-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.weekly-planner-preview-setting-group legend {
+  margin: 0 0 4px;
+  padding: 0 2px;
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.weekly-planner-font-options,
+.weekly-planner-color-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.weekly-planner-preview-setting-group input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.weekly-planner-font-option,
+.weekly-planner-color-option {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+.weekly-planner-font-option > span,
+.weekly-planner-color-option > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  border: 2px solid var(--surface-track);
+  border-radius: 9px;
+  background: var(--surface-card);
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.weekly-planner-font-option input:checked + span,
+.weekly-planner-color-option input:checked + span {
+  border-color: var(--primary);
+  background: var(--surface-track);
+}
+
+.weekly-planner-font-option input:focus-visible + span,
+.weekly-planner-color-option input:focus-visible + span {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.weekly-planner-font-option--normal > span {
+  font-family: Arial, sans-serif;
+}
+
+.weekly-planner-font-option--comic > span {
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
+}
+
+.weekly-planner-font-option--handwritten > span {
+  font-family: "Chalkboard SE", "Bradley Hand", "Comic Sans MS", cursive;
+}
+
+.weekly-planner-font-option--classic > span {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.weekly-planner-color-option > span {
+  color: var(--weekly-planner-option-color, var(--text));
+}
+
+.weekly-planner-color-option i {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid color-mix(in srgb, var(--text) 38%, transparent);
+  border-radius: 50%;
+  background: var(--weekly-planner-swatch);
+}
+
 .weekly-planner-preview-shell {
   display: grid;
   justify-items: center;
@@ -666,6 +827,20 @@
 
   .weekly-planner-preview-shell {
     padding: 14px 16px 32px;
+  }
+
+  .weekly-planner-preview-settings {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 14px;
+  }
+
+  .weekly-planner-font-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .weekly-planner-color-options {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .weekly-planner-preview-frame {

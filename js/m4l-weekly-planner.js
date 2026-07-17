@@ -1,4 +1,4 @@
-/* M4L v95.2 Weekly Planner
+/* M4L v95.3 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -12,6 +12,39 @@ const WEEKLY_PLANNER_DAYS = Object.freeze([
   { key: "thursday", label: "Thursday", timetableKeys: ["thu", "thur", "thurs", "thursday"] }
 ]);
 const WEEKLY_PLANNER_PERIOD_COUNT = 3;
+const WEEKLY_PLANNER_PREVIEW_STYLE_STORAGE_KEY = "m4l.weeklyPlanner.previewStyle.v95.3";
+
+const WEEKLY_PLANNER_PREVIEW_FONTS = Object.freeze({
+  normal: Object.freeze({
+    label: "Std",
+    family: "Arial, sans-serif"
+  }),
+  comic: Object.freeze({
+    label: "Comic Sans",
+    family: "'Comic Sans MS', 'Comic Sans', cursive"
+  }),
+  handwritten: Object.freeze({
+    label: "Handwritten",
+    family: "'Chalkboard SE', 'Bradley Hand', 'Comic Sans MS', cursive"
+  }),
+  classic: Object.freeze({
+    label: "Classic",
+    family: "Georgia, 'Times New Roman', serif"
+  })
+});
+
+const WEEKLY_PLANNER_PREVIEW_COLORS = Object.freeze({
+  normal: Object.freeze({ label: "Std", value: "var(--text)" }),
+  violet: Object.freeze({ label: "Violet", value: "#a626aa" }),
+  turquoise: Object.freeze({ label: "Turquoise", value: "#0066a1" }),
+  navy: Object.freeze({ label: "Navy", value: "#000080" }),
+  grey: Object.freeze({ label: "Grey", value: "#7d7f7c" })
+});
+
+const WEEKLY_PLANNER_DEFAULT_PREVIEW_STYLE = Object.freeze({
+  fontKey: "handwritten",
+  colorKey: "violet"
+});
 
 const weeklyPlannerState = {
   initialized: false,
@@ -28,7 +61,9 @@ const weeklyPlannerState = {
   activeCardIndex: 0,
   scrollFrame: 0,
   previewDataUrl: "",
-  previewBlob: null
+  previewBlob: null,
+  previewGenerationSequence: 0,
+  previewStyle: loadWeeklyPlannerPreviewStyle()
 };
 
 async function showWeeklyPlanner() {
@@ -702,13 +737,15 @@ function setWeeklyPlannerSaveButtonState(button, label, disabled) {
 }
 
 function returnToWeeklyPlanner() {
+  setWeeklyPlannerPreviewSettingsOpen(false);
   showScreen("weekly-planner-screen");
 }
 
 async function generateWeeklyPlannerPreview() {
   const previewImage = document.getElementById("weekly-planner-preview-image");
   const previewMessage = document.getElementById("weekly-planner-preview-message");
-  if (previewMessage) previewMessage.textContent = "Creating image preview...";
+  const generationSequence = ++weeklyPlannerState.previewGenerationSequence;
+  if (previewMessage) previewMessage.textContent = "";
 
   const result = await renderWeeklyPlannerImage({
     teacher: weeklyPlannerState.teacher,
@@ -717,13 +754,68 @@ async function generateWeeklyPlannerPreview() {
     groupNo: weeklyPlannerState.planner?.groupNo || document.getElementById("weekly-planner-group")?.value || "",
     feedback: weeklyPlannerState.feedback || weeklyPlannerState.planner?.feedback || "",
     feedbackBy: weeklyPlannerState.planner?.feedbackBy || ""
-  });
+  }, weeklyPlannerState.previewStyle);
+
+  if (generationSequence !== weeklyPlannerState.previewGenerationSequence) return result;
 
   weeklyPlannerState.previewDataUrl = result.dataUrl;
   weeklyPlannerState.previewBlob = result.blob;
 
   if (previewImage) previewImage.src = result.dataUrl;
   if (previewMessage) previewMessage.textContent = "";
+  syncWeeklyPlannerPreviewSettingsControls();
+  return result;
+}
+
+function toggleWeeklyPlannerPreviewSettings(button) {
+  const panel = document.getElementById("weekly-planner-preview-settings");
+  if (!panel) return;
+
+  setWeeklyPlannerPreviewSettingsOpen(panel.hidden, button);
+}
+
+function setWeeklyPlannerPreviewSettingsOpen(open, button) {
+  const panel = document.getElementById("weekly-planner-preview-settings");
+  const toggle = button || document.getElementById("weekly-planner-preview-settings-toggle");
+  if (!panel) return;
+
+  panel.hidden = open !== true;
+  if (toggle) toggle.setAttribute("aria-expanded", String(open === true));
+  if (open === true) syncWeeklyPlannerPreviewSettingsControls();
+}
+
+async function updateWeeklyPlannerPreviewStyle() {
+  const fontInput = document.querySelector('input[name="weekly-planner-preview-font"]:checked');
+  const colorInput = document.querySelector('input[name="weekly-planner-preview-color"]:checked');
+  const previewMessage = document.getElementById("weekly-planner-preview-message");
+
+  weeklyPlannerState.previewStyle = normalizeWeeklyPlannerPreviewStyle({
+    fontKey: fontInput?.value,
+    colorKey: colorInput?.value
+  });
+  saveWeeklyPlannerPreviewStyle(weeklyPlannerState.previewStyle);
+  syncWeeklyPlannerPreviewSettingsControls();
+
+  try {
+    await generateWeeklyPlannerPreview();
+  } catch (error) {
+    if (previewMessage) {
+      previewMessage.textContent = error.message || "Unable to update the planner preview.";
+    }
+  }
+}
+
+function syncWeeklyPlannerPreviewSettingsControls() {
+  const style = normalizeWeeklyPlannerPreviewStyle(weeklyPlannerState.previewStyle);
+  const fontInput = document.querySelector(
+    `input[name="weekly-planner-preview-font"][value="${style.fontKey}"]`
+  );
+  const colorInput = document.querySelector(
+    `input[name="weekly-planner-preview-color"][value="${style.colorKey}"]`
+  );
+
+  if (fontInput) fontInput.checked = true;
+  if (colorInput) colorInput.checked = true;
 }
 
 async function shareWeeklyPlannerImage(button) {
@@ -809,7 +901,68 @@ function getWeeklyPlannerImageFileName() {
   return `weekly-planner-${teacherName}-${weeklyPlannerState.week?.weekStart || "week"}.png`;
 }
 
-async function renderWeeklyPlannerImage(model) {
+function normalizeWeeklyPlannerPreviewStyle(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const fontKey = Object.prototype.hasOwnProperty.call(WEEKLY_PLANNER_PREVIEW_FONTS, source.fontKey)
+    ? source.fontKey
+    : WEEKLY_PLANNER_DEFAULT_PREVIEW_STYLE.fontKey;
+  const colorKey = Object.prototype.hasOwnProperty.call(WEEKLY_PLANNER_PREVIEW_COLORS, source.colorKey)
+    ? source.colorKey
+    : WEEKLY_PLANNER_DEFAULT_PREVIEW_STYLE.colorKey;
+
+  return { fontKey, colorKey };
+}
+
+function loadWeeklyPlannerPreviewStyle() {
+  try {
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    const storedValue = storage?.getItem(WEEKLY_PLANNER_PREVIEW_STYLE_STORAGE_KEY);
+    return normalizeWeeklyPlannerPreviewStyle(storedValue ? JSON.parse(storedValue) : null);
+  } catch (error) {
+    return normalizeWeeklyPlannerPreviewStyle(null);
+  }
+}
+
+function saveWeeklyPlannerPreviewStyle(value) {
+  try {
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    storage?.setItem(
+      WEEKLY_PLANNER_PREVIEW_STYLE_STORAGE_KEY,
+      JSON.stringify(normalizeWeeklyPlannerPreviewStyle(value))
+    );
+  } catch (error) {
+    // Preview preferences are optional; private browsing may block local storage.
+  }
+}
+
+function resolveWeeklyPlannerTextColor() {
+  try {
+    if (typeof document === "undefined" || typeof getComputedStyle !== "function") {
+      return "#111111";
+    }
+
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue("--text")
+      .trim();
+    return value || "#111111";
+  } catch (error) {
+    return "#111111";
+  }
+}
+
+function getResolvedWeeklyPlannerPreviewStyle(value) {
+  const style = normalizeWeeklyPlannerPreviewStyle(value);
+  const font = WEEKLY_PLANNER_PREVIEW_FONTS[style.fontKey];
+  const color = WEEKLY_PLANNER_PREVIEW_COLORS[style.colorKey];
+
+  return {
+    ...style,
+    fontFamily: font.family,
+    ink: style.colorKey === "normal" ? resolveWeeklyPlannerTextColor() : color.value
+  };
+}
+
+async function renderWeeklyPlannerImage(model, previewStyleValue = weeklyPlannerState.previewStyle) {
   const canvas = document.createElement("canvas");
   canvas.width = 1400;
   canvas.height = 2000;
@@ -817,11 +970,13 @@ async function renderWeeklyPlannerImage(model) {
 
   if (!context) throw new Error("Image preview is not supported by this browser.");
 
+  const previewStyle = getResolvedWeeklyPlannerPreviewStyle(previewStyleValue);
   const colors = {
     page: "#efd7dc",
     paper: "#fffefb",
     cream: "#eadfbd",
-    ink: "#bd35ef",
+    ink: previewStyle.ink,
+    inkFont: previewStyle.fontFamily,
     text: "#111111",
     muted: "#4f534d",
     line: "#737772"
@@ -862,10 +1017,10 @@ async function renderWeeklyPlannerImage(model) {
   context.fillText("GROUP:", 1080, 252);
 
   context.fillStyle = colors.ink;
-  context.font = "700 30px 'Chalkboard SE', 'Comic Sans MS', cursive";
+  context.font = `700 30px ${colors.inkFont}`;
   weeklyPlannerDrawTextBox(context, model.teacher?.teacherName || "", 610, 174, 710, 42, {
     color: colors.ink,
-    fontFamily: "'Chalkboard SE', 'Comic Sans MS', cursive",
+    fontFamily: colors.inkFont,
     fontWeight: "700",
     fontSize: 30,
     minFontSize: 22,
@@ -975,7 +1130,7 @@ function drawWeeklyPlannerDayPanel(context, day, x, y, width, height, colors) {
     });
     weeklyPlannerDrawTextBox(context, normalizeWeeklyPlannerEntries(period.entries).join("\n"), contentX, rowY + 47, contentWidth, Math.max(32, rowHeight - 58), {
       color: colors.ink,
-      fontFamily: "'Chalkboard SE', 'Comic Sans MS', cursive",
+      fontFamily: colors.inkFont,
       fontWeight: "700",
       fontSize: 26,
       minFontSize: 17,
@@ -1006,7 +1161,7 @@ function drawWeeklyPlannerFeedbackPanel(context, model, x, y, width, height, col
 
   weeklyPlannerDrawTextBox(context, model.feedback || "", x + 28, y + headingHeight + 18, width - 56, height - headingHeight - 52, {
     color: colors.ink,
-    fontFamily: "'Chalkboard SE', 'Comic Sans MS', cursive",
+    fontFamily: colors.inkFont,
     fontWeight: "700",
     fontSize: 28,
     minFontSize: 19,
@@ -1219,11 +1374,16 @@ window.saveWeeklyPlannerAndPreview = saveWeeklyPlannerAndPreview;
 window.returnToWeeklyPlanner = returnToWeeklyPlanner;
 window.shareWeeklyPlannerImage = shareWeeklyPlannerImage;
 window.downloadWeeklyPlannerImage = downloadWeeklyPlannerImage;
+window.toggleWeeklyPlannerPreviewSettings = toggleWeeklyPlannerPreviewSettings;
+window.updateWeeklyPlannerPreviewStyle = updateWeeklyPlannerPreviewStyle;
 window.M4LWeeklyPlanner = {
   show: showWeeklyPlanner,
   load: loadWeeklyPlanner,
   renderPreview: renderWeeklyPlannerImage,
   getWeekMeta: getWeeklyPlannerWeekMeta,
   buildPlannerDataFromDefaults: buildWeeklyPlannerDataFromDefaults,
-  getPlannerDataForSave: getWeeklyPlannerDataForSave
+  getPlannerDataForSave: getWeeklyPlannerDataForSave,
+  normalizePreviewStyle: normalizeWeeklyPlannerPreviewStyle,
+  previewFonts: WEEKLY_PLANNER_PREVIEW_FONTS,
+  previewColors: WEEKLY_PLANNER_PREVIEW_COLORS
 };

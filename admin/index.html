@@ -5,7 +5,7 @@
   <title>Maktab4Life Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- M4L v95.2 Weekly Planner -->
+  <!-- M4L v95.3 Weekly Planner preview styles -->
     <!-- PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=95.2i">
+<link rel="stylesheet" href="/styles.css?v=95.3">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -373,7 +373,7 @@
     </section>
 
 
-    <!-- WEEKLY PLANNER - V95.2 -->
+    <!-- WEEKLY PLANNER - V95.3 -->
     <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
       <div class="weekly-planner-global-panel">
         <div class="weekly-planner-app-header" role="toolbar" aria-label="Weekly Planner actions">
@@ -454,10 +454,24 @@
           </span>
         </button>
 
-        <h2>
-          <span class="weekly-planner-mobile-copy">PREVIEW</span>
-          <span class="weekly-planner-wide-copy">Planner Preview</span>
-        </h2>
+        <div class="weekly-planner-preview-title-group">
+          <h2>
+            <span class="weekly-planner-mobile-copy">PREVIEW</span>
+            <span class="weekly-planner-wide-copy">Planner Preview</span>
+          </h2>
+
+          <button
+            id="weekly-planner-preview-settings-toggle"
+            class="weekly-planner-preview-settings-toggle"
+            type="button"
+            onclick="toggleWeeklyPlannerPreviewSettings(this)"
+            aria-label="Preview font and colour settings"
+            aria-controls="weekly-planner-preview-settings"
+            aria-expanded="false"
+          >
+            <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
+          </button>
+        </div>
 
         <button
           class="weekly-planner-header-action weekly-planner-header-action--share"
@@ -469,6 +483,61 @@
           <span class="weekly-planner-header-action__label">Share</span>
         </button>
       </div>
+
+      <section
+        id="weekly-planner-preview-settings"
+        class="weekly-planner-preview-settings"
+        aria-label="Preview font and colour settings"
+        hidden
+      >
+        <fieldset class="weekly-planner-preview-setting-group">
+          <legend>Text</legend>
+          <div class="weekly-planner-font-options">
+            <label class="weekly-planner-font-option weekly-planner-font-option--normal">
+              <input type="radio" name="weekly-planner-preview-font" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span>Std</span>
+            </label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--comic">
+              <input type="radio" name="weekly-planner-preview-font" value="comic" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span>Comic Sans</span>
+            </label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--handwritten">
+              <input type="radio" name="weekly-planner-preview-font" value="handwritten" onchange="updateWeeklyPlannerPreviewStyle()" checked />
+              <span>Handwritten</span>
+            </label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--classic">
+              <input type="radio" name="weekly-planner-preview-font" value="classic" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span>Classic</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="weekly-planner-preview-setting-group">
+          <legend>Colour</legend>
+          <div class="weekly-planner-color-options">
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: var(--text)">
+              <input type="radio" name="weekly-planner-preview-color" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: var(--text)" aria-hidden="true"></i>Std</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #a626aa">
+              <input type="radio" name="weekly-planner-preview-color" value="violet" onchange="updateWeeklyPlannerPreviewStyle()" checked />
+              <span><i style="--weekly-planner-swatch: #a626aa" aria-hidden="true"></i>Violet</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #0066a1">
+              <input type="radio" name="weekly-planner-preview-color" value="turquoise" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: #0066a1" aria-hidden="true"></i>Turquoise</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #000080">
+              <input type="radio" name="weekly-planner-preview-color" value="navy" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: #000080" aria-hidden="true"></i>Navy</span>
+            </label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #7d7f7c">
+              <input type="radio" name="weekly-planner-preview-color" value="grey" onchange="updateWeeklyPlannerPreviewStyle()" />
+              <span><i style="--weekly-planner-swatch: #7d7f7c" aria-hidden="true"></i>Grey</span>
+            </label>
+          </div>
+        </fieldset>
+      </section>
 
       <div class="weekly-planner-preview-shell">
         <div class="weekly-planner-preview-frame">
@@ -784,7 +853,7 @@
 <script src="/js/m4l-auth.js?v=87.2"></script>
 <script src="/js/m4l-shell.js?v=95.1"></script>
   <script src="/js/m4l-timetable.js?v=92"></script>
-  <script src="/js/m4l-weekly-planner.js?v=95.2a"></script>
+  <script src="/js/m4l-weekly-planner.js?v=95.3"></script>
   <script src="/js/m4l-recorder.js?v=94.7"></script>
 <script src="/js/m4l-attendance.js?v=91.3"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
