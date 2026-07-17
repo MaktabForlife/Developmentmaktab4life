@@ -154,8 +154,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
   align-items: end;
-   column-gap: 10px;
-  gap: 4px 6px;
+  gap: 4px 10px;
   width: 100%;
   padding: 2px 6px 2px;
   border: 2px solid var(--surface-track);
@@ -195,12 +194,16 @@
   white-space: nowrap;
 }
 
-.weekly-planner-field input,
-.weekly-planner-field select {
+#weekly-planner-screen .weekly-planner-field input,
+#weekly-planner-screen .weekly-planner-field select {
+  display: block;
   width: 100%;
   min-width: 0;
-  min-height: 40px;
-  padding: 7px 4px;    /* padding: 4px 4px;*/
+  max-width: 100%;
+  height: 36px;
+  min-height: 36px;
+  margin: 0;
+  padding: 4px 7px;
   box-sizing: border-box;
   border: 2px solid var(--surface-track);
   border-radius: 8px;
@@ -209,6 +212,12 @@
   font: inherit;
   font-size: 0.84rem;
   -webkit-text-fill-color: var(--text);
+}
+
+#weekly-planner-screen .weekly-planner-field--week,
+#weekly-planner-screen .weekly-planner-field--group {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .weekly-planner-field input::placeholder {
@@ -478,18 +487,52 @@
   font-weight: 600;
 }
 
+@media (max-width: 767px) {
+  #weekly-planner-screen .weekly-planner-controls {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+    row-gap: 4px;
+    column-gap: 10px;
+  }
+
+  #weekly-planner-screen .weekly-planner-field--week,
+  #weekly-planner-screen .weekly-planner-field--group {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #weekly-planner-screen .weekly-planner-field input,
+  #weekly-planner-screen .weekly-planner-field select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 4px 7px;
+    box-sizing: border-box;
+  }
+}
+
 @media (min-width: 768px) {
   body:has(#weekly-planner-screen.active) .app-shell,
   body:has(#weekly-planner-preview-screen.active) .app-shell {
     max-width: 1240px;
   }
-
-  #weekly-planner-screen.screen,
+#weekly-planner-screen.screen {
+    padding: 14px;
+    background: var(--surfce-track);
+  }
+  
   #weekly-planner-preview-screen.screen {
     padding: 14px;
     background: var(--planner-page);
   }
 
+
+
+   
   .weekly-planner-mobile-copy {
     display: none;
   }
