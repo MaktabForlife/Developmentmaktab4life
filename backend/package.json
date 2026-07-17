@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:weekly-planner": "node tests/weekly-planner.test.mjs"
   },
   "devDependencies": {
