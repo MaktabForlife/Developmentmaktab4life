@@ -12,5 +12,16 @@
       "binding": "MEDIA_BUCKET",
       "bucket_name": "maktab4lifemedia"
     }
-  ]
+  ],
+  "env": {
+    "development": {
+      "name": "devrebootworker",
+      "r2_buckets": [
+        {
+          "binding": "MEDIA_BUCKET",
+          "bucket_name": "maktab4lifemedia"
+        }
+      ]
+    }
+  }
 }
