@@ -379,7 +379,7 @@
   border-bottom: 0;
 }
 
-.weekly-planner-period-subject,
+#weekly-planner-screen input.weekly-planner-period-subject,
 .weekly-planner-period-entries,
 .weekly-planner-feedback-row textarea {
   width: 100%;
@@ -390,8 +390,7 @@
   background: transparent;
   font: inherit;
 }
-
-.weekly-planner-period-subject,
+#weekly-planner-screen input.weekly-planner-period-subject,
 .weekly-planner-feedback-row label {
   min-height: 20px;
   margin: 0;
