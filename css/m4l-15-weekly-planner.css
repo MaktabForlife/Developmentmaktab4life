@@ -1,4 +1,4 @@
-/* M4L v95.2 Weekly Planner
+/* M4L v95.2a Weekly Planner
    Mobile uses one compact swipe card. Medium and large screens show all four
    equal day cards in one row. The generated planner image is unchanged. */
 
@@ -156,9 +156,8 @@
   align-items: end;
   gap: 4px 6px;
   width: 100%;
-  padding: 4px 6px 6px;
-  box-sizing: border-box;
-  background: var(--surface-card);
+  padding: 2px 6px 2px;
+  border: 2px solid var(--surface-track);
 }
 
 .weekly-planner-field {
@@ -221,6 +220,12 @@
   background: var(--surface-card);
   color: var(--text);
   -webkit-text-fill-color: var(--text);
+
+}
+
+#weekly-planner-week,
+#weekly-planner-group {
+  background: var(--surface-card);
 }
 
 .weekly-planner-message {
@@ -286,7 +291,7 @@
 }
 
 .weekly-planner-screen .weekly-planner-dot.is-active {
-  background: var(--text);
+  background: var(--surface-chip);
   transform: scale(1.12);
 }
 
@@ -399,6 +404,17 @@
   color: color-mix(in srgb, var(--text) 48%, transparent);
 }
 
+#weekly-planner-screen input.weekly-planner-period-subject {
+  min-height: 20px;
+  margin: 0;
+  padding: 4px 8px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+
 .weekly-planner-period-entries,
 .weekly-planner-feedback-row textarea {
   min-height: 68px;
@@ -407,7 +423,7 @@
   color: var(--text);
   font-family: "Chalkboard SE", "Comic Sans MS", cursive;
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
 }
 
