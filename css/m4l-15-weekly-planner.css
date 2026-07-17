@@ -152,8 +152,9 @@
 
 .weekly-planner-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
   align-items: end;
+   column-gap: 10px;
   gap: 4px 6px;
   width: 100%;
   padding: 2px 6px 2px;
@@ -540,13 +541,17 @@
     white-space: normal;
   }
 
-  .weekly-planner-field input,
-  .weekly-planner-field select {
-    min-height: 42px;
-    padding: 7px 9px;
-    border-radius: 10px;
-    font-size: 0.92rem;
-  }
+  #weekly-planner-screen .weekly-planner-field input,
+#weekly-planner-screen .weekly-planner-field select {
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
+  margin: 0;
+  padding: 7px 9px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
 
   .weekly-planner-shell {
     padding-top: 10px;
