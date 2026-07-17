@@ -1,4 +1,4 @@
-/* M4L v95.3 Weekly Planner
+/* M4L v95.3.1 Weekly Planner
    Mobile uses one compact swipe card. Medium and large screens show all four
    equal day cards in one row. Preview font and ink colour are locally selectable. */
 
@@ -120,15 +120,15 @@
 }
 
 .weekly-planner-header-action--back {
-  --weekly-planner-header-icon: url('/icons/back.svg?v=95.3');
+  --weekly-planner-header-icon: url('/icons/back.svg?v=95.3.1');
 }
 
 .weekly-planner-header-action--save {
-  --weekly-planner-header-icon: url('/icons/save.svg?v=95.3');
+  --weekly-planner-header-icon: url('/icons/save.svg?v=95.3.1');
 }
 
 .weekly-planner-header-action--share {
-  --weekly-planner-header-icon: url('/icons/share.svg?v=95.3');
+  --weekly-planner-header-icon: url('/icons/share.svg?v=95.3.1');
 }
 
 .weekly-planner-preview-title-group {
@@ -171,8 +171,8 @@
   width: 22px;
   height: 22px;
   background: currentColor;
-  -webkit-mask: url('/icons/settings.svg?v=95.3') center / contain no-repeat;
-  mask: url('/icons/settings.svg?v=95.3') center / contain no-repeat;
+  -webkit-mask: url('/icons/settings.svg?v=95.3.1') center / contain no-repeat;
+  mask: url('/icons/settings.svg?v=95.3.1') center / contain no-repeat;
 }
 
 .weekly-planner-header-action__label {
@@ -607,7 +607,10 @@
 }
 
 .weekly-planner-color-option > span {
+  justify-content: flex-start;
+  padding-left: 12px;
   color: var(--weekly-planner-option-color, var(--text));
+  text-align: left;
 }
 
 .weekly-planner-color-option i {

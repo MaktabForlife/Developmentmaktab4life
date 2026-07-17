@@ -1,4 +1,4 @@
-/* M4L v95.3 Weekly Planner
+/* M4L v95.3.1 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -16,7 +16,7 @@ const WEEKLY_PLANNER_PREVIEW_STYLE_STORAGE_KEY = "m4l.weeklyPlanner.previewStyle
 
 const WEEKLY_PLANNER_PREVIEW_FONTS = Object.freeze({
   normal: Object.freeze({
-    label: "Std",
+    label: "Standard",
     family: "Arial, sans-serif"
   }),
   comic: Object.freeze({
@@ -34,7 +34,7 @@ const WEEKLY_PLANNER_PREVIEW_FONTS = Object.freeze({
 });
 
 const WEEKLY_PLANNER_PREVIEW_COLORS = Object.freeze({
-  normal: Object.freeze({ label: "Std", value: "var(--text)" }),
+  normal: Object.freeze({ label: "Standard", value: "var(--text)" }),
   violet: Object.freeze({ label: "Violet", value: "#a626aa" }),
   turquoise: Object.freeze({ label: "Turquoise", value: "#0066a1" }),
   navy: Object.freeze({ label: "Navy", value: "#000080" }),
@@ -1010,25 +1010,49 @@ async function renderWeeklyPlannerImage(model, previewStyleValue = weeklyPlanner
   context.font = "italic 800 32px Arial, sans-serif";
   context.fillText("REBOOT YOUR MAKTAB WEEKLY PLANNER", 274, 150);
 
-  context.font = "900 28px Arial, sans-serif";
+  context.font = "900 25px Arial, sans-serif";
   context.fillText("NAME OF MUALLIMA:", 274, 205);
-  context.fillText("MONTH:", 274, 252);
-  context.fillText("WEEK:", 725, 252);
-  context.fillText("GROUP:", 1080, 252);
+  context.fillText("MONTH:", 930, 205);
+  context.fillText("WEEK:", 274, 252);
+  context.fillText("GROUP:", 930, 252);
 
   context.fillStyle = colors.ink;
-  context.font = `700 30px ${colors.inkFont}`;
-  weeklyPlannerDrawTextBox(context, model.teacher?.teacherName || "", 610, 174, 710, 42, {
+  weeklyPlannerDrawTextBox(context, model.teacher?.teacherName || "", 575, 171, 325, 44, {
     color: colors.ink,
     fontFamily: colors.inkFont,
-    fontWeight: "700",
-    fontSize: 30,
+    fontWeight: "600",
+    fontSize: 34,
     minFontSize: 22,
-    lineHeight: 1.1
+    lineHeight: 1.08,
+    verticalAlign: "center"
   });
-  context.fillText(model.week?.month || "", 395, 252);
-  context.fillText(formatWeeklyPlannerRange(model.week), 845, 252);
-  context.fillText(String(model.groupNo || ""), 1215, 252);
+  weeklyPlannerDrawTextBox(context, model.week?.month || "", 1060, 175, 270, 40, {
+    color: colors.ink,
+    fontFamily: colors.inkFont,
+    fontWeight: "600",
+    fontSize: 30,
+    minFontSize: 20,
+    lineHeight: 1.08,
+    verticalAlign: "center"
+  });
+  weeklyPlannerDrawTextBox(context, formatWeeklyPlannerRange(model.week), 395, 222, 505, 40, {
+    color: colors.ink,
+    fontFamily: colors.inkFont,
+    fontWeight: "600",
+    fontSize: 30,
+    minFontSize: 20,
+    lineHeight: 1.08,
+    verticalAlign: "center"
+  });
+  weeklyPlannerDrawTextBox(context, String(model.groupNo || ""), 1060, 222, 270, 40, {
+    color: colors.ink,
+    fontFamily: colors.inkFont,
+    fontWeight: "600",
+    fontSize: 30,
+    minFontSize: 20,
+    lineHeight: 1.08,
+    verticalAlign: "center"
+  });
 
   const dayPanelWidth = 637;
   const dayPanelHeight = 650;
