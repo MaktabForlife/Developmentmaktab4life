@@ -5,7 +5,7 @@
   <title>Maktab4Life Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- M4L v95.1 Weekly Planner -->
+  <!-- M4L v95.2 Weekly Planner -->
     <!-- PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=95.1">
+<link rel="stylesheet" href="/styles.css?v=95.2-text">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -373,34 +373,34 @@
     </section>
 
 
-    <!-- WEEKLY PLANNER - V95.1 -->
+    <!-- WEEKLY PLANNER - V95.2 -->
     <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
-      <div class="weekly-planner-app-header" role="toolbar" aria-label="Weekly Planner actions">
-        <button
-          class="weekly-planner-header-action weekly-planner-header-action--back"
-          type="button"
-          onclick="showScreen('admin-academics')"
-          aria-label="Back to Admin"
-        >
-          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-          <span class="weekly-planner-header-action__label">Back</span>
-        </button>
+      <div class="weekly-planner-global-panel">
+        <div class="weekly-planner-app-header" role="toolbar" aria-label="Weekly Planner actions">
+          <button
+            class="weekly-planner-header-action weekly-planner-header-action--back"
+            type="button"
+            onclick="showScreen('admin-academics')"
+            aria-label="Back to Admin"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Back</span>
+          </button>
 
-        <h2>Weekly Planner</h2>
+          <h2>Weekly Planner</h2>
 
-        <button
-          id="weekly-planner-save"
-          class="weekly-planner-header-action weekly-planner-header-action--save"
-          type="button"
-          onclick="saveWeeklyPlannerAndPreview(this)"
-          aria-label="Save and preview weekly planner"
-        >
-          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-          <span class="weekly-planner-header-action__label" data-weekly-planner-save-label>Save &amp; Preview</span>
-        </button>
-      </div>
+          <button
+            id="weekly-planner-save"
+            class="weekly-planner-header-action weekly-planner-header-action--save"
+            type="button"
+            onclick="saveWeeklyPlannerAndPreview(this)"
+            aria-label="Save and preview weekly planner"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label" data-weekly-planner-save-label>Save &amp; Preview</span>
+          </button>
+        </div>
 
-      <div class="weekly-planner-shell">
         <section class="weekly-planner-controls" aria-label="Planner details">
           <label class="weekly-planner-field weekly-planner-field--teacher">
             <span>Name</span>
@@ -420,8 +420,12 @@
         </section>
 
         <p id="weekly-planner-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+        <input id="weekly-planner-feedback" type="hidden" value="" />
+      </div>
 
+      <div class="weekly-planner-shell">
         <div class="weekly-planner-rail-shell">
+          <div id="weekly-planner-dots" class="weekly-planner-dots" aria-label="Planner card position"></div>
           <div
             id="weekly-planner-rail"
             class="weekly-planner-rail"
@@ -431,24 +435,39 @@
           >
             <p class="helper-text">Loading weekly planner...</p>
           </div>
-          <div id="weekly-planner-dots" class="weekly-planner-dots" aria-label="Planner card position"></div>
         </div>
-
-        <section class="weekly-planner-feedback-card">
-          <label for="weekly-planner-feedback">Weekly feedback</label>
-          <textarea
-            id="weekly-planner-feedback"
-            rows="4"
-            placeholder="Teacher or administrator feedback"
-          ></textarea>
-        </section>
       </div>
     </section>
 
     <section id="weekly-planner-preview-screen" class="screen admin-theme weekly-planner-preview-screen">
-      <div class="nav-header weekly-planner-nav-header">
-        <h2>Planner Preview</h2>
-        <button class="small-btn" type="button" onclick="returnToWeeklyPlanner()">Back to Edit</button>
+      <div class="weekly-planner-app-header" role="toolbar" aria-label="Planner Preview actions">
+        <button
+          class="weekly-planner-header-action weekly-planner-header-action--back"
+          type="button"
+          onclick="returnToWeeklyPlanner()"
+          aria-label="Back to edit"
+        >
+          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+          <span class="weekly-planner-header-action__label">
+            <span class="weekly-planner-mobile-copy">Back</span>
+            <span class="weekly-planner-wide-copy">Back to Edit</span>
+          </span>
+        </button>
+
+        <h2>
+          <span class="weekly-planner-mobile-copy">PREVIEW</span>
+          <span class="weekly-planner-wide-copy">Planner Preview</span>
+        </h2>
+
+        <button
+          class="weekly-planner-header-action weekly-planner-header-action--share"
+          type="button"
+          onclick="shareWeeklyPlannerImage(this)"
+          aria-label="Share planner image"
+        >
+          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+          <span class="weekly-planner-header-action__label">Share</span>
+        </button>
       </div>
 
       <div class="weekly-planner-preview-shell">
@@ -461,10 +480,6 @@
 
         <p id="weekly-planner-preview-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
 
-        <div class="weekly-planner-preview-actions">
-          <button class="save-btn" type="button" onclick="shareWeeklyPlannerImage(this)">Share Image</button>
-          <button class="small-btn" type="button" onclick="downloadWeeklyPlannerImage()">Download PNG</button>
-        </div>
       </div>
     </section>
 
@@ -769,7 +784,7 @@
 <script src="/js/m4l-auth.js?v=87.2"></script>
 <script src="/js/m4l-shell.js?v=95.1"></script>
   <script src="/js/m4l-timetable.js?v=92"></script>
-  <script src="/js/m4l-weekly-planner.js?v=95.1"></script>
+  <script src="/js/m4l-weekly-planner.js?v=95.2"></script>
   <script src="/js/m4l-recorder.js?v=94.7"></script>
 <script src="/js/m4l-attendance.js?v=91.3"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
