@@ -1,4 +1,4 @@
-/* M4L v95.2a Weekly Planner
+/* M4L v95.2 Weekly Planner
    Mobile uses one compact swipe card. Medium and large screens show all four
    equal day cards in one row. The generated planner image is unchanged. */
 
@@ -198,8 +198,8 @@
 .weekly-planner-field select {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
-  padding: 4px 7px;
+  min-height: 40px;
+  padding: 7px 4px;    /* padding: 4px 4px;*/
   box-sizing: border-box;
   border: 2px solid var(--surface-track);
   border-radius: 8px;
