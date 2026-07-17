@@ -641,7 +641,7 @@ async function saveWeeklyPlannerAndPreview(button) {
     setWeeklyPlannerSaveButtonState(button, "Saving...", true);
   }
 
-  setWeeklyPlannerMessage("Saving the planner...", "");
+  setWeeklyPlannerMessage("", "");
 
   try {
     const result = await apiPost("/api/admin/weekly-planner/save", {
