@@ -1,4 +1,4 @@
-/* M4L v96.1-dev - Reusable direct Google Sheets client module.
+/* M4L v96.1-dev - Reusable direct Google Sheets client module. check this
    Baseline: stable development v96.0.
    Scope: preserve every route while extracting Google authentication and generic
    Sheets value operations for Wrangler to bundle into the deployed Worker.
