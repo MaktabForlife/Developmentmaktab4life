@@ -678,6 +678,54 @@
     max-width: 760px;
   }
 }
+/* Unified Weekly Planner header card — all screen sizes */
+#weekly-planner-screen .weekly-planner-global-panel {
+  display: grid;
+  gap: 0;
+  width: min(100%, var(--weekly-planner-max-width));
+  margin-inline: auto;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px solid var(--surface-track);
+  border-radius: 16px;
+  background: var(--surface-card);
+}
+
+#weekly-planner-screen
+.weekly-planner-global-panel
+.weekly-planner-app-header {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--surface-track);
+  border-radius: 0;
+  background: transparent;
+}
+
+#weekly-planner-screen
+.weekly-planner-global-panel
+.weekly-planner-controls {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Routine messages must not create a separate footer strip. */
+#weekly-planner-screen
+#weekly-planner-message:not(.error-message) {
+  display: none;
+}
+
+#weekly-planner-screen #weekly-planner-message.error-message {
+  display: block;
+  margin: 0;
+  padding: 4px 8px;
+  background: transparent;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   .weekly-planner-rail {
