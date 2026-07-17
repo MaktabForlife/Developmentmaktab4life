@@ -516,6 +516,31 @@
   }
 }
 
+#weekly-planner-screen #weekly-planner-week {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+ #weekly-planner-screen .weekly-planner-field--group > span {
+  position: static;
+  width: auto;
+  height: auto;
+  padding-left: 2px;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+  /* visibility: hidden; */
+}
+
+
+
 @media (min-width: 768px) {
   body:has(#weekly-planner-screen.active) .app-shell,
   body:has(#weekly-planner-preview-screen.active) .app-shell {
