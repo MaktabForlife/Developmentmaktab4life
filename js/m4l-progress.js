@@ -1,4 +1,8 @@
-/* M4L v93.6.1 - Individual Progress header controls
+/* M4L v96.0 - Atomic progress batch handling
+   A server-rejected batch now stops without retrying its rows individually,
+   preserving the Apps Script all-or-nothing validation boundary.
+
+   M4L v93.6.1 - Individual Progress header controls
    Replaces the Admin Individual numbered stepper and arrows with synchronized
    swipe dots, left-aligns the student name, and adds a labelled back.svg return
    action. The v93.6 architecture consolidation remains the functional baseline.
@@ -4561,6 +4565,14 @@ async function postProgressUpdatesWithBatchFallback(endpoint, batchUpdates, sing
       batchError = batchResult && batchResult.error
         ? String(batchResult.error)
         : `Could not save ${label} updates as a batch.`;
+
+      setProgressBatchEndpointSupport(endpoint, "supported");
+      return {
+        success: false,
+        error: batchError,
+        batchError,
+        batchRejected: true
+      };
     } catch (err) {
       batchError = err && err.message ? err.message : String(err || "Batch save failed");
     }
@@ -4569,7 +4581,12 @@ async function postProgressUpdatesWithBatchFallback(endpoint, batchUpdates, sing
       setProgressBatchEndpointSupport(endpoint, "disabled");
       console.warn(`Progress ${label} batch endpoint is not available; using single-update fallback for this session.`, batchError);
     } else {
-      console.warn(`Progress ${label} batch save failed; retrying individual saves.`, batchError);
+      console.warn(`Progress ${label} batch save failed; no individual updates were attempted.`, batchError);
+      return {
+        success: false,
+        error: batchError || `Could not save ${label} updates as a batch.`,
+        batchError
+      };
     }
   }
 
