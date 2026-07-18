@@ -7,7 +7,7 @@ import { getAuthUser } from "../lib/auth.js";
 import { json } from "../lib/http.js";
 
 /* =========================
-   WEEKLY PLANNERS - V95.0
+   WEEKLY PLANNERS - V96.3
    Direct Google Sheets API path. Existing Apps Script routes remain unchanged.
 ========================= */
 
@@ -183,8 +183,23 @@ export async function saveWeeklyPlannerEndpoint(request, env) {
     })
     .sort(compareWeeklyPlannerRecordsNewestFirst)[0] || null;
   const expectedUpdatedDate = String(body.expectedUpdatedDate || "").trim();
+  const expectedExistsProvided = Object.prototype.hasOwnProperty.call(body, "expectedExists");
+  const expectedExists = body.expectedExists === true || String(body.expectedExists).toLowerCase() === "true";
 
-  if (existing && expectedUpdatedDate && existing.updatedDate !== expectedUpdatedDate) {
+  if (expectedExistsProvided && expectedExists !== !!existing) {
+    return json({
+      success: false,
+      error: "This planner was created or removed by someone else. Reload it before saving.",
+      conflict: true,
+      planner: existing ? getWeeklyPlannerClientRecord(existing) : null
+    }, 409);
+  }
+
+  if (
+    existing &&
+    (expectedExistsProvided || expectedUpdatedDate) &&
+    existing.updatedDate !== expectedUpdatedDate
+  ) {
     return json({
       success: false,
       error: "This planner was updated by someone else. Reload it before saving.",
@@ -518,4 +533,3 @@ function isGoogleSheetTrue(value) {
   return new Set(["true", "yes", "1", "active"])
     .has(String(value || "").trim().toLowerCase());
 }
-
