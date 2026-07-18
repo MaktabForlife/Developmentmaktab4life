@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Maktab4Life Student</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- M4L v93.1: Recorder and Cache -->
+
+  <!-- M4L v87.1: PWA Level 1 install metadata -->
+  <meta name="theme-color" content="#C26FBA" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="M4L Student" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <!-- PWA: Student install settings -->
+  <link rel="stylesheet" href="/styles.css?v=95.2b"/>
+  <link rel="manifest" href="/student-manifest.json" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/student-apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/student-favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/student-favicon-16x16.png" />
+
+</head>
+
+<body>
+  <main class="app-shell">
+
+    <!-- LOGIN / PIN SCREEN -->
+    <section id="auth-screen" class="screen active">
+      <div id="auth-welcome-banner" class="auth-welcome-banner hidden">
+        Ahlan wa Sahlan
+      </div>
+
+      <div class="auth-brand-block">
+        <h2 class="auth-brand-title">Maktabhelper</h2>
+        <img src="/logo.png" alt="Maktabhelper Logo" class="app-logo auth-logo" />
+        <h2 class="auth-brand-title">Reboot Your Maktab</h2>
+        <p id="portal-title" class="auth-login-label">Student Login</p>
+        <p id="portal-subtitle" class="subtitle auth-user-subtitle">Checking your link...</p>
+      </div>
+
+      <div id="setup-pin-box" class="auth-box hidden">
+        <h2>Create PIN</h2>
+        <ol class="pin-instruction-list">
+          <li>Create a memorable PIN.</li>
+          <li>Login with your PIN.</li>
+          <li>Add the page to your Homescreen.</li>
+        </ol>
+
+        <div class="pin-digit-row" data-pin-group="setup-pin" aria-label="Create 4-digit PIN">
+          <input id="setup-pin-1" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
+          <input id="setup-pin-2" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 2" />
+          <input id="setup-pin-3" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 3" />
+          <input id="setup-pin-4" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="done" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 4" />
+        </div>
+        <input id="setup-pin" type="hidden" />
+
+        <button onclick="submitSetupPin()">Set PIN</button>
+      </div>
+
+      <div id="login-pin-box" class="auth-box hidden">
+        <h2>Enter PIN</h2>
+        <p class="helper-text">Enter your PIN to continue.</p>
+
+        <div class="pin-digit-row" data-pin-group="login-pin" aria-label="Enter 4-digit PIN">
+          <input id="login-pin-1" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 1" />
+          <input id="login-pin-2" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 2" />
+          <input id="login-pin-3" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="next" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 3" />
+          <input id="login-pin-4" class="pin-digit" type="tel" inputmode="numeric" enterkeyhint="done" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit 4" />
+        </div>
+        <input id="login-pin" type="hidden" />
+      </div>
+
+      <p id="auth-error" class="error-message"></p>
+    </section>
+
+    <!-- STUDENT HOME -->
+    <section id="student-home" class="screen student-theme">
+      <div class="top-bar">
+        <div>
+          <h2 id="student-home-title">Student</h2>
+          <p id="student-welcome" class="mini-text">Student Home page</p>
+        </div>
+        <button class="small-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div id="student-home-stack" class="home-stack student-home-panel" data-home-stack="student" aria-label="Student home content">
+        <section id="student-home-duas-panel" class="home-section home-duas-section" aria-label="Class duas">
+          <p class="helper-text">Loading class duas...</p>
+        </section>
+
+        <section class="home-section home-icons-section" aria-label="Student home app icons">
+          <div aria-label="Student home app icons" class="home-cover-icon-grid home-cover-icon-grid--student">
+          <button class="home-cover-icon-btn is-home-active" aria-current="page" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph home-cover-icon-glyph--home"></span>
+          </span>
+          <span class="home-cover-icon-label">Home</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="record" data-cover-home-role="student" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">VoiceNote</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="library" data-cover-home-role="student" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Library</span>
+          </button>
+          <button class="home-cover-icon-btn" data-cover-home-nav="progress" data-cover-home-role="student" type="button">
+          <span aria-hidden="true" class="home-cover-icon-tile">
+          <span class="home-cover-icon-glyph"></span>
+          </span>
+          <span class="home-cover-icon-label">Progress</span>
+          </button>
+          </div>
+        </section>
+
+        <section class="home-section home-timetable-section" aria-label="Timetable">
+          <section class="timetable-card">
+          <div class="timetable-card-header">
+          <h3>Reboot Your Maktab</h3>
+          <button aria-label="Refresh timetable" class="small-btn manual-refresh-btn" onclick="refreshStudentHomeTimetable(this)" title="Refresh timetable" type="button">
+          <span aria-hidden="true" class="manual-refresh-btn__icon"></span>
+          <span class="visually-hidden">Refresh timetable</span>
+          </button>
+          </div>
+          <div id="student-timetable-content">
+          <p class="helper-text">Loading timetable...</p>
+          </div>
+          </section>
+        </section>
+      </div>
+    </section>
+
+<!-- STUDENT TASKS -->
+    <section id="student-tasks" class="screen student-theme">
+      <div class="nav-header">
+        <h2>My Tasks</h2>
+        <button class="small-btn" onclick="showScreen('student-home')">Back</button>
+      </div>
+
+      <div id="student-task-list" class="list-stack">
+        <p class="helper-text">Loading tasks...</p>
+      </div>
+    </section>
+
+    <!-- STUDENT LIBRARY -->
+    <section id="student-resources-subjects" class="screen student-theme">
+      <div id="student-resource-subject-list" class="list-stack">
+        <p class="helper-text">Loading resources...</p>
+      </div>
+    </section>
+<!-- STUDENT PROGRESS -->
+<!-- M4L v93.3: active Student Progress root retained; confirmed legacy drilldown paths removed. -->
+<section id="progress-subjects-screen" class="screen student-theme">
+  <div class="nav-header">
+    <h2 id="progress-subjects-title">Progress</h2>
+    <button class="small-btn" onclick="showScreen('student-home')">Back</button>
+  </div>
+
+  <div id="progress-subjects-list" class="student-progress-root" aria-live="polite">
+    <p class="helper-text">Loading tasks...</p>
+  </div>
+</section>
+
+
+
+<!-- RECORD LESSON -->
+<!-- V92.4: compatibility fallback; shared recorder JavaScript replaces this mount at initialization. -->
+<section
+  id="record-lesson-screen"
+  class="screen student-theme m4l-recorder-screen"
+  data-m4l-recorder-role="student"
+>
+  <div class="m4l-recorder-root" data-m4l-recorder-root>
+
+    <!-- PAGE SELECTOR -->
+    <section
+      id="m4l-recorder-page-select"
+      class="m4l-recorder-view m4l-recorder-view--pages active"
+      aria-labelledby="m4l-recorder-title"
+    >
+      <h2 id="m4l-recorder-title" class="m4l-recorder-title">
+        RECORD &amp; SHARE
+      </h2>
+
+      <div class="m4l-recorder-book-card">
+        <label class="visually-hidden" for="m4l-recorder-book-select">
+          Select your kitaab
+        </label>
+
+        <select
+          id="m4l-recorder-book-select"
+          class="m4l-recorder-book-select"
+          aria-label="Select your kitaab"
+        >
+          <option value="">Loading image sets...</option>
+        </select>
+
+        <p class="m4l-recorder-selector-label" aria-hidden="true">
+          Select Your Kitaab
+        </p>
+
+        <input
+          id="m4l-recorder-page-upload"
+          class="visually-hidden"
+          type="file"
+          accept="image/*"
+          multiple
+        />
+      </div>
+
+      <p
+        id="m4l-recorder-status"
+        class="m4l-recorder-status helper-text"
+        role="status"
+        aria-live="polite"
+      >
+        Loading image sets...
+      </p>
+
+      <div
+        id="m4l-recorder-page-grid"
+        class="m4l-recorder-page-grid"
+        aria-label="Available reader pages"
+      ></div>
+    </section>
+
+    <!-- RECORD VIEW -->
+    <section
+      id="m4l-recorder-record-view"
+      class="m4l-recorder-view m4l-recorder-view--record"
+      aria-labelledby="m4l-recorder-record-title"
+    >
+      <div class="m4l-recorder-view-header m4l-recorder-view-header--clean">
+        <h2
+          id="m4l-recorder-record-title"
+          class="m4l-recorder-view-title"
+        >
+          Record
+        </h2>
+
+        <button
+          id="m4l-recorder-back-to-pages"
+          class="m4l-recorder-back-icon-btn"
+          type="button"
+          aria-label="Return to page selector"
+          title="Return to page selector"
+        >
+          <span
+            class="m4l-recorder-back-icon"
+            aria-hidden="true"
+          ></span>
+
+          <span class="m4l-recorder-back-label">
+            Return to page selector
+          </span>
+        </button>
+      </div>
+
+      <div class="m4l-recorder-reader-frame">
+        <canvas
+          id="m4l-recorder-canvas"
+          aria-label="Selected reader page"
+        ></canvas>
+      </div>
+
+      <div
+        class="m4l-recorder-controls"
+        aria-label="Recording controls"
+      >
+        <button
+          id="m4l-recorder-record-btn"
+          class="m4l-recorder-record-action"
+          type="button"
+          aria-label="Start recording"
+        >
+          <img
+            class="m4l-recorder-native-icon"
+            src="/icons/record.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span class="m4l-recorder-record-label">
+            Record
+          </span>
+        </button>
+
+        <button
+          id="m4l-recorder-stop-btn"
+          class="m4l-recorder-record-action"
+          type="button"
+          aria-label="Stop recording"
+          hidden
+        >
+          <img
+            class="m4l-recorder-native-icon"
+            src="/icons/stoprecord.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span class="m4l-recorder-record-meta">
+            Stop Recording in :
+            <output
+              id="m4l-recorder-countdown"
+              aria-live="polite"
+            >
+              02:00
+            </output>
+          </span>
+        </button>
+
+        <p
+          id="m4l-recorder-helper"
+          class="m4l-recorder-helper helper-text"
+        >
+          Microphone permission will be requested when you tap Record.
+        </p>
+      </div>
+    </section>
+
+    <!-- PREVIEW VIEW -->
+    <section
+      id="m4l-recorder-preview-view"
+      class="m4l-recorder-view m4l-recorder-view--preview"
+      aria-labelledby="m4l-recorder-preview-title"
+    >
+      <div class="m4l-recorder-view-header m4l-recorder-view-header--clean">
+        <h2
+          id="m4l-recorder-preview-title"
+          class="m4l-recorder-view-title"
+        >
+          Preview
+        </h2>
+
+        <button
+          id="m4l-recorder-preview-pages"
+          class="m4l-recorder-back-icon-btn"
+          type="button"
+          aria-label="Return to page selector"
+          title="Return to page selector"
+        >
+          <span
+            class="m4l-recorder-back-icon"
+            aria-hidden="true"
+          ></span>
+
+          <span class="m4l-recorder-back-label">
+            Return to page selector
+          </span>
+        </button>
+      </div>
+
+      <video
+        id="m4l-recorder-preview-video"
+        class="m4l-recorder-preview-video"
+        controls
+        playsinline
+      ></video>
+
+      <p
+        id="m4l-recorder-recording-meta"
+        class="m4l-recorder-helper helper-text"
+      >
+        Review before sharing.
+      </p>
+
+      <div
+        class="m4l-recorder-preview-actions"
+        aria-label="Recording actions"
+      >
+        <button
+          id="m4l-recorder-rerecord-btn"
+          class="m4l-recorder-preview-action"
+          type="button"
+        >
+          <img
+            class="m4l-recorder-preview-icon"
+            src="/icons/cancelredo.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span>Redo</span>
+        </button>
+
+        <button
+          id="m4l-recorder-share-btn"
+          class="m4l-recorder-preview-action"
+          type="button"
+        >
+          <img
+            class="m4l-recorder-preview-icon"
+            src="/icons/share.svg"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span>Share</span>
+        </button>
+      </div>
+    </section>
+
+  </div>
+</section>
+
+
+<!-- PDF VIEWER -->
+    <section id="pdf-viewer-screen" class="screen student-theme">
+     <div class="nav-header pdf-viewer-header">
+  <button
+    type="button"
+    class="pdf-viewer-icon-btn pdf-direct-btn"
+    onclick="openCurrentPdfDirect()"
+    aria-label="Open PDF outside the app"
+    title="Open PDF"
+  >
+    <span class="app-icon pdf-open-icon" aria-hidden="true"></span>
+    <span class="pdf-viewer-icon-label">OPEN</span>
+  </button>
+
+  <h2 id="pdf-viewer-title">PDF Viewer</h2>
+
+  <div class="pdf-viewer-actions">
+    <button
+      type="button"
+      class="pdf-viewer-icon-btn"
+      onclick="closePdfViewer()"
+      aria-label="Back to the library"
+      title="Back"
+    >
+      <span class="app-icon pdf-back-icon" aria-hidden="true"></span>
+      <span class="pdf-viewer-icon-label">BACK</span>
+    </button>
+  </div>
+</div>
+      <iframe
+        id="pdf-viewer-frame"
+        class="pdf-viewer-frame"
+        title="PDF Viewer"
+      ></iframe>
+    </section>
+
+    <!-- PLACEHOLDER SCREEN -->
+    <section id="placeholder-screen" class="screen">
+      <div class="nav-header">
+        <h2 id="placeholder-title">Screen</h2>
+        <button class="small-btn" onclick="goHome()">Back</button>
+      </div>
+
+      <div class="dashboard-section">
+        <p class="helper-text">This screen will be connected next.</p>
+      </div>
+    </section>
+
+    <nav id="bottom-nav" class="bottom-nav hidden" aria-label="Primary navigation"></nav>
+
+  </main>
+<script src="/js/m4l-dom.js?v=11"></script>
+<script src="/js/m4l-config.js?v=94.1"></script>
+<script src="/app.js?v=94.1"></script>
+<script src="/js/m4l-cache.js?v=94.6"></script>
+<script src="/js/m4l-auth.js?v=87.2"></script>
+<script src="/js/m4l-shell.js?v=93.0"></script>
+<script src="/js/m4l-timetable.js?v=92"></script>
+<script src="/js/m4l-recorder.js?v=94.7"></script>
+<script src="/js/m4l-resources.js?v=94.6"></script>
+<script src="/js/m4l-progress.js?v=96.2.1"></script>
+</body>
+</html>
