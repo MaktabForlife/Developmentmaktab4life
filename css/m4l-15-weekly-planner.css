@@ -328,17 +328,17 @@
 
 .weekly-planner-screen .weekly-planner-dot {
   flex: 0 0 9px;
-  width: 9px;
+  width: 7px;
   min-width: 9px;
   max-width: 9px;
-  height: 9px;
+  height: 10px;
   min-height: 9px;
   max-height: 9px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-card) 62%, transparent);
+  background: var(--surface-app);
   box-shadow: none;
 }
 
@@ -347,7 +347,7 @@
 }
 
 .weekly-planner-screen .weekly-planner-dot.is-active {
-  background: var(--surface-chip);
+  background: var(--banner);
   transform: scale(1.12);
 }
 
