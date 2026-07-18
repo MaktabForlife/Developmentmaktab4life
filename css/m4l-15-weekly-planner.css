@@ -328,10 +328,10 @@
 
 .weekly-planner-screen .weekly-planner-dot {
   flex: 0 0 9px;
-  width: 7px;
+  width: 9px;
   min-width: 9px;
   max-width: 9px;
-  height: 10px;
+  height: 9px;
   min-height: 9px;
   max-height: 9px;
   margin: 0;
@@ -347,7 +347,7 @@
 }
 
 .weekly-planner-screen .weekly-planner-dot.is-active {
-  background: var(--banner);
+  background: var(--surface-contrast);
   transform: scale(1.12);
 }
 
