@@ -1,0 +1,123 @@
+import assert from "node:assert/strict";
+import { ROUTE_PATHS } from "../src/router.js";
+import worker from "../src/worker.js";
+
+const expectedPaths = [
+  "/api/resources/list",
+  "/api/student/resources/list",
+  "/api/admin/resources/list",
+  "/api/timetable/get",
+  "/api/student/timetable/get",
+  "/api/admin/timetable/get",
+  "/api/admin/timetable/update-zoom",
+  "/api/admin/weekly-planner/health",
+  "/api/admin/weekly-planner/teachers",
+  "/api/admin/weekly-planner/get",
+  "/api/admin/weekly-planner/save",
+  "/api/admin/check-admin",
+  "/api/admin/setup-pin",
+  "/api/admin/login",
+  "/api/admin/reset-pin",
+  "/api/check-student",
+  "/api/setup-pin",
+  "/api/login",
+  "/api/attendance/submit-absent",
+  "/api/attendance/students",
+  "/api/attendance/report",
+  "/api/admin/check-student-duplicate",
+  "/api/admin/register-student",
+  "/api/admin/update-student",
+  "/api/admin/students/search",
+  "/api/admin/search-students",
+  "/api/admin/student/search",
+  "/api/admin/students/assignment-options",
+  "/api/admin/subjects/create",
+  "/api/admin/subjects/list",
+  "/api/admin/subjects/update",
+  "/api/admin/subject-resources/create",
+  "/api/admin/subject-resources/list",
+  "/api/admin/subject-resources/update",
+  "/api/admin/tasks/create",
+  "/api/admin/tasks/list",
+  "/api/admin/tasks/update",
+  "/api/admin/tasks/assign",
+  "/api/admin/tasks/verify",
+  "/api/tasks/student",
+  "/api/tasks/update-complete",
+  "/api/progress/tasks",
+  "/api/progress/task-detail"
+];
+
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain every V96.1 API path and alias");
+
+const root = await worker.fetch(new Request("https://worker.test/"), {});
+assert.equal(root.status, 200);
+assert.deepEqual(await root.json(), {
+  success: true,
+  service: "rebootworker",
+  version: "2.1"
+});
+
+const preflight = await worker.fetch(new Request("https://worker.test/api/login", {
+  method: "OPTIONS"
+}), {});
+assert.equal(preflight.status, 200);
+assert.equal(preflight.headers.get("Access-Control-Allow-Origin"), "*");
+
+const notFound = await worker.fetch(new Request("https://worker.test/not-a-route"), {});
+assert.equal(notFound.status, 404);
+assert.deepEqual(await notFound.json(), { success: false, error: "Not found" });
+
+const originalFetch = globalThis.fetch;
+let proxiedPayload = null;
+
+globalThis.fetch = async (input, init = {}) => {
+  assert.equal(String(input), "https://script.example.test/exec");
+  proxiedPayload = JSON.parse(init.body);
+  return response({
+    student: {
+      studentid: "STUDENT1",
+      username: "Test Student",
+      classgroup: "1",
+      pinsetup: true,
+      active: true
+    }
+  });
+};
+
+try {
+  const checkStudent = await worker.fetch(new Request("https://worker.test/api/check-student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uniqueid: "TEST-LINK" })
+  }), {
+    APPS_SCRIPT_URL: "https://script.example.test/exec"
+  });
+
+  assert.equal(checkStudent.status, 200);
+  assert.deepEqual(proxiedPayload, {
+    action: "getStudentByUniqueId",
+    uniqueid: "TEST-LINK"
+  });
+  assert.deepEqual(await checkStudent.json(), {
+    success: true,
+    student: {
+      studentid: "STUDENT1",
+      username: "Test Student",
+      classgroup: "1",
+      pinsetup: true
+    }
+  });
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
+console.log("Worker router tests passed.");
+
+function response(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
