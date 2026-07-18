@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy --keep-vars",
+    "deploy": "wrangler deploy --env=\"\" --keep-vars",
     "deploy:development": "wrangler deploy --env development --keep-vars",
     "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:weekly-planner": "node tests/weekly-planner.test.mjs"
