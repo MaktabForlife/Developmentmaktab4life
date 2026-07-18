@@ -118,7 +118,8 @@ const saved = await callWorker("/api/admin/weekly-planner/save", {
   groupNo: "2",
   status: "READY",
   plannerData,
-  feedback: "Good preparation"
+  feedback: "Good preparation",
+  expectedExists: false
 }, token);
 assert.equal(saved.status, 200);
 assert.equal(saved.data.planner.status, "READY");
@@ -135,6 +136,35 @@ assert.equal(
   "New planners must not POST to the ordinary values range endpoint"
 );
 
+const creationConflict = await callWorker("/api/admin/weekly-planner/save", {
+  teacherId: "ADMIN1",
+  weekStart: "2026-07-13",
+  groupNo: "2",
+  status: "READY",
+  plannerData,
+  expectedUpdatedDate: "",
+  expectedExists: false
+}, token);
+assert.equal(creationConflict.status, 409);
+assert.equal(creationConflict.data.conflict, true);
+assert.equal(
+  creationConflict.data.planner.plannerId,
+  saved.data.planner.plannerId,
+  "A client that loaded an absent planner must not overwrite a planner created meanwhile"
+);
+
+const missingConflict = await callWorker("/api/admin/weekly-planner/save", {
+  teacherId: "ADMIN1",
+  weekStart: "2026-07-20",
+  groupNo: "2",
+  status: "READY",
+  plannerData,
+  expectedUpdatedDate: saved.data.planner.updatedDate,
+  expectedExists: true
+}, token);
+assert.equal(missingConflict.status, 409);
+assert.equal(missingConflict.data.conflict, true);
+
 await new Promise(resolve => setTimeout(resolve, 2));
 const updated = await callWorker("/api/admin/weekly-planner/save", {
   teacherId: "ADMIN1",
@@ -143,7 +173,8 @@ const updated = await callWorker("/api/admin/weekly-planner/save", {
   status: "READY",
   plannerData,
   feedback: "Updated preparation",
-  expectedUpdatedDate: saved.data.planner.updatedDate
+  expectedUpdatedDate: saved.data.planner.updatedDate,
+  expectedExists: true
 }, token);
 assert.equal(updated.status, 200);
 assert.equal(weeklyRows.length, 2, "Updating must not append another planner row");
@@ -158,7 +189,8 @@ const conflict = await callWorker("/api/admin/weekly-planner/save", {
   groupNo: "2",
   status: "READY",
   plannerData,
-  expectedUpdatedDate: saved.data.planner.updatedDate
+  expectedUpdatedDate: saved.data.planner.updatedDate,
+  expectedExists: true
 }, token);
 assert.equal(conflict.status, 409);
 assert.equal(conflict.data.conflict, true);

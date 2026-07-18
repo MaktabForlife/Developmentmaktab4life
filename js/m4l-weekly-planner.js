@@ -1,4 +1,4 @@
-/* M4L v95.3.1 Weekly Planner
+/* M4L v96.3 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -48,6 +48,7 @@ const WEEKLY_PLANNER_DEFAULT_PREVIEW_STYLE = Object.freeze({
 
 const weeklyPlannerState = {
   initialized: false,
+  initializePromise: null,
   eventsBound: false,
   loadingSequence: 0,
   teachers: [],
@@ -58,6 +59,12 @@ const weeklyPlannerState = {
   plannerData: null,
   feedback: "",
   expectedUpdatedDate: "",
+  expectedPlannerExists: false,
+  screenReady: false,
+  loadedKey: "",
+  loadPromise: null,
+  loadPromiseKey: "",
+  dirty: false,
   activeCardIndex: 0,
   scrollFrame: 0,
   previewDataUrl: "",
@@ -85,29 +92,43 @@ async function initializeWeeklyPlanner() {
   }
 
   if (!weeklyPlannerState.initialized) {
-    setWeeklyPlannerMessage("Checking the planner connection...", "");
-
-    const [health, teacherResult] = await Promise.all([
-      apiPost("/api/admin/weekly-planner/health", {}, state.token),
-      apiPost("/api/admin/weekly-planner/teachers", {}, state.token)
-    ]);
-
-    if (!health.success) {
-      throw new Error(health.error || health.detail || "The WeeklyPlanners sheet is not available.");
+    if (!weeklyPlannerState.initializePromise) {
+      weeklyPlannerState.initializePromise = bootstrapWeeklyPlanner();
     }
 
-    if (!teacherResult.success) {
-      throw new Error(teacherResult.error || "Unable to load teachers.");
+    try {
+      await weeklyPlannerState.initializePromise;
+    } finally {
+      weeklyPlannerState.initializePromise = null;
     }
-
-    weeklyPlannerState.teachers = Array.isArray(teacherResult.teachers)
-      ? teacherResult.teachers
-      : [];
-    renderWeeklyPlannerTeacherOptions();
-    weeklyPlannerState.initialized = true;
   }
 
-  await loadWeeklyPlanner();
+  if (!canReuseWeeklyPlannerSession()) {
+    await loadWeeklyPlanner({ confirmDiscard: false });
+  }
+}
+
+async function bootstrapWeeklyPlanner() {
+  setWeeklyPlannerMessage("Checking the planner connection...", "");
+
+  const [health, teacherResult] = await Promise.all([
+    apiPost("/api/admin/weekly-planner/health", {}, state.token),
+    apiPost("/api/admin/weekly-planner/teachers", {}, state.token)
+  ]);
+
+  if (!health.success) {
+    throw new Error(health.error || health.detail || "The WeeklyPlanners sheet is not available.");
+  }
+
+  if (!teacherResult.success) {
+    throw new Error(teacherResult.error || "Unable to load teachers.");
+  }
+
+  weeklyPlannerState.teachers = Array.isArray(teacherResult.teachers)
+    ? teacherResult.teachers
+    : [];
+  renderWeeklyPlannerTeacherOptions();
+  weeklyPlannerState.initialized = true;
 }
 
 function bindWeeklyPlannerEvents() {
@@ -116,12 +137,18 @@ function bindWeeklyPlannerEvents() {
   weeklyPlannerState.eventsBound = true;
   const teacherSelect = document.getElementById("weekly-planner-teacher");
   const weekInput = document.getElementById("weekly-planner-week");
+  const groupInput = document.getElementById("weekly-planner-group");
   const rail = document.getElementById("weekly-planner-rail");
   const dots = document.getElementById("weekly-planner-dots");
 
   if (teacherSelect) {
     teacherSelect.addEventListener("change", () => {
-      loadWeeklyPlanner().catch(error => {
+      if (!confirmWeeklyPlannerDiscard()) {
+        teacherSelect.value = String(weeklyPlannerState.teacher?.teacherId || "");
+        return;
+      }
+
+      loadWeeklyPlanner({ confirmDiscard: false }).catch(error => {
         setWeeklyPlannerMessage(error.message || "Unable to load the selected teacher.", "error");
       });
     });
@@ -130,9 +157,20 @@ function bindWeeklyPlannerEvents() {
   if (weekInput) {
     weekInput.addEventListener("change", () => {
       weekInput.value = getWeeklyPlannerWeekMeta(weekInput.value).weekStart;
-      loadWeeklyPlanner().catch(error => {
+      if (!confirmWeeklyPlannerDiscard()) {
+        weekInput.value = String(weeklyPlannerState.week?.weekStart || getWeeklyPlannerWeekMeta().weekStart);
+        return;
+      }
+
+      loadWeeklyPlanner({ confirmDiscard: false }).catch(error => {
         setWeeklyPlannerMessage(error.message || "Unable to load the selected week.", "error");
       });
+    });
+  }
+
+  if (groupInput) {
+    groupInput.addEventListener("input", () => {
+      weeklyPlannerState.dirty = true;
     });
   }
 
@@ -179,7 +217,7 @@ function renderWeeklyPlannerTeacherOptions() {
   weeklyPlannerState.teachers = teachers;
 }
 
-async function loadWeeklyPlanner() {
+async function loadWeeklyPlanner(options = {}) {
   const teacher = getSelectedWeeklyPlannerTeacher();
   const weekInput = document.getElementById("weekly-planner-week");
 
@@ -188,20 +226,48 @@ async function loadWeeklyPlanner() {
   }
 
   const week = getWeeklyPlannerWeekMeta(weekInput ? weekInput.value : "");
-  const loadSequence = ++weeklyPlannerState.loadingSequence;
+  const loadKey = getWeeklyPlannerSessionKey(teacher, week);
 
-  weeklyPlannerState.teacher = teacher;
-  weeklyPlannerState.week = week;
-  weeklyPlannerState.activeCardIndex = 0;
-  renderWeeklyPlannerLoadingState();
-  setWeeklyPlannerMessage("Loading planner and timetable...", "");
+  if (weeklyPlannerState.loadPromise && weeklyPlannerState.loadPromiseKey === loadKey) {
+    return weeklyPlannerState.loadPromise;
+  }
+
+  if (options.confirmDiscard !== false && !confirmWeeklyPlannerDiscard()) {
+    return false;
+  }
+
+  const loadPromise = performWeeklyPlannerLoad(teacher, week, loadKey);
+  weeklyPlannerState.loadPromise = loadPromise;
+  weeklyPlannerState.loadPromiseKey = loadKey;
+
+  try {
+    return await loadPromise;
+  } finally {
+    if (weeklyPlannerState.loadPromise === loadPromise) {
+      weeklyPlannerState.loadPromise = null;
+      weeklyPlannerState.loadPromiseKey = "";
+    }
+  }
+}
+
+async function performWeeklyPlannerLoad(teacher, week, loadKey) {
+  const loadSequence = ++weeklyPlannerState.loadingSequence;
+  const retainExistingView = canReuseWeeklyPlannerSession(teacher, week);
+
+  if (retainExistingView) {
+    setWeeklyPlannerMessage("Refreshing planner...", "");
+  } else {
+    weeklyPlannerState.activeCardIndex = 0;
+    renderWeeklyPlannerLoadingState();
+    setWeeklyPlannerMessage("Loading planner and timetable...", "");
+  }
 
   const result = await apiPost("/api/admin/weekly-planner/get", {
     teacherId: teacher.teacherId,
     weekStart: week.weekStart
   }, state.token);
 
-  if (loadSequence !== weeklyPlannerState.loadingSequence) return;
+  if (loadSequence !== weeklyPlannerState.loadingSequence) return false;
 
   if (!result.success) {
     throw new Error(result.error || result.detail || "Unable to load the weekly planner.");
@@ -212,6 +278,7 @@ async function loadWeeklyPlanner() {
   weeklyPlannerState.planner = result.planner || null;
   weeklyPlannerState.previousPlanner = result.previousPlanner || null;
   weeklyPlannerState.expectedUpdatedDate = String(result.planner?.updatedDate || "");
+  weeklyPlannerState.expectedPlannerExists = !!result.planner;
 
   const groupInput = document.getElementById("weekly-planner-group");
   const feedbackInput = document.getElementById("weekly-planner-feedback");
@@ -234,7 +301,7 @@ async function loadWeeklyPlanner() {
     console.warn("Weekly Planner timetable defaults were unavailable:", error);
   }
 
-  if (loadSequence !== weeklyPlannerState.loadingSequence) return;
+  if (loadSequence !== weeklyPlannerState.loadingSequence) return false;
 
   const timetableRows = normalizeWeeklyPlannerTimetableRows(timetableResult);
   renderWeeklyPlannerGroupOptions(timetableRows, result.teacher || teacher, groupNo);
@@ -248,6 +315,9 @@ async function loadWeeklyPlanner() {
     );
 
   renderWeeklyPlannerCards();
+  weeklyPlannerState.loadedKey = loadKey;
+  weeklyPlannerState.screenReady = true;
+  weeklyPlannerState.dirty = false;
 
   if (result.planner) {
     setWeeklyPlannerMessage("Planner loaded.", "success");
@@ -256,6 +326,32 @@ async function loadWeeklyPlanner() {
   } else {
     setWeeklyPlannerMessage("Planner ready.", "success");
   }
+
+  return true;
+}
+
+function getWeeklyPlannerSessionKey(teacher, week) {
+  return `${String(teacher?.teacherId || "").trim()}::${String(week?.weekStart || "").trim()}`;
+}
+
+function canReuseWeeklyPlannerSession(teacher = getSelectedWeeklyPlannerTeacher(), week = null) {
+  const weekInput = document.getElementById("weekly-planner-week");
+  const selectedWeek = week || getWeeklyPlannerWeekMeta(weekInput ? weekInput.value : "");
+  const rail = document.getElementById("weekly-planner-rail");
+
+  return !!(
+    teacher &&
+    weeklyPlannerState.screenReady &&
+    weeklyPlannerState.plannerData &&
+    weeklyPlannerState.loadedKey === getWeeklyPlannerSessionKey(teacher, selectedWeek) &&
+    rail?.querySelector(".weekly-planner-day-card")
+  );
+}
+
+function confirmWeeklyPlannerDiscard() {
+  if (!weeklyPlannerState.dirty) return true;
+  if (typeof window.confirm !== "function") return true;
+  return window.confirm("Discard the unsaved Weekly Planner changes?");
 }
 
 async function fetchWeeklyPlannerTimetable(teacher, groupNo) {
@@ -525,6 +621,7 @@ function handleWeeklyPlannerCardInput(event) {
   const feedbackField = event.target.closest("[data-weekly-planner-feedback-field]");
 
   if (feedbackField) {
+    weeklyPlannerState.dirty = true;
     weeklyPlannerState.feedback = String(feedbackField.value || "");
     const feedbackInput = document.getElementById("weekly-planner-feedback");
     if (feedbackInput) feedbackInput.value = weeklyPlannerState.feedback;
@@ -547,6 +644,7 @@ function handleWeeklyPlannerCardInput(event) {
   const period = weeklyPlannerState.plannerData.days[dayIndex]?.periods[periodIndex];
   if (!period) return;
 
+  weeklyPlannerState.dirty = true;
   const fieldName = field.dataset.weeklyPlannerField;
   if (fieldName === "entries") {
     period.entries = normalizeWeeklyPlannerEntries(field.value);
@@ -586,6 +684,7 @@ function addWeeklyPlannerPeriod(dayIndex) {
     subject: "",
     entries: []
   });
+  weeklyPlannerState.dirty = true;
   weeklyPlannerState.activeCardIndex = dayIndex;
   renderWeeklyPlannerCards();
 }
@@ -595,6 +694,7 @@ function removeWeeklyPlannerPeriod(dayIndex, periodIndex) {
   if (!day || day.periods.length <= 1) return;
 
   day.periods.splice(periodIndex, 1);
+  weeklyPlannerState.dirty = true;
   weeklyPlannerState.activeCardIndex = dayIndex;
   renderWeeklyPlannerCards();
 }
@@ -686,7 +786,8 @@ async function saveWeeklyPlannerAndPreview(button) {
       status: "READY",
       plannerData: getWeeklyPlannerDataForSave(weeklyPlannerState.plannerData),
       feedback: String(weeklyPlannerState.feedback || feedbackInput?.value || "").trim(),
-      expectedUpdatedDate: weeklyPlannerState.expectedUpdatedDate
+      expectedUpdatedDate: weeklyPlannerState.expectedUpdatedDate,
+      expectedExists: weeklyPlannerState.expectedPlannerExists
     }, state.token);
 
     if (!result.success) {
@@ -697,6 +798,7 @@ async function saveWeeklyPlannerAndPreview(button) {
     weeklyPlannerState.week = result.week || week;
     weeklyPlannerState.planner = result.planner;
     weeklyPlannerState.expectedUpdatedDate = String(result.planner?.updatedDate || "");
+    weeklyPlannerState.expectedPlannerExists = true;
     weeklyPlannerState.feedback = String(result.planner?.feedback || "");
     weeklyPlannerState.plannerData = normalizeWeeklyPlannerData(
       result.planner?.plannerData || weeklyPlannerState.plannerData,
@@ -705,6 +807,12 @@ async function saveWeeklyPlannerAndPreview(button) {
 
     if (feedbackInput) feedbackInput.value = weeklyPlannerState.feedback;
     renderWeeklyPlannerCards();
+    weeklyPlannerState.loadedKey = getWeeklyPlannerSessionKey(
+      weeklyPlannerState.teacher,
+      weeklyPlannerState.week
+    );
+    weeklyPlannerState.screenReady = true;
+    weeklyPlannerState.dirty = false;
 
     
     try {
@@ -1408,6 +1516,8 @@ window.M4LWeeklyPlanner = {
   buildPlannerDataFromDefaults: buildWeeklyPlannerDataFromDefaults,
   getPlannerDataForSave: getWeeklyPlannerDataForSave,
   normalizePreviewStyle: normalizeWeeklyPlannerPreviewStyle,
+  canReuseSession: canReuseWeeklyPlannerSession,
+  hasUnsavedChanges: () => weeklyPlannerState.dirty,
   previewFonts: WEEKLY_PLANNER_PREVIEW_FONTS,
   previewColors: WEEKLY_PLANNER_PREVIEW_COLORS
 };

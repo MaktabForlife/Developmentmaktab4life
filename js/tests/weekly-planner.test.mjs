@@ -3,10 +3,68 @@ import fs from "node:fs/promises";
 import vm from "node:vm";
 
 const source = await fs.readFile(new URL("../m4l-weekly-planner.js", import.meta.url), "utf8");
+const elements = new Map([
+  ["weekly-planner-teacher", makeElement()],
+  ["weekly-planner-week", makeElement()],
+  ["weekly-planner-group", makeElement()],
+  ["weekly-planner-feedback", makeElement()],
+  ["weekly-planner-rail", makeElement()],
+  ["weekly-planner-dots", makeElement()],
+  ["weekly-planner-groups", makeElement()],
+  ["weekly-planner-message", makeElement()]
+]);
+const apiCalls = [];
 const context = {
-  window: {},
+  window: {
+    M4LTimetable: { fetchTimetable: async () => ({ sessions: [] }) }
+  },
+  document: {
+    getElementById: id => elements.get(id) || null,
+    querySelectorAll: () => [],
+    querySelector: () => null
+  },
   console,
-  state: { user: {}, token: "" },
+  state: {
+    user: {
+      adminid: "ADMIN1",
+      username: "Test Teacher",
+      role: "TEACHER",
+      assignedgroup: "2"
+    },
+    token: "test-token"
+  },
+  showScreen: () => {},
+  apiPost: async path => {
+    apiCalls.push(path);
+    if (path.endsWith("/health")) return { success: true };
+    if (path.endsWith("/teachers")) {
+      return {
+        success: true,
+        teachers: [{
+          teacherId: "ADMIN1",
+          teacherName: "Test Teacher",
+          role: "TEACHER",
+          assignedGroup: "2",
+          active: true
+        }]
+      };
+    }
+    if (path.endsWith("/get")) {
+      return {
+        success: true,
+        teacher: {
+          teacherId: "ADMIN1",
+          teacherName: "Test Teacher",
+          role: "TEACHER",
+          assignedGroup: "2"
+        },
+        week: plannerWeekMeta(elements.get("weekly-planner-week").value),
+        planner: null,
+        previousPlanner: null
+      };
+    }
+    throw new Error(`Unexpected API call: ${path}`);
+  },
   setTimeout,
   clearTimeout,
   requestAnimationFrame: callback => callback(),
@@ -57,4 +115,65 @@ assert.deepEqual(
 );
 assert.equal(data.days[0].periods[1].subject, "Surahs");
 
-console.log("Weekly Planner frontend data tests passed.");
+await planner.show();
+assert.equal(apiCalls.filter(path => path.endsWith("/get")).length, 1);
+assert.equal(planner.canReuseSession(), true);
+
+await planner.show();
+assert.equal(
+  apiCalls.filter(path => path.endsWith("/get")).length,
+  1,
+  "Reopening the same planner in one page session must reuse the rendered planner"
+);
+
+elements.get("weekly-planner-group").dispatch("input");
+assert.equal(planner.hasUnsavedChanges(), true);
+context.window.confirm = () => false;
+await planner.load();
+assert.equal(
+  apiCalls.filter(path => path.endsWith("/get")).length,
+  1,
+  "A declined refresh must preserve unsaved planner input"
+);
+
+context.window.confirm = () => true;
+await planner.load();
+assert.equal(apiCalls.filter(path => path.endsWith("/get")).length, 2);
+assert.equal(planner.hasUnsavedChanges(), false);
+
+console.log("Weekly Planner frontend data and session-cache tests passed.");
+
+function makeElement() {
+  const handlers = new Map();
+  return {
+    value: "",
+    innerHTML: "",
+    disabled: false,
+    classList: { toggle() {} },
+    addEventListener(type, handler) {
+      handlers.set(type, handler);
+    },
+    dispatch(type) {
+      const handler = handlers.get(type);
+      if (handler) handler({ target: this });
+    },
+    querySelector(selector) {
+      if (selector === ".weekly-planner-day-card" && this.innerHTML.includes("weekly-planner-day-card")) {
+        return {};
+      }
+      return null;
+    }
+  };
+}
+
+function plannerWeekMeta(value) {
+  const date = value ? new Date(`${value}T12:00:00`) : new Date("2026-07-13T12:00:00");
+  const weekStart = date.toISOString().slice(0, 10);
+  const end = new Date(date);
+  end.setDate(end.getDate() + 3);
+  return {
+    weekStart,
+    weekEnd: end.toISOString().slice(0, 10),
+    month: "July 2026"
+  };
+}

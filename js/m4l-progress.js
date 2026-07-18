@@ -1,4 +1,9 @@
-/* M4L v96.0 - Atomic progress batch handling
+/* M4L v96.2.1 - Student Progress session reuse
+   Reuses the current student's rendered progress and in-memory task model when
+   returning within the same login session. Explicit Refresh remains online-first.
+   Student progress is not persisted to the shared localStorage cache.
+
+   M4L v96.0 - Atomic progress batch handling
    A server-rejected batch now stops without retrying its rows individually,
    preserving the Apps Script all-or-nothing validation boundary.
 
@@ -23,6 +28,8 @@
   
 let studentSubjectTaskGroups = {};  
 let currentStudentSubjectKey = "";  
+let studentProgressSessionReady = false;
+let studentProgressLoadPromise = null;
   
 let progressUiGlobalHandlersBound = false;  
 const M4L_PROGRESS_TICK = "\u2713";  
@@ -437,42 +444,101 @@ async function showStudentTasks(options = {}) {
   
   resetStudentProgressViewportScroll();  
   setDomText("progress-subjects-title", "Progress");  
-  
-  if (!setDomHtml("progress-subjects-list", "")) {  
+
+  const container = getDomElement("progress-subjects-list");
+  if (!container) {
     console.warn("Missing progress-subjects-list container.");  
     return;  
   }  
-  
-  const statusToken = beginProgressLoadStatus("Loading progress...");
 
-  try {  
-    const result = await apiPost("/api/tasks/student", {  
-      subjectid: "ALL"  
-    }, state.token);  
-  
-    if (!result.success) {  
-      failProgressLoadStatus(statusToken, "Progress load failed");
-      setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(result.error || "Failed to load tasks")}</p>`);  
-      return;  
-    }  
-  
-    if (!result.tasks || result.tasks.length === 0) {  
-      endProgressLoadStatus(statusToken, "Progress loaded");
-      setDomHtml("progress-subjects-list", `<p class="helper-text">No tasks assigned yet.</p>`);  
-      return;  
-    }  
-  
-    const normalizedTasks = result.tasks.map(normalizeStudentTask);  
-    studentSubjectTaskGroups = buildStudentSubjectTaskGroups(normalizedTasks);  
-    renderStudentSubjectProgress(options);  
-    endProgressLoadStatus(statusToken, "Progress loaded");
-  
-  } catch (err) {  
-    failProgressLoadStatus(statusToken, "Progress load failed");
-    console.error("Could not load student tasks:", err);  
-    setDomHtml("progress-subjects-list", `<p class="error-message">${escapeHtml(err.message || "Failed to load tasks")}</p>`);  
-  }  
+  const forceRefresh = options.force === true;
+
+  if (studentProgressSessionReady && !forceRefresh) {
+    if (!container.hasChildNodes()) {
+      renderStudentSubjectProgress(options);
+    } else {
+      bindProgressUiHandlers(container);
+      bindStudentProgressSwipeControls();
+      updateStudentProgressFrozenHeader();
+      updateStudentProgressSwipeDots();
+    }
+    return true;
+  }
+
+  if (studentProgressLoadPromise) {
+    return studentProgressLoadPromise;
+  }
+
+  const retainExistingView = studentProgressSessionReady && container.hasChildNodes();
+  if (!retainExistingView) {
+    setDomHtml(container, "");
+  }
+
+  const statusToken = beginProgressLoadStatus(forceRefresh ? "Refreshing progress..." : "Loading progress...");
+
+  studentProgressLoadPromise = (async () => {
+    try {
+      const result = await apiPost("/api/tasks/student", {
+        subjectid: "ALL"
+      }, state.token);
+
+      if (!result.success) {
+        failProgressLoadStatus(statusToken, forceRefresh ? "Progress refresh failed" : "Progress load failed");
+        if (!studentProgressSessionReady) {
+          setDomHtml(container, `<p class="error-message">${escapeHtml(result.error || "Failed to load tasks")}</p>`);
+        }
+        return false;
+      }
+
+      const normalizedTasks = Array.isArray(result.tasks)
+        ? result.tasks.map(normalizeStudentTask)
+        : [];
+
+      studentSubjectTaskGroups = buildStudentSubjectTaskGroups(normalizedTasks);
+
+      if (currentStudentSubjectKey && !Object.prototype.hasOwnProperty.call(studentSubjectTaskGroups, currentStudentSubjectKey)) {
+        currentStudentSubjectKey = "";
+      }
+
+      studentProgressSessionReady = true;
+
+      if (normalizedTasks.length === 0) {
+        setDomHtml(container, `<p class="helper-text">No tasks assigned yet.</p>`);
+      } else {
+        renderStudentSubjectProgress(options);
+      }
+
+      endProgressLoadStatus(statusToken, forceRefresh ? "Progress refreshed" : "Progress loaded");
+      return true;
+    } catch (err) {
+      failProgressLoadStatus(statusToken, forceRefresh ? "Progress refresh failed" : "Progress load failed");
+      console.error("Could not load student tasks:", err);
+      if (!studentProgressSessionReady) {
+        setDomHtml(container, `<p class="error-message">${escapeHtml(err.message || "Failed to load tasks")}</p>`);
+      }
+      return false;
+    } finally {
+      studentProgressLoadPromise = null;
+    }
+  })();
+
+  return studentProgressLoadPromise;
 }  
+
+async function refreshStudentTaskProgress() {
+  if (hasProgressPendingUpdates()) {
+    const saved = await flushStudentProgressAutoSave();
+    if (saved === false && hasProgressPendingUpdates()) {
+      return false;
+    }
+  }
+
+  return showStudentTasks({
+    force: true,
+    moduleKey: getStudentProgressSwipeActiveModuleKey() || currentStudentSubjectKey,
+    scrollBehavior: "auto"
+  });
+}
   
 function getStudentTaskField(task, names, fallback = "") {  
   for (const name of names) {  
@@ -4799,6 +4865,7 @@ bindAdminProgressClassMatrixLiveCells();
 window.M4LProgress = {  
   bindProgressUiHandlers: typeof bindProgressUiHandlers === "function" ? bindProgressUiHandlers : undefined,  
   showStudentTasks: typeof showStudentTasks === "function" ? showStudentTasks : undefined,  
+  refreshStudentTaskProgress: typeof refreshStudentTaskProgress === "function" ? refreshStudentTaskProgress : undefined,
   bindStudentProgressSwipeControls: typeof bindStudentProgressSwipeControls === "function" ? bindStudentProgressSwipeControls : undefined,  
   showProgressReport: typeof showProgressReport === "function" ? showProgressReport : undefined,  
   loadAdminProgressDashboard: typeof loadAdminProgressDashboard === "function" ? loadAdminProgressDashboard : undefined,  

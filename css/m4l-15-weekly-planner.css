@@ -338,7 +338,7 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-card) 62%, transparent);
+  background: var(--surface-app);
   box-shadow: none;
 }
 
@@ -347,7 +347,7 @@
 }
 
 .weekly-planner-screen .weekly-planner-dot.is-active {
-  background: var(--surface-chip);
+  background: var(--surface-contrast);
   transform: scale(1.12);
 }
 
@@ -476,7 +476,7 @@
   padding: 3px 8px 6px;
   resize: vertical;
   color: var(--text);
-  font-family: "Chalkboard SE", "Comic Sans MS", cursive;
+  font-family:  inherit;
   font-size: 0.98rem;
   font-weight: 400;
   line-height: 1.25;
