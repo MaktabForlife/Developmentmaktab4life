@@ -3,14 +3,12 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-06-01",
   "keep_vars": true,
-
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
       "bucket_name": "maktab4lifemedia"
     }
   ],
-
   "env": {
     "development": {
       "name": "devrebootworker",
