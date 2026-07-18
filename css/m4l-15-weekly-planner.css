@@ -572,8 +572,9 @@
   border-radius: 9px;
   background: var(--surface-card);
   color: var(--text);
-  font-size: 0.7rem;
-  font-weight: 700;
+   /* changed 18/7*/
+  font-size: 0.8rem;
+  font-weight: 400;
   line-height: 1.05;
   text-align: center;
 }
