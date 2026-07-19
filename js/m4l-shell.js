@@ -241,6 +241,12 @@ function showScreen(screenId) {
     return false;
   }
 
+  // V96.5: shared in-screen x-close controls use the same role-aware Home
+  // action as the app shell, including controls rendered directly in HTML.
+  if (typeof bindHeaderIconActionHandlers === "function") {
+    bindHeaderIconActionHandlers();
+  }
+
   if (typeof updateUserBand === "function") {
     updateUserBand(screenId);
   }
@@ -2050,6 +2056,8 @@ function handleHeaderIconActionClick(event) {
   }
 }
 
+bindHeaderIconActionHandlers();
+
 function setHomeIconButton(button, actionValue = "goHome()") {
   if (!button) return;
   bindHeaderIconActionHandlers();
@@ -2110,6 +2118,30 @@ function getHomeIconButtonMarkup(actionValue = "goHome()") {
 
 function getBackIconButtonMarkup(actionValue = "goHome()") {
   return getHeaderIconButtonMarkup("back", actionValue, "Back");
+}
+
+function getXCloseHomeButtonMarkup(extraClassName = "") {
+  bindHeaderIconActionHandlers();
+
+  const safeExtraClassName = String(extraClassName || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(className => className.replace(/[^A-Za-z0-9_-]/g, ""))
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <button
+      type="button"
+      class="xclose-home-btn icon-action-btn${safeExtraClassName ? ` ${safeExtraClassName}` : ""}"
+      data-header-action="home"
+      aria-label="Home"
+      title="Home"
+    >
+      <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+      <span class="visually-hidden">Home</span>
+    </button>
+  `;
 }
 
 function escapeForAttribute(value) {
@@ -3609,6 +3641,7 @@ window.M4LShell = {
   getHeaderIconButtonMarkup: typeof getHeaderIconButtonMarkup === "function" ? getHeaderIconButtonMarkup : undefined,
   getHomeIconButtonMarkup: typeof getHomeIconButtonMarkup === "function" ? getHomeIconButtonMarkup : undefined,
   getBackIconButtonMarkup: typeof getBackIconButtonMarkup === "function" ? getBackIconButtonMarkup : undefined,
+  getXCloseHomeButtonMarkup: typeof getXCloseHomeButtonMarkup === "function" ? getXCloseHomeButtonMarkup : undefined,
   getCurrentUserName: typeof getCurrentUserName === "function" ? getCurrentUserName : undefined,
   getCurrentUserLevelText: typeof getCurrentUserLevelText === "function" ? getCurrentUserLevelText : undefined,
   getActiveScreenId: typeof getActiveScreenId === "function" ? getActiveScreenId : undefined,

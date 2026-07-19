@@ -9,7 +9,7 @@ M4L v93.7.1 - Attendance card borders and responsive panel surfaces
 #attendance-screen.screen {
   background: var(--surface-app);
   box-shadow: none;
-  border-radius: 0;
+  border-radius: 20px;
   overflow: visible;
   padding: 18px 14px;
 }
@@ -368,7 +368,7 @@ body.is-attendance-section #attendance-screen.screen {
 #attendance-screen.screen {
   padding: 18px 14px;
   background: var(--surface-app);
-  border-radius: 0;
+  border-radius: 20px;
   box-shadow: none;
 }
 

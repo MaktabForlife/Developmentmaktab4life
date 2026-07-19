@@ -491,6 +491,7 @@ button:active {
 .icon-action-btn,
 .home-icon-btn,
 .back-icon-btn,
+.xclose-home-btn,
 .manual-refresh-btn {
   width: 44px;
   min-width: 44px;
@@ -506,6 +507,21 @@ button:active {
   background: transparent;
   color: var(--primary);
   box-shadow: none;
+}
+
+/* V96.5 shared uncontained in-screen action: x-close always returns to the
+   signed-in role's Home screen through the shell's delegated action handler. */
+.xclose-home-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  color: var(--text);
+}
+
+.xclose-home-btn .app-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .icon-action-btn-large,
@@ -1114,5 +1130,4 @@ body.has-user-band .top-bar button[onclick="logout()"] {
   border-radius: 16px;
   box-shadow: 0 2px 5px rgba(var(--black-rgb), 0.08);
 }
-
 

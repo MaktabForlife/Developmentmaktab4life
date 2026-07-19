@@ -300,9 +300,22 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
   function renderRecorderInterface(root) {
     if (!root) return false;
 
+    const homeCloseMarkup = window.M4LShell && typeof window.M4LShell.getXCloseHomeButtonMarkup === "function"
+      ? window.M4LShell.getXCloseHomeButtonMarkup("m4l-recorder-home-close")
+      : `
+        <button type="button" class="xclose-home-btn icon-action-btn m4l-recorder-home-close" data-header-action="home" aria-label="Home" title="Home">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Home</span>
+        </button>
+      `;
+
     root.innerHTML = `
       <section id="m4l-recorder-page-select" class="m4l-recorder-view m4l-recorder-view--pages active" aria-labelledby="m4l-recorder-title">
-        <h2 id="m4l-recorder-title" class="m4l-recorder-title">Select a lesson to Record</h2>
+        <div class="m4l-recorder-landing-header">
+          ${homeCloseMarkup}
+          <h2 id="m4l-recorder-title" class="m4l-recorder-title">Select a lesson to Record</h2>
+          <span class="m4l-recorder-landing-header-spacer" aria-hidden="true"></span>
+        </div>
 
         <div class="m4l-recorder-book-card">
           <label class="visually-hidden" for="m4l-recorder-book-select">Select a Kitab or recording type</label>

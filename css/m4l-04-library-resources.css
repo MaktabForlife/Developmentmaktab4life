@@ -1,4 +1,31 @@
 /* Resources / Library ribbon - V94.6 vertical and horizontal touch scrolling */
+.library-landing-header {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 10px;
+  padding: 2px 0;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.library-landing-header h2 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  text-align: center;
+}
+
+.library-home-close {
+  justify-self: start;
+}
+
+.library-landing-header-spacer {
+  width: 44px;
+  height: 44px;
+}
+
 .library-resource-browser {
   --library-ribbon-gap: 10px;
   --library-card-width: 148px;

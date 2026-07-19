@@ -93,6 +93,27 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   line-height: 1.2;
 }
 
+.m4l-recorder-landing-header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.m4l-recorder-landing-header .m4l-recorder-title {
+  text-align: center;
+}
+
+.m4l-recorder-home-close {
+  justify-self: start;
+}
+
+.m4l-recorder-landing-header-spacer {
+  width: 44px;
+  height: 44px;
+}
+
 .m4l-recorder-book-card,
 .m4l-recorder-empty-card,
 .m4l-recorder-reader-frame,

@@ -226,15 +226,35 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 }
 
 .admin-progress-class-student-column-key .admin-progress-matrix-key-block--a1 {
-  width: min(100%, 86px);
+  width: 100%;
   min-height: 0;
   display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
   gap: 1px;
   align-content: center;
+  align-items: center;
   justify-items: start;
   padding: 0;
   border-radius: 0;
   background: transparent;
+}
+
+.admin-progress-class-student-column-key .admin-progress-class-home-close {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
+.admin-progress-class-student-column-key .admin-progress-class-home-close .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.admin-progress-class-student-column-key .admin-progress-matrix-key-lines {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
 }
 
 .admin-progress-class-student-column-key .admin-progress-matrix-key-line {
