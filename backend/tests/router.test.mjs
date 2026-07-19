@@ -14,6 +14,7 @@ const expectedPaths = [
   "/api/admin/weekly-planner/teachers",
   "/api/admin/weekly-planner/get",
   "/api/admin/weekly-planner/save",
+  "/api/admin/backend-routing",
   "/api/admin/check-admin",
   "/api/admin/setup-pin",
   "/api/admin/login",
@@ -95,6 +96,10 @@ try {
   });
 
   assert.equal(checkStudent.status, 200);
+  assert.equal(checkStudent.headers.get("X-M4L-Feature"), "auth");
+  assert.equal(checkStudent.headers.get("X-M4L-Backend"), "apps-script");
+  assert.equal(checkStudent.headers.get("X-M4L-Backend-Source"), "default");
+  assert.match(checkStudent.headers.get("Access-Control-Expose-Headers"), /X-M4L-Backend/);
   assert.deepEqual(proxiedPayload, {
     action: "getStudentByUniqueId",
     uniqueid: "TEST-LINK"
@@ -108,9 +113,32 @@ try {
       pinsetup: true
     }
   });
+
+  proxiedPayload = null;
+  const blockedMigration = await worker.fetch(new Request("https://worker.test/api/check-student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uniqueid: "TEST-LINK" })
+  }), {
+    APPS_SCRIPT_URL: "https://script.example.test/exec",
+    M4L_BACKEND_AUTH: "google-sheets"
+  });
+
+  assert.equal(blockedMigration.status, 503);
+  assert.equal(blockedMigration.headers.get("X-M4L-Feature"), "auth");
+  assert.equal(blockedMigration.headers.get("X-M4L-Backend"), "google-sheets");
+  assert.equal(proxiedPayload, null, "An unavailable direct backend must not fall through to Apps Script");
 } finally {
   globalThis.fetch = originalFetch;
 }
+
+const routingUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/backend-routing",
+  { method: "POST" }
+), {});
+assert.equal(routingUnauthorized.status, 401);
+assert.equal(routingUnauthorized.headers.get("X-M4L-Feature"), "routing");
+assert.equal(routingUnauthorized.headers.get("X-M4L-Backend"), "worker");
 
 console.log("Worker router tests passed.");
 
@@ -120,4 +148,3 @@ function response(data, status = 200) {
     headers: { "Content-Type": "application/json" }
   });
 }
-

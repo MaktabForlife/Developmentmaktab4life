@@ -1,4 +1,4 @@
-/* M4L v96.2-dev - Behaviour-preserving Worker modularisation.
+/* M4L v96.4 - Environment-controlled backend routing foundation.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -37,4 +37,3 @@ export default {
     }
   }
 };
-

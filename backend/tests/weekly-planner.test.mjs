@@ -90,6 +90,15 @@ const token = await makeSessionToken({
 const health = await callWorker("/api/admin/weekly-planner/health", {}, token);
 assert.equal(health.status, 200);
 assert.equal(health.data.connection, "google-sheets-direct");
+assert.equal(health.headers.get("X-M4L-Feature"), "weekly-planner");
+assert.equal(health.headers.get("X-M4L-Backend"), "google-sheets");
+
+const routing = await callWorker("/api/admin/backend-routing", {}, token);
+assert.equal(routing.status, 200);
+assert.equal(routing.data.features.auth.backend, "apps-script");
+assert.equal(routing.data.features.progress.backend, "apps-script");
+assert.equal(routing.data.features["weekly-planner"].backend, "google-sheets");
+assert.equal(routing.data.routingLogsEnabled, false);
 
 const teachers = await callWorker("/api/admin/weekly-planner/teachers", {}, token);
 assert.equal(teachers.status, 200);
@@ -207,7 +216,7 @@ async function callWorker(path, body, bearerToken) {
     body: JSON.stringify(body)
   });
   const result = await worker.fetch(request, env);
-  return { status: result.status, data: await result.json() };
+  return { status: result.status, headers: result.headers, data: await result.json() };
 }
 
 async function makeSessionToken(payload, secret) {
