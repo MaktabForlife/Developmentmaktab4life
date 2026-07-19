@@ -375,7 +375,7 @@ Shared Progress grid icons, edit key, Student module grid and Class grid. */
   align-content: start;
   border: 1px solid var(--surface-track);
   border-radius: 22px;
-  background: var(--surface-card);
+  background: var(--surface-app);
   box-shadow: 0 4px 14px var(--surface-app);
   overflow: hidden;
 }

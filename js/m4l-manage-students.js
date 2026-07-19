@@ -112,8 +112,8 @@ function upgradeManageStudentsBackButtons(rootOrId) {
     button.setAttribute("aria-label", ariaLabel || "Back");
     button.setAttribute("title", titleText || ariaLabel || "Back");
     button.innerHTML = `
-      <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span>
-      <span class="header-icon-label">Back</span>
+      <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg?v=96.4')" aria-hidden="true"></span>
+      <span class="header-icon-label">Close</span>
     `;
     button.dataset.manageBackIconUpgraded = "true";
   });
@@ -629,7 +629,7 @@ function renderManageStudentResultScreen(context) {
     `
     : `
       <div class="student-admin-action-grid two-col">
-        <button type="button" class="back-icon-btn icon-action-btn icon-action-btn-large" data-manage-action="back-to-list" aria-label="Back to student list" title="Back to student list"><span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span><span class="header-icon-label">Back</span></button>
+        <button type="button" class="back-icon-btn icon-action-btn icon-action-btn-large" data-manage-action="back-to-list" aria-label="Back to student list" title="Back to student list"><span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg?v=96.4')" aria-hidden="true"></span><span class="header-icon-label">Close</span></button>
         <button type="button" class="home-text-action-btn" data-manage-action="exit-dashboard"><span class="home-text-action-btn__icon" aria-hidden="true"></span><span>Exit to Dashboard</span></button>
       </div>
     `;

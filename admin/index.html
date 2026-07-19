@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=96.3b">
+<link rel="stylesheet" href="/styles.css?v=96.5.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -172,6 +172,14 @@
 
     <!-- SHARED LIBRARY SCREEN -->
     <section id="student-resources-subjects" class="screen admin-theme">
+      <div class="library-landing-header">
+        <button type="button" class="xclose-home-btn icon-action-btn library-home-close" data-header-action="home" aria-label="Home" title="Home">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Home</span>
+        </button>
+        <h2>Library</h2>
+        <span class="library-landing-header-spacer" aria-hidden="true"></span>
+      </div>
       <div id="student-resource-subject-list" class="list-stack">
         <p class="helper-text">Loading resources...</p>
       </div>
@@ -272,6 +280,10 @@
 
     <!-- ADMIN ATTENDANCE -->
     <section id="attendance-screen" class="screen admin-theme">
+      <button type="button" class="xclose-home-btn icon-action-btn attendance-home-close" data-header-action="home" aria-label="Home" title="Home">
+        <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+        <span class="visually-hidden">Home</span>
+      </button>
       <div
         class="attendance-panel-dots"
         data-attendance-swipe-dots
@@ -819,7 +831,7 @@
       title="Back"
     >
       <span class="app-icon pdf-back-icon" aria-hidden="true"></span>
-      <span class="pdf-viewer-icon-label">BACK</span>
+      <span class="pdf-viewer-icon-label">closeK</span>
     </button>
   </div>
 </div>
@@ -851,14 +863,14 @@
 <script src="/app.js?v=94.1"></script>
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=87.2"></script>
-<script src="/js/m4l-shell.js?v=95.1"></script>
+<script src="/js/m4l-shell.js?v=96.5"></script>
   <script src="/js/m4l-timetable.js?v=92"></script>
-  <script src="/js/m4l-weekly-planner.js?v=96.3"></script>
-  <script src="/js/m4l-recorder.js?v=94.7"></script>
+  <script src="/js/m4l-weekly-planner.js?v=96.4.1"></script>
+  <script src="/js/m4l-recorder.js?v=96.5"></script>
 <script src="/js/m4l-attendance.js?v=91.3"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
   <script src="/js/m4l-resources.js?v=94.6"></script>
-<script src="/js/m4l-progress.js?v=96.2.1"></script>
+<script src="/js/m4l-progress.js?v=96.5"></script>
 <script src="/js/m4l-manage-students.js?v=94.7a"></script>
 </body>
 </html>

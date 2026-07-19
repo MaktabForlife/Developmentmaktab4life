@@ -3669,15 +3669,27 @@ function renderAdminProgressClassMatrixActionBlock() {
 }
 
 function renderAdminProgressClassMatrixKeyOnlyBlock() {
+  const homeCloseMarkup = typeof getXCloseHomeButtonMarkup === "function"
+    ? getXCloseHomeButtonMarkup("admin-progress-class-home-close")
+    : `
+      <button type="button" class="xclose-home-btn icon-action-btn admin-progress-class-home-close" data-header-action="home" aria-label="Home" title="Home">
+        <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+        <span class="visually-hidden">Home</span>
+      </button>
+    `;
+
   return `
     <div class="admin-progress-matrix-key-block admin-progress-matrix-key-block--a1" aria-label="Progress key">
-      <span class="admin-progress-matrix-key-line">
-        <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--student" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
-        <span>STUDENT</span>
-      </span>
-      <span class="admin-progress-matrix-key-line">
-        <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--teacher" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
-        <span>TEACHER</span>
+      ${homeCloseMarkup}
+      <span class="admin-progress-matrix-key-lines">
+        <span class="admin-progress-matrix-key-line">
+          <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--student" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
+          <span>STUDENT</span>
+        </span>
+        <span class="admin-progress-matrix-key-line">
+          <span class="admin-progress-matrix-key-tick admin-progress-matrix-key-tick--teacher" aria-hidden="true">${M4L_PROGRESS_TICK}</span>
+          <span>TEACHER</span>
+        </span>
       </span>
     </div>
   `;
@@ -4027,11 +4039,11 @@ function renderAdminIndividualProgressGlobalPane(studentName, modules, activeInd
           type="button"
           class="admin-individual-progress-return-btn"
           data-progress-action="close-admin-individual-student-view"
-          aria-label="Return to Class Progress"
-          title="Return to Class Progress"
+          aria-label="Close"
+          title="Close"
         >
           <span class="admin-individual-progress-return-icon" aria-hidden="true"></span>
-          <span class="admin-individual-progress-return-label">Return to Class Progress</span>
+          <span class="admin-individual-progress-return-label">Close</span>
         </button>
       </div>
       <div class="admin-individual-progress-swipe-dots-row">

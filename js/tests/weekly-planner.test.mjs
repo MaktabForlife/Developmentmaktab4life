@@ -3,6 +3,11 @@ import fs from "node:fs/promises";
 import vm from "node:vm";
 
 const source = await fs.readFile(new URL("../m4l-weekly-planner.js", import.meta.url), "utf8");
+const saveLabel = { textContent: "Save & Preview" };
+const saveButton = makeElement();
+saveButton.querySelector = selector => {
+  return selector === "[data-weekly-planner-save-label]" ? saveLabel : null;
+};
 const elements = new Map([
   ["weekly-planner-teacher", makeElement()],
   ["weekly-planner-week", makeElement()],
@@ -11,7 +16,8 @@ const elements = new Map([
   ["weekly-planner-rail", makeElement()],
   ["weekly-planner-dots", makeElement()],
   ["weekly-planner-groups", makeElement()],
-  ["weekly-planner-message", makeElement()]
+  ["weekly-planner-message", makeElement()],
+  ["weekly-planner-save", saveButton]
 ]);
 const apiCalls = [];
 const context = {
@@ -34,32 +40,49 @@ const context = {
     token: "test-token"
   },
   showScreen: () => {},
-  apiPost: async path => {
-    apiCalls.push(path);
+  apiPost: async (path, body = {}) => {
+    apiCalls.push({ path, body });
     if (path.endsWith("/health")) return { success: true };
     if (path.endsWith("/teachers")) {
       return {
         success: true,
-        teachers: [{
-          teacherId: "ADMIN1",
-          teacherName: "Test Teacher",
-          role: "TEACHER",
-          assignedGroup: "2",
-          active: true
-        }]
+        teachers: [
+          {
+            teacherId: "ADMIN1",
+            teacherName: "Test Teacher",
+            role: "TEACHER",
+            assignedGroup: "2",
+            active: true
+          },
+          {
+            teacherId: "ADMIN2",
+            teacherName: "Other Teacher",
+            role: "TEACHER",
+            assignedGroup: "3",
+            active: true
+          }
+        ]
       };
     }
     if (path.endsWith("/get")) {
+      const isOwnPlanner = body.teacherId === "ADMIN1";
       return {
         success: true,
         teacher: {
-          teacherId: "ADMIN1",
-          teacherName: "Test Teacher",
+          teacherId: isOwnPlanner ? "ADMIN1" : "ADMIN2",
+          teacherName: isOwnPlanner ? "Test Teacher" : "Other Teacher",
           role: "TEACHER",
-          assignedGroup: "2"
+          assignedGroup: isOwnPlanner ? "2" : "3"
         },
+        canEdit: isOwnPlanner,
         week: plannerWeekMeta(elements.get("weekly-planner-week").value),
-        planner: null,
+        planner: isOwnPlanner ? null : {
+          plannerId: "WP-ADMIN2-2026-07-13",
+          groupNo: "3",
+          plannerData: data,
+          feedback: "Other teacher feedback",
+          updatedDate: "2026-07-19T10:00:00.000Z"
+        },
         previousPlanner: null
       };
     }
@@ -116,12 +139,13 @@ assert.deepEqual(
 assert.equal(data.days[0].periods[1].subject, "Surahs");
 
 await planner.show();
-assert.equal(apiCalls.filter(path => path.endsWith("/get")).length, 1);
+assert.equal(apiCalls.filter(call => call.path.endsWith("/get")).length, 1);
 assert.equal(planner.canReuseSession(), true);
+assert.equal(planner.canEdit(), true);
 
 await planner.show();
 assert.equal(
-  apiCalls.filter(path => path.endsWith("/get")).length,
+  apiCalls.filter(call => call.path.endsWith("/get")).length,
   1,
   "Reopening the same planner in one page session must reuse the rendered planner"
 );
@@ -131,15 +155,28 @@ assert.equal(planner.hasUnsavedChanges(), true);
 context.window.confirm = () => false;
 await planner.load();
 assert.equal(
-  apiCalls.filter(path => path.endsWith("/get")).length,
+  apiCalls.filter(call => call.path.endsWith("/get")).length,
   1,
   "A declined refresh must preserve unsaved planner input"
 );
 
 context.window.confirm = () => true;
 await planner.load();
-assert.equal(apiCalls.filter(path => path.endsWith("/get")).length, 2);
+assert.equal(apiCalls.filter(call => call.path.endsWith("/get")).length, 2);
 assert.equal(planner.hasUnsavedChanges(), false);
+
+elements.get("weekly-planner-teacher").value = "ADMIN2";
+await planner.load({ confirmDiscard: false });
+assert.equal(planner.canEdit(), false, "Another teacher's saved planner must render read only");
+assert.equal(elements.get("weekly-planner-group").readOnly, true);
+assert.equal(saveLabel.textContent, "Copy to My Planner");
+assert.match(elements.get("weekly-planner-rail").innerHTML, /readonly/);
+
+await planner.copyToCurrentUser(saveButton);
+assert.equal(elements.get("weekly-planner-teacher").value, "ADMIN1");
+assert.equal(planner.canEdit(), true, "A copied planner must switch back to the logged-in owner");
+assert.equal(planner.hasUnsavedChanges(), true, "A copied plan must be saved explicitly");
+assert.equal(saveLabel.textContent, "Save & Preview");
 
 console.log("Weekly Planner frontend data and session-cache tests passed.");
 
@@ -149,7 +186,13 @@ function makeElement() {
     value: "",
     innerHTML: "",
     disabled: false,
+    hidden: false,
+    readOnly: false,
+    attributes: {},
     classList: { toggle() {} },
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
     addEventListener(type, handler) {
       handlers.set(type, handler);
     },

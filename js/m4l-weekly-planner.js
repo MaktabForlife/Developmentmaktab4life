@@ -1,4 +1,4 @@
-/* M4L v96.3 Weekly Planner
+/* M4L v96.4.1 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -60,6 +60,8 @@ const weeklyPlannerState = {
   feedback: "",
   expectedUpdatedDate: "",
   expectedPlannerExists: false,
+  canEdit: false,
+  viewedPlannerExists: false,
   screenReady: false,
   loadedKey: "",
   loadPromise: null,
@@ -170,6 +172,7 @@ function bindWeeklyPlannerEvents() {
 
   if (groupInput) {
     groupInput.addEventListener("input", () => {
+      if (!weeklyPlannerState.canEdit) return;
       weeklyPlannerState.dirty = true;
     });
   }
@@ -213,7 +216,7 @@ function renderWeeklyPlannerTeacherOptions() {
     return `<option value="${weeklyPlannerEscapeAttribute(teacher.teacherId)}"${selected}>${weeklyPlannerEscapeHtml(teacher.teacherName)}</option>`;
   }).join("");
 
-  select.disabled = currentRole === "TEACHER" || teachers.length <= 1;
+  select.disabled = teachers.length <= 1;
   weeklyPlannerState.teachers = teachers;
 }
 
@@ -279,6 +282,10 @@ async function performWeeklyPlannerLoad(teacher, week, loadKey) {
   weeklyPlannerState.previousPlanner = result.previousPlanner || null;
   weeklyPlannerState.expectedUpdatedDate = String(result.planner?.updatedDate || "");
   weeklyPlannerState.expectedPlannerExists = !!result.planner;
+  weeklyPlannerState.canEdit = result.canEdit === true || isOwnWeeklyPlannerTeacher(
+    weeklyPlannerState.teacher
+  );
+  weeklyPlannerState.viewedPlannerExists = !!result.planner;
 
   const groupInput = document.getElementById("weekly-planner-group");
   const feedbackInput = document.getElementById("weekly-planner-feedback");
@@ -295,31 +302,50 @@ async function performWeeklyPlannerLoad(teacher, week, loadKey) {
 
   let timetableResult = null;
 
-  try {
-    timetableResult = await fetchWeeklyPlannerTimetable(result.teacher || teacher, groupNo);
-  } catch (error) {
-    console.warn("Weekly Planner timetable defaults were unavailable:", error);
+  if (weeklyPlannerState.canEdit) {
+    try {
+      timetableResult = await fetchWeeklyPlannerTimetable(result.teacher || teacher, groupNo);
+    } catch (error) {
+      console.warn("Weekly Planner timetable defaults were unavailable:", error);
+    }
   }
 
   if (loadSequence !== weeklyPlannerState.loadingSequence) return false;
 
   const timetableRows = normalizeWeeklyPlannerTimetableRows(timetableResult);
-  renderWeeklyPlannerGroupOptions(timetableRows, result.teacher || teacher, groupNo);
+  renderWeeklyPlannerGroupOptions(
+    weeklyPlannerState.canEdit ? timetableRows : [],
+    result.teacher || teacher,
+    groupNo
+  );
 
   weeklyPlannerState.plannerData = result.planner
     ? normalizeWeeklyPlannerData(result.planner.plannerData, weeklyPlannerState.week)
-    : buildWeeklyPlannerDataFromDefaults(
-      timetableRows,
-      result.previousPlanner?.plannerData,
-      weeklyPlannerState.week
-    );
+    : weeklyPlannerState.canEdit
+      ? buildWeeklyPlannerDataFromDefaults(
+        timetableRows,
+        result.previousPlanner?.plannerData,
+        weeklyPlannerState.week
+      )
+      : normalizeWeeklyPlannerData(null, weeklyPlannerState.week);
 
   renderWeeklyPlannerCards();
+  applyWeeklyPlannerAccessMode();
   weeklyPlannerState.loadedKey = loadKey;
   weeklyPlannerState.screenReady = true;
   weeklyPlannerState.dirty = false;
 
-  if (result.planner) {
+  if (!weeklyPlannerState.canEdit && result.planner) {
+    setWeeklyPlannerMessage(
+      `Viewing ${weeklyPlannerState.teacher?.teacherName || "teacher"}'s planner (read only).`,
+      "success"
+    );
+  } else if (!weeklyPlannerState.canEdit) {
+    setWeeklyPlannerMessage(
+      `No planner has been saved for ${weeklyPlannerState.teacher?.teacherName || "this teacher"} this week.`,
+      ""
+    );
+  } else if (result.planner) {
     setWeeklyPlannerMessage("Planner loaded.", "success");
   } else if (result.previousPlanner) {
     setWeeklyPlannerMessage("Last week copied.", "success");
@@ -532,6 +558,11 @@ function renderWeeklyPlannerCards() {
 
   if (!rail || !dots || !plannerData) return;
 
+  const readOnlyAttribute = weeklyPlannerState.canEdit
+    ? ""
+    : " readonly aria-readonly=\"true\"";
+  const hiddenEditControls = weeklyPlannerState.canEdit ? "" : " hidden";
+
   rail.innerHTML = plannerData.days.map((day, dayIndex) => {
     const periods = Array.from({ length: WEEKLY_PLANNER_PERIOD_COUNT }, (_, periodIndex) => {
       return day.periods?.[periodIndex] || {
@@ -558,9 +589,10 @@ function renderWeeklyPlannerCards() {
             data-weekly-planner-feedback-field
             rows="3"
             placeholder="Teacher or administrator feedback"
+            ${readOnlyAttribute}
           >${weeklyPlannerEscapeHtml(weeklyPlannerState.feedback)}</textarea>
         </div>
-        <div class="weekly-planner-add-period-wrap">
+        <div class="weekly-planner-add-period-wrap"${hiddenEditControls}>
           <button class="weekly-planner-add-period" type="button" data-weekly-planner-add-period="${dayIndex}">Add period</button>
         </div>
       </article>
@@ -598,6 +630,7 @@ function renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periodCount) {
         data-weekly-planner-field="subject"
         placeholder="Subject ${periodIndex + 1}"
         aria-label="Subject ${periodIndex + 1}"
+        ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""}
       />
       <textarea
         class="weekly-planner-period-entries${prefilledClass}"
@@ -605,19 +638,22 @@ function renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periodCount) {
         rows="3"
         placeholder="Enter each activity on a new line"
         aria-label="Activities for subject ${periodIndex + 1}"
+        ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""}
       >${weeklyPlannerEscapeHtml((period.entries || []).join("\n"))}</textarea>
       <button
         class="weekly-planner-remove-period"
         type="button"
         data-weekly-planner-remove-period="${dayIndex}:${periodIndex}"
         aria-label="Remove ${weeklyPlannerEscapeAttribute(period.label)}"
-        ${removeDisabled}
+        ${removeDisabled}${weeklyPlannerState.canEdit ? "" : " hidden"}
       >Remove</button>
     </div>
   `;
 }
 
 function handleWeeklyPlannerCardInput(event) {
+  if (!weeklyPlannerState.canEdit) return;
+
   const feedbackField = event.target.closest("[data-weekly-planner-feedback-field]");
 
   if (feedbackField) {
@@ -656,6 +692,8 @@ function handleWeeklyPlannerCardInput(event) {
 }
 
 function handleWeeklyPlannerCardClick(event) {
+  if (!weeklyPlannerState.canEdit) return;
+
   const addButton = event.target.closest("[data-weekly-planner-add-period]");
   const removeButton = event.target.closest("[data-weekly-planner-remove-period]");
 
@@ -768,6 +806,11 @@ async function saveWeeklyPlannerAndPreview(button) {
     return;
   }
 
+  if (!weeklyPlannerState.canEdit) {
+    await copyWeeklyPlannerToCurrentUser(button);
+    return;
+  }
+
   const week = getWeeklyPlannerWeekMeta(weekInput ? weekInput.value : "");
   const labelElement = button?.querySelector("[data-weekly-planner-save-label]");
   const originalLabel = String(labelElement?.textContent || "Save & Preview");
@@ -799,6 +842,8 @@ async function saveWeeklyPlannerAndPreview(button) {
     weeklyPlannerState.planner = result.planner;
     weeklyPlannerState.expectedUpdatedDate = String(result.planner?.updatedDate || "");
     weeklyPlannerState.expectedPlannerExists = true;
+    weeklyPlannerState.canEdit = true;
+    weeklyPlannerState.viewedPlannerExists = true;
     weeklyPlannerState.feedback = String(result.planner?.feedback || "");
     weeklyPlannerState.plannerData = normalizeWeeklyPlannerData(
       result.planner?.plannerData || weeklyPlannerState.plannerData,
@@ -807,6 +852,7 @@ async function saveWeeklyPlannerAndPreview(button) {
 
     if (feedbackInput) feedbackInput.value = weeklyPlannerState.feedback;
     renderWeeklyPlannerCards();
+    applyWeeklyPlannerAccessMode();
     weeklyPlannerState.loadedKey = getWeeklyPlannerSessionKey(
       weeklyPlannerState.teacher,
       weeklyPlannerState.week
@@ -830,6 +876,87 @@ async function saveWeeklyPlannerAndPreview(button) {
     if (button) {
       setWeeklyPlannerSaveButtonState(button, originalLabel, false);
     }
+  }
+}
+
+async function copyWeeklyPlannerToCurrentUser(button) {
+  const sourceTeacher = weeklyPlannerState.teacher;
+
+  if (!sourceTeacher || !weeklyPlannerState.viewedPlannerExists || !weeklyPlannerState.plannerData) {
+    setWeeklyPlannerMessage("There is no saved planner to copy.", "error");
+    return;
+  }
+
+  const ownTeacher = getCurrentWeeklyPlannerTeacher();
+  const teacherSelect = document.getElementById("weekly-planner-teacher");
+
+  if (!ownTeacher || !teacherSelect) {
+    setWeeklyPlannerMessage("Your teacher record is not available.", "error");
+    return;
+  }
+
+  const copiedPlannerData = getWeeklyPlannerDataForSave(weeklyPlannerState.plannerData);
+  const sourceTeacherId = sourceTeacher.teacherId;
+  const sourceTeacherName = sourceTeacher.teacherName || "the selected teacher";
+
+  if (button) setWeeklyPlannerSaveButtonState(button, "Copying...", true);
+
+  try {
+    teacherSelect.value = ownTeacher.teacherId;
+    await loadWeeklyPlanner({ confirmDiscard: false });
+
+    if (weeklyPlannerState.expectedPlannerExists && typeof window.confirm === "function") {
+      const replace = window.confirm(
+        "You already have a planner for this week. Replace its plan content with this copy?"
+      );
+
+      if (!replace) {
+        teacherSelect.value = sourceTeacherId;
+        await loadWeeklyPlanner({ confirmDiscard: false });
+        return;
+      }
+    }
+
+    weeklyPlannerState.plannerData = normalizeWeeklyPlannerData(
+      copiedPlannerData,
+      weeklyPlannerState.week
+    );
+    weeklyPlannerState.dirty = true;
+    renderWeeklyPlannerCards();
+    applyWeeklyPlannerAccessMode();
+    setWeeklyPlannerMessage(
+      `Copied from ${sourceTeacherName}. Edit and save it under your name.`,
+      "success"
+    );
+  } catch (error) {
+    teacherSelect.value = sourceTeacherId;
+    setWeeklyPlannerMessage(error.message || "Unable to copy the planner.", "error");
+  } finally {
+    applyWeeklyPlannerAccessMode();
+  }
+}
+
+function applyWeeklyPlannerAccessMode() {
+  const groupInput = document.getElementById("weekly-planner-group");
+  const saveButton = document.getElementById("weekly-planner-save");
+  const canCopy = !weeklyPlannerState.canEdit && weeklyPlannerState.viewedPlannerExists;
+
+  if (groupInput) {
+    groupInput.readOnly = !weeklyPlannerState.canEdit;
+    groupInput.setAttribute("aria-readonly", weeklyPlannerState.canEdit ? "false" : "true");
+  }
+
+  if (saveButton) {
+    saveButton.hidden = !weeklyPlannerState.canEdit && !canCopy;
+    setWeeklyPlannerSaveButtonState(
+      saveButton,
+      weeklyPlannerState.canEdit ? "Save & Preview" : "Copy to My Planner",
+      false
+    );
+    saveButton.setAttribute(
+      "aria-label",
+      weeklyPlannerState.canEdit ? "Save and preview" : "Copy to my planner"
+    );
   }
 }
 
@@ -1393,6 +1520,25 @@ function getSelectedWeeklyPlannerTeacher() {
   return weeklyPlannerState.teachers.find(teacher => teacher.teacherId === teacherId) || null;
 }
 
+function getCurrentWeeklyPlannerTeacher() {
+  const ownTeacherId = String(state.user?.adminid || "").trim();
+  return weeklyPlannerState.teachers.find(teacher => teacher.teacherId === ownTeacherId) || (
+    ownTeacherId
+      ? {
+        teacherId: ownTeacherId,
+        teacherName: String(state.user?.username || "Teacher").trim(),
+        role: String(state.user?.role || "").trim().toUpperCase(),
+        assignedGroup: String(state.user?.assignedgroup || "").trim(),
+        active: true
+      }
+      : null
+  );
+}
+
+function isOwnWeeklyPlannerTeacher(teacher) {
+  return !!teacher && teacher.teacherId === String(state.user?.adminid || "").trim();
+}
+
 function getWeeklyPlannerWeekMeta(value) {
   const source = /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))
     ? new Date(`${value}T12:00:00`)
@@ -1517,6 +1663,8 @@ window.M4LWeeklyPlanner = {
   getPlannerDataForSave: getWeeklyPlannerDataForSave,
   normalizePreviewStyle: normalizeWeeklyPlannerPreviewStyle,
   canReuseSession: canReuseWeeklyPlannerSession,
+  canEdit: () => weeklyPlannerState.canEdit,
+  copyToCurrentUser: copyWeeklyPlannerToCurrentUser,
   hasUnsavedChanges: () => weeklyPlannerState.dirty,
   previewFonts: WEEKLY_PLANNER_PREVIEW_FONTS,
   previewColors: WEEKLY_PLANNER_PREVIEW_COLORS

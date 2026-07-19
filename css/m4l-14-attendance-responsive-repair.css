@@ -29,6 +29,18 @@
   pointer-events: auto;
 }
 
+.attendance-home-close {
+  position: fixed;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  top: calc(
+    var(--user-band-height) +
+    var(--user-band-safe-area-top) +
+    var(--swipe-dot-band-gap) -
+    4px
+  );
+  z-index: 109;
+}
+
 .attendance-panel-dot {
   width: 12px;
   min-width: 12px;
@@ -61,6 +73,10 @@
 
 /* Medium and large Attendance are not swipe views: show all three panels. */
 @media (min-width: 768px) {
+  body.is-attendance-section .attendance-home-close {
+    display: none;
+  }
+
   body.is-attendance-section .attendance-panel-dots {
     display: none;
   }

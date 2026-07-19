@@ -7,7 +7,7 @@ import { getAuthUser } from "../lib/auth.js";
 import { json } from "../lib/http.js";
 
 /* =========================
-   WEEKLY PLANNERS - V96.3
+   WEEKLY PLANNERS - V96.4.1
    Direct Google Sheets API path. Existing Apps Script routes remain unchanged.
 ========================= */
 
@@ -76,24 +76,23 @@ export async function weeklyPlannerTeachersEndpoint(request, env) {
   }
 
   const teachers = await readWeeklyPlannerTeachers(env);
+  const ownTeacherId = String(auth.user.adminid || "").trim();
   const role = String(auth.user.role || "").trim().toUpperCase();
-  const scopedTeachers = role === "TEACHER"
-    ? teachers.filter(teacher => teacher.teacherId === String(auth.user.adminid || ""))
-    : teachers;
 
-  if (role === "TEACHER" && scopedTeachers.length === 0) {
-    scopedTeachers.push({
-      teacherId: String(auth.user.adminid || "").trim(),
+  if (ownTeacherId && !teachers.some(teacher => teacher.teacherId === ownTeacherId)) {
+    teachers.push({
+      teacherId: ownTeacherId,
       teacherName: String(auth.user.username || "").trim(),
       role,
       assignedGroup: String(auth.user.assignedgroup || "").trim(),
       active: true
     });
+    teachers.sort(compareWeeklyPlannerTeachers);
   }
 
   return json({
     success: true,
-    teachers: scopedTeachers
+    teachers
   });
 }
 
@@ -127,6 +126,7 @@ export async function getWeeklyPlannerEndpoint(request, env) {
   return json({
     success: true,
     teacher,
+    canEdit: teacher.teacherId === String(auth.user.adminid || "").trim(),
     week,
     planner: planner ? getWeeklyPlannerClientRecord(planner) : null,
     previousPlanner: previousPlanner ? getWeeklyPlannerClientRecord(previousPlanner) : null
@@ -141,6 +141,16 @@ export async function saveWeeklyPlannerEndpoint(request, env) {
   }
 
   const body = await request.json();
+  const ownTeacherId = String(auth.user.adminid || "").trim();
+  const requestedTeacherId = String(body.teacherId || ownTeacherId).trim();
+
+  if (!ownTeacherId || requestedTeacherId !== ownTeacherId) {
+    return json({
+      success: false,
+      error: "You can only save your own weekly planner."
+    }, 403);
+  }
+
   const teacher = await resolveWeeklyPlannerTeacher(env, auth.user, body);
 
   if (!teacher) {
@@ -257,6 +267,7 @@ export async function saveWeeklyPlannerEndpoint(request, env) {
     success: true,
     message: status === "READY" ? "Weekly planner saved" : "Weekly planner draft saved",
     teacher,
+    canEdit: true,
     week,
     planner: getWeeklyPlannerClientRecord(record)
   });
@@ -266,9 +277,7 @@ async function resolveWeeklyPlannerTeacher(env, authUser, body = {}) {
   const teachers = await readWeeklyPlannerTeachers(env);
   const role = String(authUser.role || "").trim().toUpperCase();
   const ownTeacherId = String(authUser.adminid || "").trim();
-  const requestedTeacherId = role === "TEACHER"
-    ? ownTeacherId
-    : String(body.teacherId || ownTeacherId).trim();
+  const requestedTeacherId = String(body.teacherId || ownTeacherId).trim();
   const matched = teachers.find(teacher => teacher.teacherId === requestedTeacherId);
 
   if (matched) {
@@ -309,11 +318,13 @@ async function readWeeklyPlannerTeachers(env) {
     };
   }).filter(teacher => {
     return teacher.teacherId && teacher.teacherName && teacher.active;
-  }).sort((a, b) => {
-    return a.teacherName.localeCompare(b.teacherName, undefined, {
-      numeric: true,
-      sensitivity: "base"
-    });
+  }).sort(compareWeeklyPlannerTeachers);
+}
+
+function compareWeeklyPlannerTeachers(a, b) {
+  return a.teacherName.localeCompare(b.teacherName, undefined, {
+    numeric: true,
+    sensitivity: "base"
   });
 }
 
