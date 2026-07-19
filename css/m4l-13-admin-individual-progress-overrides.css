@@ -484,7 +484,7 @@
   max-width: none;
   gap: 4px;
   padding: 7px 12px 8px;
-  border-radius: 0 0 20px 20px;
+ border-radius: 20px;
   transform: translateZ(0);
 }
 
@@ -521,8 +521,11 @@
   }
 
   #progress-report.admin-theme .admin-individual-progress-global-pane {
-    top: calc(var(--user-band-height) + var(--user-band-safe-area-top));
-  }
+top: calc(
+  var(--user-band-height) +
+  var(--user-band-safe-area-top) +
+  16px
+);  }
 }
 
 @media (min-width: 768px) {
@@ -535,7 +538,7 @@
     right: auto;
     width: min(100% - 28px, 1040px);
     transform: translateX(-50%) translateZ(0);
-    border-radius: 0 0 22px 22px;
+   border-radius: 22px;
   }
 
   #progress-report.admin-theme .admin-individual-progress-module-card-shell {
@@ -594,7 +597,7 @@
       var(--user-band-safe-area-top) +
       var(--top-nav-height) +
       var(--admin-individual-progress-top-nav-clearance) +
-      10px
+      18px
     );
     z-index: 96;
   }
