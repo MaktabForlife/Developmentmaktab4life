@@ -4027,11 +4027,11 @@ function renderAdminIndividualProgressGlobalPane(studentName, modules, activeInd
           type="button"
           class="admin-individual-progress-return-btn"
           data-progress-action="close-admin-individual-student-view"
-          aria-label="Return to Class Progress"
-          title="Return to Class Progress"
+          aria-label="Close"
+          title="Close"
         >
           <span class="admin-individual-progress-return-icon" aria-hidden="true"></span>
-          <span class="admin-individual-progress-return-label">Return to Class Progress</span>
+          <span class="admin-individual-progress-return-label">Close</span>
         </button>
       </div>
       <div class="admin-individual-progress-swipe-dots-row">
