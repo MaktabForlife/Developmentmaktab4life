@@ -8,7 +8,8 @@ const weeklyHeaders = [
 ];
 const adminRows = [
   ["adminid", "username", "uniqueid", "pinsetup", "pinhash", "role", "assignedgroup", "active", "createdate", "lastlogin", "URL"],
-  ["ADMIN1", "Test Teacher", "ABCDEFG", true, "", "TEACHER", "2", true, "", "", ""]
+  ["ADMIN1", "Test Teacher", "ABCDEFG", true, "", "TEACHER", "2", true, "", "", ""],
+  ["ADMIN2", "Other Teacher", "HIJKLMN", true, "", "TEACHER", "3", true, "", "", ""]
 ];
 const weeklyRows = [weeklyHeaders];
 const calls = [];
@@ -102,15 +103,29 @@ assert.equal(routing.data.routingLogsEnabled, false);
 
 const teachers = await callWorker("/api/admin/weekly-planner/teachers", {}, token);
 assert.equal(teachers.status, 200);
-assert.deepEqual(teachers.data.teachers.map(item => item.teacherId), ["ADMIN1"]);
+assert.deepEqual(
+  teachers.data.teachers.map(item => item.teacherId).sort(),
+  ["ADMIN1", "ADMIN2"],
+  "Every authenticated planner user may browse active teachers"
+);
 
 const initial = await callWorker("/api/admin/weekly-planner/get", {
-  teacherId: "ANOTHER-TEACHER",
+  teacherId: "ADMIN1",
   weekStart: "2026-07-13"
 }, token);
 assert.equal(initial.status, 200);
-assert.equal(initial.data.teacher.teacherId, "ADMIN1", "Teacher tokens must remain scoped to their own planner");
+assert.equal(initial.data.teacher.teacherId, "ADMIN1");
+assert.equal(initial.data.canEdit, true);
 assert.equal(initial.data.planner, null);
+
+const otherInitial = await callWorker("/api/admin/weekly-planner/get", {
+  teacherId: "ADMIN2",
+  weekStart: "2026-07-13"
+}, token);
+assert.equal(otherInitial.status, 200);
+assert.equal(otherInitial.data.teacher.teacherId, "ADMIN2");
+assert.equal(otherInitial.data.canEdit, false, "Another user's planner must be read only");
+assert.equal(otherInitial.data.planner, null);
 
 const plannerData = {
   version: 1,
@@ -121,6 +136,18 @@ const plannerData = {
     periods: [{ id: "period-1", label: "Period One", subject: "Quran", entries: ["Revision"] }]
   }))
 };
+const rejectedOtherSave = await callWorker("/api/admin/weekly-planner/save", {
+  teacherId: "ADMIN2",
+  weekStart: "2026-07-13",
+  groupNo: "3",
+  status: "READY",
+  plannerData,
+  expectedExists: false
+}, token);
+assert.equal(rejectedOtherSave.status, 403);
+assert.match(rejectedOtherSave.data.error, /only save your own/i);
+assert.equal(weeklyRows.length, 1, "A rejected cross-user save must not write a row");
+
 const saved = await callWorker("/api/admin/weekly-planner/save", {
   teacherId: "ADMIN1",
   weekStart: "2026-07-13",
@@ -131,6 +158,7 @@ const saved = await callWorker("/api/admin/weekly-planner/save", {
   expectedExists: false
 }, token);
 assert.equal(saved.status, 200);
+assert.equal(saved.data.canEdit, true);
 assert.equal(saved.data.planner.status, "READY");
 assert.equal(weeklyRows.length, 2);
 assert.equal(weeklyRows[1].length, 14);
@@ -203,6 +231,45 @@ const conflict = await callWorker("/api/admin/weekly-planner/save", {
 }, token);
 assert.equal(conflict.status, 409);
 assert.equal(conflict.data.conflict, true);
+
+const otherToken = await makeSessionToken({
+  type: "admin",
+  adminid: "ADMIN2",
+  username: "Other Teacher",
+  role: "TEACHER",
+  assignedgroup: "3"
+}, sessionSecret);
+const otherSaved = await callWorker("/api/admin/weekly-planner/save", {
+  teacherId: "ADMIN2",
+  weekStart: "2026-07-13",
+  groupNo: "3",
+  status: "READY",
+  plannerData,
+  feedback: "Other teacher feedback",
+  expectedExists: false
+}, otherToken);
+assert.equal(otherSaved.status, 200);
+assert.equal(weeklyRows.length, 3);
+
+const viewedOther = await callWorker("/api/admin/weekly-planner/get", {
+  teacherId: "ADMIN2",
+  weekStart: "2026-07-13"
+}, token);
+assert.equal(viewedOther.status, 200);
+assert.equal(viewedOther.data.canEdit, false);
+assert.equal(viewedOther.data.planner.plannerId, otherSaved.data.planner.plannerId);
+
+const rejectedOtherEdit = await callWorker("/api/admin/weekly-planner/save", {
+  teacherId: "ADMIN2",
+  weekStart: "2026-07-13",
+  groupNo: "3",
+  status: "READY",
+  plannerData,
+  expectedUpdatedDate: otherSaved.data.planner.updatedDate,
+  expectedExists: true
+}, token);
+assert.equal(rejectedOtherEdit.status, 403);
+assert.equal(weeklyRows.length, 3, "Viewing another planner must never grant write access");
 
 console.log("Weekly Planner Worker tests passed.");
 
