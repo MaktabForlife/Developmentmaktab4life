@@ -46,7 +46,10 @@ import {
   getTimetableEndpoint,
   updateTimetableZoomLinkEndpoint
 } from "./routes/timetable.js";
-import { getResourcesEndpoint } from "./routes/resources.js";
+import {
+  getResourcesAppsScriptEndpoint,
+  getResourcesGoogleSheetsEndpoint
+} from "./routes/resources.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -58,9 +61,9 @@ import {
 import { json } from "./lib/http.js";
 
 const ROUTES = new Map([
-  ["/api/resources/list", appsScriptRoute("resources", getResourcesEndpoint)],
-  ["/api/student/resources/list", appsScriptRoute("resources", getResourcesEndpoint)],
-  ["/api/admin/resources/list", appsScriptRoute("resources", getResourcesEndpoint)],
+  ["/api/resources/list", resourcesRoute()],
+  ["/api/student/resources/list", resourcesRoute()],
+  ["/api/admin/resources/list", resourcesRoute()],
 
   ["/api/timetable/get", appsScriptRoute("timetable", getTimetableEndpoint)],
   ["/api/student/timetable/get", appsScriptRoute("timetable", getTimetableEndpoint)],
@@ -167,6 +170,13 @@ function googleSheetsRoute(feature, handler) {
 
 function workerRoute(feature, handler) {
   return backendRoute(feature, { [BACKEND_WORKER]: handler });
+}
+
+function resourcesRoute() {
+  return backendRoute("resources", {
+    [BACKEND_APPS_SCRIPT]: getResourcesAppsScriptEndpoint,
+    [BACKEND_GOOGLE_SHEETS]: getResourcesGoogleSheetsEndpoint
+  });
 }
 
 function backendRoute(feature, handlers) {

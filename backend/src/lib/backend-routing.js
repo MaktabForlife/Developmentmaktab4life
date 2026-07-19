@@ -5,7 +5,11 @@ export const BACKEND_WORKER = "worker";
 const FEATURE_DEFINITIONS = Object.freeze({
   auth: defineFeature("M4L_BACKEND_AUTH", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
   attendance: defineFeature("M4L_BACKEND_ATTENDANCE", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
-  resources: defineFeature("M4L_BACKEND_RESOURCES", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
+  resources: defineFeature(
+    "M4L_BACKEND_RESOURCES",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
   timetable: defineFeature("M4L_BACKEND_TIMETABLE", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
   "student-management": defineFeature(
     "M4L_BACKEND_STUDENT_MANAGEMENT",

@@ -12,6 +12,11 @@ const defaults = getBackendRoutingDiagnostics({});
 assert.equal(defaults.features.auth.backend, BACKEND_APPS_SCRIPT);
 assert.equal(defaults.features.auth.source, "default");
 assert.equal(defaults.features.progress.backend, BACKEND_APPS_SCRIPT);
+assert.equal(defaults.features.resources.backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features.resources.availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
 assert.equal(defaults.features["weekly-planner"].backend, BACKEND_GOOGLE_SHEETS);
 assert.deepEqual(defaults.features["weekly-planner"].availableBackends, [BACKEND_GOOGLE_SHEETS]);
 assert.equal(defaults.routingLogsEnabled, false);
@@ -20,6 +25,13 @@ const explicitLegacy = getBackendSelection({ M4L_BACKEND_AUTH: "legacy" }, "auth
 assert.equal(explicitLegacy.valid, true);
 assert.equal(explicitLegacy.backend, BACKEND_APPS_SCRIPT);
 assert.equal(explicitLegacy.source, "M4L_BACKEND_AUTH");
+
+const resourceMigration = getBackendSelection(
+  { M4L_BACKEND_RESOURCES: "direct" },
+  "resources"
+);
+assert.equal(resourceMigration.valid, true);
+assert.equal(resourceMigration.backend, BACKEND_GOOGLE_SHEETS);
 
 const prematureMigration = getBackendSelection(
   { M4L_BACKEND_CURRICULUM: "direct" },
