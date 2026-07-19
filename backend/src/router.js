@@ -43,7 +43,8 @@ import {
   weeklyPlannerTeachersEndpoint
 } from "./routes/weekly-planner.js";
 import {
-  getTimetableEndpoint,
+  getTimetableAppsScriptEndpoint,
+  getTimetableGoogleSheetsEndpoint,
   updateTimetableZoomLinkEndpoint
 } from "./routes/timetable.js";
 import {
@@ -65,10 +66,10 @@ const ROUTES = new Map([
   ["/api/student/resources/list", resourcesRoute()],
   ["/api/admin/resources/list", resourcesRoute()],
 
-  ["/api/timetable/get", appsScriptRoute("timetable", getTimetableEndpoint)],
-  ["/api/student/timetable/get", appsScriptRoute("timetable", getTimetableEndpoint)],
-  ["/api/admin/timetable/get", appsScriptRoute("timetable", getTimetableEndpoint)],
-  ["/api/admin/timetable/update-zoom", appsScriptRoute("timetable", updateTimetableZoomLinkEndpoint)],
+  ["/api/timetable/get", timetableReadRoute()],
+  ["/api/student/timetable/get", timetableReadRoute()],
+  ["/api/admin/timetable/get", timetableReadRoute()],
+  ["/api/admin/timetable/update-zoom", appsScriptRoute("timetable-write", updateTimetableZoomLinkEndpoint)],
 
   ["/api/admin/weekly-planner/health", googleSheetsRoute("weekly-planner", weeklyPlannerHealthEndpoint)],
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],
@@ -176,6 +177,13 @@ function resourcesRoute() {
   return backendRoute("resources", {
     [BACKEND_APPS_SCRIPT]: getResourcesAppsScriptEndpoint,
     [BACKEND_GOOGLE_SHEETS]: getResourcesGoogleSheetsEndpoint
+  });
+}
+
+function timetableReadRoute() {
+  return backendRoute("timetable-read", {
+    [BACKEND_APPS_SCRIPT]: getTimetableAppsScriptEndpoint,
+    [BACKEND_GOOGLE_SHEETS]: getTimetableGoogleSheetsEndpoint
   });
 }
 

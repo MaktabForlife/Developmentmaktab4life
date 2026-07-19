@@ -10,7 +10,16 @@ const FEATURE_DEFINITIONS = Object.freeze({
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  timetable: defineFeature("M4L_BACKEND_TIMETABLE", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
+  "timetable-read": defineFeature(
+    "M4L_BACKEND_TIMETABLE_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "timetable-write": defineFeature(
+    "M4L_BACKEND_TIMETABLE_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT]
+  ),
   "student-management": defineFeature(
     "M4L_BACKEND_STUDENT_MANAGEMENT",
     BACKEND_APPS_SCRIPT,
