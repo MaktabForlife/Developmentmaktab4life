@@ -234,7 +234,12 @@ Check the discardedTracks field for more info.`)}return e}async execute(){if(!th
  */var Do=Symbol.for("mediabunny loaded");globalThis[Do]&&M._error(`[WARNING]
 Mediabunny was loaded twice. This will likely cause Mediabunny not to work correctly. Check if multiple dependencies are importing different versions of Mediabunny, or if something is being bundled incorrectly.`);globalThis[Do]=!0;async function Oc(t){if(!(t instanceof Blob)||t.size===0)throw new TypeError("A non-empty MP4 Blob is required.");let e=new Et({formats:[Xi],source:new pr(t)});try{let r=new tt,i=new ft({format:new dt({fastStart:"in-memory"}),target:r}),s=await Ir.init({input:e,output:i,tracks:"primary",video:{forceTranscode:!1},audio:{forceTranscode:!1},showWarnings:!1});if(!s.isValid||!s.utilizedTracks.some(o=>o.type==="video"))throw new Error("The MP4 could not be prepared for sharing.");if(await s.execute(),!r.buffer||r.buffer.byteLength===0)throw new Error("The MP4 remux produced no data.");return new Blob([r.buffer],{type:"video/mp4"})}finally{e.dispose()}}globalThis.M4LRecorderMp4Compat=Object.freeze({flattenMp4Blob:Oc});})();
 
-/* M4L v94.7
+/* M4L v96.5.2 · Android M4A native-share compatibility
+   Labels Android M4A files as audio/x-m4a for Chromium Web Share while
+   retaining audio/mp4 on iOS. The recording container and extension remain
+   unchanged.
+
+   M4L v94.7
    Shared student/admin recorder interface with shared manifest caching.
    Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
    Flattens fragmented browser MP4 recordings before preview, Share or Save.
@@ -1178,7 +1183,9 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       .trim();
 
     if (resultKind === "video-mp4") return "video/mp4";
-    if (cleanType === "audio/mp4") return "audio/mp4";
+    if (cleanType === "audio/mp4") {
+      return isIOSDevice() ? "audio/mp4" : "audio/x-m4a";
+    }
     if (cleanType.startsWith("audio/")) return cleanType;
     return resultKind === "audio-only" || resultKind === "audio-image"
       ? "audio/webm"
