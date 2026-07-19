@@ -2075,8 +2075,8 @@ function setBackIconButton(button, actionValue = "goHome()") {
   button.setAttribute("aria-label", "Back");
   button.setAttribute("title", "Back");
   button.innerHTML = `
-    <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg')" aria-hidden="true"></span>
-    <span class="header-icon-label">Back</span>
+    <span class="app-icon app-icon-large" style="--app-icon-url: url('/icons/back.svg?v=96.4')" aria-hidden="true"></span>
+    <span class="header-icon-label">close</span>
   `;
 }
 
