@@ -76,7 +76,7 @@
   display: block;
   background: currentColor;
   -webkit-mask: url('/icons/back.svg') center / contain no-repeat;
-  mask: url('/icons/back.svg') center / contain no-repeat;
+  mask: url('/icons/back.svg?v=96.4') center / contain no-repeat;
 }
 
 #progress-report.admin-theme .admin-individual-progress-return-label {
