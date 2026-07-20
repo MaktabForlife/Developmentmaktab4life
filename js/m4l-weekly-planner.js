@@ -1,4 +1,4 @@
-/* M4L v97.1.5 Weekly Planner
+/* M4L v97.1.5.2 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -142,6 +142,7 @@ function bindWeeklyPlannerEvents() {
   const groupInput = document.getElementById("weekly-planner-group");
   const rail = document.getElementById("weekly-planner-rail");
   const dots = document.getElementById("weekly-planner-dots");
+  const saveDialog = document.getElementById("weekly-planner-save-dialog");
 
   if (teacherSelect) {
     teacherSelect.addEventListener("change", () => {
@@ -188,6 +189,12 @@ function bindWeeklyPlannerEvents() {
       const button = event.target.closest("[data-weekly-planner-dot]");
       if (!button) return;
       scrollWeeklyPlannerToCard(Number(button.dataset.weeklyPlannerDot || 0));
+    });
+  }
+
+  if (saveDialog) {
+    saveDialog.addEventListener("click", event => {
+      if (event.target === saveDialog) closeWeeklyPlannerSaveDialog();
     });
   }
 }
@@ -1088,36 +1095,101 @@ async function downloadWeeklyPlannerImage(button) {
   const previewMessage = document.getElementById("weekly-planner-preview-message");
 
   try {
-    if (!weeklyPlannerState.previewDataUrl) {
+    if (previewMessage) previewMessage.textContent = "";
+
+    if (!weeklyPlannerState.previewBlob) {
       await generateWeeklyPlannerPreview();
     }
-    if (!weeklyPlannerState.previewDataUrl) {
+    if (!weeklyPlannerState.previewBlob) {
       throw new Error("The planner preview is not ready to save.");
     }
 
     const fileName = getWeeklyPlannerImageFileName();
+    const previewBlob = weeklyPlannerState.previewBlob;
+
+    if (isAppleTouchDevice() && typeof File === "function" && navigator.share) {
+      const file = new File([previewBlob], fileName, { type: "image/png" });
+      let canShareFile = true;
+
+      if (typeof navigator.canShare === "function") {
+        try {
+          canShareFile = navigator.canShare({ files: [file] });
+        } catch (_error) {
+          canShareFile = false;
+        }
+      }
+
+      if (canShareFile) {
+        try {
+          await navigator.share({ files: [file] });
+          openWeeklyPlannerSaveDialog(
+            `${fileName} was sent to the destination selected in the system menu.`
+          );
+          return true;
+        } catch (error) {
+          if (error && error.name === "AbortError") return false;
+          // If the native file sheet is unavailable or blocked, retain the
+          // Blob-download fallback instead of leaving the user without a file.
+        }
+      }
+    }
+
+    const objectUrl = URL.createObjectURL(previewBlob);
     const anchor = document.createElement("a");
-    anchor.href = weeklyPlannerState.previewDataUrl;
+    anchor.href = objectUrl;
     anchor.download = fileName;
+    anchor.rel = "noopener";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+    // Safari may begin consuming the Blob URL after the click task completes.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
 
-    if (previewMessage) {
-      previewMessage.replaceChildren(
-        document.createTextNode(`Download started: ${fileName}`),
-        document.createElement("br"),
-        document.createTextNode("Saving to your default Downloads folder.")
-      );
-    }
+    openWeeklyPlannerSaveDialog(
+      `${fileName} is being saved to your default Downloads folder.`
+    );
     return true;
   } catch (error) {
-    if (previewMessage) {
-      previewMessage.textContent = error.message || "Unable to save the planner image.";
-    }
+    openWeeklyPlannerSaveDialog(error.message || "Unable to save the planner image.");
     return false;
   } finally {
     if (button) button.blur();
+  }
+}
+
+function isAppleTouchDevice() {
+  const userAgent = String(navigator.userAgent || "");
+  const platform = String(navigator.platform || "");
+  return /iPad|iPhone|iPod/i.test(userAgent)
+    || (platform === "MacIntel" && Number(navigator.maxTouchPoints || 0) > 1);
+}
+
+function openWeeklyPlannerSaveDialog(message) {
+  const dialog = document.getElementById("weekly-planner-save-dialog");
+  const messageElement = document.getElementById("weekly-planner-save-dialog-message");
+  if (!dialog || !messageElement) return;
+
+  messageElement.textContent = String(message || "");
+
+  if (typeof dialog.showModal === "function") {
+    if (!dialog.open) dialog.showModal();
+  } else {
+    dialog.setAttribute("open", "");
+  }
+
+  window.requestAnimationFrame(() => {
+    dialog.querySelector(".weekly-planner-save-dialog-close")?.focus();
+  });
+}
+
+function closeWeeklyPlannerSaveDialog() {
+  const dialog = document.getElementById("weekly-planner-save-dialog");
+  if (!dialog) return;
+
+  if (typeof dialog.close === "function" && dialog.open) {
+    dialog.close();
+  } else {
+    dialog.removeAttribute("open");
   }
 }
 
@@ -1675,6 +1747,7 @@ window.saveWeeklyPlannerAndPreview = saveWeeklyPlannerAndPreview;
 window.returnToWeeklyPlanner = returnToWeeklyPlanner;
 window.shareWeeklyPlannerImage = shareWeeklyPlannerImage;
 window.downloadWeeklyPlannerImage = downloadWeeklyPlannerImage;
+window.closeWeeklyPlannerSaveDialog = closeWeeklyPlannerSaveDialog;
 window.toggleWeeklyPlannerPreviewSettings = toggleWeeklyPlannerPreviewSettings;
 window.updateWeeklyPlannerPreviewStyle = updateWeeklyPlannerPreviewStyle;
 window.M4LWeeklyPlanner = {
