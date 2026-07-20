@@ -466,8 +466,6 @@
         </button>
 
         <div class="weekly-planner-preview-title-group">
-        
-
           <button
             id="weekly-planner-preview-settings-toggle"
             class="weekly-planner-preview-settings-toggle"
@@ -491,7 +489,28 @@
             <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
             <span class="weekly-planner-header-action__label">Save</span>
           </button>
+ 
+          <dialog
+        id="weekly-planner-save-dialog"
+        class="weekly-planner-save-dialog"
+        aria-labelledby="weekly-planner-save-dialog-message"
+      >
+        <div class="weekly-planner-save-dialog-card">
+          <p id="weekly-planner-save-dialog-message" aria-live="polite"></p>
+          <button
+            type="button"
+            class="weekly-planner-save-dialog-close"
+            onclick="closeWeeklyPlannerSaveDialog()"
+            aria-label="Close save notice"
+            title="Close"
+          >
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
+        </div>
+      </dialog>
 
+
+          
           <button
             class="weekly-planner-header-action weekly-planner-header-action--share"
             type="button"
@@ -571,24 +590,7 @@
 
       </div>
 
-      <dialog
-        id="weekly-planner-save-dialog"
-        class="weekly-planner-save-dialog"
-        aria-labelledby="weekly-planner-save-dialog-message"
-      >
-        <div class="weekly-planner-save-dialog-card">
-          <p id="weekly-planner-save-dialog-message" aria-live="polite"></p>
-          <button
-            type="button"
-            class="weekly-planner-save-dialog-close"
-            onclick="closeWeeklyPlannerSaveDialog()"
-            aria-label="Close save notice"
-            title="Close"
-          >
-            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
-          </button>
-        </div>
-      </dialog>
+     
     </section>
 
 
