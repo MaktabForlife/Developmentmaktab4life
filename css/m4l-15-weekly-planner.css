@@ -41,7 +41,7 @@
 
 .weekly-planner-app-header {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 72px;
+  grid-template-columns: 58px minmax(0, 1fr) 104px;
   align-items: center;
   gap: 4px;
   min-height: 44px;
