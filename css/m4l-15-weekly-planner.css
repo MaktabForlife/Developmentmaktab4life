@@ -41,7 +41,7 @@
 
 .weekly-planner-app-header {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 104px;
+  grid-template-columns: 58px minmax(0, 1fr) 72px;
   align-items: center;
   gap: 4px;
   min-height: 44px;
@@ -59,9 +59,10 @@
 }
 
 .weekly-planner-preview-screen > .weekly-planner-app-header {
-  grid-template-columns: minmax(52px, 1fr) auto minmax(96px, 1fr);
-  border: 2px solid var(--surface-track);
+  grid-template-columns: repeat(4, 1fr); 
+  border: 2px solid var(--surface-track); 
   border-radius: 14px;
+   justify-items: center;
 }
 
 .weekly-planner-preview-actions {
