@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.5a">
+<link rel="stylesheet" href="/styles.css?v=97.1.5g">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -453,59 +453,33 @@
 
     <section id="weekly-planner-preview-screen" class="screen admin-theme weekly-planner-preview-screen">
       <div class="weekly-planner-app-header" role="toolbar" aria-label="Planner Preview actions">
-        <button
-          class="weekly-planner-header-action weekly-planner-header-action--back"
-          type="button"
-          onclick="returnToWeeklyPlanner()"
-          aria-label="Close planner preview"
-        >
-          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-          <span class="weekly-planner-header-action__label">
-            <span>Close</span>
-          </span>
-        </button>
+  
+  <!-- COLUMN 1: Close -->
+  <button class="weekly-planner-header-action weekly-planner-header-action--back" type="button" onclick="returnToWeeklyPlanner()" aria-label="Close planner preview">
+    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+    <span class="weekly-planner-header-action__label"><span>Close</span></span>
+  </button>
 
-        <div class="weekly-planner-preview-title-group">
-          <h2>
-            <span class="weekly-planner-mobile-copy">PREVIEW</span>
-            <span class="weekly-planner-wide-copy">Planner Preview</span>
-          </h2>
+  <!-- COLUMN 2: Settings -->
+  <button id="weekly-planner-preview-settings-toggle" class="weekly-planner-preview-settings-toggle" type="button" onclick="toggleWeeklyPlannerPreviewSettings(this)" aria-label="Preview font and colour settings" aria-controls="weekly-planner-preview-settings" aria-expanded="false">
+    <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
+  </button>
 
-          <button
-            id="weekly-planner-preview-settings-toggle"
-            class="weekly-planner-preview-settings-toggle"
-            type="button"
-            onclick="toggleWeeklyPlannerPreviewSettings(this)"
-            aria-label="Preview font and colour settings"
-            aria-controls="weekly-planner-preview-settings"
-            aria-expanded="false"
-          >
-            <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
-          </button>
-        </div>
+  <!-- COLUMN 3: Save -->
+  <button class="weekly-planner-header-action weekly-planner-header-action--save" type="button" onclick="downloadWeeklyPlannerImage(this)" aria-label="Save planner image">
+    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+    <span class="weekly-planner-header-action__label">Save</span>
+  </button>
 
-        <div class="weekly-planner-preview-actions" aria-label="Preview file actions">
-          <button
-            class="weekly-planner-header-action weekly-planner-header-action--save"
-            type="button"
-            onclick="downloadWeeklyPlannerImage(this)"
-            aria-label="Save planner image"
-          >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-            <span class="weekly-planner-header-action__label">Save</span>
-          </button>
+  <!-- COLUMN 4: Share -->
+  <button class="weekly-planner-header-action weekly-planner-header-action--share" type="button" onclick="shareWeeklyPlannerImage(this)" aria-label="Share planner image">
+    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+    <span class="weekly-planner-header-action__label">Share</span>
+  </button>
 
-          <button
-            class="weekly-planner-header-action weekly-planner-header-action--share"
-            type="button"
-            onclick="shareWeeklyPlannerImage(this)"
-            aria-label="Share planner image"
-          >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-            <span class="weekly-planner-header-action__label">Share</span>
-          </button>
-        </div>
-      </div>
+</div>
+      
+      
 
       <section
         id="weekly-planner-preview-settings"
