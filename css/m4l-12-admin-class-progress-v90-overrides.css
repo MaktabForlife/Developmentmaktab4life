@@ -618,6 +618,14 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
   background: var(--admin-progress-class-grid-body-surface, var(--surface-card));
 }
 
+/* M4L v97.1.5 - Complete the Class Progress task matrix with a subtle grid. */
+.admin-progress-class-overview--accordion
+  .admin-progress-class-accordion-student-grid-row
+  .admin-progress-class-grid-task-cell {
+  border-right: 0.75px solid rgba(var(--primary-rgb), 0.10);
+  border-bottom: 0.75px solid rgba(var(--primary-rgb), 0.10);
+}
+
 @media (max-width: 767px), (max-device-width: 767px) {
   .admin-progress-class-overview--accordion .admin-progress-class-attached-shell {
     min-height: 0;

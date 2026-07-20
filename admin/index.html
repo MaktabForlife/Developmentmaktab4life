@@ -5,7 +5,7 @@
   <title>Maktab4Life Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- M4L v95.3.1 Weekly Planner preview styles -->
+  <!-- M4L v97.1.5 Weekly Planner preview actions -->
     <!-- PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=96.5">
+<link rel="stylesheet" href="/styles.css?v=97.1.5">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -457,12 +457,11 @@
           class="weekly-planner-header-action weekly-planner-header-action--back"
           type="button"
           onclick="returnToWeeklyPlanner()"
-          aria-label="Back to edit"
+          aria-label="Close planner preview"
         >
           <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
           <span class="weekly-planner-header-action__label">
-            <span class="weekly-planner-mobile-copy">Back</span>
-            <span class="weekly-planner-wide-copy">Back to Edit</span>
+            <span>Close</span>
           </span>
         </button>
 
@@ -485,15 +484,27 @@
           </button>
         </div>
 
-        <button
-          class="weekly-planner-header-action weekly-planner-header-action--share"
-          type="button"
-          onclick="shareWeeklyPlannerImage(this)"
-          aria-label="Share planner image"
-        >
-          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-          <span class="weekly-planner-header-action__label">Share</span>
-        </button>
+        <div class="weekly-planner-preview-actions" aria-label="Preview file actions">
+          <button
+            class="weekly-planner-header-action weekly-planner-header-action--save"
+            type="button"
+            onclick="downloadWeeklyPlannerImage(this)"
+            aria-label="Save planner image"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Save</span>
+          </button>
+
+          <button
+            class="weekly-planner-header-action weekly-planner-header-action--share"
+            type="button"
+            onclick="shareWeeklyPlannerImage(this)"
+            aria-label="Share planner image"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Share</span>
+          </button>
+        </div>
       </div>
 
       <section

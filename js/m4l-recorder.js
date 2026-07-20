@@ -239,18 +239,17 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
    retaining audio/mp4 on iOS. The recording container and extension remain
    unchanged.
 
-   M4L v94.7
+   M4L v97.1.5
    Shared student/admin recorder interface with shared manifest caching.
    Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
    Flattens fragmented browser MP4 recordings before preview, Share or Save.
    Provides reader-page and audio-only recording sources.
-   Save remains implemented but is temporarily hidden from the preview. */
+   Save is available from the preview and follows the shared M4L download protocol. */
 (() => {
   "use strict";
 
   const MAX_RECORDING_MS = 2 * 60 * 1000;
   const CANVAS_FPS = 1;
-  const OUTPUT_BASENAME = "reader-recording";
   const MANIFEST_URL = "/recorder/pages/manifest.json";
   const PAGE_ASSET_BASE = "/recorder/pages/";
   const RECORDER_MANIFEST_CACHE_KEY = "recorder:manifest:v1";
@@ -291,7 +290,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     actualMimeType: "",
     stopReason: "manual",
     recordingDurationMs: 0,
-    outputBaseName: "",
+    outputTimestamp: "",
     shareCapabilities: null,
     currentView: "pages"
   };
@@ -402,7 +401,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
             <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=94.7" alt="" aria-hidden="true" />
             <span id="m4l-recorder-share-label">Share</span>
           </button>
-          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button" hidden>
+          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button">
             <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=94.7" alt="" aria-hidden="true" />
             <span>Save</span>
           </button>
@@ -1220,18 +1219,21 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       .replace(/^-|-$/g, "") || fallback;
   }
 
-  function createOutputBaseName() {
+  function createOutputTimestamp() {
     const now = new Date();
     const pad = value => String(value).padStart(2, "0");
-    const timestamp = [
+    const date = [
       now.getFullYear(),
       pad(now.getMonth() + 1),
       pad(now.getDate())
-    ].join("") + `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const safeTitle = state.sourceMode === "audio-only"
-      ? "audio"
-      : safeFilePart(state.selectedPage && state.selectedPage.title, "page");
-    return `${OUTPUT_BASENAME}-${safeTitle}-${timestamp}`;
+    ].join("-");
+    return `${date}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  }
+
+  function createDownloadBaseName(descriptor) {
+    const safeDescriptor = safeFilePart(descriptor, "recording");
+    const timestamp = state.outputTimestamp || createOutputTimestamp();
+    return `M4L-${safeDescriptor}-${timestamp}`;
   }
 
   function canvasToJpegBlob(canvas, quality = 0.9) {
@@ -1258,7 +1260,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     drawSelectedPage();
     const imageBlob = await canvasToJpegBlob(els.canvas);
-    const fileName = `${state.outputBaseName || createOutputBaseName()}.jpg`;
+    const fileName = `${createDownloadBaseName("page-image")}.jpg`;
 
     cleanObjectUrl(state.pageImageUrl);
     state.pageImageBlob = imageBlob;
@@ -1501,7 +1503,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
         keepSelectedPage: !audioOnly,
         keepSourceMode: true
       });
-      state.outputBaseName = createOutputBaseName();
+      state.outputTimestamp = createOutputTimestamp();
       updateRecordStage();
       if (!audioOnly) drawSelectedPage();
 
@@ -1674,7 +1676,8 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       state.chunks = [];
       state.recordingBlob = recordingBlob;
       const extension = getFileExtension(mimeType, resultKind);
-      const fileName = `${state.outputBaseName || createOutputBaseName()}.${extension}`;
+      const descriptor = resultKind === "video-mp4" ? "video" : "audio";
+      const fileName = `${createDownloadBaseName(descriptor)}.${extension}`;
       const fileMimeType = getPortableFileMimeType(mimeType, resultKind);
 
       cleanObjectUrl(state.recordingUrl);
@@ -1762,7 +1765,10 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       }
     }
     if (els.shareLabel) els.shareLabel.textContent = "Share";
-    if (els.saveBtn) els.saveBtn.disabled = getResultFiles().length === 0;
+    if (els.saveBtn) {
+      els.saveBtn.hidden = false;
+      els.saveBtn.disabled = getResultFiles().length === 0;
+    }
   }
 
   function renderResultPreview() {
@@ -1846,7 +1852,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       state.pageImageFile = null;
       state.resultKind = "";
       state.recordingDurationMs = 0;
-      state.outputBaseName = "";
+      state.outputTimestamp = "";
       resetPreviewMedia();
       hideSaveReminder();
     }
@@ -1918,16 +1924,13 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
   function showSaveReminder(files) {
     if (!els.saveReminder) return false;
     const fileNames = files.map(file => file.name).join(", ");
-    let instruction = "Your browser has started saving the recording.";
-    if (state.resultKind === "audio-image") {
-      instruction = "Your browser has started saving both files. If Chrome asks, allow multiple files. Open WhatsApp, choose the recipient, and attach both saved files as Documents.";
-    } else if (state.resultKind === "audio-only") {
-      instruction = "Your browser has started saving the audio. Open WhatsApp, choose the recipient, and attach the saved audio as a Document.";
-    } else if (state.resultKind === "video-mp4") {
-      instruction = "Your browser has started saving the MP4. Open WhatsApp, choose the recipient, and attach the saved video.";
-    }
+    const firstLine = `${files.length === 1 ? "Download" : "Downloads"} started: ${fileNames}`;
     if (els.saveReminderText) {
-      els.saveReminderText.textContent = `${instruction} Saved name${files.length === 1 ? "" : "s"}: ${fileNames}`;
+      els.saveReminderText.replaceChildren(
+        document.createTextNode(firstLine),
+        document.createElement("br"),
+        document.createTextNode("Saving to your default Downloads folder.")
+      );
     }
     els.saveReminder.hidden = false;
     return true;

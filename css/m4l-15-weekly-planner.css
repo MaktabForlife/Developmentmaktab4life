@@ -1,4 +1,4 @@
-/* M4L v95.3.1 Weekly Planner
+/* M4L v97.1.5 Weekly Planner
    Mobile uses one compact swipe card. Medium and large screens show all four
    equal day cards in one row. Preview font and ink colour are locally selectable. */
 
@@ -16,6 +16,10 @@
   padding: 6px;
   background: var(--surface-track);
   text-align: left;
+}
+
+#weekly-planner-preview-screen.screen {
+  background: var(--surface-app);
 }
 
 .weekly-planner-global-panel,
@@ -55,8 +59,22 @@
 }
 
 .weekly-planner-preview-screen > .weekly-planner-app-header {
+  grid-template-columns: minmax(52px, 1fr) auto minmax(96px, 1fr);
   border: 2px solid var(--surface-track);
   border-radius: 14px;
+}
+
+.weekly-planner-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.weekly-planner-preview-actions .weekly-planner-header-action {
+  flex: 0 1 46px;
 }
 
 .weekly-planner-app-header h2 {
@@ -716,7 +734,7 @@
   
   #weekly-planner-preview-screen.screen {
     padding: 14px;
-    background: var(--planner-page);
+    background: var(--surface-app);
   }
 
 
@@ -747,6 +765,10 @@
     border: 2px solid var(--surface-track);
     border-radius: 16px;
     background: var(--surface-card);
+  }
+
+  .weekly-planner-preview-screen > .weekly-planner-app-header {
+    grid-template-columns: minmax(78px, 1fr) auto minmax(120px, 1fr);
   }
 
   .weekly-planner-controls {

@@ -1,4 +1,4 @@
-/* M4L v96.4.1 Weekly Planner
+/* M4L v97.1.5 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
@@ -1062,8 +1062,7 @@ async function shareWeeklyPlannerImage(button) {
     }
 
     if (typeof File !== "function") {
-      downloadWeeklyPlannerImage();
-      if (previewMessage) previewMessage.textContent = "The PNG was downloaded and is ready to share.";
+      await downloadWeeklyPlannerImage();
       return;
     }
 
@@ -1071,17 +1070,12 @@ async function shareWeeklyPlannerImage(button) {
     const file = new File([weeklyPlannerState.previewBlob], fileName, { type: "image/png" });
 
     if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-      await navigator.share({
-        files: [file],
-        title: "Weekly Planner",
-        text: `${weeklyPlannerState.teacher?.teacherName || "Teacher"} · ${weeklyPlannerState.week?.weekStart || ""}`
-      });
+      await navigator.share({ files: [file] });
       if (previewMessage) previewMessage.textContent = "";
       return;
     }
 
-    downloadWeeklyPlannerImage();
-    if (previewMessage) previewMessage.textContent = "Sharing is unavailable here, so the PNG was downloaded instead.";
+    await downloadWeeklyPlannerImage();
   } catch (error) {
     if (error && error.name === "AbortError") return;
     if (previewMessage) previewMessage.textContent = error.message || "Unable to share the image.";
@@ -1090,15 +1084,41 @@ async function shareWeeklyPlannerImage(button) {
   }
 }
 
-function downloadWeeklyPlannerImage() {
-  if (!weeklyPlannerState.previewDataUrl) return;
+async function downloadWeeklyPlannerImage(button) {
+  const previewMessage = document.getElementById("weekly-planner-preview-message");
 
-  const anchor = document.createElement("a");
-  anchor.href = weeklyPlannerState.previewDataUrl;
-  anchor.download = getWeeklyPlannerImageFileName();
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
+  try {
+    if (!weeklyPlannerState.previewDataUrl) {
+      await generateWeeklyPlannerPreview();
+    }
+    if (!weeklyPlannerState.previewDataUrl) {
+      throw new Error("The planner preview is not ready to save.");
+    }
+
+    const fileName = getWeeklyPlannerImageFileName();
+    const anchor = document.createElement("a");
+    anchor.href = weeklyPlannerState.previewDataUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    if (previewMessage) {
+      previewMessage.replaceChildren(
+        document.createTextNode(`Download started: ${fileName}`),
+        document.createElement("br"),
+        document.createTextNode("Saving to your default Downloads folder.")
+      );
+    }
+    return true;
+  } catch (error) {
+    if (previewMessage) {
+      previewMessage.textContent = error.message || "Unable to save the planner image.";
+    }
+    return false;
+  } finally {
+    if (button) button.blur();
+  }
 }
 
 function getWeeklyPlannerDataForSave(value) {
@@ -1129,11 +1149,14 @@ function getWeeklyPlannerDataForSave(value) {
 }
 
 function getWeeklyPlannerImageFileName() {
-  const teacherName = String(weeklyPlannerState.teacher?.teacherName || "teacher")
-    .trim()
-    .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "teacher";
-  return `weekly-planner-${teacherName}-${weeklyPlannerState.week?.weekStart || "week"}.png`;
+  const now = new Date();
+  const pad = value => String(value).padStart(2, "0");
+  const timestamp = [
+    now.getFullYear(),
+    pad(now.getMonth() + 1),
+    pad(now.getDate())
+  ].join("-") + `-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  return `M4L-weekly-planner-${timestamp}.png`;
 }
 
 function normalizeWeeklyPlannerPreviewStyle(value) {
