@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.5.2e">
+<link rel="stylesheet" href="/styles.css?v=97.1.5.2">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -466,6 +466,11 @@
         </button>
 
         <div class="weekly-planner-preview-title-group">
+          <h2>
+            <span class="weekly-planner-mobile-copy">PREVIEW</span>
+            <span class="weekly-planner-wide-copy">Planner Preview</span>
+          </h2>
+
           <button
             id="weekly-planner-preview-settings-toggle"
             class="weekly-planner-preview-settings-toggle"
@@ -489,28 +494,7 @@
             <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
             <span class="weekly-planner-header-action__label">Save</span>
           </button>
- 
-          <dialog
-        id="weekly-planner-save-dialog"
-        class="weekly-planner-save-dialog"
-        aria-labelledby="weekly-planner-save-dialog-message"
-      >
-        <div class="weekly-planner-save-dialog-card">
-          <p id="weekly-planner-save-dialog-message" aria-live="polite"></p>
-          <button
-            type="button"
-            class="weekly-planner-save-dialog-close"
-            onclick="closeWeeklyPlannerSaveDialog()"
-            aria-label="Close save notice"
-            title="Close"
-          >
-            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
-          </button>
-        </div>
-      </dialog>
 
-
-          
           <button
             class="weekly-planner-header-action weekly-planner-header-action--share"
             type="button"
@@ -590,7 +574,24 @@
 
       </div>
 
-     
+      <dialog
+        id="weekly-planner-save-dialog"
+        class="weekly-planner-save-dialog"
+        aria-labelledby="weekly-planner-save-dialog-message"
+      >
+        <div class="weekly-planner-save-dialog-card">
+          <p id="weekly-planner-save-dialog-message" aria-live="polite"></p>
+          <button
+            type="button"
+            class="weekly-planner-save-dialog-close"
+            onclick="closeWeeklyPlannerSaveDialog()"
+            aria-label="Close save notice"
+            title="Close"
+          >
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
+        </div>
+      </dialog>
     </section>
 
 
