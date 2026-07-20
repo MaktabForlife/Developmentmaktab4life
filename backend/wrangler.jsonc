@@ -6,7 +6,8 @@
   "vars": {
     "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwwmDx0WuJWTj0gLRUnE3yC7v6gUrc8muEjENJJZ872taaRKxUFSjCGFOtsfelu2fcW/exec",
     "GOOGLE_SPREADSHEET_ID": "1KyYroAEEsDOZxvfNGb5hGKmaIevbq3U-UQ7at-sg6-g",
-    "M4L_BACKEND_RESOURCES": "google-sheets"
+    "M4L_BACKEND_RESOURCES": "google-sheets",
+    "M4L_BACKEND_TIMETABLE_READ": "google-sheets"
   },
   "r2_buckets": [
     {
