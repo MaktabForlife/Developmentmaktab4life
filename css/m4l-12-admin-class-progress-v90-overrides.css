@@ -622,8 +622,8 @@ body.is-admin-progress-section #progress-report.admin-progress-screen .admin-pro
 .admin-progress-class-overview--accordion
   .admin-progress-class-accordion-student-grid-row
   .admin-progress-class-grid-task-cell {
-  border-right: 0.75px solid rgba(var(--primary-rgb), 0.10);
-  border-bottom: 0.75px solid rgba(var(--primary-rgb), 0.10);
+  border-right: 0.75px solid var(--surface-track);
+  border-bottom: 0.75px solid var(--surface-track);
 }
 
 @media (max-width: 767px), (max-device-width: 767px) {
