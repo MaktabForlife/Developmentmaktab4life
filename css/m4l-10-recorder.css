@@ -570,23 +570,20 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-.m4l-recorder-pair-actions {
-  display: grid;
-  gap: 6px;
+.m4l-recorder-save-notice {
   width: min(100%, 460px);
   margin: 0 auto;
-}
-
-.m4l-recorder-pair-action-group {
+  padding: 7px 7px 7px 12px;
   display: grid;
-  gap: 4px;
-  padding: 7px;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
   border-radius: 13px;
   background: var(--surface-card);
   box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.07);
 }
 
-.m4l-recorder-pair-action-group > p {
+.m4l-recorder-save-notice > p {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.66rem;
@@ -594,31 +591,30 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
   text-align: center;
 }
 
-.m4l-recorder-pair-action-group > div {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+.m4l-recorder-save-notice-close {
+  appearance: none;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  display: inline-grid;
+  place-items: center;
 }
 
-.m4l-recorder-secondary-action {
-  appearance: none;
-  min-height: 38px;
-  margin: 0;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--surface-chip);
-  color: var(--text-strong);
-  box-shadow: none;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 750;
-  line-height: 1.1;
+.m4l-recorder-save-notice-close .app-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .m4l-recorder-record-action:disabled,
-.m4l-recorder-preview-action:disabled,
-.m4l-recorder-secondary-action:disabled {
+.m4l-recorder-preview-action:disabled {
   opacity: 0.38;
   cursor: not-allowed;
 }
@@ -628,7 +624,7 @@ body.has-user-band #record-lesson-screen.m4l-recorder-screen {
 .m4l-recorder-back-icon-btn:focus-visible,
 .m4l-recorder-record-action:focus-visible,
 .m4l-recorder-preview-action:focus-visible,
-.m4l-recorder-secondary-action:focus-visible {
+.m4l-recorder-save-notice-close:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--primary) 75%, black 10%);
   outline-offset: 2px;
 }

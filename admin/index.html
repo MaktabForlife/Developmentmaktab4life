@@ -5,7 +5,7 @@
   <title>Maktab4Life Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- M4L v95.3.1 Weekly Planner preview styles -->
+  <!-- M4L v97.1.5.2 Weekly Planner preview save compatibility -->
     <!-- PWA Level 1 install metadata -->
   <meta name="theme-color" content="#C26FBA" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=96.5">
+<link rel="stylesheet" href="/styles.css?v=97.1.5h">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -453,48 +453,33 @@
 
     <section id="weekly-planner-preview-screen" class="screen admin-theme weekly-planner-preview-screen">
       <div class="weekly-planner-app-header" role="toolbar" aria-label="Planner Preview actions">
-        <button
-          class="weekly-planner-header-action weekly-planner-header-action--back"
-          type="button"
-          onclick="returnToWeeklyPlanner()"
-          aria-label="Back to edit"
-        >
-          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-          <span class="weekly-planner-header-action__label">
-            <span class="weekly-planner-mobile-copy">Back</span>
-            <span class="weekly-planner-wide-copy">Back to Edit</span>
-          </span>
-        </button>
+  
+  <!-- COLUMN 1: Close -->
+  <button class="weekly-planner-header-action weekly-planner-header-action--back" type="button" onclick="returnToWeeklyPlanner()" aria-label="Close planner preview">
+    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+    <span class="weekly-planner-header-action__label"><span>Close</span></span>
+  </button>
 
-        <div class="weekly-planner-preview-title-group">
-          <h2>
-            <span class="weekly-planner-mobile-copy">PREVIEW</span>
-            <span class="weekly-planner-wide-copy">Planner Preview</span>
-          </h2>
+  <!-- COLUMN 2: Settings -->
+  <button id="weekly-planner-preview-settings-toggle" class="weekly-planner-preview-settings-toggle" type="button" onclick="toggleWeeklyPlannerPreviewSettings(this)" aria-label="Preview font and colour settings" aria-controls="weekly-planner-preview-settings" aria-expanded="false">
+    <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
+  </button>
 
-          <button
-            id="weekly-planner-preview-settings-toggle"
-            class="weekly-planner-preview-settings-toggle"
-            type="button"
-            onclick="toggleWeeklyPlannerPreviewSettings(this)"
-            aria-label="Preview font and colour settings"
-            aria-controls="weekly-planner-preview-settings"
-            aria-expanded="false"
-          >
-            <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
-          </button>
-        </div>
+  <!-- COLUMN 3: Save -->
+  <button class="weekly-planner-header-action weekly-planner-header-action--save" type="button" onclick="downloadWeeklyPlannerImage(this)" aria-label="Save planner image">
+    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+    <span class="weekly-planner-header-action__label">Save</span>
+  </button>
 
-        <button
-          class="weekly-planner-header-action weekly-planner-header-action--share"
-          type="button"
-          onclick="shareWeeklyPlannerImage(this)"
-          aria-label="Share planner image"
-        >
-          <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-          <span class="weekly-planner-header-action__label">Share</span>
-        </button>
-      </div>
+  <!-- COLUMN 4: Share -->
+  <button class="weekly-planner-header-action weekly-planner-header-action--share" type="button" onclick="shareWeeklyPlannerImage(this)" aria-label="Share planner image">
+    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+    <span class="weekly-planner-header-action__label">Share</span>
+  </button>
+
+</div>
+      
+      
 
       <section
         id="weekly-planner-preview-settings"
@@ -562,6 +547,25 @@
         <p id="weekly-planner-preview-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
 
       </div>
+
+      <dialog
+        id="weekly-planner-save-dialog"
+        class="weekly-planner-save-dialog"
+        aria-labelledby="weekly-planner-save-dialog-message"
+      >
+        <div class="weekly-planner-save-dialog-card">
+          <p id="weekly-planner-save-dialog-message" aria-live="polite"></p>
+          <button
+            type="button"
+            class="weekly-planner-save-dialog-close"
+            onclick="closeWeeklyPlannerSaveDialog()"
+            aria-label="Close save notice"
+            title="Close"
+          >
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
+        </div>
+      </dialog>
     </section>
 
 
@@ -865,8 +869,8 @@
 <script src="/js/m4l-auth.js?v=87.2"></script>
 <script src="/js/m4l-shell.js?v=96.5"></script>
   <script src="/js/m4l-timetable.js?v=92"></script>
-  <script src="/js/m4l-weekly-planner.js?v=96.4.1"></script>
-  <script src="/js/m4l-recorder.js?v=96.5.2"></script>
+  <script src="/js/m4l-weekly-planner.js?v=97.1.5.2"></script>
+  <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=91.3"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
   <script src="/js/m4l-resources.js?v=94.6"></script>

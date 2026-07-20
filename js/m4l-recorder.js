@@ -239,18 +239,18 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
    retaining audio/mp4 on iOS. The recording container and extension remain
    unchanged.
 
-   M4L v94.7
+   M4L v97.1.5.1
    Shared student/admin recorder interface with shared manifest caching.
    Records MP4 wherever the browser supports it, otherwise audio plus JPEG.
    Flattens fragmented browser MP4 recordings before preview, Share or Save.
    Provides reader-page and audio-only recording sources.
-   Save remains implemented but is temporarily hidden from the preview. */
+   Save uses the shared M4L download protocol and shows a dismissible local
+   Downloads-folder notice without messaging-app fallback actions. */
 (() => {
   "use strict";
 
   const MAX_RECORDING_MS = 2 * 60 * 1000;
   const CANVAS_FPS = 1;
-  const OUTPUT_BASENAME = "reader-recording";
   const MANIFEST_URL = "/recorder/pages/manifest.json";
   const PAGE_ASSET_BASE = "/recorder/pages/";
   const RECORDER_MANIFEST_CACHE_KEY = "recorder:manifest:v1";
@@ -291,7 +291,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     actualMimeType: "",
     stopReason: "manual",
     recordingDurationMs: 0,
-    outputBaseName: "",
+    outputTimestamp: "",
     shareCapabilities: null,
     currentView: "pages"
   };
@@ -402,20 +402,23 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
             <img class="m4l-recorder-preview-icon" src="/icons/share.svg?v=94.7" alt="" aria-hidden="true" />
             <span id="m4l-recorder-share-label">Share</span>
           </button>
-          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button" hidden>
+          <button id="m4l-recorder-save-btn" class="m4l-recorder-preview-action" type="button">
             <img class="m4l-recorder-preview-icon" src="/icons/save.svg?v=94.7" alt="" aria-hidden="true" />
             <span>Save</span>
           </button>
         </div>
 
-        <div id="m4l-recorder-save-reminder" class="m4l-recorder-pair-actions" aria-live="polite" hidden>
-          <div class="m4l-recorder-pair-action-group">
-            <p id="m4l-recorder-save-reminder-text">Your recording files are being saved.</p>
-            <div>
-              <button id="m4l-recorder-open-whatsapp-btn" class="m4l-recorder-secondary-action" type="button">Open WhatsApp</button>
-              <button id="m4l-recorder-dismiss-save-reminder" class="m4l-recorder-secondary-action" type="button">Not now</button>
-            </div>
-          </div>
+        <div id="m4l-recorder-save-reminder" class="m4l-recorder-save-notice" role="status" aria-live="polite" hidden>
+          <p id="m4l-recorder-save-reminder-text">Your recording is being saved to your default Downloads folder.</p>
+          <button
+            id="m4l-recorder-dismiss-save-reminder"
+            class="m4l-recorder-save-notice-close"
+            type="button"
+            aria-label="Close save notice"
+            title="Close"
+          >
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
         </div>
       </section>
     `;
@@ -455,7 +458,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     els.saveBtn = $("m4l-recorder-save-btn");
     els.saveReminder = $("m4l-recorder-save-reminder");
     els.saveReminderText = $("m4l-recorder-save-reminder-text");
-    els.openWhatsappBtn = $("m4l-recorder-open-whatsapp-btn");
     els.dismissSaveReminderBtn = $("m4l-recorder-dismiss-save-reminder");
     els.recordingMeta = $("m4l-recorder-recording-meta");
     els.backToPages = $("m4l-recorder-back-to-pages");
@@ -1220,18 +1222,21 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       .replace(/^-|-$/g, "") || fallback;
   }
 
-  function createOutputBaseName() {
+  function createOutputTimestamp() {
     const now = new Date();
     const pad = value => String(value).padStart(2, "0");
-    const timestamp = [
+    const date = [
       now.getFullYear(),
       pad(now.getMonth() + 1),
       pad(now.getDate())
-    ].join("") + `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const safeTitle = state.sourceMode === "audio-only"
-      ? "audio"
-      : safeFilePart(state.selectedPage && state.selectedPage.title, "page");
-    return `${OUTPUT_BASENAME}-${safeTitle}-${timestamp}`;
+    ].join("-");
+    return `${date}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  }
+
+  function createDownloadBaseName(descriptor) {
+    const safeDescriptor = safeFilePart(descriptor, "recording");
+    const timestamp = state.outputTimestamp || createOutputTimestamp();
+    return `M4L-${safeDescriptor}-${timestamp}`;
   }
 
   function canvasToJpegBlob(canvas, quality = 0.9) {
@@ -1258,7 +1263,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
     drawSelectedPage();
     const imageBlob = await canvasToJpegBlob(els.canvas);
-    const fileName = `${state.outputBaseName || createOutputBaseName()}.jpg`;
+    const fileName = `${createDownloadBaseName("page-image")}.jpg`;
 
     cleanObjectUrl(state.pageImageUrl);
     state.pageImageBlob = imageBlob;
@@ -1501,7 +1506,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
         keepSelectedPage: !audioOnly,
         keepSourceMode: true
       });
-      state.outputBaseName = createOutputBaseName();
+      state.outputTimestamp = createOutputTimestamp();
       updateRecordStage();
       if (!audioOnly) drawSelectedPage();
 
@@ -1674,7 +1679,8 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       state.chunks = [];
       state.recordingBlob = recordingBlob;
       const extension = getFileExtension(mimeType, resultKind);
-      const fileName = `${state.outputBaseName || createOutputBaseName()}.${extension}`;
+      const descriptor = resultKind === "video-mp4" ? "video" : "audio";
+      const fileName = `${createDownloadBaseName(descriptor)}.${extension}`;
       const fileMimeType = getPortableFileMimeType(mimeType, resultKind);
 
       cleanObjectUrl(state.recordingUrl);
@@ -1754,15 +1760,18 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       els.shareBtn.hidden = false;
       els.shareBtn.disabled = capabilities.result === false;
       if (capabilities.result === false) {
-        els.shareBtn.title = "Native file sharing is unavailable. Use Save.";
-        els.shareBtn.setAttribute("aria-label", "Share unavailable; use Save");
+        els.shareBtn.title = "Native file sharing is unavailable.";
+        els.shareBtn.setAttribute("aria-label", "Native file sharing is unavailable");
       } else {
         els.shareBtn.removeAttribute("title");
         els.shareBtn.setAttribute("aria-label", "Share recording");
       }
     }
     if (els.shareLabel) els.shareLabel.textContent = "Share";
-    if (els.saveBtn) els.saveBtn.disabled = getResultFiles().length === 0;
+    if (els.saveBtn) {
+      els.saveBtn.hidden = false;
+      els.saveBtn.disabled = getResultFiles().length === 0;
+    }
   }
 
   function renderResultPreview() {
@@ -1846,7 +1855,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
       state.pageImageFile = null;
       state.resultKind = "";
       state.recordingDurationMs = 0;
-      state.outputBaseName = "";
+      state.outputTimestamp = "";
       resetPreviewMedia();
       hideSaveReminder();
     }
@@ -1884,7 +1893,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     if (capability === false) {
       state.shareCapabilities = { result: false };
       updateResultActions();
-      alert("Native sharing is unavailable for these files. Use Save, then attach the saved files in WhatsApp.");
+      alert("Native sharing is unavailable for these files.");
       return;
     }
 
@@ -1893,7 +1902,7 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     } catch (error) {
       if (error && error.name === "AbortError") return;
       console.error("Recording share failed", error);
-      alert("Sharing could not be completed. Use Save, then attach the saved files in WhatsApp.");
+      alert("Sharing could not be completed.");
     }
   }
 
@@ -1917,17 +1926,12 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
 
   function showSaveReminder(files) {
     if (!els.saveReminder) return false;
-    const fileNames = files.map(file => file.name).join(", ");
-    let instruction = "Your browser has started saving the recording.";
-    if (state.resultKind === "audio-image") {
-      instruction = "Your browser has started saving both files. If Chrome asks, allow multiple files. Open WhatsApp, choose the recipient, and attach both saved files as Documents.";
-    } else if (state.resultKind === "audio-only") {
-      instruction = "Your browser has started saving the audio. Open WhatsApp, choose the recipient, and attach the saved audio as a Document.";
-    } else if (state.resultKind === "video-mp4") {
-      instruction = "Your browser has started saving the MP4. Open WhatsApp, choose the recipient, and attach the saved video.";
-    }
+    const fileNames = files.map(file => file.name);
+    const subject = fileNames.length === 1
+      ? fileNames[0]
+      : `${fileNames.slice(0, -1).join(", ")} and ${fileNames[fileNames.length - 1]}`;
     if (els.saveReminderText) {
-      els.saveReminderText.textContent = `${instruction} Saved name${files.length === 1 ? "" : "s"}: ${fileNames}`;
+      els.saveReminderText.textContent = `${subject} ${fileNames.length === 1 ? "is" : "are"} being saved to your default Downloads folder.`;
     }
     els.saveReminder.hidden = false;
     return true;
@@ -1950,18 +1954,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     });
     showSaveReminder(files);
     return true;
-  }
-
-  function openWhatsapp() {
-    const title = state.selectedPage ? state.selectedPage.title : "Audio recording";
-    const message = state.selectedPage ? `${title} reading` : "Audio recording";
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    const opened = window.open(whatsappUrl, "_blank");
-    if (opened) {
-      try { opened.opener = null; } catch (error) { console.warn("Could not clear WhatsApp window opener", error); }
-    } else {
-      window.location.assign(whatsappUrl);
-    }
   }
 
   function goToPages() {
@@ -2059,7 +2051,6 @@ Mediabunny was loaded twice. This will likely cause Mediabunny not to work corre
     }
     if (els.shareBtn) els.shareBtn.addEventListener("click", shareRecording);
     if (els.saveBtn) els.saveBtn.addEventListener("click", saveRecording);
-    if (els.openWhatsappBtn) els.openWhatsappBtn.addEventListener("click", openWhatsapp);
     if (els.dismissSaveReminderBtn) els.dismissSaveReminderBtn.addEventListener("click", hideSaveReminder);
 
     window.addEventListener("pagehide", () => cleanup({

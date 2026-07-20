@@ -1,4 +1,4 @@
-/* M4L v95.3.1 Weekly Planner
+/* M4L v97.1.5.2 Weekly Planner
    Mobile uses one compact swipe card. Medium and large screens show all four
    equal day cards in one row. Preview font and ink colour are locally selectable. */
 
@@ -16,6 +16,10 @@
   padding: 6px;
   background: var(--surface-track);
   text-align: left;
+}
+
+#weekly-planner-preview-screen.screen {
+  background: var(--surface-app);
 }
 
 .weekly-planner-global-panel,
@@ -55,8 +59,23 @@
 }
 
 .weekly-planner-preview-screen > .weekly-planner-app-header {
-  border: 2px solid var(--surface-track);
+  grid-template-columns: repeat(4, 1fr); 
+  border: 2px solid var(--surface-track); 
   border-radius: 14px;
+   justify-items: center;
+}
+
+.weekly-planner-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.weekly-planner-preview-actions .weekly-planner-header-action {
+  flex: 0 1 46px;
 }
 
 .weekly-planner-app-header h2 {
@@ -651,6 +670,77 @@
   font-weight: 600;
 }
 
+.weekly-planner-save-dialog {
+  width: min(calc(100% - 28px), 440px);
+  max-width: 440px;
+  margin: auto;
+  padding: 0;
+  border: 2px solid var(--surface-track);
+  border-radius: 16px;
+  background: var(--surface-card);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(var(--black-rgb), 0.18);
+}
+
+.weekly-planner-save-dialog:not([open]) {
+  display: none;
+}
+
+.weekly-planner-save-dialog::backdrop {
+  background: rgba(var(--black-rgb), 0.32);
+}
+
+.weekly-planner-save-dialog-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  min-height: 62px;
+  padding: 10px 10px 10px 14px;
+  box-sizing: border-box;
+}
+
+#weekly-planner-save-dialog-message {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.weekly-planner-save-dialog-close {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
+.weekly-planner-save-dialog-close .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.weekly-planner-save-dialog-close:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.weekly-planner-save-dialog-close:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
 @media (max-width: 767px) {
   #weekly-planner-screen .weekly-planner-controls {
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
@@ -716,7 +806,7 @@
   
   #weekly-planner-preview-screen.screen {
     padding: 14px;
-    background: var(--planner-page);
+    background: var(--surface-app);
   }
 
 
@@ -747,6 +837,13 @@
     border: 2px solid var(--surface-track);
     border-radius: 16px;
     background: var(--surface-card);
+  }
+
+  .weekly-planner-preview-screen > .weekly-planner-app-header {
+   grid-template-columns: repeat(4, 1fr); 
+  border: 2px solid var(--surface-track); 
+  border-radius: 14px;
+   justify-items: center;
   }
 
   .weekly-planner-controls {

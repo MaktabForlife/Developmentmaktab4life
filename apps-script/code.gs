@@ -1,3 +1,48 @@
+/*
+===============================================================================
+MAKTABHELPER — APPS SCRIPT MIGRATION STATUS
+Last verified: 20 July 2026
+Production milestone: V97.1.3
+===============================================================================
+
+The application is being migrated gradually from Apps Script to direct
+Cloudflare Worker-to-Google Sheets API access.
+
+MIGRATED TO DIRECT GOOGLE SHEETS API:
+- Resource/Library reads
+  Legacy Apps Script action retained: getStudentResources
+- Timetable reads
+  Legacy Apps Script action retained: getTimetable
+- Weekly Planner reads and writes
+  Weekly Planner was implemented directly and has no Apps Script action.
+
+STILL ACTIVE ON APPS SCRIPT:
+- Student and Admin authentication
+- PIN setup and reset
+- Attendance reads and writes
+- Progress reads and writes
+- Timetable Zoom-link writes
+- Student management
+- Curriculum and task management
+- Student-task assignment
+
+IMPORTANT:
+- Migrated functions marked LEGACY ROLLBACK must not be modified, reused or
+  removed without first checking the active Worker routing configuration.
+- Reads and writes are migrated separately. A migrated read does not mean its
+  related write operation has also migrated.
+- getStudentResources and getTimetable remain here only as rollback paths.
+- updateTimetableZoomLink remains an active Apps Script operation.
+- Remove a legacy function and its doPost action together only after the
+  rollback path has been explicitly retired.
+- Record every future migration in:
+  apps-script/MIGRATION-CHANGELOG.md
+
+Backend routing is controlled by backend/wrangler.jsonc.
+Encrypted credentials remain in Cloudflare Worker secrets.
+===============================================================================
+*/
+
 /* M4L v96.0 - Targeted StudentTasks progress writes
    Baseline: deployed v95.3.1. Progress status batches are validated as one unit,
    serialized with a script lock, and write only the requested status/date cells.
@@ -2470,6 +2515,12 @@ function getActiveTaskResourcesMap() {
   return map;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V97, production verified 2026-07-20).
+ * Active Worker traffic reads Resources through the Google Sheets API.
+ * Keep this implementation with its doPost action until rollback is retired.
+ * See apps-script/MIGRATION-CHANGELOG.md.
+ */
 function getStudentResources(data) {
   data = data || {};
 
@@ -4921,6 +4972,13 @@ function timetableFilterMatches_(rowValue, requestedValue) {
   return rowText === requestedText;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V97.1.3, production verified 2026-07-20).
+ * Active Worker traffic reads TimeTable through the Google Sheets API.
+ * updateTimetableZoomLink remains an active Apps Script write operation.
+ * Keep this implementation with its doPost action until rollback is retired.
+ * See apps-script/MIGRATION-CHANGELOG.md.
+ */
 function getTimetable(data) {
   data = data || {};
 
@@ -5064,6 +5122,7 @@ function updateTimetableZoomLink(data) {
 }
 
 // Start of dopost//
+// Backend ownership ledger: apps-script/MIGRATION-CHANGELOG.md
 
 
 function doPost(e) {
@@ -5204,10 +5263,12 @@ if (body.action === "getStudentTasks") {
   return jsonResponse(getStudentTasks(body.data));
 }
 if (body.action === "getStudentResources") {
+  // LEGACY ROLLBACK: production Resources reads use the direct Google Sheets route.
   return jsonResponse(getStudentResources(body.data));
 }
 
 if (body.action === "getTimetable") {
+  // LEGACY ROLLBACK: production timetable reads use the direct Google Sheets route.
   return jsonResponse(getTimetable(body.data));
 }
 
@@ -5264,6 +5325,5 @@ function doGet(e) {
     JSON.stringify({ status: "success", message: "Connected to Apps Script!" })
   ).setMimeType(ContentService.MimeType.JSON);
 }
-
 
 
