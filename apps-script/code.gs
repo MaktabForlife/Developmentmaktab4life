@@ -2470,6 +2470,12 @@ function getActiveTaskResourcesMap() {
   return map;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V97, production verified 2026-07-20).
+ * Active Worker traffic reads Resources through the Google Sheets API.
+ * Keep this implementation with its doPost action until rollback is retired.
+ * See apps-script/MIGRATION-CHANGELOG.md.
+ */
 function getStudentResources(data) {
   data = data || {};
 
@@ -4921,6 +4927,13 @@ function timetableFilterMatches_(rowValue, requestedValue) {
   return rowText === requestedText;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V97.1.3, production verified 2026-07-20).
+ * Active Worker traffic reads TimeTable through the Google Sheets API.
+ * updateTimetableZoomLink remains an active Apps Script write operation.
+ * Keep this implementation with its doPost action until rollback is retired.
+ * See apps-script/MIGRATION-CHANGELOG.md.
+ */
 function getTimetable(data) {
   data = data || {};
 
@@ -5064,6 +5077,7 @@ function updateTimetableZoomLink(data) {
 }
 
 // Start of dopost//
+// Backend ownership ledger: apps-script/MIGRATION-CHANGELOG.md
 
 
 function doPost(e) {
@@ -5204,10 +5218,12 @@ if (body.action === "getStudentTasks") {
   return jsonResponse(getStudentTasks(body.data));
 }
 if (body.action === "getStudentResources") {
+  // LEGACY ROLLBACK: production Resources reads use the direct Google Sheets route.
   return jsonResponse(getStudentResources(body.data));
 }
 
 if (body.action === "getTimetable") {
+  // LEGACY ROLLBACK: production timetable reads use the direct Google Sheets route.
   return jsonResponse(getTimetable(body.data));
 }
 
@@ -5264,6 +5280,5 @@ function doGet(e) {
     JSON.stringify({ status: "success", message: "Connected to Apps Script!" })
   ).setMimeType(ContentService.MimeType.JSON);
 }
-
 
 
