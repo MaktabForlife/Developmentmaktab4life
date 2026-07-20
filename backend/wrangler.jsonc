@@ -3,6 +3,9 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-06-01",
   "keep_vars": true,
+  "vars": {
+    "M4L_BACKEND_RESOURCES": "google-sheets"
+  },
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
@@ -12,6 +15,10 @@
   "env": {
     "development": {
       "name": "devrebootworker",
+      "vars": {
+        "M4L_BACKEND_RESOURCES": "google-sheets",
+        "M4L_BACKEND_TIMETABLE_READ": "google-sheets"
+      },
       "r2_buckets": [
         {
           "binding": "MEDIA_BUCKET",
