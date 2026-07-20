@@ -840,7 +840,10 @@
   }
 
   .weekly-planner-preview-screen > .weekly-planner-app-header {
-    grid-template-columns: minmax(78px, 1fr) auto minmax(120px, 1fr);
+   grid-template-columns: repeat(4, 1fr); 
+  border: 2px solid var(--surface-track); 
+  border-radius: 14px;
+   justify-items: center;
   }
 
   .weekly-planner-controls {
