@@ -4,7 +4,10 @@
    V92.3 keeps the Recorder Pages → Record → Preview history stack, contains
    bottom-nav swipe gestures inside the scrollable nav, highlights the active
    slide-down menu item, and cache-busts the shared Record navigation icon.
-   /js/m4l-swipe.js is no longer required. */
+   /js/m4l-swipe.js is no longer required.
+   V97.1.5.5 HOTFIX: restores runManualRefresh (aliased to runUserBandRefresh),
+   which Attendance, Timetable, and this file's own resource-view refresh call
+   but which was left undefined after an earlier rename during cleanup. */
 
 /* =========================
    BOTTOM NAV GESTURE BOUNDARY - V87.1.1
@@ -2498,6 +2501,14 @@ async function runUserBandRefresh(button, callback) {
   }
 }
 
+// V97.1.5.5 HOTFIX: runManualRefresh was the shared name Attendance, Timetable, and
+// this file's own refreshCurrentResourceView() called, but it was removed during an
+// earlier cleanup when this helper was renamed to runUserBandRefresh. Callers were
+// never updated, so every manual refresh threw a ReferenceError before it could reach
+// the Worker, silently leaving devices on their locally cached timetable/Zoom link.
+// Restored here as an alias so no caller needs to change.
+const runManualRefresh = runUserBandRefresh;
+
 function getStudentResourceViewModeSafe() {
   return typeof studentResourceViewMode !== "undefined"
     ? String(studentResourceViewMode || "")
@@ -3666,6 +3677,7 @@ window.M4LShell = {
   failAppStatus: typeof failAppStatus === "function" ? failAppStatus : undefined,
   withAppStatus: typeof withAppStatus === "function" ? withAppStatus : undefined,
   runUserBandRefresh: typeof runUserBandRefresh === "function" ? runUserBandRefresh : undefined,
+  runManualRefresh: typeof runManualRefresh === "function" ? runManualRefresh : undefined,
   refreshCurrentResourceView: typeof refreshCurrentResourceView === "function" ? refreshCurrentResourceView : undefined,
   getStudentResourceViewModeSafe: typeof getStudentResourceViewModeSafe === "function" ? getStudentResourceViewModeSafe : undefined,
   isOptionalFunctionLoaded: typeof isOptionalFunctionLoaded === "function" ? isOptionalFunctionLoaded : undefined,
