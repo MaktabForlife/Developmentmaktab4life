@@ -7,6 +7,10 @@ v98 - Timetable board + V84 Home vertical stack support
    Class duas card helpers intentionally remain in app.js because the duas card is a home-page card,
    not timetable logic.
    V84: Home is a vertical stack; legacy Home page swipe and Home Zoom button remain quarantined.
+   V97.1.5.5 HOTFIX: cached timetable reads (Home/Attendance/Timetable screens) now
+   trigger a background revalidation against the Worker instead of trusting the local
+   cache for up to 7 days untouched, so a saved Zoom-link change reaches other devices
+   on their next load rather than only after the cache TTL lapses or a manual refresh.
 */
 
 /* =========================
@@ -20,6 +24,9 @@ let timetableCache = null;
 let timetableCacheKey = "";
 let timetableLoadPromise = null;
 let timetableLoadPromiseKey = "";
+// V97.1.5.5 HOTFIX: cache keys currently being revalidated in the background, so a
+// stale-while-revalidate pass isn't started twice in parallel for the same timetable.
+const timetableBackgroundRevalidationKeys = new Set();
 let globalTimetableZoomLink = "";
 let homeSectionStateGuardBound = false;
 
@@ -523,19 +530,40 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
   return true;
 }
 
+function requestTimetableFromWorker(requestOptions) {
+  return apiPost("/api/timetable/get", requestOptions, state.token).then(result => {
+    if (!result.success) {
+      throw new Error(result.error || "Failed to load timetable");
+    }
+
+    return result;
+  });
+}
+
 async function fetchTimetable(options = {}) {
   const requestOptions = getTimetableRequestOptions(options);
   const cacheKey = getTimetableCacheKey(requestOptions);
   const force = options.force === true;
 
   if (!force) {
+    let cached = null;
+
     if (timetableCache && timetableCacheKey === cacheKey) {
-      return timetableCache;
+      cached = timetableCache;
+    } else {
+      cached = readTimetableCache(cacheKey);
+      if (cached) {
+        setActiveTimetableCache(cacheKey, cached);
+      }
     }
 
-    const cached = readTimetableCache(cacheKey);
     if (cached) {
-      setActiveTimetableCache(cacheKey, cached);
+      // V97.1.5.5 HOTFIX: serving from local cache no longer means trusting it for up
+      // to 7 days untouched. Revalidate against the Worker in the background so a
+      // Zoom-link change (or any other timetable edit) reaches this device the next
+      // time it opens the app, not only when the cache TTL lapses or someone finds
+      // the manual refresh button.
+      revalidateTimetableInBackground(cacheKey, requestOptions);
       return cached;
     }
   }
@@ -545,11 +573,7 @@ async function fetchTimetable(options = {}) {
   }
 
   timetableLoadPromiseKey = cacheKey;
-  timetableLoadPromise = apiPost("/api/timetable/get", requestOptions, state.token).then(result => {
-    if (!result.success) {
-      throw new Error(result.error || "Failed to load timetable");
-    }
-
+  timetableLoadPromise = requestTimetableFromWorker(requestOptions).then(result => {
     setActiveTimetableCache(cacheKey, result);
     writeTimetableCache(cacheKey, result);
     return result;
@@ -569,6 +593,67 @@ async function fetchTimetable(options = {}) {
   });
 
   return timetableLoadPromise;
+}
+
+function revalidateTimetableInBackground(cacheKey, requestOptions) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return;
+  }
+
+  if (timetableBackgroundRevalidationKeys.has(cacheKey)) {
+    return;
+  }
+
+  timetableBackgroundRevalidationKeys.add(cacheKey);
+
+  requestTimetableFromWorker(requestOptions)
+    .then(result => {
+      const previous = timetableCacheKey === cacheKey ? timetableCache : null;
+      const hasChanged = JSON.stringify(previous) !== JSON.stringify(result);
+
+      writeTimetableCache(cacheKey, result);
+
+      if (hasChanged) {
+        setActiveTimetableCache(cacheKey, result);
+        renderActiveTimetableView(result);
+      }
+    })
+    .catch(() => {
+      // Background revalidation is best-effort. The visible, already-cached
+      // timetable is left in place rather than surfacing an error for a refresh
+      // the user didn't ask for.
+    })
+    .finally(() => {
+      timetableBackgroundRevalidationKeys.delete(cacheKey);
+    });
+}
+
+function getActiveTimetableRenderTarget() {
+  const activeScreenId = typeof getActiveScreenId === "function" ? getActiveScreenId() : "";
+
+  if (activeScreenId === "student-home") {
+    return document.getElementById("student-timetable-content");
+  }
+
+  if (activeScreenId === "admin-home") {
+    return document.getElementById("admin-home-timetable-content");
+  }
+
+  if (activeScreenId === "admin-timetable-screen") {
+    return document.getElementById("admin-timetable-content");
+  }
+
+  return null;
+}
+
+function renderActiveTimetableView(result) {
+  const container = getActiveTimetableRenderTarget();
+
+  if (!container) {
+    return;
+  }
+
+  renderTimetable(container, result, { showContentPanel: true });
 }
 
 let timetableUiHandlersBound = false;
