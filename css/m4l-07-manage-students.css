@@ -912,3 +912,175 @@
     letter-spacing: 0.10em;
   }
 }
+
+/* V97.1.5.3: Edit Student header save action and saved-details dialog */
+#manage-student-edit-screen {
+  color: var(--text);
+  --text-muted: var(--text);
+  --text-subtle: var(--text);
+  --text-inverse: var(--text);
+}
+
+.student-edit-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.student-edit-card-header .student-admin-card-title {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.student-edit-save-btn.icon-action-btn {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  margin: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text);
+}
+
+.student-edit-save-btn .app-icon {
+  width: 27px;
+  height: 27px;
+}
+
+.student-edit-save-btn:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+#manage-student-edit-screen #student-edit-feedback {
+  color: var(--text);
+  margin: 9px 0 0;
+}
+
+.student-edit-save-dialog {
+  width: min(calc(100% - 28px), 460px);
+  max-width: 460px;
+  margin: auto;
+  padding: 0;
+  border: 2px solid var(--surface-track);
+  border-radius: 18px;
+  background: var(--surface-card);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(var(--black-rgb), 0.18);
+}
+
+.student-edit-save-dialog:not([open]) {
+  display: none;
+}
+
+.student-edit-save-dialog::backdrop {
+  background: rgba(var(--black-rgb), 0.32);
+}
+
+.student-edit-save-dialog-card {
+  position: relative;
+  padding: 18px;
+  color: var(--text);
+  text-align: left;
+}
+
+.student-edit-save-dialog-card h3 {
+  margin: 0 42px 4px 0;
+  color: var(--text);
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.student-edit-save-dialog-message {
+  margin: 0 42px 14px 0;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.student-edit-save-dialog-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
+.student-edit-save-dialog-close .app-icon {
+  width: 23px;
+  height: 23px;
+}
+
+.student-edit-save-dialog-close:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.student-edit-save-dialog-close:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.student-edit-save-dialog-details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--surface-track);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.student-edit-save-dialog-details > div {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.8fr) minmax(0, 1.2fr);
+  gap: 10px;
+  padding: 9px 11px;
+  background: var(--surface-card);
+}
+
+.student-edit-save-dialog-details > div + div {
+  border-top: 1px solid var(--surface-track);
+}
+
+.student-edit-save-dialog-details dt,
+.student-edit-save-dialog-details dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.student-edit-save-dialog-details dt {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.student-edit-save-dialog-details dd {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+@media (max-width: 360px) {
+  .student-edit-save-dialog-details > div {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 7px;
+    padding-inline: 9px;
+  }
+}

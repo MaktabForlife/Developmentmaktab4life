@@ -1,4 +1,4 @@
-/* M4L v44 - Manage Students module
+/* M4L v97.1.5.3 - Manage Students module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, /js/m4l-resources.js, and /js/m4l-progress.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -21,7 +21,8 @@ const manageStudentsState = {
   lastRegisteredStudent: null,
   selectedStudentActiveDraft: true,
   studentDropdownOpen: false,
-  registerSubmitting: false
+  registerSubmitting: false,
+  studentSaveSubmitting: false
 };
 
 
@@ -60,6 +61,8 @@ function bindManageStudentsUiHandlers(containerOrId) {
 }
 
 function triggerManagedStudentSave() {
+  if (manageStudentsState.studentSaveSubmitting === true) return;
+
   const now = Date.now();
   if (now - managedStudentSaveLastTriggeredAt < 700) return;
   managedStudentSaveLastTriggeredAt = now;
@@ -70,7 +73,7 @@ function triggerManagedStudentSave() {
 function bindManagedStudentEditActionHandlers(containerOrId) {
   // Kept for compatibility with existing render calls.
   // Manage Students click actions are now handled by one document-level delegated handler,
-  // so dynamically-rendered buttons such as Confirm Changes do not need per-button touch/click binding.
+  // so dynamically-rendered controls such as the header Save action do not need per-button touch/click binding.
   bindManageStudentsGlobalClickHandler();
   return !!getDomElement(containerOrId);
 }
@@ -188,6 +191,9 @@ function handleManageStudentsUiClick(event) {
       break;
     case "save-student":
       triggerManagedStudentSave();
+      break;
+    case "close-student-save-dialog":
+      closeManagedStudentSaveDialog();
       break;
     case "copy-login-link":
       copyStudentLoginLink(actionEl.dataset.loginLink || "");
@@ -963,6 +969,7 @@ function renderManagedStudentEditScreen() {
   upgradeManageStudentsBackButtons("manage-student-edit-screen");
   bindManageStudentsUiHandlers(container);
   bindManagedStudentEditActionHandlers(container);
+  bindManagedStudentSaveDialog();
 }
 
 function renderSelectedStudentEditor() {
@@ -984,7 +991,19 @@ function renderSelectedStudentEditor() {
     </div>
 
     <div class="student-admin-card selected-student-edit-card">
-      <div class="student-admin-card-title">Edit Student Details</div>
+      <div class="student-edit-card-header">
+        <div class="student-admin-card-title">Edit Student Details</div>
+        <button
+          type="button"
+          class="student-edit-save-btn icon-action-btn"
+          data-manage-action="save-student"
+          aria-label="Save student changes"
+          title="Save student changes"
+        >
+          <span class="app-icon save-mode-icon" aria-hidden="true"></span>
+          <span class="header-icon-label" data-student-save-label>Save</span>
+        </button>
+      </div>
 
       <label class="student-admin-label" for="student-edit-name">Name</label>
       <input id="student-edit-name" class="student-prefilled-input" type="text" value="${escapeAttribute(student.username || "")}" />
@@ -1030,16 +1049,78 @@ function renderSelectedStudentEditor() {
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="student-admin-action-grid">
-      <button type="button" data-manage-action="save-student">Confirm Changes</button>
+      <div id="student-edit-feedback" class="student-admin-feedback" role="status" aria-live="polite"></div>
     </div>
 
     ${renderStudentMessageResult(student, "selected")}
-
-    <div id="student-edit-feedback" class="student-admin-feedback"></div>
   `;
+}
+
+function setManagedStudentSaveSubmitting(isSubmitting) {
+  manageStudentsState.studentSaveSubmitting = isSubmitting === true;
+
+  const saveButton = document.querySelector(
+    '#manage-student-edit-screen [data-manage-action="save-student"]'
+  );
+
+  if (!saveButton) return;
+
+  saveButton.disabled = manageStudentsState.studentSaveSubmitting;
+  saveButton.setAttribute("aria-busy", manageStudentsState.studentSaveSubmitting ? "true" : "false");
+
+  const label = saveButton.querySelector("[data-student-save-label]");
+  if (label) {
+    label.textContent = manageStudentsState.studentSaveSubmitting ? "Saving" : "Save";
+  }
+}
+
+function bindManagedStudentSaveDialog() {
+  const dialog = getDomElement("student-edit-save-dialog");
+  if (!dialog || dialog.dataset.studentSaveDialogBound === "true") return false;
+
+  dialog.dataset.studentSaveDialogBound = "true";
+  dialog.addEventListener("click", event => {
+    if (event.target === dialog) closeManagedStudentSaveDialog();
+  });
+
+  return true;
+}
+
+function openManagedStudentSaveDialog(student) {
+  const dialog = getDomElement("student-edit-save-dialog");
+  if (!dialog || !student) return false;
+
+  const normalized = normalizeManagedStudent(student);
+  setDomText("student-edit-save-name", normalized.username || "Student");
+  setDomText("student-edit-save-whatsapp", normalized.whatsapp6 || "999999");
+  setDomText("student-edit-save-group", normalized.classgroup || String(DEFAULT_STUDENT_GROUP));
+  setDomText("student-edit-save-status", normalized.active === true ? "Active" : "Inactive");
+
+  if (typeof dialog.showModal === "function") {
+    if (!dialog.open) dialog.showModal();
+  } else {
+    dialog.setAttribute("open", "");
+  }
+
+  window.requestAnimationFrame(() => {
+    dialog.querySelector('[data-manage-action="close-student-save-dialog"]')?.focus();
+  });
+
+  return true;
+}
+
+function closeManagedStudentSaveDialog() {
+  const dialog = getDomElement("student-edit-save-dialog");
+  if (!dialog) return false;
+
+  if (typeof dialog.close === "function" && dialog.open) {
+    dialog.close();
+  } else {
+    dialog.removeAttribute("open");
+  }
+
+  return true;
 }
 
 function setStudentEditActiveStatus(isActive) {
@@ -1076,6 +1157,8 @@ async function saveManagedStudentChanges() {
     return;
   }
 
+  setManagedStudentSaveSubmitting(true);
+
   const payload = {
     uniqueid: student.uniqueid,
     username,
@@ -1097,11 +1180,13 @@ async function saveManagedStudentChanges() {
     result = await apiPost("/api/admin/update-student", payload, state.token);
   } catch (err) {
     console.error("Could not save managed student changes", err);
+    setManagedStudentSaveSubmitting(false);
     setDomText("student-edit-feedback", "Could not save changes.");
     return;
   }
 
   if (!result.success) {
+    setManagedStudentSaveSubmitting(false);
     setDomText("student-edit-feedback", result.error || "Could not save changes.");
     return;
   }
@@ -1123,9 +1208,9 @@ async function saveManagedStudentChanges() {
   });
 
   applyManagedStudentFilter(manageStudentsState.searchQuery || "");
+  setManagedStudentSaveSubmitting(false);
   renderManagedStudentEditScreen();
-
-  setDomText("student-edit-feedback", "Student changes saved.");
+  openManagedStudentSaveDialog(manageStudentsState.selectedStudent);
 }
 
 async function resetManagedStudentPin() {

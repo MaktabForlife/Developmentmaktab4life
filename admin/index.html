@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.5h">
+<link rel="stylesheet" href="/styles.css?v=97.1.5.3">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -227,6 +227,46 @@
       <div id="manage-student-edit-content">
         <p class="helper-text">Loading student...</p>
       </div>
+
+      <dialog
+        id="student-edit-save-dialog"
+        class="student-edit-save-dialog"
+        aria-labelledby="student-edit-save-dialog-title"
+      >
+        <div class="student-edit-save-dialog-card">
+          <button
+            type="button"
+            class="student-edit-save-dialog-close"
+            data-manage-action="close-student-save-dialog"
+            aria-label="Close saved student details"
+            title="Close"
+          >
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
+
+          <h3 id="student-edit-save-dialog-title">Changes Saved</h3>
+          <p class="student-edit-save-dialog-message">The student details have been updated.</p>
+
+          <dl class="student-edit-save-dialog-details">
+            <div>
+              <dt>Name</dt>
+              <dd id="student-edit-save-name"></dd>
+            </div>
+            <div>
+              <dt>WhatsApp</dt>
+              <dd id="student-edit-save-whatsapp"></dd>
+            </div>
+            <div>
+              <dt>Group</dt>
+              <dd id="student-edit-save-group"></dd>
+            </div>
+            <div>
+              <dt>Active Status</dt>
+              <dd id="student-edit-save-status"></dd>
+            </div>
+          </dl>
+        </div>
+      </dialog>
     </section>
     
     <section id="subjects-screen" class="screen admin-theme">
@@ -871,10 +911,10 @@
   <script src="/js/m4l-timetable.js?v=92"></script>
   <script src="/js/m4l-weekly-planner.js?v=97.1.5.2"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
-<script src="/js/m4l-attendance.js?v=91.3"></script>
+<script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
   <script src="/js/m4l-resources.js?v=94.6"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
-<script src="/js/m4l-manage-students.js?v=94.7a"></script>
+<script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
 </body>
 </html>

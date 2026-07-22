@@ -1,4 +1,4 @@
-/* M4L v91.3 - Attendance save icon class cleanup and header panel flattening
+/* M4L v97.1.5.4 - Preserve register position when toggling Present/Absent
    Baseline: M4L v87.2 Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
@@ -873,7 +873,7 @@ function handleAttendanceRegisterClick(event) {
   if (action === "toggle-status") {
     const studentid = actionEl.dataset.studentId || "";
     if (studentid) {
-      toggleAttendanceStatus(studentid);
+      toggleAttendanceStatus(studentid, actionEl);
     }
     return;
   }
@@ -1077,11 +1077,30 @@ function renderAttendanceRegister(dateValue) {
   return true;
 }
 
-function toggleAttendanceStatus(studentid) {
+function toggleAttendanceStatus(studentid, toggleButton) {
   if (!studentid) return;
 
   attendanceState[studentid] = attendanceState[studentid] === "Absent" ? "Present" : "Absent";
-  renderAttendanceRegister(getAttendanceRegisterDateValue());
+  const isPresent = attendanceState[studentid] === "Present";
+  const container = getDomElement("attendance-register-content");
+
+  if (toggleButton) {
+    toggleButton.classList.toggle("is-present", isPresent);
+    toggleButton.classList.toggle("is-absent", !isPresent);
+    toggleButton.setAttribute("aria-pressed", isPresent ? "false" : "true");
+    toggleButton.textContent = isPresent ? "PRESENT ✔" : "ABSENT ✘";
+  }
+
+  const absentCount = attendanceStudentsCache.filter(student => {
+    return student && attendanceState[student.studentid] === "Absent";
+  }).length;
+  const absenceFeedback = container
+    ? container.querySelector(".attendance-absence-feedback")
+    : null;
+
+  if (absenceFeedback) {
+    absenceFeedback.textContent = `${absentCount} student${absentCount === 1 ? "" : "s"}`;
+  }
 }
 
 function beginAttendanceGlobalStatus(message) {
