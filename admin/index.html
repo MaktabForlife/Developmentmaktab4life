@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.6">
+<link rel="stylesheet" href="/styles.css?v=97.1.7">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -966,6 +966,21 @@
 
   <h2 id="pdf-viewer-title">PDF Viewer</h2>
 
+  <div class="pdf-viewer-library-controls" aria-label="PDF library navigation">
+    <button id="pdf-library-previous" type="button" class="pdf-viewer-icon-btn pdf-library-step-btn" onclick="stepPdfLibrary(-1)" aria-label="Previous PDF" title="Previous PDF" hidden>
+      <span class="app-icon pdf-library-previous-icon" aria-hidden="true"></span>
+      <span class="pdf-viewer-icon-label">PREV</span>
+    </button>
+    <button id="pdf-library-toggle" type="button" class="pdf-library-toggle-btn" onclick="togglePdfLibraryDrawer()" aria-label="Open PDF library" aria-controls="pdf-library-drawer" aria-expanded="false" hidden>
+      <span class="app-icon pdf-library-icon" aria-hidden="true"></span>
+      <span id="pdf-library-count" class="pdf-library-count"></span>
+    </button>
+    <button id="pdf-library-next" type="button" class="pdf-viewer-icon-btn pdf-library-step-btn" onclick="stepPdfLibrary(1)" aria-label="Next PDF" title="Next PDF" hidden>
+      <span class="app-icon pdf-library-next-icon" aria-hidden="true"></span>
+      <span class="pdf-viewer-icon-label">NEXT</span>
+    </button>
+  </div>
+
   <div class="pdf-viewer-actions">
     <button
       type="button"
@@ -979,6 +994,15 @@
     </button>
   </div>
 </div>
+
+
+  <aside id="pdf-library-drawer" class="pdf-library-drawer" aria-label="PDF Library" hidden>
+    <div class="pdf-library-drawer-header">
+      <h3 id="pdf-library-heading">PDF Library</h3>
+      <button type="button" class="pdf-library-close-btn" onclick="closePdfLibraryDrawer()" aria-label="Close PDF library">×</button>
+    </div>
+    <div id="pdf-library-list" class="pdf-library-list"></div>
+  </aside>
 
       <iframe
         id="pdf-viewer-frame"
@@ -1014,7 +1038,7 @@
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
-  <script src="/js/m4l-resources.js?v=94.6"></script>
+  <script src="/js/m4l-resources.js?v=97.1.7"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
 <script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
 </body>
