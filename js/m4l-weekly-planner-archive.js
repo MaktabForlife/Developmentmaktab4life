@@ -1,21 +1,29 @@
 /* =========================
-   WEEKLY PLANNER ARCHIVE - V97.1.6
+   WEEKLY PLANNER ARCHIVE - V97.1.6.2
    Admin-only view of past weekly planners:
-   - Date picker + "recent weeks" summary -> full rendered preview rail for a week
-   - Per-teacher submission heatmap (last 4 weeks) -> teacher submission history screen
-   Reuses window.M4LWeeklyPlanner.renderPreview() for the actual canvas image,
-   so the visual output matches the live planner preview exactly. Previews are
-   generated progressively (only when a card scrolls into view) rather than
-   all at once, so the rail stays smooth regardless of teacher count.
+   - Hub: date picker (+ OPEN button) and a per-teacher submission heatmap
+     list, sorted by assigned group.
+   - OPEN (or a heatmap row) navigates to a dedicated full-preview week
+     screen: swipeable cards, breakpoint-aware (1 full-screen card on
+     mobile, a 3-card rail on tablet, a 5-card rail on desktop).
+   - Tapping a teacher's heatmap row instead opens their own Submission
+     History screen (a per-teacher timeline), a separate browsing axis.
+   Reuses window.M4LWeeklyPlanner.renderPreview() for the actual canvas
+   image, so previews are pixel-identical to the live planner preview.
+   Previews render progressively (only as a card scrolls into view)
+   rather than all at once, so the screen stays smooth regardless of
+   teacher count.
 ========================= */
 
 const weeklyPlannerArchiveState = {
   eventsBound: false,
   overview: null,
-  selectedWeekStart: "",
   weekRecordsCache: new Map(),
   previewCache: new Map(),
-  cardObserver: null,
+  weekScreen: {
+    weekStart: "",
+    cardObserver: null
+  },
   teacher: {
     teacherId: "",
     teacherName: "",
@@ -26,6 +34,7 @@ const weeklyPlannerArchiveState = {
 async function showWeeklyPlannerArchive() {
   showScreen("weekly-planner-archive-screen");
   bindWeeklyPlannerArchiveEvents();
+  setWeeklyPlannerArchiveHubMessage("");
 
   const weekInput = document.getElementById("weekly-planner-archive-week");
   let resolvedWeekStart = "";
@@ -33,19 +42,13 @@ async function showWeeklyPlannerArchive() {
   try {
     resolvedWeekStart = await loadWeeklyPlannerArchiveOverview(weekInput ? weekInput.value : "");
   } catch (error) {
-    setWeeklyPlannerArchiveRailMessage(error.message || "Unable to load the archive overview.");
+    setWeeklyPlannerArchiveHubMessage(error.message || "Unable to load the archive overview.");
   }
 
   const weekStart = resolvedWeekStart || window.M4LWeeklyPlanner.getWeekMeta().weekStart;
 
   if (weekInput) {
     weekInput.value = weekStart;
-  }
-
-  try {
-    await selectWeeklyPlannerArchiveWeek(weekStart);
-  } catch (error) {
-    setWeeklyPlannerArchiveRailMessage(error.message || "Unable to load planners for that week.");
   }
 }
 
@@ -64,10 +67,6 @@ function bindWeeklyPlannerArchiveEvents() {
       const meta = window.M4LWeeklyPlanner.getWeekMeta(weekInput.value);
       weekInput.value = meta.weekStart;
       lastHandledWeekInputValue = meta.weekStart;
-
-      selectWeeklyPlannerArchiveWeek(meta.weekStart).catch(error => {
-        setWeeklyPlannerArchiveRailMessage(error.message || "Unable to load that week.");
-      });
     };
 
     // Some mobile browsers/webviews are inconsistent about firing "change" for
@@ -77,17 +76,13 @@ function bindWeeklyPlannerArchiveEvents() {
     weekInput.addEventListener("input", handleWeekInputChange);
   }
 
-  const summaryRail = document.getElementById("weekly-planner-archive-summary-rail");
-  if (summaryRail) {
-    summaryRail.addEventListener("click", event => {
-      const card = event.target.closest("[data-weekly-planner-archive-week]");
-      if (!card) return;
+  const openButton = document.getElementById("weekly-planner-archive-open");
+  if (openButton) {
+    openButton.addEventListener("click", () => {
+      const weekStart = (weekInput && weekInput.value) || window.M4LWeeklyPlanner.getWeekMeta().weekStart;
 
-      const weekStart = card.dataset.weeklyPlannerArchiveWeek;
-      if (weekInput) weekInput.value = weekStart;
-
-      selectWeeklyPlannerArchiveWeek(weekStart).catch(error => {
-        setWeeklyPlannerArchiveRailMessage(error.message || "Unable to load that week.");
+      openWeeklyPlannerArchiveWeekScreen(weekStart).catch(error => {
+        setWeeklyPlannerArchiveWeekScreenMessage(error.message || "Unable to load planners for that week.");
       });
     });
   }
@@ -107,26 +102,6 @@ function bindWeeklyPlannerArchiveEvents() {
     });
   }
 
-  const rail = document.getElementById("weekly-planner-archive-rail");
-  if (rail) {
-    rail.addEventListener("click", event => {
-      const heatmapStrip = event.target.closest("[data-weekly-planner-archive-card-heatmap]");
-      if (heatmapStrip) {
-        showWeeklyPlannerArchiveTeacher(
-          heatmapStrip.dataset.weeklyPlannerArchiveCardHeatmap,
-          heatmapStrip.dataset.weeklyPlannerArchiveCardHeatmapName || ""
-        ).catch(error => {
-          console.warn("Unable to open teacher submission history:", error);
-        });
-        return;
-      }
-
-      const card = event.target.closest("[data-weekly-planner-archive-card]");
-      if (!card) return;
-      toggleWeeklyPlannerArchiveCardExpanded(card);
-    });
-  }
-
   const teacherHeatmap = document.getElementById("weekly-planner-archive-teacher-heatmap");
   if (teacherHeatmap) {
     teacherHeatmap.addEventListener("click", event => {
@@ -140,18 +115,9 @@ function bindWeeklyPlannerArchiveEvents() {
   }
 }
 
-/* -------- Hub: overview (recent weeks + per-teacher heatmap) -------- */
+/* -------- Hub: overview (per-teacher submission heatmap, sorted by group) -------- */
 
 async function loadWeeklyPlannerArchiveOverview(weekStart) {
-  const summaryRail = document.getElementById("weekly-planner-archive-summary-rail");
-  if (summaryRail) {
-    summaryRail.innerHTML = "";
-    const loading = document.createElement("p");
-    loading.className = "helper-text";
-    loading.textContent = "Loading recent weeks...";
-    summaryRail.appendChild(loading);
-  }
-
   const result = await apiPost("/api/admin/weekly-planner/archive-overview", { weekStart }, state.token);
 
   if (!result || result.success !== true) {
@@ -159,42 +125,10 @@ async function loadWeeklyPlannerArchiveOverview(weekStart) {
   }
 
   weeklyPlannerArchiveState.overview = result;
-  renderWeeklyPlannerArchiveSummary(result.weeks || []);
   renderWeeklyPlannerArchiveHeatmapList(result.teacherMatrix || []);
 
   const weeks = result.weeks || [];
   return weeks.length ? weeks[weeks.length - 1].weekStart : "";
-}
-
-function renderWeeklyPlannerArchiveSummary(weeks) {
-  const rail = document.getElementById("weekly-planner-archive-summary-rail");
-  if (!rail) return;
-
-  rail.innerHTML = "";
-
-  weeks.forEach(week => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "weekly-planner-archive-summary-card";
-    card.dataset.weeklyPlannerArchiveWeek = week.weekStart;
-    card.setAttribute("role", "listitem");
-
-    if (week.weekStart === weeklyPlannerArchiveState.selectedWeekStart) {
-      card.classList.add("is-selected");
-    }
-
-    const range = document.createElement("span");
-    range.className = "weekly-planner-archive-summary-card__range";
-    range.textContent = formatWeeklyPlannerArchiveRange(week);
-
-    const count = document.createElement("span");
-    count.className = "weekly-planner-archive-summary-card__count";
-    count.textContent = `${week.submittedCount}/${week.totalTeachers} submitted`;
-
-    card.appendChild(range);
-    card.appendChild(count);
-    rail.appendChild(card);
-  });
 }
 
 function renderWeeklyPlannerArchiveHeatmapList(teacherMatrix) {
@@ -203,6 +137,15 @@ function renderWeeklyPlannerArchiveHeatmapList(teacherMatrix) {
 
   list.innerHTML = "";
 
+  if (!teacherMatrix.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper-text";
+    empty.textContent = "No teachers found.";
+    list.appendChild(empty);
+    return;
+  }
+
+  // Pre-sorted by the backend (group ascending); rendered in the order received.
   teacherMatrix.forEach(entry => {
     const row = document.createElement("button");
     row.type = "button";
@@ -231,21 +174,32 @@ function renderWeeklyPlannerArchiveHeatmapList(teacherMatrix) {
   });
 }
 
-/* -------- Hub: full-preview rail for the selected week -------- */
+function setWeeklyPlannerArchiveHubMessage(message) {
+  const el = document.getElementById("weekly-planner-archive-hub-message");
+  if (el) el.textContent = message || "";
+}
 
-async function selectWeeklyPlannerArchiveWeek(weekStart) {
-  weeklyPlannerArchiveState.selectedWeekStart = weekStart;
-  updateWeeklyPlannerArchiveSummarySelection();
-  setWeeklyPlannerArchiveRailMessage("");
+function returnToWeeklyPlannerFromArchive() {
+  showScreen("weekly-planner-screen");
+}
 
-  const rail = document.getElementById("weekly-planner-archive-rail");
-  if (!rail) return;
+/* -------- Week screen: swipeable full-preview cards for one week -------- */
 
-  rail.innerHTML = "";
-  const loading = document.createElement("p");
-  loading.className = "helper-text";
-  loading.textContent = "Loading planners...";
-  rail.appendChild(loading);
+async function openWeeklyPlannerArchiveWeekScreen(weekStart) {
+  showScreen("weekly-planner-archive-week-screen");
+  weeklyPlannerArchiveState.weekScreen.weekStart = weekStart;
+  setWeeklyPlannerArchiveWeekScreenMessage("");
+
+  const rail = document.getElementById("weekly-planner-archive-week-rail");
+  const titleEl = document.getElementById("weekly-planner-archive-week-screen-title");
+
+  if (rail) {
+    rail.innerHTML = "";
+    const loading = document.createElement("p");
+    loading.className = "helper-text";
+    loading.textContent = "Loading planners...";
+    rail.appendChild(loading);
+  }
 
   let teacherRecords;
   let week;
@@ -266,26 +220,25 @@ async function selectWeeklyPlannerArchiveWeek(weekStart) {
     weeklyPlannerArchiveState.weekRecordsCache.set(weekStart, { teacherRecords, week });
   }
 
-  // A newer selection may have started while this request was in flight.
-  if (weeklyPlannerArchiveState.selectedWeekStart !== weekStart) return;
+  // A newer navigation may have started while this request was in flight.
+  if (weeklyPlannerArchiveState.weekScreen.weekStart !== weekStart) return;
 
-  const titleEl = document.getElementById("weekly-planner-archive-rail-title");
   if (titleEl) {
     titleEl.textContent = `Planners for ${formatWeeklyPlannerArchiveRange(week)}`;
   }
 
-  renderWeeklyPlannerArchiveRail(week, teacherRecords);
+  renderWeeklyPlannerArchiveWeekRail(week, teacherRecords);
 }
 
-function renderWeeklyPlannerArchiveRail(week, teacherRecords) {
-  const rail = document.getElementById("weekly-planner-archive-rail");
+function renderWeeklyPlannerArchiveWeekRail(week, teacherRecords) {
+  const rail = document.getElementById("weekly-planner-archive-week-rail");
   if (!rail) return;
 
   rail.innerHTML = "";
 
-  if (weeklyPlannerArchiveState.cardObserver) {
-    weeklyPlannerArchiveState.cardObserver.disconnect();
-    weeklyPlannerArchiveState.cardObserver = null;
+  if (weeklyPlannerArchiveState.weekScreen.cardObserver) {
+    weeklyPlannerArchiveState.weekScreen.cardObserver.disconnect();
+    weeklyPlannerArchiveState.weekScreen.cardObserver = null;
   }
 
   if (!teacherRecords.length) {
@@ -297,27 +250,28 @@ function renderWeeklyPlannerArchiveRail(week, teacherRecords) {
   }
 
   const observer = typeof IntersectionObserver === "function"
-    ? new IntersectionObserver(handleWeeklyPlannerArchiveCardIntersect, {
+    ? new IntersectionObserver(handleWeeklyPlannerArchiveWeekCardIntersect, {
         root: rail,
         rootMargin: "200px",
         threshold: 0.01
       })
     : null;
-  weeklyPlannerArchiveState.cardObserver = observer;
+  weeklyPlannerArchiveState.weekScreen.cardObserver = observer;
 
+  // Pre-sorted by the backend (group ascending); rendered in the order received.
   teacherRecords.forEach(entry => {
-    const card = buildWeeklyPlannerArchiveCard(week, entry);
+    const card = buildWeeklyPlannerArchiveWeekCard(week, entry);
     rail.appendChild(card);
 
     if (observer) {
       observer.observe(card);
     } else {
-      generateWeeklyPlannerArchiveCardPreview(card, week, entry);
+      generateWeeklyPlannerArchiveWeekCardPreview(card, week, entry);
     }
   });
 }
 
-function handleWeeklyPlannerArchiveCardIntersect(entries, observer) {
+function handleWeeklyPlannerArchiveWeekCardIntersect(entries, observer) {
   entries.forEach(entry => {
     if (!entry.isIntersecting) return;
 
@@ -330,12 +284,12 @@ function handleWeeklyPlannerArchiveCardIntersect(entries, observer) {
     const record = cached && cached.teacherRecords.find(item => item.teacher.teacherId === teacherId);
 
     if (record) {
-      generateWeeklyPlannerArchiveCardPreview(card, cached.week, record);
+      generateWeeklyPlannerArchiveWeekCardPreview(card, cached.week, record);
     }
   });
 }
 
-function buildWeeklyPlannerArchiveCard(week, entry) {
+function buildWeeklyPlannerArchiveWeekCard(week, entry) {
   const card = document.createElement("div");
   card.className = "weekly-planner-archive-card";
   card.setAttribute("role", "listitem");
@@ -374,37 +328,13 @@ function buildWeeklyPlannerArchiveCard(week, entry) {
     imageWrap.appendChild(emptyLabel);
   }
 
-  const heatmapStrip = buildWeeklyPlannerArchiveCardHeatmapStrip(entry.teacher);
-
   card.appendChild(header);
   card.appendChild(imageWrap);
-  card.appendChild(heatmapStrip);
 
   return card;
 }
 
-function buildWeeklyPlannerArchiveCardHeatmapStrip(teacher) {
-  const strip = document.createElement("button");
-  strip.type = "button";
-  strip.className = "weekly-planner-archive-card__heatmap";
-  strip.dataset.weeklyPlannerArchiveCardHeatmap = teacher.teacherId;
-  strip.dataset.weeklyPlannerArchiveCardHeatmapName = teacher.teacherName;
-  strip.setAttribute("aria-label", `View ${teacher.teacherName}'s submission history`);
-
-  const overview = weeklyPlannerArchiveState.overview;
-  const matrixEntry = overview && (overview.teacherMatrix || [])
-    .find(item => item.teacherId === teacher.teacherId);
-
-  ((matrixEntry && matrixEntry.weeks) || []).forEach(week => {
-    const dot = document.createElement("i");
-    dot.className = `weekly-planner-archive-dot weekly-planner-archive-dot--${weeklyPlannerArchiveStatusClass(week.status)}`;
-    strip.appendChild(dot);
-  });
-
-  return strip;
-}
-
-async function generateWeeklyPlannerArchiveCardPreview(card, week, entry) {
+async function generateWeeklyPlannerArchiveWeekCardPreview(card, week, entry) {
   if (!entry.planner) return;
 
   const image = card.querySelector(".weekly-planner-archive-card__image");
@@ -442,37 +372,13 @@ async function generateWeeklyPlannerArchiveCardPreview(card, week, entry) {
   }
 }
 
-function toggleWeeklyPlannerArchiveCardExpanded(card) {
-  const rail = document.getElementById("weekly-planner-archive-rail");
-  if (!rail) return;
-
-  const alreadyExpanded = card.classList.contains("is-expanded");
-  rail.querySelectorAll(".weekly-planner-archive-card.is-expanded").forEach(el => {
-    el.classList.remove("is-expanded");
-  });
-
-  if (!alreadyExpanded) card.classList.add("is-expanded");
-}
-
-function updateWeeklyPlannerArchiveSummarySelection() {
-  const rail = document.getElementById("weekly-planner-archive-summary-rail");
-  if (!rail) return;
-
-  rail.querySelectorAll("[data-weekly-planner-archive-week]").forEach(card => {
-    card.classList.toggle(
-      "is-selected",
-      card.dataset.weeklyPlannerArchiveWeek === weeklyPlannerArchiveState.selectedWeekStart
-    );
-  });
-}
-
-function setWeeklyPlannerArchiveRailMessage(message) {
-  const el = document.getElementById("weekly-planner-archive-rail-message");
+function setWeeklyPlannerArchiveWeekScreenMessage(message) {
+  const el = document.getElementById("weekly-planner-archive-week-screen-message");
   if (el) el.textContent = message || "";
 }
 
-function returnToWeeklyPlannerFromArchive() {
-  showScreen("weekly-planner-screen");
+function returnToWeeklyPlannerArchiveFromWeekScreen() {
+  showScreen("weekly-planner-archive-screen");
 }
 
 /* -------- Teacher submission history screen -------- */
@@ -668,3 +574,4 @@ function formatWeeklyPlannerArchiveRange(week) {
 window.showWeeklyPlannerArchive = showWeeklyPlannerArchive;
 window.returnToWeeklyPlannerFromArchive = returnToWeeklyPlannerFromArchive;
 window.returnToWeeklyPlannerArchiveHub = returnToWeeklyPlannerArchiveHub;
+window.returnToWeeklyPlannerArchiveFromWeekScreen = returnToWeeklyPlannerArchiveFromWeekScreen;

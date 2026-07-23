@@ -629,7 +629,7 @@
             onclick="returnToWeeklyPlannerFromArchive()"
             aria-label="Close planner archive"
           >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
           </button>
 
           <h2>Planner Archive</h2>
@@ -642,23 +642,47 @@
             <span>Week commencing</span>
             <input id="weekly-planner-archive-week" type="date" />
           </label>
-        </section>
-      </div>
 
-      <div id="weekly-planner-archive-summary-rail" class="weekly-planner-archive-summary-rail" role="list" aria-label="Recent weeks">
-        <p class="helper-text">Loading recent weeks...</p>
+          <button
+            id="weekly-planner-archive-open"
+            class="weekly-planner-header-action weekly-planner-archive-open-btn"
+            type="button"
+            aria-label="Open planners for this week"
+          >
+            <span class="app-icon" style="--app-icon-url: url('/icons/open.svg')" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">OPEN</span>
+          </button>
+        </section>
       </div>
 
       <section class="weekly-planner-archive-section" aria-label="Submission history by teacher">
         <h3 class="weekly-planner-archive-section-title">Submission history</h3>
+        <p id="weekly-planner-archive-hub-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
         <div id="weekly-planner-archive-heatmap-list" class="weekly-planner-archive-heatmap-list" role="list"></div>
       </section>
+    </section>
 
-      <section class="weekly-planner-archive-section weekly-planner-archive-section--rail" aria-label="Planners for the selected week">
-        <h3 id="weekly-planner-archive-rail-title" class="weekly-planner-archive-section-title">This week's planners</h3>
-        <p id="weekly-planner-archive-rail-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
-        <div id="weekly-planner-archive-rail" class="weekly-planner-archive-rail" role="list"></div>
-      </section>
+    <section id="weekly-planner-archive-week-screen" class="screen admin-theme weekly-planner-archive-week-screen">
+      <div class="weekly-planner-global-panel">
+        <div class="weekly-planner-app-header" role="toolbar" aria-label="Week planners actions">
+          <button
+            class="weekly-planner-header-action weekly-planner-header-action--close"
+            type="button"
+            onclick="returnToWeeklyPlannerArchiveFromWeekScreen()"
+            aria-label="Close and return to planner archive"
+          >
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
+
+          <h2 id="weekly-planner-archive-week-screen-title">Planners</h2>
+
+          <span class="weekly-planner-header-spacer" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <p id="weekly-planner-archive-week-screen-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+
+      <div id="weekly-planner-archive-week-rail" class="weekly-planner-archive-week-rail" role="list"></div>
     </section>
 
     <section id="weekly-planner-archive-teacher-screen" class="screen admin-theme weekly-planner-archive-teacher-screen">
@@ -670,7 +694,7 @@
             onclick="returnToWeeklyPlannerArchiveHub()"
             aria-label="Close submission history"
           >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
           </button>
 
           <h2 id="weekly-planner-archive-teacher-name">Submission History</h2>
@@ -991,7 +1015,7 @@
 <script src="/js/m4l-shell.js?v=97.1.5.5"></script>
   <script src="/js/m4l-timetable.js?v=97.1.5.5"></script>
   <script src="/js/m4l-weekly-planner.js?v=97.1.5.2"></script>
-  <script src="/js/m4l-weekly-planner-archive.js?v=97.1.6.1"></script>
+  <script src="/js/m4l-weekly-planner-archive.js?v=97.1.6.2"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>

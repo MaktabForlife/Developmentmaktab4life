@@ -1,4 +1,4 @@
-# V97.1.6.1 — Weekly Planner Archive fixes
+# V97.1.6.2 — Archive redesign: dedicated week screen, group sort, OPEN
 
 ## Files changed (7)
 - `backend/src/routes/weekly-planner.js`
@@ -7,79 +7,77 @@
 - `js/m4l-weekly-planner-archive.js`
 - `admin/index.html`
 - `styles.css` (version bump only)
-- `version.json` (bumped to 97.1.6.1)
+- `version.json` (bumped to 97.1.6.2)
 
-## 1. Main Weekly Planner header restructure
-The header is now a single 4-item grid (Title, Back, Archive, Save) laid out
-differently per breakpoint via CSS `grid-template-areas`, using the **same**
-markup at every size — no duplicated DOM:
-- **Mobile:** Row 1 = "Weekly Planner" title (full width). Row 2 = a 3-column
-  row of bare icon+label buttons (Back / Archive / Save).
-- **≥768px:** one row, 4 columns at 15% / 55% / 15% / 15%, title in column 2.
+## Real bug found and fixed: header buttons outside .weekly-planner-screen
+While wiring the OPEN button I found the actual root cause behind the
+"icon not visible, background colouring visible" report from earlier: the
+base reset for `.weekly-planner-header-action` (transparent background, no
+border, icon+label column layout) was scoped only to
+`.weekly-planner-screen` and `.weekly-planner-preview-screen` ancestors.
+The three Archive screens live outside both, so their buttons were falling
+back to native browser button chrome — a plain background box — regardless
+of which icon markup was used inside. Widened all four of those selector
+groups (base, `:active`, `:focus-visible`, `:disabled`) to also cover
+`.weekly-planner-archive-screen`, `.weekly-planner-archive-week-screen`,
+and `.weekly-planner-archive-teacher-screen`, and dropped the
+`.weekly-planner-app-header` ancestor requirement so it also reaches the
+new OPEN button, which sits in the date-bar rather than the header toolbar.
 
-The Archive/Teacher-History headers were **not** touched by this — they
-only ever have 1-2 items, not 4, so they keep their existing simple
-Title + one-icon layout.
+## 1. Archive hub simplified
+Now just: header (Title + icon-only `xclose.svg` close), a date picker with
+an **OPEN** button (`open.svg` icon + "OPEN" label, same bare icon+label
+convention as everywhere else) next to it, and **Submission history**
+below. The old inline "Planners for X–Y" preview section is gone entirely
+— deleted HTML, and all the JS/CSS that rendered it
+(`selectWeeklyPlannerArchiveWeek`, `renderWeeklyPlannerArchiveRail`,
+`buildWeeklyPlannerArchiveCard`, the per-card heatmap-strip, expand-inline
+toggle, and the intersection observer tied to it) removed rather than left
+dangling.
 
-## 2. Archive hub + Teacher History headers
-Back button replaced with an icon-only `xclose.svg` close button (no text
-label) on both screens.
+## 2. New dedicated week screen
+OPEN navigates to a new screen (`weekly-planner-archive-week-screen`):
+header is Title + icon-only close (back to the hub), and a swipeable rail
+of full-preview cards for that week — same card-building and progressive
+on-scroll rendering as before, just retargeted to the new screen's
+elements. Card visibility by breakpoint, reusing the app's existing
+768px/1180px breakpoint pair (already used by
+`m4l-14-attendance-responsive-repair.css`):
+- **Mobile (<768px):** 1 full-screen card at a time.
+- **Tablet (768–1179px):** 3 cards visible.
+- **Desktop (≥1180px):** 5 cards visible.
 
-## 3. Icon/button styling convention
-Applied your general rule: action buttons are icon + label with no
-background or container by default. Checked the existing base button CSS —
-it was already `background: transparent; border: 0`, so no change was
-needed there; this was really about the *Archive* icon specifically, which
-now shows its label again (it had been made icon-only in v97.1.6 purely to
-fit a cramped column — the new dedicated grid area removes that constraint).
+All three sizes use `scroll-snap-type: x mandatory`, so it's swipeable at
+every size rather than only on mobile.
 
-## 4. Teacher filtering ("only Admin with groups assigned")
-Added `filterWeeklyPlannerArchiveTeachers()` in the backend and applied it
-to both `archive-overview` and `week-records` — every teacher list in
-Archive (heatmap rows, week-detail rail) now excludes any admin/teacher
-record with no `assignedGroup` value, since those are supervisor accounts
-that never submit planners. Confirmed against the actual sheet field
-(`assignedGroup`), not a new field.
+Tapping a teacher's row in Submission History still goes to their own
+**Teacher Submission History** screen (per-teacher timeline) — that
+navigation wasn't part of this change and is untouched.
 
-## 5. Date-picker bug
-Found a genuine sequencing issue while fixing this: the date input's
-initial value was being set from the **client-side** "current week"
-calculation, then the overview call ran afterward and could resolve a
-*different* anchor week (per fix #6 below) without ever updating the input
-— so the picker and the displayed data could silently disagree. Reordered
-`showWeeklyPlannerArchive()` so the overview call runs first and its
-resolved anchor week is what sets the date input's value.
+## 3. Group-ascending sort
+New `compareWeeklyPlannerArchiveTeachersByGroup()` in the backend: `ALL`
+sorts first (alphabetical among ties), then numeric groups ascending
+(alphabetical within the same group number — verified numeric, not lexical,
+so group "10" correctly sorts after "2"). Folded into
+`filterWeeklyPlannerArchiveTeachers()`, so both `archive-overview`'s
+`teacherMatrix` and `week-records`'s `teacherRecords` come back pre-sorted
+— the frontend just renders in the order received.
 
-Also hardened the change-handling itself, since I couldn't rule out a
-browser/webview inconsistency: both `change` and `input` listeners are now
-bound (some mobile browsers are inconsistent about firing `change` for
-native date inputs), with a value-comparison guard so the pair can't
-double-fire for the same selection.
-
-## 6. "Recent weeks" section
-Removed the `<h3>Recent weeks</h3>` heading and its wrapping `<section>`
-container — the summary-rail cards now sit directly under the date bar as
-their own element, with the spacing that container used to provide moved
-onto the rail itself so nothing shifts visually.
-
-## 7. Recent-weeks anchor defaults to last submission
-Added `resolveWeeklyPlannerArchiveAnchorWeekStart()` in the backend: when no
-explicit `weekStart` is given, it scans all records for the most recent
-week with a `READY` (submitted) status and anchors the 4-week window there,
-instead of the current calendar week — so opening Archive before anyone's
-submitted this week doesn't show an all-empty headline card. Falls back to
-the current week only if there are no submissions anywhere yet. An explicit
-date-picker selection always overrides this and is used as-is.
+## 4. Default date
+Unchanged from v97.1.6.1: the date picker still defaults to the most
+recent week with an actual submission, not today. That logic now drives
+the picker directly (no more "recent weeks" section for it to also feed).
 
 ## Verified
-- `node --check` passes on the modified backend route and the archive JS.
-- HTML `<section>`/`<div>` tags balanced (36/36, 79/79).
-- CSS brace-balanced on both stylesheets (144/144, 49/49).
-- All Archive-related element IDs referenced by the JS confirmed present
-  exactly once in `admin/index.html`.
+- `node --check` passes on the backend route and the archive JS.
+- Standalone test of the sort comparator against a mixed ALL/numeric
+  dataset confirmed correct ordering.
+- HTML `<section>`/`<div>` tags balanced (36/36, 80/80).
+- CSS brace-balanced on both stylesheets (143/143, 42/42).
+- Every element ID referenced by the JS confirmed present exactly once in
+  `admin/index.html`; confirmed zero leftover references anywhere to the
+  removed IDs/classes/functions from the old inline-rail design.
 - Existing backend test suite still passes.
-- Confirmed no leftover references to the removed `.weekly-planner-header-actions`
-  wrapper class anywhere in HTML/CSS/JS.
 
 ## Upload instructions
 Copy these files into the corresponding paths in the live repo, preserving

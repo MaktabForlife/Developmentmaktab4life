@@ -135,7 +135,39 @@ export async function getWeeklyPlannerEndpoint(request, env) {
 }
 
 function filterWeeklyPlannerArchiveTeachers(teachers) {
-  return teachers.filter(teacher => Boolean(teacher.assignedGroup));
+  return teachers
+    .filter(teacher => Boolean(teacher.assignedGroup))
+    .sort(compareWeeklyPlannerArchiveTeachersByGroup);
+}
+
+function compareWeeklyPlannerArchiveTeachersByGroup(a, b) {
+  const bucketOf = teacher => {
+    const value = String(teacher.assignedGroup || "").trim();
+    if (value.toUpperCase() === "ALL") return 0;
+    if (/^\d+$/.test(value)) return 1;
+    return 2;
+  };
+
+  const bucketA = bucketOf(a);
+  const bucketB = bucketOf(b);
+
+  if (bucketA !== bucketB) {
+    return bucketA - bucketB;
+  }
+
+  if (bucketA === 1) {
+    const numberA = parseInt(a.assignedGroup, 10);
+    const numberB = parseInt(b.assignedGroup, 10);
+
+    if (numberA !== numberB) {
+      return numberA - numberB;
+    }
+  }
+
+  return a.teacherName.localeCompare(b.teacherName, undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
 }
 
 function resolveWeeklyPlannerArchiveAnchorWeekStart(explicitWeekStart, records) {

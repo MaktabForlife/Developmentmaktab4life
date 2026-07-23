@@ -125,8 +125,11 @@
   white-space: nowrap;
 }
 
-.weekly-planner-screen .weekly-planner-app-header .weekly-planner-header-action,
-.weekly-planner-preview-screen .weekly-planner-app-header .weekly-planner-header-action {
+.weekly-planner-screen .weekly-planner-header-action,
+.weekly-planner-preview-screen .weekly-planner-header-action,
+.weekly-planner-archive-screen .weekly-planner-header-action,
+.weekly-planner-archive-week-screen .weekly-planner-header-action,
+.weekly-planner-archive-teacher-screen .weekly-planner-header-action {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -146,20 +149,29 @@
   font: inherit;
 }
 
-.weekly-planner-screen .weekly-planner-app-header .weekly-planner-header-action:active,
-.weekly-planner-preview-screen .weekly-planner-app-header .weekly-planner-header-action:active {
+.weekly-planner-screen .weekly-planner-header-action:active,
+.weekly-planner-preview-screen .weekly-planner-header-action:active,
+.weekly-planner-archive-screen .weekly-planner-header-action:active,
+.weekly-planner-archive-week-screen .weekly-planner-header-action:active,
+.weekly-planner-archive-teacher-screen .weekly-planner-header-action:active {
   transform: none;
   box-shadow: none;
 }
 
-.weekly-planner-screen .weekly-planner-app-header .weekly-planner-header-action:focus-visible,
-.weekly-planner-preview-screen .weekly-planner-app-header .weekly-planner-header-action:focus-visible {
+.weekly-planner-screen .weekly-planner-header-action:focus-visible,
+.weekly-planner-preview-screen .weekly-planner-header-action:focus-visible,
+.weekly-planner-archive-screen .weekly-planner-header-action:focus-visible,
+.weekly-planner-archive-week-screen .weekly-planner-header-action:focus-visible,
+.weekly-planner-archive-teacher-screen .weekly-planner-header-action:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
 
-.weekly-planner-screen .weekly-planner-app-header .weekly-planner-header-action:disabled,
-.weekly-planner-preview-screen .weekly-planner-app-header .weekly-planner-header-action:disabled {
+.weekly-planner-screen .weekly-planner-header-action:disabled,
+.weekly-planner-preview-screen .weekly-planner-header-action:disabled,
+.weekly-planner-archive-screen .weekly-planner-header-action:disabled,
+.weekly-planner-archive-week-screen .weekly-planner-header-action:disabled,
+.weekly-planner-archive-teacher-screen .weekly-planner-header-action:disabled {
   opacity: 0.55;
 }
 
@@ -173,10 +185,6 @@
 
 .weekly-planner-header-action--back {
   --weekly-planner-header-icon: url('/icons/back.svg?v=96.4');
-}
-
-.weekly-planner-header-action--close {
-  --weekly-planner-header-icon: url('/icons/xclose.svg');
 }
 
 .weekly-planner-header-action--save {

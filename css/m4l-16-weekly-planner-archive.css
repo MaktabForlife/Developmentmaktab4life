@@ -1,14 +1,19 @@
 /* =========================
-   WEEKLY PLANNER ARCHIVE - V97.1.6
-   Admin-only archive of past weekly planners: date-picker + recent-weeks
-   summary, per-teacher submission heatmap, and a full-preview rail/grid for
-   the selected week. Reuses the design tokens defined in
-   m4l-01-foundation-auth-userband.css and the 768px mobile/desktop
-   breakpoint already used by m4l-15-weekly-planner.css and
-   m4l-14-attendance-responsive-repair.css.
+   WEEKLY PLANNER ARCHIVE - V97.1.6.2
+   Admin-only archive of past weekly planners:
+   - Hub: date picker + OPEN button, and a per-teacher submission heatmap
+     list (sorted by assigned group).
+   - Dedicated week screen: a swipeable rail of full-preview cards for one
+     week, breakpoint-aware (1 card full-screen on mobile, 3 visible on
+     tablet, 5 visible on desktop). Reuses the 768px/1180px breakpoint
+     pair already established by m4l-14-attendance-responsive-repair.css.
+   - Dedicated teacher screen: a per-teacher submission timeline.
+   Built entirely from tokens already defined in
+   m4l-01-foundation-auth-userband.css.
 ========================= */
 
 .weekly-planner-archive-screen,
+.weekly-planner-archive-week-screen,
 .weekly-planner-archive-teacher-screen {
   background: var(--surface-app);
 }
@@ -19,18 +24,22 @@
   height: 1px;
 }
 
-/* -------- Date bar -------- */
+/* -------- Date bar (hub) -------- */
 
 .weekly-planner-archive-datebar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 10px;
   padding: 10px 12px;
   border-top: 1px solid var(--surface-track);
 }
 
-/* -------- Sections -------- */
+.weekly-planner-archive-open-btn {
+  flex-shrink: 0;
+}
+
+/* -------- Sections (hub) -------- */
 
 .weekly-planner-archive-section {
   width: min(100%, 1240px);
@@ -47,53 +56,7 @@
   font-weight: 800;
 }
 
-/* -------- Recent weeks summary rail -------- */
-
-.weekly-planner-archive-summary-rail {
-  display: flex;
-  gap: 10px;
-  width: min(100%, 1240px);
-  margin: 14px auto 0;
-  padding: 0 10px 4px;
-  box-sizing: border-box;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-}
-
-.weekly-planner-archive-summary-card {
-  scroll-snap-align: start;
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 148px;
-  padding: 10px 12px;
-  border: 2px solid var(--surface-track);
-  border-radius: 12px;
-  background: var(--surface-card);
-  color: var(--text);
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-}
-
-.weekly-planner-archive-summary-card.is-selected {
-  border-color: var(--primary);
-  background: var(--surface-chip);
-}
-
-.weekly-planner-archive-summary-card__range {
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.weekly-planner-archive-summary-card__count {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-
-/* -------- Per-teacher submission heatmap list -------- */
+/* -------- Per-teacher submission heatmap list (hub) -------- */
 
 .weekly-planner-archive-heatmap-list {
   display: flex;
@@ -153,20 +116,25 @@
   background: var(--surface-track);
 }
 
-/* -------- Week detail rail (mobile: single-card rail) -------- */
+/* -------- Week screen: swipeable full-preview card rail -------- */
+/* Mobile: 1 full-screen card. Tablet (>=768px): 3 visible. Desktop
+   (>=1180px): 5 visible. Scroll-snap keeps it swipeable at every size. */
 
-.weekly-planner-archive-rail {
+.weekly-planner-archive-week-rail {
   display: flex;
   gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 12px 16px;
+  box-sizing: border-box;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  padding-bottom: 8px;
   -webkit-overflow-scrolling: touch;
 }
 
 .weekly-planner-archive-card {
-  scroll-snap-align: center;
-  flex: 0 0 88%;
+  scroll-snap-align: start;
+  flex: 0 0 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -261,45 +229,17 @@
   text-align: center;
 }
 
-.weekly-planner-archive-card__heatmap {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border: 1px solid var(--surface-track);
-  border-radius: 999px;
-  background: var(--surface-app);
-  cursor: pointer;
+/* Tablet: 3 cards visible at once */
+@media (min-width: 768px) {
+  .weekly-planner-archive-card {
+    flex-basis: calc((100% - 24px) / 3);
+  }
 }
 
-/* -------- Larger screens: grid instead of rail, tap-to-expand inline -------- */
-
-@media (min-width: 768px) {
-  .weekly-planner-archive-rail {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 14px;
-    overflow: visible;
-  }
-
+/* Desktop: 5 cards visible at once */
+@media (min-width: 1180px) {
   .weekly-planner-archive-card {
-    flex: initial;
-    cursor: pointer;
-    transition: grid-column 0.2s ease;
-  }
-
-  .weekly-planner-archive-card.is-expanded {
-    grid-column: span 2;
-  }
-
-  .weekly-planner-archive-card.is-expanded .weekly-planner-archive-card__image-wrap {
-    min-height: 420px;
-  }
-
-  .weekly-planner-archive-summary-rail {
-    flex-wrap: wrap;
-    overflow-x: visible;
+    flex-basis: calc((100% - 48px) / 5);
   }
 }
 
