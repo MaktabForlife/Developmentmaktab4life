@@ -41,7 +41,7 @@
 
 .weekly-planner-app-header {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 72px;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
   min-height: 44px;
@@ -49,6 +49,14 @@
   box-sizing: border-box;
   background: var(--surface-card);
   color: var(--text);
+}
+
+.weekly-planner-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
 }
 
 .weekly-planner-global-panel .weekly-planner-app-header {
@@ -144,6 +152,10 @@
 
 .weekly-planner-header-action--save {
   --weekly-planner-header-icon: url('/icons/save.svg?v=95.3.1');
+}
+
+.weekly-planner-header-action--archive {
+  --weekly-planner-header-icon: url('/icons/archive.svg?v=97.1.6');
 }
 
 .weekly-planner-header-action--share {
