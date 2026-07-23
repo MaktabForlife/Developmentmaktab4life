@@ -957,7 +957,7 @@ body.pdf-viewer-open #pdf-viewer-screen.screen {
   height: 100%;
   border-radius: 0;
   box-shadow: none;
-  background: var(--surface-app);
+  background: var(--surface-track);
   overflow: hidden;
 }
 
@@ -975,6 +975,7 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   margin: 0;
   padding: 2px max(8px, env(safe-area-inset-right, 0px)) 2px max(8px, env(safe-area-inset-left, 0px));
   background: var(--surface-app);
+   color: var(--text);
   border-bottom: 1px solid var(--surface-track);
 }
 
