@@ -1,4 +1,5 @@
-/* M4L v97.1.7 - In-viewer PDF Library navigation (frontend only)
+/* M4L v97.1.7.1  fix to view all subjects
+- In-viewer PDF Library navigation (frontend only)
    Adds same-subject/module PDF switching, Previous/Next controls, and a Library drawer.
 
    M4L v94.6 - Session-stable Library cache and mobile rail scrolling
@@ -1365,10 +1366,36 @@ function buildCurrentPdfLibraryItems(resourceId, link) {
   }
 
   return Array.from(libraryResourceMap.values())
-    .filter(resource => resource.subjectKey === active.subjectKey && resource.moduleKey === active.moduleKey)
     .filter(isPdfLibraryResource)
-    .sort(compareLibraryResourceRecords);
+    .sort((a, b) => {
+      const subjectCompare = String(a.subjectName || "").localeCompare(
+        String(b.subjectName || ""),
+        undefined,
+        { numeric: true, sensitivity: "base" }
+      );
+
+      if (subjectCompare !== 0) {
+        return subjectCompare;
+      }
+
+      const moduleCompare = String(a.moduleName || "").localeCompare(
+        String(b.moduleName || ""),
+        undefined,
+        { numeric: true, sensitivity: "base" }
+      );
+
+      if (moduleCompare !== 0) {
+        return moduleCompare;
+      }
+
+      return compareLibraryResourceRecords(a, b);
+    });
 }
+
+
+
+
+
 
 function getCurrentPdfLibraryIndex() {
   return currentPdfLibraryItems.findIndex(resource => resource.id === currentPdfResourceId);
