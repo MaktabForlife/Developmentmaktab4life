@@ -1,6 +1,8 @@
-/* M4L v97.1.5.2 Weekly Planner
-   Mobile uses one compact swipe card. Medium and large screens show all four
-   equal day cards in one row. Preview font and ink colour are locally selectable. */
+/* M4L v97.1.6.3 Weekly Planner
+   Mobile uses one compact swipe card. Medium screens (768-1179px) show two
+   day cards per row, contained within the viewport. Large desktop
+   (>=1180px) shows all four in one row, on an enlarged canvas. Preview
+   font and ink colour are locally selectable. */
 
 .weekly-planner-screen,
 .weekly-planner-preview-screen {
@@ -946,7 +948,7 @@
 
   .weekly-planner-rail {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     overflow: visible;
     padding: 0;
@@ -1002,6 +1004,36 @@
     max-width: 760px;
   }
 }
+
+/* Large desktop (>=1180px): enlarge the canvas and restore 4 equal day
+   columns. The 768px tier above is now the medium/tablet tier (2 columns,
+   contained within the viewport instead of overflowing it). */
+@media (min-width: 1180px) {
+  body:has(#weekly-planner-screen.active) .app-shell,
+  body:has(#weekly-planner-preview-screen.active) .app-shell {
+    max-width: 1600px;
+  }
+
+  .weekly-planner-screen,
+  .weekly-planner-preview-screen {
+    --weekly-planner-max-width: 1600px;
+  }
+
+  .weekly-planner-rail {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .weekly-planner-period-entries,
+  .weekly-planner-feedback-row textarea {
+    min-height: 96px;
+  }
+
+  .weekly-planner-day-heading h3 {
+    font-size: 0.95rem;
+  }
+}
+
 /* Unified Weekly Planner header card — all screen sizes */
 #weekly-planner-screen .weekly-planner-global-panel {
   display: grid;

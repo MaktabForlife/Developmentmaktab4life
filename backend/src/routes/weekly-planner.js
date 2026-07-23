@@ -331,6 +331,42 @@ export async function weeklyPlannerTeacherHistoryEndpoint(request, env) {
   });
 }
 
+export async function weeklyPlannerTeacherWeekRecordsEndpoint(request, env) {
+  const auth = await requireWeeklyPlannerAdmin(request, env);
+
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const teacher = await resolveWeeklyPlannerTeacher(env, auth.user, body);
+
+  if (!teacher) {
+    return json({ success: false, error: "Teacher not found" }, 404);
+  }
+
+  const weeks = buildRecentWeeklyPlannerWeeks(body.weekStart, WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT);
+  const records = await readWeeklyPlannerRecords(env);
+  const teacherRecords = records.filter(record => record.teacherId === teacher.teacherId);
+
+  const weekRecords = weeks.map(week => {
+    const record = teacherRecords
+      .filter(planner => planner.weekStart === week.weekStart)
+      .sort(compareWeeklyPlannerRecordsNewestFirst)[0] || null;
+
+    return {
+      week,
+      planner: record ? getWeeklyPlannerClientRecord(record) : null
+    };
+  });
+
+  return json({
+    success: true,
+    teacher,
+    weekRecords
+  });
+}
+
 export async function saveWeeklyPlannerEndpoint(request, env) {
   const auth = await requireWeeklyPlannerAdmin(request, env);
 

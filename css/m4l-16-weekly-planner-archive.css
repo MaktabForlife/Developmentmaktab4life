@@ -1,13 +1,18 @@
 /* =========================
-   WEEKLY PLANNER ARCHIVE - V97.1.6.2
+   WEEKLY PLANNER ARCHIVE - V97.1.6.3
    Admin-only archive of past weekly planners:
    - Hub: date picker + OPEN button, and a per-teacher submission heatmap
      list (sorted by assigned group).
-   - Dedicated week screen: a swipeable rail of full-preview cards for one
-     week, breakpoint-aware (1 card full-screen on mobile, 3 visible on
-     tablet, 5 visible on desktop). Reuses the 768px/1180px breakpoint
-     pair already established by m4l-14-attendance-responsive-repair.css.
-   - Dedicated teacher screen: a per-teacher submission timeline.
+   - Week screen and Teacher screen both use the same swipeable full-preview
+     card rail component/CSS (.weekly-planner-archive-week-rail /
+     .weekly-planner-archive-card), just fed different data.
+   Sizing intentionally mirrors the Weekly Planner's own breakpoints:
+   - Mobile: identical sizing to the Weekly Planner's mobile rail (full
+     width, no side padding).
+   - Medium (768-1179px): 2 cards visible, contained within the viewport
+     (matching the Weekly Planner's medium tier).
+   - Large desktop (>=1180px): a bigger canvas than the Weekly Planner's own
+     (enlarged) large-desktop tier - wider max-width, taller cards.
    Built entirely from tokens already defined in
    m4l-01-foundation-auth-userband.css.
 ========================= */
@@ -30,13 +35,18 @@
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 20px;
   padding: 10px 12px;
   border-top: 1px solid var(--surface-track);
 }
 
 .weekly-planner-archive-open-btn {
   flex-shrink: 0;
+}
+
+.weekly-planner-archive-open-btn .app-icon {
+  width: 32px;
+  height: 32px;
 }
 
 /* -------- Sections (hub) -------- */
@@ -116,32 +126,43 @@
   background: var(--surface-track);
 }
 
-/* -------- Week screen: swipeable full-preview card rail -------- */
-/* Mobile: 1 full-screen card. Tablet (>=768px): 3 visible. Desktop
-   (>=1180px): 5 visible. Scroll-snap keeps it swipeable at every size. */
+/* -------- Week/Teacher screens: swipeable full-preview card rail -------- */
+/* Mobile: 1 full-screen card, edge-to-edge (matches the Weekly Planner's
+   own mobile rail exactly - no side padding). Medium (>=768px): 2 visible,
+   contained. Large desktop (>=1180px): a bigger canvas than the Weekly
+   Planner's own enlarged desktop tier. */
 
 .weekly-planner-archive-week-rail {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   margin: 0;
-  padding: 12px 12px 16px;
+  padding: 0;
   box-sizing: border-box;
   overflow-x: auto;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
+  scroll-snap-stop: always;
+  overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.weekly-planner-archive-week-rail::-webkit-scrollbar {
+  display: none;
 }
 
 .weekly-planner-archive-card {
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   flex: 0 0 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border: 2px solid var(--surface-track);
-  border-radius: 14px;
-  background: var(--surface-card);
+  gap: 6px;
+  padding: 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-sizing: border-box;
 }
 
@@ -150,6 +171,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding: 0 4px;
 }
 
 .weekly-planner-archive-card__name {
@@ -191,7 +213,7 @@
   justify-content: center;
   min-height: 220px;
   border-radius: 10px;
-  background: var(--surface-app);
+  background: var(--surface-card);
   overflow: hidden;
 }
 
@@ -229,76 +251,37 @@
   text-align: center;
 }
 
-/* Tablet: 3 cards visible at once */
+/* Medium (768-1179px): 2 cards visible, matching the Weekly Planner's
+   medium tier and properly contained within the viewport. */
 @media (min-width: 768px) {
+  .weekly-planner-archive-week-rail {
+    gap: 10px;
+  }
+
   .weekly-planner-archive-card {
-    flex-basis: calc((100% - 24px) / 3);
+    flex-basis: calc((100% - 10px) / 2);
   }
 }
 
-/* Desktop: 5 cards visible at once */
+/* Large desktop (>=1180px): bigger canvas than the Weekly Planner's own
+   enlarged desktop tier (--weekly-planner-max-width: 1600px there). */
 @media (min-width: 1180px) {
-  .weekly-planner-archive-card {
-    flex-basis: calc((100% - 48px) / 5);
+  #weekly-planner-archive-week-screen .weekly-planner-archive-week-rail,
+  #weekly-planner-archive-teacher-screen .weekly-planner-archive-week-rail {
+    max-width: 1800px;
+    margin-inline: auto;
+    gap: 16px;
   }
-}
 
-/* -------- Teacher submission history screen -------- */
+  #weekly-planner-archive-week-rail .weekly-planner-archive-card {
+    flex-basis: calc((100% - 64px) / 5);
+  }
 
-.weekly-planner-archive-teacher-heatmap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+  #weekly-planner-archive-teacher-rail .weekly-planner-archive-card {
+    flex-basis: calc((100% - 48px) / 4);
+  }
 
-.weekly-planner-archive-teacher-heatmap-dot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 12px;
-  border: 2px solid var(--surface-track);
-  border-radius: 12px;
-  background: var(--surface-card);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.weekly-planner-archive-teacher-heatmap-dot::before {
-  content: "";
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--surface-track);
-}
-
-.weekly-planner-archive-teacher-heatmap-dot.weekly-planner-archive-dot--ready::before {
-  background: var(--success);
-}
-
-.weekly-planner-archive-teacher-heatmap-dot.weekly-planner-archive-dot--draft::before {
-  background: var(--verified);
-}
-
-.weekly-planner-archive-teacher-heatmap-dot.is-selected {
-  border-color: var(--primary);
-  background: var(--surface-chip);
-}
-
-.weekly-planner-archive-teacher-heatmap-dot__label {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-
-.weekly-planner-archive-teacher-preview {
-  display: flex;
-  justify-content: center;
-}
-
-.weekly-planner-archive-teacher-preview__image {
-  width: min(100%, 460px);
-  height: auto;
-  border: 2px solid var(--surface-track);
-  border-radius: 12px;
+  .weekly-planner-archive-card__image-wrap {
+    min-height: 480px;
+  }
 }
