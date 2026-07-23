@@ -28,18 +28,18 @@ async function showWeeklyPlannerArchive() {
   bindWeeklyPlannerArchiveEvents();
 
   const weekInput = document.getElementById("weekly-planner-archive-week");
-  const anchorWeek = window.M4LWeeklyPlanner.getWeekMeta();
-
-  if (weekInput && !weekInput.value) {
-    weekInput.value = anchorWeek.weekStart;
-  }
-
-  const weekStart = (weekInput && weekInput.value) || anchorWeek.weekStart;
+  let resolvedWeekStart = "";
 
   try {
-    await loadWeeklyPlannerArchiveOverview(weekStart);
+    resolvedWeekStart = await loadWeeklyPlannerArchiveOverview(weekInput ? weekInput.value : "");
   } catch (error) {
     setWeeklyPlannerArchiveRailMessage(error.message || "Unable to load the archive overview.");
+  }
+
+  const weekStart = resolvedWeekStart || window.M4LWeeklyPlanner.getWeekMeta().weekStart;
+
+  if (weekInput) {
+    weekInput.value = weekStart;
   }
 
   try {
@@ -55,13 +55,26 @@ function bindWeeklyPlannerArchiveEvents() {
 
   const weekInput = document.getElementById("weekly-planner-archive-week");
   if (weekInput) {
-    weekInput.addEventListener("change", () => {
+    let lastHandledWeekInputValue = "";
+
+    const handleWeekInputChange = () => {
+      if (weekInput.value === lastHandledWeekInputValue) return;
+      lastHandledWeekInputValue = weekInput.value;
+
       const meta = window.M4LWeeklyPlanner.getWeekMeta(weekInput.value);
       weekInput.value = meta.weekStart;
+      lastHandledWeekInputValue = meta.weekStart;
+
       selectWeeklyPlannerArchiveWeek(meta.weekStart).catch(error => {
         setWeeklyPlannerArchiveRailMessage(error.message || "Unable to load that week.");
       });
-    });
+    };
+
+    // Some mobile browsers/webviews are inconsistent about firing "change" for
+    // native date inputs, so "input" is bound too; the value-comparison guard
+    // above stops the pair from double-firing for the same selection.
+    weekInput.addEventListener("change", handleWeekInputChange);
+    weekInput.addEventListener("input", handleWeekInputChange);
   }
 
   const summaryRail = document.getElementById("weekly-planner-archive-summary-rail");
@@ -148,6 +161,9 @@ async function loadWeeklyPlannerArchiveOverview(weekStart) {
   weeklyPlannerArchiveState.overview = result;
   renderWeeklyPlannerArchiveSummary(result.weeks || []);
   renderWeeklyPlannerArchiveHeatmapList(result.teacherMatrix || []);
+
+  const weeks = result.weeks || [];
+  return weeks.length ? weeks[weeks.length - 1].weekStart : "";
 }
 
 function renderWeeklyPlannerArchiveSummary(weeks) {

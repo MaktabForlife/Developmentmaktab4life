@@ -51,12 +51,37 @@
   color: var(--text);
 }
 
-.weekly-planner-header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  min-width: 0;
+.weekly-planner-app-header--main {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    "title title title"
+    "back archive save";
+  min-height: auto;
+  row-gap: 2px;
+  padding: 6px 7px 4px;
+}
+
+.weekly-planner-app-header--main .weekly-planner-app-header__title {
+  grid-area: title;
+}
+
+.weekly-planner-app-header--main .weekly-planner-header-action--back {
+  grid-area: back;
+}
+
+.weekly-planner-app-header--main .weekly-planner-header-action--archive {
+  grid-area: archive;
+}
+
+.weekly-planner-app-header--main .weekly-planner-header-action--save {
+  grid-area: save;
+}
+
+@media (min-width: 768px) {
+  .weekly-planner-app-header--main {
+    grid-template-columns: 15% 55% 15% 15%;
+    grid-template-areas: "back title archive save";
+  }
 }
 
 .weekly-planner-global-panel .weekly-planner-app-header {
@@ -148,6 +173,10 @@
 
 .weekly-planner-header-action--back {
   --weekly-planner-header-icon: url('/icons/back.svg?v=96.4');
+}
+
+.weekly-planner-header-action--close {
+  --weekly-planner-header-icon: url('/icons/xclose.svg');
 }
 
 .weekly-planner-header-action--save {

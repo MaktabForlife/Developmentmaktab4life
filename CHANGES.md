@@ -1,102 +1,86 @@
-# V97.1.6 — Weekly Planner Archive
+# V97.1.6.1 — Weekly Planner Archive fixes
 
-New admin-only feature: an Archive icon on the Weekly Planner screen opens a
-hub for browsing every teacher's past planners, plus a per-teacher
-submission-history view.
+## Files changed (7)
+- `backend/src/routes/weekly-planner.js`
+- `css/m4l-15-weekly-planner.css`
+- `css/m4l-16-weekly-planner-archive.css`
+- `js/m4l-weekly-planner-archive.js`
+- `admin/index.html`
+- `styles.css` (version bump only)
+- `version.json` (bumped to 97.1.6.1)
 
-## Files changed/added (9)
-- `backend/src/routes/weekly-planner.js` (changed)
-- `backend/src/router.js` (changed)
-- `css/m4l-15-weekly-planner.css` (changed)
-- `css/m4l-16-weekly-planner-archive.css` (new)
-- `js/m4l-weekly-planner-archive.js` (new)
-- `icons/archive.svg` (new)
-- `admin/index.html` (changed)
-- `styles.css` (already referenced the new stylesheet — included for completeness)
-- `version.json` (bumped to 97.1.6)
+## 1. Main Weekly Planner header restructure
+The header is now a single 4-item grid (Title, Back, Archive, Save) laid out
+differently per breakpoint via CSS `grid-template-areas`, using the **same**
+markup at every size — no duplicated DOM:
+- **Mobile:** Row 1 = "Weekly Planner" title (full width). Row 2 = a 3-column
+  row of bare icon+label buttons (Back / Archive / Save).
+- **≥768px:** one row, 4 columns at 15% / 55% / 15% / 15%, title in column 2.
 
-## Backend — three new endpoints
-All gated by the existing generic `requireWeeklyPlannerAdmin` (no role tiers
-yet, per your note — all admins can view the archive):
+The Archive/Teacher-History headers were **not** touched by this — they
+only ever have 1-2 items, not 4, so they keep their existing simple
+Title + one-icon layout.
 
-- `POST /api/admin/weekly-planner/archive-overview` — `{ weekStart? }` →
-  the last 4 weeks' `{ weekStart, weekEnd, month, totalTeachers,
-  submittedCount }`, **plus** a full per-teacher 4-week status matrix
-  (`teacherMatrix`). Bundling the matrix into this one call means the hub's
-  heatmap section needs no extra round trips per teacher.
-- `POST /api/admin/weekly-planner/week-records` — `{ weekStart }` → every
-  active teacher's full record (including `plannerData`) for that week, with
-  teachers who didn't submit represented as `planner: null` rather than
-  omitted, so gaps are visible.
-- `POST /api/admin/weekly-planner/teacher-history` — `{ teacherId,
-  weekStart? }` → one teacher's last 4 weeks of `{ weekStart, status,
-  updatedDate }`.
+## 2. Archive hub + Teacher History headers
+Back button replaced with an icon-only `xclose.svg` close button (no text
+label) on both screens.
 
-A shared `buildRecentWeeklyPlannerWeeks(anchorValue, count)` helper computes
-the 4-week window consistently for both endpoints. Opening one specific
-teacher+week from a heatmap dot reuses the **existing**
-`/api/admin/weekly-planner/get` endpoint — no new endpoint needed there.
+## 3. Icon/button styling convention
+Applied your general rule: action buttons are icon + label with no
+background or container by default. Checked the existing base button CSS —
+it was already `background: transparent; border: 0`, so no change was
+needed there; this was really about the *Archive* icon specifically, which
+now shows its label again (it had been made icon-only in v97.1.6 purely to
+fit a cramped column — the new dedicated grid area removes that constraint).
 
-Existing backend test suite (`backend/tests/weekly-planner.test.mjs`) still
-passes; no changes were needed there since the existing endpoints are
-untouched.
+## 4. Teacher filtering ("only Admin with groups assigned")
+Added `filterWeeklyPlannerArchiveTeachers()` in the backend and applied it
+to both `archive-overview` and `week-records` — every teacher list in
+Archive (heatmap rows, week-detail rail) now excludes any admin/teacher
+record with no `assignedGroup` value, since those are supervisor accounts
+that never submit planners. Confirmed against the actual sheet field
+(`assignedGroup`), not a new field.
 
-## Frontend — Archive hub (`weekly-planner-archive-screen`)
-Reached via a new icon button in the Weekly Planner header. Three zones on
-one screen:
-1. **Date picker**, defaulted to the current week, plus a **recent-weeks**
-   row of lightweight summary cards ("14–17 Jul — 8/10 submitted"). Both
-   drive the same rail below.
-2. **Submission history list** — one row per teacher with a small 4-dot
-   heatmap strip. Tapping a row opens that teacher's full history screen.
-3. **Full-preview rail/grid** for the selected week — every teacher's
-   *actual rendered planner image* (not placeholders), generated
-   progressively via `IntersectionObserver` as each card scrolls into view,
-   so the screen doesn't stutter regardless of teacher count. Each card also
-   carries the same mini heatmap strip, which — tapped — jumps into that
-   teacher's history screen too.
-   - **Mobile:** single-card scroll-snap rail.
-   - **≥768px:** grid (matching the breakpoint already used by
-     `m4l-14-attendance-responsive-repair.css`); clicking a card **expands
-     it inline** (grows within the grid) rather than opening a modal, per
-     your direction.
+## 5. Date-picker bug
+Found a genuine sequencing issue while fixing this: the date input's
+initial value was being set from the **client-side** "current week"
+calculation, then the overview call ran afterward and could resolve a
+*different* anchor week (per fix #6 below) without ever updating the input
+— so the picker and the displayed data could silently disagree. Reordered
+`showWeeklyPlannerArchive()` so the overview call runs first and its
+resolved anchor week is what sets the date input's value.
 
-## Frontend — Teacher Submission History (`weekly-planner-archive-teacher-screen`)
-A heatmap/timeline of the teacher's last 4 weeks; tapping a week's dot loads
-that specific planner (via the existing single-teacher `get` endpoint) into
-an inline preview panel below — no new screen or modal needed for that.
+Also hardened the change-handling itself, since I couldn't rule out a
+browser/webview inconsistency: both `change` and `input` listeners are now
+bound (some mobile browsers are inconsistent about firing `change` for
+native date inputs), with a value-comparison guard so the pair can't
+double-fire for the same selection.
 
-Both screens reuse `window.M4LWeeklyPlanner.renderPreview()` (already
-exported by `m4l-weekly-planner.js`) for the actual canvas image, so archive
-previews are pixel-identical to the live planner preview, and a small
-in-memory cache avoids re-rendering the same teacher+week twice in one
-session.
+## 6. "Recent weeks" section
+Removed the `<h3>Recent weeks</h3>` heading and its wrapping `<section>`
+container — the summary-rail cards now sit directly under the date bar as
+their own element, with the spacing that container used to provide moved
+onto the rail itself so nothing shifts visually.
 
-## Styling
-Uses only existing design tokens already defined in
-`m4l-01-foundation-auth-userband.css` — `--surface-app`, `--surface-card`,
-`--surface-track`, `--surface-chip`, `--text`, `--text-muted`,
-`--text-inverse`, plus the existing `--success` / `--verified` status colors
-for Submitted/Draft (missing weeks fall back to `--surface-track`). No new
-colors were introduced.
-
-The existing Weekly Planner header was a rigid 3-column CSS grid
-(Back | Title | Save) — a bare third button would have broken that layout,
-so Archive + Save are now grouped in a `.weekly-planner-header-actions`
-wrapper in the third column instead, with that column changed from a fixed
-`72px` to `auto` width to fit both.
+## 7. Recent-weeks anchor defaults to last submission
+Added `resolveWeeklyPlannerArchiveAnchorWeekStart()` in the backend: when no
+explicit `weekStart` is given, it scans all records for the most recent
+week with a `READY` (submitted) status and anchors the 4-week window there,
+instead of the current calendar week — so opening Archive before anyone's
+submitted this week doesn't show an all-empty headline card. Falls back to
+the current week only if there are no submissions anywhere yet. An explicit
+date-picker selection always overrides this and is used as-is.
 
 ## Verified
-- `node --check` passes on all modified/new `.js` files.
-- HTML `<section>`/`<div>` tags balanced (37/37, 80/80) and all new element
-  IDs referenced by the JS module confirmed present in `admin/index.html`.
-- CSS brace-balanced (49/49).
-- No global function/variable name collisions between the new module and
-  any other loaded script.
+- `node --check` passes on the modified backend route and the archive JS.
+- HTML `<section>`/`<div>` tags balanced (36/36, 79/79).
+- CSS brace-balanced on both stylesheets (144/144, 49/49).
+- All Archive-related element IDs referenced by the JS confirmed present
+  exactly once in `admin/index.html`.
 - Existing backend test suite still passes.
+- Confirmed no leftover references to the removed `.weekly-planner-header-actions`
+  wrapper class anywhere in HTML/CSS/JS.
 
 ## Upload instructions
 Copy these files into the corresponding paths in the live repo, preserving
-the folder structure exactly. `styles.css` already imports the new CSS file
-at the version used here, so no manual edit is needed there — it's included
-only so the version numbers line up if you diff it.
+the folder structure exactly.

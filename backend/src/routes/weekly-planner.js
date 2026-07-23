@@ -134,6 +134,24 @@ export async function getWeeklyPlannerEndpoint(request, env) {
   });
 }
 
+function filterWeeklyPlannerArchiveTeachers(teachers) {
+  return teachers.filter(teacher => Boolean(teacher.assignedGroup));
+}
+
+function resolveWeeklyPlannerArchiveAnchorWeekStart(explicitWeekStart, records) {
+  if (explicitWeekStart) {
+    return explicitWeekStart;
+  }
+
+  const mostRecentSubmittedWeekStart = records
+    .filter(record => record.status === "READY")
+    .map(record => record.weekStart)
+    .sort()
+    .pop();
+
+  return mostRecentSubmittedWeekStart || undefined;
+}
+
 export async function weeklyPlannerArchiveOverviewEndpoint(request, env) {
   const auth = await requireWeeklyPlannerAdmin(request, env);
 
@@ -142,11 +160,13 @@ export async function weeklyPlannerArchiveOverviewEndpoint(request, env) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const weeks = buildRecentWeeklyPlannerWeeks(body.weekStart, WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT);
-  const [teachers, records] = await Promise.all([
+  const [allTeachers, records] = await Promise.all([
     readWeeklyPlannerTeachers(env),
     readWeeklyPlannerRecords(env)
   ]);
+  const teachers = filterWeeklyPlannerArchiveTeachers(allTeachers);
+  const anchorWeekStart = resolveWeeklyPlannerArchiveAnchorWeekStart(body.weekStart, records);
+  const weeks = buildRecentWeeklyPlannerWeeks(anchorWeekStart, WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT);
   const totalTeachers = teachers.length;
 
   const summary = weeks.map(week => {
@@ -207,10 +227,11 @@ export async function weeklyPlannerWeekRecordsEndpoint(request, env) {
 
   const body = await request.json().catch(() => ({}));
   const week = getWeeklyPlannerWeek(body.weekStart);
-  const [teachers, records] = await Promise.all([
+  const [allTeachers, records] = await Promise.all([
     readWeeklyPlannerTeachers(env),
     readWeeklyPlannerRecords(env)
   ]);
+  const teachers = filterWeeklyPlannerArchiveTeachers(allTeachers);
 
   const recordsByTeacher = new Map();
 

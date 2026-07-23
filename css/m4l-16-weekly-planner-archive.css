@@ -52,9 +52,12 @@
 .weekly-planner-archive-summary-rail {
   display: flex;
   gap: 10px;
+  width: min(100%, 1240px);
+  margin: 14px auto 0;
+  padding: 0 10px 4px;
+  box-sizing: border-box;
   overflow-x: auto;
   scroll-snap-type: x proximity;
-  padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
 }
 
