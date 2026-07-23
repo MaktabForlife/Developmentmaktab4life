@@ -3093,6 +3093,7 @@ const BOTTOM_NAV_ITEMS = {
       label: "Record",
       icon: "/icons/navrecord.svg?v=92.3",
       targetScreen: "record-lesson-screen"
+        hideFromBottomNav: true
     },
     {
       key: "attendance",
