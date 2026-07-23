@@ -974,14 +974,15 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   min-height: 48px;
   margin: 0;
   padding: 2px max(8px, env(safe-area-inset-right, 0px)) 2px max(8px, env(safe-area-inset-left, 0px));
-  background: var(--surface-app);
-  border-bottom: 1px solid var(--surface-track);
+  background: var(--surface-track);
+  border-bottom: 1px solid var(--surface-card);
 }
 
 .pdf-viewer-header h2 {
   margin: 0;
   font-size: 1rem;
   line-height: 1.2;
+   color: var(--text;
 }
 
 .pdf-viewer-actions {
@@ -1006,7 +1007,7 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--primary);
+  color: var(--text;
   box-shadow: none;
 }
 
@@ -1071,7 +1072,7 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   min-height: 0;
   height: auto;
   border: 0;
-  background: var(--surface-app);
+  background: var(--surface-track);
 }
 
 @media (max-width: 520px) {
@@ -1120,7 +1121,7 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   border: 1px solid var(--surface-track);
   border-radius: 10px;
   background: var(--surface-card);
-  color: var(--primary);
+  color: var(--text);
   box-shadow: none;
 }
 
