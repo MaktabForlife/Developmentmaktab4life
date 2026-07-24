@@ -865,3 +865,35 @@ body.is-student-progress-section .app-shell {
     max-height: none;
   }
 }
+
+
+/* M4L v97.1.8.6 - Student Progress close control */
+#progress-subjects-screen.student-theme .student-progress-close-btn {
+  appearance: none;
+  position: absolute;
+  top: -42px;
+  left: max(10px, env(safe-area-inset-left, 0px));
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+#progress-subjects-screen.student-theme .student-progress-close-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  background: currentColor;
+  -webkit-mask: url('/icons/xclose.svg?v=97.1.8.6') center / contain no-repeat;
+  mask: url('/icons/xclose.svg?v=97.1.8.6') center / contain no-repeat;
+}
