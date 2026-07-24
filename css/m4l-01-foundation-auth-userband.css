@@ -457,7 +457,7 @@ button:active {
 }
 
 .app-icon-xclose {
-  --app-icon-url: url('/icons/xclose.svg');
+  --app-icon-url: url('/icons/xclose.svg?v=97.1.8.2');
 }
 
 .app-icon-left {

@@ -1,4 +1,4 @@
-/* M4L v97.1.8 - All-subject PDF Library navigation (frontend only)
+/* M4L v97.1.7 - In-viewer PDF Library navigation (frontend only)
    Adds same-subject/module PDF switching, Previous/Next controls, and a Library drawer.
 
    M4L v94.6 - Session-stable Library cache and mobile rail scrolling
@@ -568,10 +568,8 @@ function addLibraryResourceRecord({ subject, module, task, resource, fallbackTyp
     link,
     format: getResourceFormat(resource, type),
     subjectKey,
-    subjectId,
     subjectName,
     moduleKey,
-    moduleId,
     moduleName,
     previewId: moduleGroup.previewId,
     sequence: libraryResourceSequence,
@@ -1359,16 +1357,6 @@ function isPdfLibraryResource(resource) {
   return resource.type === "EBOOK" || resource.type === "PRINTABLE" || isPdfLink(resource.link);
 }
 
-function comparePdfLibraryResources(a, b) {
-  const subjectCompare = compareResourceIds(a.subjectId || a.subjectName, b.subjectId || b.subjectName);
-  if (subjectCompare !== 0) return subjectCompare;
-
-  const moduleCompare = compareResourceIds(a.moduleId || a.moduleName, b.moduleId || b.moduleName);
-  if (moduleCompare !== 0) return moduleCompare;
-
-  return compareLibraryResourceRecords(a, b);
-}
-
 function buildCurrentPdfLibraryItems(resourceId, link) {
   const active = libraryResourceMap.get(String(resourceId || ""));
 
@@ -1377,8 +1365,9 @@ function buildCurrentPdfLibraryItems(resourceId, link) {
   }
 
   return Array.from(libraryResourceMap.values())
+    .filter(resource => resource.subjectKey === active.subjectKey && resource.moduleKey === active.moduleKey)
     .filter(isPdfLibraryResource)
-    .sort(comparePdfLibraryResources);
+    .sort(compareLibraryResourceRecords);
 }
 
 function getCurrentPdfLibraryIndex() {
@@ -1411,29 +1400,22 @@ function renderPdfLibraryNavigation() {
     return;
   }
 
+  const active = currentPdfLibraryItems[index];
   if (drawerHeading) {
-    drawerHeading.textContent = "PDF Library";
+    drawerHeading.textContent = [active.subjectName, active.moduleName].filter(Boolean).join(" · ") || "PDF Library";
   }
 
-  let currentSubjectKey = "";
-  drawerList.innerHTML = currentPdfLibraryItems.map((resource, itemIndex) => {
-    const subjectHeading = resource.subjectKey !== currentSubjectKey
-      ? `<h4 class="pdf-library-subject-heading">${escapeHtml(resource.subjectName || "Subject")}</h4>`
-      : "";
-
-    currentSubjectKey = resource.subjectKey;
-
-    return `${subjectHeading}
-      <button
-        type="button"
-        class="pdf-library-item${resource.id === currentPdfResourceId ? " is-active" : ""}"
-        data-pdf-library-resource-id="${escapeForAttribute(resource.id)}"
-        aria-current="${resource.id === currentPdfResourceId ? "true" : "false"}"
-      >
-        <span class="pdf-library-item-number">${itemIndex + 1}</span>
-        <span class="pdf-library-item-title">${escapeHtml(resource.title)}</span>
-      </button>`;
-  }).join("");
+  drawerList.innerHTML = currentPdfLibraryItems.map((resource, itemIndex) => `
+    <button
+      type="button"
+      class="pdf-library-item${resource.id === currentPdfResourceId ? " is-active" : ""}"
+      data-pdf-library-resource-id="${escapeForAttribute(resource.id)}"
+      aria-current="${resource.id === currentPdfResourceId ? "true" : "false"}"
+    >
+      <span class="pdf-library-item-number">${itemIndex + 1}</span>
+      <span class="pdf-library-item-title">${escapeHtml(resource.title)}</span>
+    </button>
+  `).join("");
 }
 
 function openPdfLibraryResource(resourceId) {

@@ -39,8 +39,12 @@ import {
 import {
   getWeeklyPlannerEndpoint,
   saveWeeklyPlannerEndpoint,
+  weeklyPlannerArchiveOverviewEndpoint,
   weeklyPlannerHealthEndpoint,
-  weeklyPlannerTeachersEndpoint
+  weeklyPlannerTeacherHistoryEndpoint,
+  weeklyPlannerTeacherWeekRecordsEndpoint,
+  weeklyPlannerTeachersEndpoint,
+  weeklyPlannerWeekRecordsEndpoint
 } from "./routes/weekly-planner.js";
 import {
   getTimetableAppsScriptEndpoint,
@@ -75,6 +79,10 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],
   ["/api/admin/weekly-planner/get", googleSheetsRoute("weekly-planner", getWeeklyPlannerEndpoint)],
   ["/api/admin/weekly-planner/save", googleSheetsRoute("weekly-planner", saveWeeklyPlannerEndpoint)],
+  ["/api/admin/weekly-planner/archive-overview", googleSheetsRoute("weekly-planner", weeklyPlannerArchiveOverviewEndpoint)],
+  ["/api/admin/weekly-planner/week-records", googleSheetsRoute("weekly-planner", weeklyPlannerWeekRecordsEndpoint)],
+  ["/api/admin/weekly-planner/teacher-history", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherHistoryEndpoint)],
+  ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
 
   ["/api/admin/check-admin", appsScriptRoute("auth", checkAdmin)],

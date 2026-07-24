@@ -13,6 +13,7 @@ import { json } from "../lib/http.js";
 
 const WEEKLY_PLANNER_SHEET_NAME = "WeeklyPlanners";
 const WEEKLY_PLANNER_ADMIN_SHEET_NAME = "AdminRecords";
+const WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT = 4;
 const WEEKLY_PLANNER_HEADERS = Object.freeze([
   "PlannerID",
   "TeacherID",
@@ -130,6 +131,239 @@ export async function getWeeklyPlannerEndpoint(request, env) {
     week,
     planner: planner ? getWeeklyPlannerClientRecord(planner) : null,
     previousPlanner: previousPlanner ? getWeeklyPlannerClientRecord(previousPlanner) : null
+  });
+}
+
+function filterWeeklyPlannerArchiveTeachers(teachers) {
+  return teachers
+    .filter(teacher => Boolean(teacher.assignedGroup))
+    .sort(compareWeeklyPlannerArchiveTeachersByGroup);
+}
+
+function compareWeeklyPlannerArchiveTeachersByGroup(a, b) {
+  const bucketOf = teacher => {
+    const value = String(teacher.assignedGroup || "").trim();
+    if (value.toUpperCase() === "ALL") return 0;
+    if (/^\d+$/.test(value)) return 1;
+    return 2;
+  };
+
+  const bucketA = bucketOf(a);
+  const bucketB = bucketOf(b);
+
+  if (bucketA !== bucketB) {
+    return bucketA - bucketB;
+  }
+
+  if (bucketA === 1) {
+    const numberA = parseInt(a.assignedGroup, 10);
+    const numberB = parseInt(b.assignedGroup, 10);
+
+    if (numberA !== numberB) {
+      return numberA - numberB;
+    }
+  }
+
+  return a.teacherName.localeCompare(b.teacherName, undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
+}
+
+function resolveWeeklyPlannerArchiveAnchorWeekStart(explicitWeekStart, records) {
+  if (explicitWeekStart) {
+    return explicitWeekStart;
+  }
+
+  const mostRecentSubmittedWeekStart = records
+    .filter(record => record.status === "READY")
+    .map(record => record.weekStart)
+    .sort()
+    .pop();
+
+  return mostRecentSubmittedWeekStart || undefined;
+}
+
+export async function weeklyPlannerArchiveOverviewEndpoint(request, env) {
+  const auth = await requireWeeklyPlannerAdmin(request, env);
+
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const [allTeachers, records] = await Promise.all([
+    readWeeklyPlannerTeachers(env),
+    readWeeklyPlannerRecords(env)
+  ]);
+  const teachers = filterWeeklyPlannerArchiveTeachers(allTeachers);
+  const anchorWeekStart = resolveWeeklyPlannerArchiveAnchorWeekStart(body.weekStart, records);
+  const weeks = buildRecentWeeklyPlannerWeeks(anchorWeekStart, WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT);
+  const totalTeachers = teachers.length;
+
+  const summary = weeks.map(week => {
+    const submittedTeacherIds = new Set(
+      records
+        .filter(record => record.weekStart === week.weekStart && record.status === "READY")
+        .map(record => record.teacherId)
+    );
+
+    return {
+      weekStart: week.weekStart,
+      weekEnd: week.weekEnd,
+      month: week.month,
+      totalTeachers,
+      submittedCount: submittedTeacherIds.size
+    };
+  });
+
+  const recordsByTeacherAndWeek = new Map();
+
+  records.forEach(record => {
+    const key = `${record.teacherId}__${record.weekStart}`;
+    const existing = recordsByTeacherAndWeek.get(key);
+
+    if (!existing || compareWeeklyPlannerRecordsNewestFirst(record, existing) < 0) {
+      recordsByTeacherAndWeek.set(key, record);
+    }
+  });
+
+  const teacherMatrix = teachers.map(teacher => {
+    return {
+      teacherId: teacher.teacherId,
+      teacherName: teacher.teacherName,
+      weeks: weeks.map(week => {
+        const record = recordsByTeacherAndWeek.get(`${teacher.teacherId}__${week.weekStart}`) || null;
+
+        return {
+          weekStart: week.weekStart,
+          status: record ? record.status : "MISSING"
+        };
+      })
+    };
+  });
+
+  return json({
+    success: true,
+    weeks: summary,
+    teacherMatrix
+  });
+}
+
+export async function weeklyPlannerWeekRecordsEndpoint(request, env) {
+  const auth = await requireWeeklyPlannerAdmin(request, env);
+
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const week = getWeeklyPlannerWeek(body.weekStart);
+  const [allTeachers, records] = await Promise.all([
+    readWeeklyPlannerTeachers(env),
+    readWeeklyPlannerRecords(env)
+  ]);
+  const teachers = filterWeeklyPlannerArchiveTeachers(allTeachers);
+
+  const recordsByTeacher = new Map();
+
+  records
+    .filter(record => record.weekStart === week.weekStart)
+    .sort(compareWeeklyPlannerRecordsNewestFirst)
+    .forEach(record => {
+      if (!recordsByTeacher.has(record.teacherId)) {
+        recordsByTeacher.set(record.teacherId, record);
+      }
+    });
+
+  const teacherRecords = teachers.map(teacher => {
+    const record = recordsByTeacher.get(teacher.teacherId) || null;
+
+    return {
+      teacher,
+      planner: record ? getWeeklyPlannerClientRecord(record) : null
+    };
+  });
+
+  return json({
+    success: true,
+    week,
+    teacherRecords
+  });
+}
+
+export async function weeklyPlannerTeacherHistoryEndpoint(request, env) {
+  const auth = await requireWeeklyPlannerAdmin(request, env);
+
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const teacher = await resolveWeeklyPlannerTeacher(env, auth.user, body);
+
+  if (!teacher) {
+    return json({ success: false, error: "Teacher not found" }, 404);
+  }
+
+  const weeks = buildRecentWeeklyPlannerWeeks(body.weekStart, WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT);
+  const records = await readWeeklyPlannerRecords(env);
+  const teacherRecords = records.filter(record => record.teacherId === teacher.teacherId);
+
+  const history = weeks.map(week => {
+    const record = teacherRecords
+      .filter(planner => planner.weekStart === week.weekStart)
+      .sort(compareWeeklyPlannerRecordsNewestFirst)[0] || null;
+
+    return {
+      weekStart: week.weekStart,
+      weekEnd: week.weekEnd,
+      month: week.month,
+      status: record ? record.status : "MISSING",
+      updatedDate: record ? record.updatedDate : ""
+    };
+  });
+
+  return json({
+    success: true,
+    teacher,
+    history
+  });
+}
+
+export async function weeklyPlannerTeacherWeekRecordsEndpoint(request, env) {
+  const auth = await requireWeeklyPlannerAdmin(request, env);
+
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const teacher = await resolveWeeklyPlannerTeacher(env, auth.user, body);
+
+  if (!teacher) {
+    return json({ success: false, error: "Teacher not found" }, 404);
+  }
+
+  const weeks = buildRecentWeeklyPlannerWeeks(body.weekStart, WEEKLY_PLANNER_ARCHIVE_WEEK_COUNT);
+  const records = await readWeeklyPlannerRecords(env);
+  const teacherRecords = records.filter(record => record.teacherId === teacher.teacherId);
+
+  const weekRecords = weeks.map(week => {
+    const record = teacherRecords
+      .filter(planner => planner.weekStart === week.weekStart)
+      .sort(compareWeeklyPlannerRecordsNewestFirst)[0] || null;
+
+    return {
+      week,
+      planner: record ? getWeeklyPlannerClientRecord(record) : null
+    };
+  });
+
+  return json({
+    success: true,
+    teacher,
+    weekRecords
   });
 }
 
@@ -485,6 +719,19 @@ function getWeeklyPlannerWeek(value) {
     weekEnd: formatWeeklyPlannerIsoDate(endDate),
     month: formatWeeklyPlannerMonth(utcDate, endDate)
   };
+}
+
+function buildRecentWeeklyPlannerWeeks(anchorValue, count) {
+  const anchorWeek = getWeeklyPlannerWeek(anchorValue);
+  const weeks = [];
+
+  for (let offset = count - 1; offset >= 0; offset -= 1) {
+    const date = new Date(`${anchorWeek.weekStart}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() - (7 * offset));
+    weeks.push(getWeeklyPlannerWeek(formatWeeklyPlannerIsoDate(date)));
+  }
+
+  return weeks;
 }
 
 function formatWeeklyPlannerIsoDate(date) {
