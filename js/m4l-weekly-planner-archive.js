@@ -1,12 +1,12 @@
 /* =========================
-   WEEKLY PLANNER ARCHIVE - V97.1.6.3
+   WEEKLY PLANNER ARCHIVE - V97.1.8.4
    Admin-only view of past weekly planners:
    - Hub: date picker (+ OPEN button) and a per-teacher submission heatmap
      list, sorted by assigned group.
    - Week screen (OPEN, or a heatmap row's card-jump): a swipeable rail of
-     full-preview cards, one per teacher, for the selected week.
-   - Teacher screen (tapping a heatmap row): a swipeable rail of full-preview
-     cards, one per week, for that teacher's last 4 weeks.
+     submitted full-preview cards for the selected week.
+   - Teacher screen (tapping a heatmap row): a swipeable rail containing only
+     that teacher's submitted planners from the last 4 weeks.
    Both rails share the same card component and breakpoint sizing.
    Reuses window.M4LWeeklyPlanner.renderPreview() for the actual canvas
    image, so previews are pixel-identical to the live planner preview.
@@ -32,6 +32,10 @@ const weeklyPlannerArchiveState = {
     observer: null
   }
 };
+
+function isWeeklyPlannerArchiveSubmittedPlanner(planner) {
+  return Boolean(planner) && String(planner.status || "").trim().toUpperCase() === "READY";
+}
 
 async function showWeeklyPlannerArchive() {
   showScreen("weekly-planner-archive-screen");
@@ -349,7 +353,9 @@ async function openWeeklyPlannerArchiveWeekScreen(weekStart) {
   // A newer navigation may have started while this request was in flight.
   if (weeklyPlannerArchiveState.week.weekStart !== weekStart) return;
 
-  const teacherRecords = result.teacherRecords || [];
+  const teacherRecords = (result.teacherRecords || []).filter(entry =>
+    isWeeklyPlannerArchiveSubmittedPlanner(entry && entry.planner)
+  );
   weeklyPlannerArchiveState.week.teacherRecords = teacherRecords;
   weeklyPlannerArchiveState.week.week = result.week;
 
@@ -374,7 +380,7 @@ function renderWeeklyPlannerArchiveWeekRail(week, teacherRecords) {
   if (!teacherRecords.length) {
     const empty = document.createElement("p");
     empty.className = "helper-text";
-    empty.textContent = "No teachers found.";
+    empty.textContent = "No submitted planners found.";
     rail.appendChild(empty);
     return;
   }
@@ -383,9 +389,8 @@ function renderWeeklyPlannerArchiveWeekRail(week, teacherRecords) {
     const cacheKey = `${entry.teacher.teacherId}__${week.weekStart}`;
     const card = buildWeeklyPlannerArchiveCard({
       primaryLabel: entry.teacher.teacherName,
-      status: entry.planner ? entry.planner.status : "MISSING",
-      hasPlanner: Boolean(entry.planner),
-      emptyText: "Not submitted for this week"
+      status: entry.planner.status,
+      hasPlanner: true
     });
     card.dataset.weeklyPlannerArchiveCacheKey = cacheKey;
     rail.appendChild(card);
@@ -395,7 +400,7 @@ function renderWeeklyPlannerArchiveWeekRail(week, teacherRecords) {
   const observer = setupWeeklyPlannerArchiveCardObserver(rail, card => {
     const cacheKey = card.dataset.weeklyPlannerArchiveCacheKey;
     const entry = teacherRecords.find(item => `${item.teacher.teacherId}__${week.weekStart}` === cacheKey);
-    if (entry && entry.planner) {
+    if (entry && isWeeklyPlannerArchiveSubmittedPlanner(entry.planner)) {
       generateWeeklyPlannerArchiveCardPreview(card, cacheKey, {
         teacher: entry.teacher,
         week,
@@ -411,7 +416,7 @@ function renderWeeklyPlannerArchiveWeekRail(week, teacherRecords) {
   // Pre-sorted by the backend (group ascending); rendered in the order received.
   teacherRecords.forEach(entry => {
     const { card } = renderCard(entry);
-    if (!entry.planner) return;
+    if (!isWeeklyPlannerArchiveSubmittedPlanner(entry.planner)) return;
 
     if (observer) {
       observer.observe(card);
@@ -474,7 +479,9 @@ async function showWeeklyPlannerArchiveTeacher(teacherId, teacherName) {
 
   if (weeklyPlannerArchiveState.teacher.teacherId !== teacherId) return;
 
-  const weekRecords = result.weekRecords || [];
+  const weekRecords = (result.weekRecords || []).filter(entry =>
+    isWeeklyPlannerArchiveSubmittedPlanner(entry && entry.planner)
+  );
   weeklyPlannerArchiveState.teacher.weekRecords = weekRecords;
   weeklyPlannerArchiveState.teacher.teacher = result.teacher;
 
@@ -499,7 +506,7 @@ function renderWeeklyPlannerArchiveTeacherRail(teacher, weekRecords) {
   if (!weekRecords.length) {
     const empty = document.createElement("p");
     empty.className = "helper-text";
-    empty.textContent = "No weeks found.";
+    empty.textContent = "No submitted planners found.";
     rail.appendChild(empty);
     return;
   }
@@ -507,7 +514,7 @@ function renderWeeklyPlannerArchiveTeacherRail(teacher, weekRecords) {
   const observer = setupWeeklyPlannerArchiveCardObserver(rail, card => {
     const cacheKey = card.dataset.weeklyPlannerArchiveCacheKey;
     const entry = weekRecords.find(item => `${teacher.teacherId}__${item.week.weekStart}` === cacheKey);
-    if (entry && entry.planner) {
+    if (entry && isWeeklyPlannerArchiveSubmittedPlanner(entry.planner)) {
       generateWeeklyPlannerArchiveCardPreview(card, cacheKey, {
         teacher,
         week: entry.week,
@@ -524,14 +531,13 @@ function renderWeeklyPlannerArchiveTeacherRail(teacher, weekRecords) {
     const cacheKey = `${teacher.teacherId}__${entry.week.weekStart}`;
     const card = buildWeeklyPlannerArchiveCard({
       primaryLabel: formatWeeklyPlannerArchiveRange(entry.week),
-      status: entry.planner ? entry.planner.status : "MISSING",
-      hasPlanner: Boolean(entry.planner),
-      emptyText: "Not submitted for this week"
+      status: entry.planner.status,
+      hasPlanner: true
     });
     card.dataset.weeklyPlannerArchiveCacheKey = cacheKey;
     rail.appendChild(card);
 
-    if (!entry.planner) return;
+    if (!isWeeklyPlannerArchiveSubmittedPlanner(entry.planner)) return;
 
     const renderPayload = {
       teacher,
@@ -568,7 +574,7 @@ function getWeeklyPlannerArchiveWeekSetEntries() {
   return (weeklyPlannerArchiveState.week.teacherRecords || []).map(entry => ({
     teacherName: entry.teacher.teacherName,
     weekStart: week.weekStart,
-    hasPlanner: Boolean(entry.planner),
+    hasPlanner: isWeeklyPlannerArchiveSubmittedPlanner(entry.planner),
     cacheKey: `${entry.teacher.teacherId}__${week.weekStart}`,
     renderPayload: entry.planner ? {
       teacher: entry.teacher,
@@ -588,7 +594,7 @@ function getWeeklyPlannerArchiveTeacherSetEntries() {
   return (weeklyPlannerArchiveState.teacher.weekRecords || []).map(entry => ({
     teacherName: teacher.teacherName,
     weekStart: entry.week.weekStart,
-    hasPlanner: Boolean(entry.planner),
+    hasPlanner: isWeeklyPlannerArchiveSubmittedPlanner(entry.planner),
     cacheKey: `${teacher.teacherId}__${entry.week.weekStart}`,
     renderPayload: entry.planner ? {
       teacher,

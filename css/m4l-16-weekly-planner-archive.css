@@ -1,20 +1,21 @@
 /* =========================
-   WEEKLY PLANNER ARCHIVE - V97.1.6.4
+   WEEKLY PLANNER ARCHIVE - V97.1.8.4
    Admin-only archive of past weekly planners:
    - Hub: a page-level header (bg --surface-card), then two labeled panels
      (bg --surface-app headers) - "View by date" (date picker + OPEN) and
      "View by Teacher" (submission heatmap list). Screen background is
      --surface-track throughout.
-   - Week screen and Teacher screen both use the same swipeable full-preview
-     card rail (.weekly-planner-archive-week-rail / .weekly-planner-archive-card),
-     just fed different data, with a 4-column close/title/save/share header.
+   - Week screen and Teacher screen both use the same swipeable submitted-only
+     preview rail (.weekly-planner-archive-week-rail / .weekly-planner-archive-card),
+     with a 4-column close/title/save/share header.
    Sizing mirrors the Weekly Planner's own breakpoints and card styling
    directly (not a separately "bigger" design):
    - Mobile: identical sizing to the Weekly Planner's mobile rail (full
      width, no side padding).
    - Medium (768-1179px): 2 cards visible, contained within the viewport;
-     hub container capped at 50% of its previous width.
-   - Large desktop (>=1180px): same enlarged canvas as the Weekly Planner
+     hub container capped at 620px while detail screens use the Planner canvas.
+   - Large desktop (>=1180px): 4 cards visible on the same enlarged canvas as
+     the Weekly Planner
      (--weekly-planner-max-width: 1600px), no forced card height - the
      rendered image's own aspect ratio governs it, matching how the Weekly
      Planner's own content fills its cards with no wasted space.
@@ -108,7 +109,7 @@
   height: 32px;
 }
 
-/* -------- Submission history: 60/30/10 grid rows -------- */
+/* -------- Submission history: flexible name / dots / contained icon -------- */
 
 .weekly-planner-archive-heatmap-list {
   display: flex;
@@ -120,9 +121,9 @@
 
 .weekly-planner-archive-heatmap-row {
   display: grid;
-  grid-template-columns: 60% 30% 10%;
+  grid-template-columns: minmax(0, 1fr) max-content 24px;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--surface-track);
   border-radius: 10px;
@@ -144,6 +145,7 @@
 .weekly-planner-archive-heatmap-row__dots {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 5px;
 }
 
@@ -309,6 +311,17 @@
    medium tier and properly contained within the viewport. Hub container
    capped at 50% of its previous width (1240px -> 620px). */
 @media (min-width: 768px) {
+  body:has(#weekly-planner-archive-screen.active) .app-shell,
+  body:has(#weekly-planner-archive-week-screen.active) .app-shell,
+  body:has(#weekly-planner-archive-teacher-screen.active) .app-shell {
+    max-width: 1240px;
+  }
+
+  #weekly-planner-archive-week-screen.screen,
+  #weekly-planner-archive-teacher-screen.screen {
+    padding: 14px;
+  }
+
   .weekly-planner-archive-container {
     max-width: 620px;
     margin-inline: auto;
@@ -327,6 +340,12 @@
    itself (--weekly-planner-max-width: 1600px there) - not a separately
    "bigger" design, mirroring it directly. */
 @media (min-width: 1180px) {
+  body:has(#weekly-planner-archive-screen.active) .app-shell,
+  body:has(#weekly-planner-archive-week-screen.active) .app-shell,
+  body:has(#weekly-planner-archive-teacher-screen.active) .app-shell {
+    max-width: 1600px;
+  }
+
   #weekly-planner-archive-week-screen .weekly-planner-archive-week-rail,
   #weekly-planner-archive-teacher-screen .weekly-planner-archive-week-rail {
     max-width: 1600px;
@@ -335,7 +354,7 @@
   }
 
   #weekly-planner-archive-week-rail .weekly-planner-archive-card {
-    flex-basis: calc((100% - 56px) / 5);
+    flex-basis: calc((100% - 42px) / 4);
   }
 
   #weekly-planner-archive-teacher-rail .weekly-planner-archive-card {
