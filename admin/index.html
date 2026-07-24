@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.8.3a">
+<link rel="stylesheet" href="/styles.css?v=97.1.8.3b">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -615,8 +615,8 @@
 
 
     <section id="weekly-planner-archive-screen" class="screen admin-theme weekly-planner-archive-screen">
-      <div class="weekly-planner-global-panel">
-        <div class="weekly-planner-app-header" role="toolbar" aria-label="Planner Archive actions">
+      <div class="weekly-planner-archive-container">
+        <div class="weekly-planner-archive-page-header">
           <button
             class="weekly-planner-header-action weekly-planner-header-action--close"
             type="button"
@@ -631,34 +631,41 @@
           <span class="weekly-planner-header-spacer" aria-hidden="true"></span>
         </div>
 
-        <section class="weekly-planner-archive-datebar" aria-label="Select week">
-          <label class="weekly-planner-field weekly-planner-field--week">
-            <span>Week commencing</span>
-            <input id="weekly-planner-archive-week" type="date" />
-          </label>
+        <section class="weekly-planner-archive-panel">
+          <h3 class="weekly-planner-archive-panel-header">View by date</h3>
 
-          <button
-            id="weekly-planner-archive-open"
-            class="weekly-planner-header-action weekly-planner-archive-open-btn"
-            type="button"
-            aria-label="Open planners for this week"
-          >
-            <span class="app-icon" style="--app-icon-url: url('/icons/open.svg')" aria-hidden="true"></span>
-            <span class="weekly-planner-header-action__label">OPEN</span>
-          </button>
+          <div class="weekly-planner-archive-datebar">
+            <label class="weekly-planner-field weekly-planner-field--week">
+              <span>Week commencing</span>
+              <input id="weekly-planner-archive-week" type="date" />
+            </label>
+
+            <button
+              id="weekly-planner-archive-open"
+              class="weekly-planner-header-action weekly-planner-archive-open-btn"
+              type="button"
+              aria-label="Open planners for this week"
+            >
+              <span class="app-icon" style="--app-icon-url: url('/icons/open.svg')" aria-hidden="true"></span>
+              <span class="weekly-planner-header-action__label">OPEN</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="weekly-planner-archive-panel">
+          <h3 class="weekly-planner-archive-panel-header">View by Teacher</h3>
+
+          <p id="weekly-planner-archive-hub-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
+          <div id="weekly-planner-archive-heatmap-list" class="weekly-planner-archive-heatmap-list" role="list"></div>
         </section>
       </div>
-
-      <section class="weekly-planner-archive-section" aria-label="Submission history by teacher">
-        <h3 class="weekly-planner-archive-section-title">Submission history</h3>
-        <p id="weekly-planner-archive-hub-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
-        <div id="weekly-planner-archive-heatmap-list" class="weekly-planner-archive-heatmap-list" role="list"></div>
-      </section>
     </section>
 
     <section id="weekly-planner-archive-week-screen" class="screen admin-theme weekly-planner-archive-week-screen">
       <div class="weekly-planner-global-panel">
-        <div class="weekly-planner-app-header" role="toolbar" aria-label="Week planners actions">
+        <div class="weekly-planner-app-header weekly-planner-app-header--rail-actions" role="toolbar" aria-label="Week planners actions">
+          <h2 id="weekly-planner-archive-week-screen-title" class="weekly-planner-app-header__title">Planners</h2>
+
           <button
             class="weekly-planner-header-action weekly-planner-header-action--close"
             type="button"
@@ -668,9 +675,25 @@
             <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
           </button>
 
-          <h2 id="weekly-planner-archive-week-screen-title">Planners</h2>
+          <button
+            id="weekly-planner-archive-week-save"
+            class="weekly-planner-header-action weekly-planner-header-action--save"
+            type="button"
+            aria-label="Save all planners"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Save</span>
+          </button>
 
-          <span class="weekly-planner-header-spacer" aria-hidden="true"></span>
+          <button
+            id="weekly-planner-archive-week-share"
+            class="weekly-planner-header-action weekly-planner-header-action--share"
+            type="button"
+            aria-label="Share all planners"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Share</span>
+          </button>
         </div>
       </div>
 
@@ -681,7 +704,9 @@
 
     <section id="weekly-planner-archive-teacher-screen" class="screen admin-theme weekly-planner-archive-teacher-screen">
       <div class="weekly-planner-global-panel">
-        <div class="weekly-planner-app-header" role="toolbar" aria-label="Teacher submission history actions">
+        <div class="weekly-planner-app-header weekly-planner-app-header--rail-actions" role="toolbar" aria-label="Teacher submission history actions">
+          <h2 id="weekly-planner-archive-teacher-name" class="weekly-planner-app-header__title">Submission History</h2>
+
           <button
             class="weekly-planner-header-action weekly-planner-header-action--close"
             type="button"
@@ -691,9 +716,25 @@
             <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
           </button>
 
-          <h2 id="weekly-planner-archive-teacher-name">Submission History</h2>
+          <button
+            id="weekly-planner-archive-teacher-save"
+            class="weekly-planner-header-action weekly-planner-header-action--save"
+            type="button"
+            aria-label="Save all planners"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Save</span>
+          </button>
 
-          <span class="weekly-planner-header-spacer" aria-hidden="true"></span>
+          <button
+            id="weekly-planner-archive-teacher-share"
+            class="weekly-planner-header-action weekly-planner-header-action--share"
+            type="button"
+            aria-label="Share all planners"
+          >
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
+            <span class="weekly-planner-header-action__label">Share</span>
+          </button>
         </div>
       </div>
 
@@ -1028,7 +1069,7 @@
 <script src="/js/m4l-shell.js?v=97.1.5.5"></script>
   <script src="/js/m4l-timetable.js?v=97.1.5.5"></script>
   <script src="/js/m4l-weekly-planner.js?v=97.1.5.2"></script>
-  <script src="/js/m4l-weekly-planner-archive.js?v=97.1.6.3"></script>
+  <script src="/js/m4l-weekly-planner-archive.js?v=97.1.6.4"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
