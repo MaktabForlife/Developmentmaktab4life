@@ -14,7 +14,8 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
 - Timetable reads
   Legacy Apps Script action retained: getTimetable
 - Weekly Planner reads and writes
-  Weekly Planner was implemented directly and has no Apps Script action.
+  Weekly Planner records use the direct Google Sheets API.
+  The Google Drive preview submission remains a narrow Apps Script action because it uses DriveApp.
 
 STILL ACTIVE ON APPS SCRIPT:
 - Student and Admin authentication
@@ -53,6 +54,10 @@ const SHEET_NAME = "StudentRecords";
 const BASE_STUDENT_LOGIN_URL = "https://developmentmaktab4life.pages.dev/student/";
 const DEFAULT_STUDENT_GROUP = 1;
 const DEFAULT_WHATSAPP6 = "999999";
+const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID = "1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX";
+const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=share_link";
+const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL = "Weekly Planner";
+
 
 
 function normalizeWhatsapp6_(value) {
@@ -5122,11 +5127,8 @@ function updateTimetableZoomLink(data) {
 }
 
 /* =========================
-   WEEKLY PLANNER PREVIEW DRIVE SAVE - V97.1.8.5
+   WEEKLY PLANNER PREVIEW DRIVE SAVE - V97.1.8.5 
 ========================= */
-const WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_ID = "1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX";
-const WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=share_link";
-const WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_LABEL = "Weekly Planner test Google Drive folder";
 
 function saveWeeklyPlannerPreviewToDrive(data) {
   data = data || {};
@@ -5152,7 +5154,7 @@ function saveWeeklyPlannerPreviewToDrive(data) {
   try {
     const bytes = Utilities.base64Decode(base64);
     const blob = Utilities.newBlob(bytes, mimeType, fileName);
-    const folder = DriveApp.getFolderById(WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_ID);
+    const folder = DriveApp.getFolderById(WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID);
     const file = folder.createFile(blob);
 
     return {
@@ -5161,9 +5163,9 @@ function saveWeeklyPlannerPreviewToDrive(data) {
       fileName: file.getName(),
       fileId: file.getId(),
       fileUrl: file.getUrl(),
-      folderId: WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_ID,
-      destinationLabel: WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_LABEL,
-      destinationUrl: WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_URL,
+      folderId: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID,
+      destinationLabel: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL,
+      destinationUrl: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL,
       teacherName: String(data.teacherName || "").trim(),
       saveDate: String(data.saveDate || "").trim(),
       weekStart: String(data.weekStart || "").trim(),
@@ -5176,11 +5178,19 @@ function saveWeeklyPlannerPreviewToDrive(data) {
     return {
       success: false,
       error: "Unable to save Weekly Planner. The configured Google Drive folder is not accessible. Please verify that the folder has been shared with the M4L Apps Script account.",
-      destinationLabel: WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_LABEL,
-      destinationUrl: WEEKLY_PLANNER_PREVIEW_TEST_DRIVE_FOLDER_URL
+      destinationLabel: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL,
+      destinationUrl: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL
     };
   }
 }
+
+function testDriveAccess() {
+  const folder = DriveApp.getFolderById("1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX");
+  folder.createFile("test.txt", "M4L Drive access test");
+}
+
+
+
 
 function extractWeeklyPlannerPreviewBase64_(data) {
   const directBase64 = String(data.base64 || "").replace(/\s/g, "");

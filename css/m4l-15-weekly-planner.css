@@ -1125,3 +1125,33 @@
     transition: none;
   }
 }
+
+
+/* V97.1.8.6 preview-first workspace */
+.weekly-planner-live-title-row{position:relative;display:grid;place-items:center;min-height:48px;padding:4px 52px;border-bottom:1px solid var(--surface-track);background:var(--surface-card)}
+.weekly-planner-live-title-row h2{margin:0;font-family:var(--font-heading);font-size:1.15rem;color:var(--text)}
+.weekly-planner-live-close{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:38px;height:38px;padding:6px;border:0;background:transparent;color:var(--text)}
+.weekly-planner-live-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:5px 4px;border-bottom:1px solid var(--surface-track);background:var(--surface-card)}
+.weekly-planner-live-actions .weekly-planner-header-action{min-height:48px}
+.weekly-planner-header-action--settings{--weekly-planner-header-icon:url('/icons/settings.svg?v=97.1.8.6')}
+.weekly-planner-header-action--download{--weekly-planner-header-icon:url('/icons/save.svg?v=97.1.8.6')}
+.weekly-planner-header-action--submit{--weekly-planner-header-icon:url('/icons/open.svg?v=97.1.8.6')}
+.weekly-planner-live-workspace{width:min(100%,var(--weekly-planner-max-width));margin:6px auto 0;padding:6px;box-sizing:border-box;background:var(--surface-app)}
+.weekly-planner-live-preview-frame{position:relative;width:min(100%,760px);margin-inline:auto}
+.weekly-planner-live-preview-frame img{display:block;width:100%;height:auto;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.weekly-planner-day-hotspots{position:absolute;left:3.2%;right:3.2%;top:16%;bottom:16%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1.8% 2.6%;pointer-events:none}
+.weekly-planner-day-hotspots button{pointer-events:auto;border:2px solid transparent;border-radius:8px;background:transparent;color:transparent}
+.weekly-planner-day-hotspots button:focus-visible,.weekly-planner-day-hotspots button:active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent)}
+.weekly-planner-edit-hint{text-align:center;margin:4px 0;color:var(--text-muted);font-size:.76rem}
+.weekly-planner-day-editor{width:min(96vw,720px);max-height:92dvh;padding:0;border:0;border-radius:18px;background:var(--surface-card)}
+.weekly-planner-day-editor::backdrop{background:rgba(0,0,0,.45)}
+.weekly-planner-day-editor-card{display:flex;flex-direction:column;max-height:92dvh;overflow:hidden}
+.weekly-planner-day-editor-header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--surface-track)}
+.weekly-planner-day-editor-header h3{margin:0;text-align:center;font-size:1rem}
+.weekly-planner-day-editor-cancel,.weekly-planner-day-editor-done{border:0;background:transparent;color:var(--primary);font-weight:800;padding:8px}
+.weekly-planner-day-editor .weekly-planner-shell{overflow:auto;padding:4px}
+.weekly-planner-day-editor .weekly-planner-rail{scroll-snap-type:x mandatory;overflow-x:auto}
+.weekly-planner-day-editor .weekly-planner-day-card{display:block!important;flex:0 0 100%;max-width:none}
+.weekly-planner-day-editor .weekly-planner-dots{display:none}
+.weekly-planner-preview-settings{border-radius:0;border-inline:0}
+@media(min-width:768px){.weekly-planner-live-actions{padding-inline:12%}.weekly-planner-day-editor{width:min(86vw,820px)}}
