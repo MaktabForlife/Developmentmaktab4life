@@ -1277,7 +1277,7 @@
 /* Settings panel is a contained surface-app card with its own xclose. */
 .weekly-planner-preview-settings {
   position: relative;
-  width: min(calc(100% - 20px), 600px);
+  width: min(calc(100% - 20px), 1180px);
   margin: 10px auto;
   padding: 48px 14px 14px;
   box-sizing: border-box;
