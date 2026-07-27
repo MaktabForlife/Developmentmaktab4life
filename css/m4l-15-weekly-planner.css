@@ -1135,7 +1135,7 @@
 .weekly-planner-live-actions .weekly-planner-header-action{min-height:48px}
 .weekly-planner-header-action--settings{--weekly-planner-header-icon:url('/icons/settings.svg?v=97.1.8.6')}
 .weekly-planner-header-action--download{--weekly-planner-header-icon:url('/icons/save.svg?v=97.1.8.6')}
-.weekly-planner-header-action--submit{--weekly-planner-header-icon:url('/icons/open.svg?v=97.1.8.6')}
+.weekly-planner-header-action--submit{--weekly-planner-header-icon:url('/icons/submit.svg?v=97.1.8.6')}
 .weekly-planner-live-workspace{width:min(100%,var(--weekly-planner-max-width));margin:6px auto 0;padding:6px;box-sizing:border-box;background:var(--surface-app)}
 .weekly-planner-live-preview-frame{position:relative;width:min(100%,760px);margin-inline:auto}
 .weekly-planner-live-preview-frame img{display:block;width:100%;height:auto;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
