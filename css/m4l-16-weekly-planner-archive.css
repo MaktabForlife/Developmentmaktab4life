@@ -323,7 +323,7 @@
   }
 
   .weekly-planner-archive-container {
-    max-width: 600px;
+    max-width: 620px;
     margin-inline: auto;
   }
 
@@ -359,5 +359,14 @@
 
   #weekly-planner-archive-teacher-rail .weekly-planner-archive-card {
     flex-basis: calc((100% - 42px) / 4);
+  }
+}
+
+
+/* V97.1.8.4.1: keep the archive hub only slightly wider than its table. */
+@media (min-width: 768px) {
+  .weekly-planner-archive-container {
+    width: min(calc(100% - 24px), 600px);
+    margin-inline: auto;
   }
 }

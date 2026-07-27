@@ -1,4 +1,4 @@
-/* M4L v97.1.8.4.1 Weekly Planner
+/* M4L v97.1.6.3 Weekly Planner
    Mobile uses one compact swipe card. Medium screens (768-1179px) show two
    day cards per row, contained within the viewport. Large desktop
    (>=1180px) shows all four in one row, on an enlarged canvas. Preview
@@ -43,7 +43,7 @@
 
 .weekly-planner-app-header {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
   min-height: 44px;
@@ -231,16 +231,7 @@
 }
 
 .weekly-planner-header-action--share {
-  --weekly-planner-header-icon: url('/icons/share.svg?v=97.1.8.4.1');
-}
-
-.weekly-planner-header-action--submit {
-  --weekly-planner-header-icon: url('/icons/submit.svg?v=97.1.8.4.1');
-}
-
-.weekly-planner-preview-screen .weekly-planner-header-action--back,
-.weekly-planner-app-header--main .weekly-planner-header-action--back {
-  --weekly-planner-header-icon: url('/icons/xclose.svg?v=97.1.8.4.1');
+  --weekly-planner-header-icon: url('/icons/share.svg?v=95.3.1');
 }
 
 .weekly-planner-preview-title-group {
@@ -933,10 +924,10 @@
   }
 
   .weekly-planner-preview-screen > .weekly-planner-app-header {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    border: 2px solid var(--surface-track);
-    border-radius: 14px;
-    justify-items: stretch;
+   grid-template-columns: repeat(4, 1fr); 
+  border: 2px solid var(--surface-track); 
+  border-radius: 14px;
+   justify-items: center;
   }
 
   .weekly-planner-controls {
@@ -1135,14 +1126,224 @@
   }
 }
 
-/* V97.1.8.4.1 standalone Weekly Feedback and settings panel */
-.weekly-planner-feedback-card { min-width: min(86vw, 430px); box-sizing: border-box; overflow: hidden; border: 2px solid var(--surface-track); border-radius: 16px; background: var(--surface-card); scroll-snap-align: center; }
-.weekly-planner-feedback-heading { background: var(--planner-cream); }
-.weekly-planner-feedback-editor { display: grid; gap: 6px; padding: 12px; }
-.weekly-planner-feedback-editor label { color: var(--text); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
-.weekly-planner-feedback-editor textarea { width: 100%; min-height: 150px; padding: 10px; box-sizing: border-box; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--surface-card); color: var(--text); font: inherit; resize: vertical; }
-.weekly-planner-settings-close { position: absolute; top: 8px; left: 8px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--text); z-index: 2; }
-.weekly-planner-settings-close .app-icon { width: 24px; height: 24px; }
-.weekly-planner-preview-settings { position: relative; width: min(100%, 600px); padding-top: 46px; background: var(--surface-app); }
-@media (min-width: 768px) { .weekly-planner-feedback-card { min-width: 0; grid-column: 1 / -1; } }
-@media (min-width: 1180px) { .weekly-planner-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .weekly-planner-day-card { width: 100%; } }
+
+/* V97.1.8.4.1 preview-first workspace */
+.weekly-planner-live-title-row{position:relative;display:grid;place-items:center;min-height:48px;padding:4px 52px;border-bottom:1px solid var(--surface-track);background:var(--surface-card)}
+.weekly-planner-live-title-row h2{margin:0;font-family:var(--font-heading);font-size:1.15rem;color:var(--text)}
+.weekly-planner-live-close{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:38px;height:38px;padding:6px;border:0;background:transparent;color:var(--text)}
+.weekly-planner-live-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:5px 4px;border-bottom:1px solid var(--surface-track);background:var(--surface-card)}
+.weekly-planner-live-actions .weekly-planner-header-action{min-height:48px}
+.weekly-planner-header-action--settings{--weekly-planner-header-icon:url('/icons/settings.svg?v=97.1.8.6')}
+.weekly-planner-header-action--download{--weekly-planner-header-icon:url('/icons/save.svg?v=97.1.8.6')}
+.weekly-planner-header-action--submit{--weekly-planner-header-icon:url('/icons/open.svg?v=97.1.8.6')}
+.weekly-planner-live-workspace{width:min(100%,var(--weekly-planner-max-width));margin:6px auto 0;padding:6px;box-sizing:border-box;background:var(--surface-app)}
+.weekly-planner-live-preview-frame{position:relative;width:min(100%,760px);margin-inline:auto}
+.weekly-planner-live-preview-frame img{display:block;width:100%;height:auto;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.weekly-planner-day-hotspots{position:absolute;left:3.2%;right:3.2%;top:16%;bottom:16%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1.8% 2.6%;pointer-events:none}
+.weekly-planner-day-hotspots button{pointer-events:auto;border:2px solid transparent;border-radius:8px;background:transparent;color:transparent}
+.weekly-planner-day-hotspots button:focus-visible,.weekly-planner-day-hotspots button:active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent)}
+.weekly-planner-edit-hint{text-align:center;margin:4px 0;color:var(--text-muted);font-size:.76rem}
+.weekly-planner-day-editor{width:min(96vw,720px);max-height:92dvh;padding:0;border:0;border-radius:18px;background:var(--surface-card)}
+.weekly-planner-day-editor::backdrop{background:rgba(0,0,0,.45)}
+.weekly-planner-day-editor-card{display:flex;flex-direction:column;max-height:92dvh;overflow:hidden}
+.weekly-planner-day-editor-header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--surface-track)}
+.weekly-planner-day-editor-header h3{margin:0;text-align:center;font-size:1rem}
+.weekly-planner-day-editor-cancel,.weekly-planner-day-editor-done{border:0;background:transparent;color:var(--primary);font-weight:800;padding:8px}
+.weekly-planner-day-editor .weekly-planner-shell{overflow:auto;padding:4px}
+.weekly-planner-day-editor .weekly-planner-rail{scroll-snap-type:x mandatory;overflow-x:auto}
+.weekly-planner-day-editor .weekly-planner-day-card{display:block!important;flex:0 0 100%;max-width:none}
+.weekly-planner-day-editor .weekly-planner-dots{display:none}
+.weekly-planner-preview-settings{border-radius:0;border-inline:0}
+@media(min-width:768px){.weekly-planner-live-actions{padding-inline:12%}.weekly-planner-day-editor{width:min(86vw,820px)}}
+
+
+/* =========================================================
+   V97.1.8.4.1 Weekly Planner corrections
+========================================================= */
+
+/* Five equal centred actions; Settings occupies the right/left grid cell
+   normally and its full label remains visible. */
+.weekly-planner-live-actions {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding-inline: 4px;
+}
+
+.weekly-planner-live-actions .weekly-planner-header-action,
+#weekly-planner-preview-settings-toggle {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 52px;
+  padding: 3px 1px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.weekly-planner-live-actions .weekly-planner-header-action__label {
+  display: block;
+  width: 100%;
+  max-width: none;
+  overflow: visible;
+  font-size: clamp(0.52rem, 2.2vw, 0.72rem);
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+/* Main planner and editor xclose controls have no visible button container. */
+.weekly-planner-live-close,
+.weekly-planner-day-editor-cancel,
+.weekly-planner-day-editor-done,
+.weekly-planner-settings-close {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.weekly-planner-live-close {
+  padding: 5px;
+}
+
+.weekly-planner-day-editor-cancel,
+.weekly-planner-day-editor-done {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  color: var(--text);
+}
+
+.weekly-planner-day-editor-cancel .app-icon,
+.weekly-planner-day-editor-done .app-icon {
+  width: 26px;
+  height: 26px;
+}
+
+/* Standalone Weekly Feedback editor. */
+.weekly-planner-feedback-card {
+  min-width: min(88vw, 430px);
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 2px solid var(--surface-track);
+  border-radius: 16px;
+  background: var(--surface-card);
+  scroll-snap-align: center;
+}
+
+.weekly-planner-feedback-editor {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+}
+
+.weekly-planner-feedback-editor label {
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.weekly-planner-feedback-editor textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--planner-line);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+/* Weekly Feedback hotspot occupies the feedback band beneath the 2x2 day grid. */
+.weekly-planner-day-hotspots .weekly-planner-feedback-hotspot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18%;
+  width: 100%;
+  height: 17%;
+}
+
+/* Settings panel is a contained surface-app card with its own xclose. */
+.weekly-planner-preview-settings {
+  position: relative;
+  width: min(calc(100% - 20px), 600px);
+  margin: 10px auto;
+  padding: 48px 14px 14px;
+  box-sizing: border-box;
+  border: 2px solid var(--surface-track);
+  border-radius: 16px;
+  background: var(--surface-app);
+}
+
+.weekly-planner-settings-close {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 5px;
+  color: var(--text);
+}
+
+.weekly-planner-settings-close .app-icon {
+  width: 25px;
+  height: 25px;
+}
+
+/* Tablet editor remains 2x2. Feedback spans the full width. */
+@media (min-width: 768px) {
+  .weekly-planner-live-actions {
+    padding-inline: 4px;
+  }
+
+  .weekly-planner-day-editor {
+    width: min(96vw, 1100px);
+  }
+
+  .weekly-planner-day-editor .weekly-planner-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .weekly-planner-day-editor .weekly-planner-day-card,
+  .weekly-planner-day-editor .weekly-planner-feedback-card {
+    display: block !important;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    flex: none;
+  }
+
+  .weekly-planner-day-editor .weekly-planner-feedback-card {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Large editor uses the same full-width 2x2 grid, not four narrow columns. */
+@media (min-width: 1180px) {
+  .weekly-planner-day-editor {
+    width: min(96vw, 1500px);
+  }
+
+  .weekly-planner-day-editor .weekly-planner-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
