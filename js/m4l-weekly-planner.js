@@ -14,7 +14,7 @@ const WEEKLY_PLANNER_DAYS = Object.freeze([
 const WEEKLY_PLANNER_PERIOD_COUNT = 3;
 const WEEKLY_PLANNER_PREVIEW_STYLE_STORAGE_KEY = "m4l.weeklyPlanner.previewStyle.v95.3";
 const WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_LABEL = "Weekly Planner test Google Drive folder";
-const WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=share_link";
+const WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=sharing";
 
 const WEEKLY_PLANNER_PREVIEW_FONTS = Object.freeze({
   normal: Object.freeze({
