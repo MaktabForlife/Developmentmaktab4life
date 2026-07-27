@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.8.6">
+<link rel="stylesheet" href="/styles.css?v=98.0">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -912,6 +912,20 @@
 
   <div class="pdf-viewer-actions">
     <button
+      id="m4l-teaching-panel-toggle"
+      type="button"
+      class="pdf-viewer-icon-btn m4l-teaching-panel-toggle"
+      onclick="window.M4LTeachingPanel?.toggle()"
+      aria-label="Open teaching panel"
+      aria-controls="m4l-teaching-panel"
+      aria-expanded="false"
+      title="Teaching panel"
+    >
+      <span class="app-icon m4l-teaching-panel-toggle-icon" aria-hidden="true"></span>
+      <span class="pdf-viewer-icon-label">BOARD</span>
+    </button>
+
+    <button
       type="button"
       class="pdf-viewer-icon-btn"
       onclick="closePdfViewer()"
@@ -919,7 +933,7 @@
       title="Back"
     >
       <span class="app-icon pdf-back-icon" aria-hidden="true"></span>
-      <span class="pdf-viewer-icon-label">closeK</span>
+      <span class="pdf-viewer-icon-label">CLOSE</span>
     </button>
   </div>
 </div>
@@ -933,11 +947,118 @@
     <div id="pdf-library-list" class="pdf-library-list"></div>
   </aside>
 
-      <iframe
-        id="pdf-viewer-frame"
-        class="pdf-viewer-frame"
-        title="PDF Viewer"
-      ></iframe>
+      <div id="m4l-pdf-teaching-workspace" class="m4l-pdf-teaching-workspace">
+        <div class="m4l-pdf-pane">
+          <iframe
+            id="pdf-viewer-frame"
+            class="pdf-viewer-frame"
+            title="PDF Viewer"
+          ></iframe>
+        </div>
+
+        <div
+          id="m4l-teaching-panel-divider"
+          class="m4l-teaching-panel-divider"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize teaching panel"
+          tabindex="0"
+          hidden
+        ></div>
+
+        <aside
+          id="m4l-teaching-panel"
+          class="m4l-teaching-panel"
+          aria-label="Teaching panel"
+          aria-hidden="true"
+          hidden
+        >
+          <header class="m4l-teaching-panel-header">
+            <button
+              type="button"
+              class="m4l-teaching-panel-close"
+              onclick="window.M4LTeachingPanel?.close()"
+              aria-label="Close teaching panel"
+              title="Close"
+            >
+              <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+            </button>
+            <h3>Teaching Panel</h3>
+            <button
+              type="button"
+              class="m4l-teaching-panel-clear"
+              onclick="window.M4LTeachingPanel?.clearActive()"
+            >Clear</button>
+          </header>
+
+          <div class="m4l-teaching-panel-tabs" role="tablist" aria-label="Teaching panel modes">
+            <button
+              id="m4l-teaching-drawing-tab"
+              type="button"
+              class="m4l-teaching-tab is-active"
+              role="tab"
+              aria-selected="true"
+              aria-controls="m4l-teaching-drawing-view"
+              data-m4l-teaching-tab="drawing"
+            >Drawing</button>
+            <button
+              id="m4l-teaching-notes-tab"
+              type="button"
+              class="m4l-teaching-tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="m4l-teaching-notes-view"
+              data-m4l-teaching-tab="notes"
+            >Notes</button>
+          </div>
+
+          <section
+            id="m4l-teaching-drawing-view"
+            class="m4l-teaching-view is-active"
+            role="tabpanel"
+            aria-labelledby="m4l-teaching-drawing-tab"
+          >
+            <div class="m4l-teaching-tools" aria-label="Drawing tools">
+              <button type="button" class="m4l-teaching-tool is-active" data-m4l-draw-tool="pen">Pen</button>
+              <button type="button" class="m4l-teaching-tool" data-m4l-draw-tool="eraser">Eraser</button>
+              <label class="m4l-teaching-colour-label">
+                <span>Colour</span>
+                <input id="m4l-teaching-colour" type="color" value="#234569" aria-label="Drawing colour" />
+              </label>
+              <label class="m4l-teaching-width-label">
+                <span>Size</span>
+                <input id="m4l-teaching-width" type="range" min="1" max="18" value="4" aria-label="Line size" />
+              </label>
+            </div>
+
+            <div class="m4l-teaching-canvas-wrap">
+              <canvas id="m4l-teaching-canvas" aria-label="Teaching whiteboard"></canvas>
+            </div>
+
+            <div class="m4l-teaching-history-actions">
+              <button type="button" onclick="window.M4LTeachingPanel?.undo()">Undo</button>
+              <button type="button" onclick="window.M4LTeachingPanel?.redo()">Redo</button>
+              <button type="button" onclick="window.M4LTeachingPanel?.saveDrawing()">Save PNG</button>
+              <button type="button" onclick="window.M4LTeachingPanel?.shareDrawing()">Share</button>
+            </div>
+          </section>
+
+          <section
+            id="m4l-teaching-notes-view"
+            class="m4l-teaching-view"
+            role="tabpanel"
+            aria-labelledby="m4l-teaching-notes-tab"
+            hidden
+          >
+            <label class="m4l-teaching-notes-label" for="m4l-teaching-notes">Lesson notes</label>
+            <textarea
+              id="m4l-teaching-notes"
+              class="m4l-teaching-notes"
+              placeholder="Type lesson points, examples, reminders or homework..."
+            ></textarea>
+          </section>
+        </aside>
+      </div>
     </section>
 
     <!-- PLACEHOLDER SCREEN -->
@@ -967,7 +1088,8 @@
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
-  <script src="/js/m4l-resources.js?v=97.1.8"></script>
+  <script src="/js/m4l-resources.js?v=98.0"></script>
+<script src="/js/m4l-teaching-panel.js?v=98.0"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
 <script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
 </body>
