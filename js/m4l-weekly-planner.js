@@ -1020,8 +1020,15 @@ function openWeeklyPlannerDayEditor(dayIndex) {
     dirty: weeklyPlannerState.dirty
   };
   renderWeeklyPlannerCards();
+
+  const isFeedbackEditor = weeklyPlannerState.activeCardIndex === WEEKLY_PLANNER_DAYS.length;
+  if (editor) {
+    editor.classList.toggle("is-feedback-mode", isFeedbackEditor);
+    editor.classList.toggle("is-day-mode", !isFeedbackEditor);
+  }
+
   if (title) {
-    title.textContent = weeklyPlannerState.activeCardIndex === WEEKLY_PLANNER_DAYS.length
+    title.textContent = isFeedbackEditor
       ? "Edit Weekly Feedback"
       : `Edit ${WEEKLY_PLANNER_DAYS[weeklyPlannerState.activeCardIndex].label}`;
   }
@@ -1034,6 +1041,8 @@ async function closeWeeklyPlannerDayEditor(saveChanges) {
   const editor = document.getElementById("weekly-planner-day-editor");
   if (typeof editor?.close === "function" && editor.open) editor.close();
   else editor?.removeAttribute("open");
+
+  editor?.classList.remove("is-feedback-mode", "is-day-mode");
 
   if (saveChanges === true && weeklyPlannerState.canEdit) {
     weeklyPlannerState.editorSnapshot = null;
@@ -1678,7 +1687,12 @@ function drawWeeklyPlannerFeedbackPanel(context, model, x, y, width, height, col
   context.font = "900 34px Arial, sans-serif";
   context.fillText("WEEKLY FEEDBACK", x + 28, y + 45);
 
-  weeklyPlannerDrawTextBox(context, model.feedback || "", x + 28, y + headingHeight + 18, width - 56, height - headingHeight - 52, {
+  const visibleFeedback = String(model.feedback || "").trim();
+  const previewFeedback = /^teacher or administrator feedback$/i.test(visibleFeedback)
+    ? ""
+    : visibleFeedback;
+
+  weeklyPlannerDrawTextBox(context, previewFeedback, x + 28, y + headingHeight + 18, width - 56, height - headingHeight - 52, {
     color: colors.ink,
     fontFamily: colors.inkFont,
     fontWeight: "700",
