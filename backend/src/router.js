@@ -39,6 +39,7 @@ import {
 import {
   getWeeklyPlannerEndpoint,
   saveWeeklyPlannerEndpoint,
+  saveWeeklyPlannerPreviewToDriveEndpoint,
   weeklyPlannerArchiveOverviewEndpoint,
   weeklyPlannerHealthEndpoint,
   weeklyPlannerTeacherHistoryEndpoint,
@@ -79,6 +80,7 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],
   ["/api/admin/weekly-planner/get", googleSheetsRoute("weekly-planner", getWeeklyPlannerEndpoint)],
   ["/api/admin/weekly-planner/save", googleSheetsRoute("weekly-planner", saveWeeklyPlannerEndpoint)],
+  ["/api/admin/weekly-planner/save-preview", appsScriptRoute("weekly-planner-drive", saveWeeklyPlannerPreviewToDriveEndpoint)],
   ["/api/admin/weekly-planner/archive-overview", googleSheetsRoute("weekly-planner", weeklyPlannerArchiveOverviewEndpoint)],
   ["/api/admin/weekly-planner/week-records", googleSheetsRoute("weekly-planner", weeklyPlannerWeekRecordsEndpoint)],
   ["/api/admin/weekly-planner/teacher-history", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherHistoryEndpoint)],

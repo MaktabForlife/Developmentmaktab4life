@@ -99,4 +99,9 @@ For every future operation:
 6. Mark the Apps Script action **LEGACY ROLLBACK** only after production passes.
 7. Remove the `doPost` action and its implementation together only after the
    rollback path is explicitly retired.
+## V97.1.8.6 — Weekly Planner Drive configuration
+- Kept Weekly Planner records on the direct Google Sheets API.
+- Kept only the Google Drive PNG submission in Apps Script.
+- Moved the Drive folder ID, label and URL to the global configuration constants.
+- Drive save responses return destination label and URL to the frontend.
 

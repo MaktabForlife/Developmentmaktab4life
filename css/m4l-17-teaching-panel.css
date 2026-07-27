@@ -1,0 +1,346 @@
+/* M4L v98.0 Teaching Panel
+   PDF companion panel: desktop resizable split view,
+   tablet slide-in panel, mobile full-screen panel.
+*/
+
+.m4l-teaching-panel-toggle-icon {
+  --app-icon-url: url('/icons/edit.svg?v=98.0');
+}
+
+.m4l-pdf-teaching-workspace {
+  --m4l-teaching-panel-width: 420px;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--surface-track);
+}
+
+.m4l-pdf-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.m4l-pdf-pane .pdf-viewer-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.m4l-teaching-panel-divider {
+  position: relative;
+  z-index: 7;
+  flex: 0 0 10px;
+  width: 10px;
+  min-width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--surface-app);
+  border-inline: 1px solid var(--surface-track);
+}
+
+.m4l-teaching-panel-divider::after {
+  content: "";
+  position: absolute;
+  inset: 50% 3px auto;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--surface-dark);
+  transform: translateY(-50%);
+}
+
+.m4l-teaching-panel {
+  position: relative;
+  z-index: 6;
+  flex: 0 0 var(--m4l-teaching-panel-width);
+  width: var(--m4l-teaching-panel-width);
+  min-width: 300px;
+  max-width: 58vw;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-app);
+  color: var(--text);
+  border-left: 1px solid var(--surface-track);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+.m4l-teaching-panel[hidden],
+.m4l-teaching-panel-divider[hidden] {
+  display: none !important;
+}
+
+.m4l-teaching-panel-header {
+  flex: 0 0 auto;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--surface-track);
+  background: var(--surface-card);
+}
+
+.m4l-teaching-panel-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  text-align: center;
+}
+
+.m4l-teaching-panel-close,
+.m4l-teaching-panel-clear {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+
+.m4l-teaching-panel-close {
+  width: 40px;
+  height: 40px;
+  padding: 7px;
+  display: grid;
+  place-items: center;
+}
+
+.m4l-teaching-panel-close .app-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.m4l-teaching-panel-clear {
+  min-height: 38px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.m4l-teaching-panel-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 6px 8px 0;
+  gap: 4px;
+  background: var(--surface-app);
+}
+
+.m4l-teaching-tab {
+  appearance: none;
+  min-height: 40px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--surface-track);
+  border-radius: 10px 10px 0 0;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.m4l-teaching-tab.is-active {
+  color: var(--primary);
+  border-bottom-color: var(--surface-card);
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+.m4l-teaching-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.m4l-teaching-view[hidden] {
+  display: none !important;
+}
+
+#m4l-teaching-drawing-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.m4l-teaching-tools {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto auto 1fr 1.4fr;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--surface-track);
+}
+
+.m4l-teaching-tool,
+.m4l-teaching-history-actions button {
+  appearance: none;
+  min-height: 38px;
+  margin: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--surface-track);
+  border-radius: 9px;
+  background: var(--surface-app);
+  color: var(--text);
+  box-shadow: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.m4l-teaching-tool.is-active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--surface-track);
+}
+
+.m4l-teaching-colour-label,
+.m4l-teaching-width-label {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.m4l-teaching-colour-label input {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.m4l-teaching-width-label input {
+  min-width: 0;
+  width: 100%;
+}
+
+.m4l-teaching-canvas-wrap {
+  flex: 1 1 auto;
+  min-height: 260px;
+  margin: 8px;
+  overflow: hidden;
+  border: 2px solid var(--surface-track);
+  border-radius: 14px;
+  background:
+    linear-gradient(rgba(35, 69, 105, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35, 69, 105, 0.055) 1px, transparent 1px),
+    var(--surface-card);
+  background-size: 24px 24px;
+  touch-action: none;
+}
+
+#m4l-teaching-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.m4l-teaching-history-actions {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0 8px 8px;
+}
+
+#m4l-teaching-notes-view {
+  padding: 10px;
+  overflow: auto;
+}
+
+.m4l-teaching-notes-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.m4l-teaching-notes {
+  width: 100%;
+  min-height: calc(100% - 30px);
+  padding: 14px;
+  box-sizing: border-box;
+  border: 2px solid var(--surface-track);
+  border-radius: 14px;
+  background: var(--surface-card);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  resize: none;
+}
+
+/* Tablet: panel slides over the right side so the PDF remains partly visible. */
+@media (min-width: 768px) and (max-width: 1179px) {
+  .m4l-teaching-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(var(--m4l-teaching-panel-width), 52vw);
+    max-width: 52vw;
+    min-width: 320px;
+  }
+
+  .m4l-teaching-panel-divider {
+    position: absolute;
+    z-index: 8;
+    top: 0;
+    right: min(var(--m4l-teaching-panel-width), 52vw);
+    bottom: 0;
+  }
+}
+
+/* Mobile: full-screen slide-over within the PDF viewer. */
+@media (max-width: 767px) {
+  .m4l-teaching-panel {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .m4l-teaching-panel-divider {
+    display: none !important;
+  }
+
+  .m4l-teaching-tools {
+    grid-template-columns: auto auto 1fr;
+  }
+
+  .m4l-teaching-width-label {
+    grid-column: 1 / -1;
+  }
+
+  .m4l-teaching-history-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .m4l-teaching-panel-header {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  .m4l-teaching-panel-header h3 {
+    font-size: 0.9rem;
+  }
+}

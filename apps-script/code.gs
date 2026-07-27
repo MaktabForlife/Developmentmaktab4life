@@ -14,7 +14,8 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
 - Timetable reads
   Legacy Apps Script action retained: getTimetable
 - Weekly Planner reads and writes
-  Weekly Planner was implemented directly and has no Apps Script action.
+  Weekly Planner records use the direct Google Sheets API.
+  The Google Drive preview submission remains a narrow Apps Script action because it uses DriveApp.
 
 STILL ACTIVE ON APPS SCRIPT:
 - Student and Admin authentication
@@ -53,6 +54,10 @@ const SHEET_NAME = "StudentRecords";
 const BASE_STUDENT_LOGIN_URL = "https://developmentmaktab4life.pages.dev/student/";
 const DEFAULT_STUDENT_GROUP = 1;
 const DEFAULT_WHATSAPP6 = "999999";
+const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID = "1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX";
+const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=share_link";
+const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL = "Weekly Planner";
+
 
 
 function normalizeWhatsapp6_(value) {
@@ -5121,6 +5126,104 @@ function updateTimetableZoomLink(data) {
   return timetable;
 }
 
+/* =========================
+   WEEKLY PLANNER PREVIEW DRIVE SAVE - V97.1.8.5 
+========================= */
+
+function saveWeeklyPlannerPreviewToDrive(data) {
+  data = data || {};
+
+  const mimeType = String(data.mimeType || "image/png").trim();
+
+  if (mimeType !== "image/png") {
+    return { success: false, error: "Only PNG planner previews are supported" };
+  }
+
+  const fileName = sanitizeWeeklyPlannerDriveFileName_(data.fileName);
+
+  if (!fileName) {
+    return { success: false, error: "Missing fileName" };
+  }
+
+  const base64 = extractWeeklyPlannerPreviewBase64_(data);
+
+  if (!base64) {
+    return { success: false, error: "Missing preview image data" };
+  }
+
+  try {
+    const bytes = Utilities.base64Decode(base64);
+    const blob = Utilities.newBlob(bytes, mimeType, fileName);
+    const folder = DriveApp.getFolderById(WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID);
+    const file = folder.createFile(blob);
+
+    return {
+      success: true,
+      message: "Weekly planner preview saved to Google Drive",
+      fileName: file.getName(),
+      fileId: file.getId(),
+      fileUrl: file.getUrl(),
+      folderId: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID,
+      destinationLabel: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL,
+      destinationUrl: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL,
+      teacherName: String(data.teacherName || "").trim(),
+      saveDate: String(data.saveDate || "").trim(),
+      weekStart: String(data.weekStart || "").trim(),
+      requestedBy: String(data.requestedBy || "").trim(),
+      requestedByAdminId: String(data.requestedByAdminId || "").trim()
+    };
+  } catch (error) {
+    console.error("Weekly planner Drive save failed", error);
+
+    return {
+      success: false,
+      error: "Unable to save Weekly Planner. The configured Google Drive folder is not accessible. Please verify that the folder has been shared with the M4L Apps Script account.",
+      destinationLabel: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL,
+      destinationUrl: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL
+    };
+  }
+}
+
+function testDriveAccess() {
+  const folder = DriveApp.getFolderById("1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX");
+  folder.createFile("test.txt", "M4L Drive access test");
+}
+
+
+
+
+function extractWeeklyPlannerPreviewBase64_(data) {
+  const directBase64 = String(data.base64 || "").replace(/\s/g, "");
+
+  if (directBase64) {
+    return directBase64;
+  }
+
+  const dataUrl = String(data.dataUrl || "").trim();
+  const match = dataUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=\r\n]+)$/);
+
+  return match ? match[1].replace(/\s/g, "") : "";
+}
+
+function sanitizeWeeklyPlannerDriveFileName_(value) {
+  let name = String(value || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (!name) {
+    return "";
+  }
+
+  if (!/\.png$/i.test(name)) {
+    name += ".png";
+  }
+
+  return name.slice(0, 140);
+}
+
 // Start of dopost//
 // Backend ownership ledger: apps-script/MIGRATION-CHANGELOG.md
 
@@ -5276,6 +5379,9 @@ if (body.action === "updateTimetableZoomLink") {
   return jsonResponse(updateTimetableZoomLink(body.data));
 }
 
+if (body.action === "saveWeeklyPlannerPreviewToDrive") {
+  return jsonResponse(saveWeeklyPlannerPreviewToDrive(body.data));
+}
 
 
 if (body.action === "updateStudentTaskStatus") {
