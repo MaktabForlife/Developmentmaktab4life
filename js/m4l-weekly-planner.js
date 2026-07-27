@@ -1,9 +1,9 @@
-/* M4L v97.1.5.2 Weekly Planner
+/* M4L v97.1.8.5 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
-   - Save writes through the Worker's direct Google Sheets API route.
-   - The portrait PNG is generated in the browser and is never uploaded or stored. */
+   - Planner records save through the Worker's direct Google Sheets API route.
+   - Preview Save uploads the portrait PNG to the configured Google Drive test folder after destination confirmation. */
 
 const WEEKLY_PLANNER_DAYS = Object.freeze([
   { key: "monday", label: "Monday", timetableKeys: ["mon", "monday"] },
@@ -13,6 +13,8 @@ const WEEKLY_PLANNER_DAYS = Object.freeze([
 ]);
 const WEEKLY_PLANNER_PERIOD_COUNT = 3;
 const WEEKLY_PLANNER_PREVIEW_STYLE_STORAGE_KEY = "m4l.weeklyPlanner.previewStyle.v95.3";
+const WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_LABEL = "Weekly Planner test Google Drive folder";
+const WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=share_link";
 
 const WEEKLY_PLANNER_PREVIEW_FONTS = Object.freeze({
   normal: Object.freeze({
@@ -1091,6 +1093,97 @@ async function shareWeeklyPlannerImage(button) {
   }
 }
 
+async function saveWeeklyPlannerPreviewToDrive(button) {
+  const previewMessage = document.getElementById("weekly-planner-preview-message");
+  const originalLabel = getWeeklyPlannerButtonLabel(button, "Save");
+
+  try {
+    if (previewMessage) previewMessage.textContent = "";
+
+    if (!weeklyPlannerState.previewBlob || !weeklyPlannerState.previewDataUrl) {
+      await generateWeeklyPlannerPreview();
+    }
+
+    if (!weeklyPlannerState.previewBlob || !weeklyPlannerState.previewDataUrl) {
+      throw new Error("The planner preview is not ready to save.");
+    }
+
+    const fileName = getWeeklyPlannerImageFileName();
+    const confirmed = confirmWeeklyPlannerDriveSaveDestination(fileName);
+
+    if (!confirmed) {
+      if (previewMessage) previewMessage.textContent = "Save cancelled.";
+      return false;
+    }
+
+    setWeeklyPlannerHeaderActionState(button, "Saving...", true);
+
+    const result = await apiPost("/api/admin/weekly-planner/save-preview", {
+      fileName,
+      mimeType: "image/png",
+      dataUrl: weeklyPlannerState.previewDataUrl,
+      teacherName: String(weeklyPlannerState.teacher?.teacherName || state?.username || "Teacher").trim(),
+      saveDate: getWeeklyPlannerTodayDateString(),
+      weekStart: String(weeklyPlannerState.week?.weekStart || ""),
+      destinationLabel: WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_LABEL
+    }, state.token);
+
+    if (!result.success) {
+      throw new Error(result.error || result.detail || "Unable to save the planner preview to Google Drive.");
+    }
+
+    const savedName = result.fileName || fileName;
+    openWeeklyPlannerSaveDialog(
+      `Saved to ${result.destinationLabel || WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_LABEL}: ${savedName}`
+    );
+
+    if (previewMessage) previewMessage.textContent = "";
+    return true;
+  } catch (error) {
+    openWeeklyPlannerSaveDialog(error.message || "Unable to save the planner preview to Google Drive.");
+    return false;
+  } finally {
+    setWeeklyPlannerHeaderActionState(button, originalLabel, false);
+    if (button) button.blur();
+  }
+}
+
+function confirmWeeklyPlannerDriveSaveDestination(fileName) {
+  if (typeof window.confirm !== "function") {
+    return true;
+  }
+
+  return window.confirm(
+    [
+      "Save this weekly planner preview to Google Drive?",
+      "",
+      `Destination: ${WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_LABEL}`,
+      WEEKLY_PLANNER_DRIVE_SAVE_DESTINATION_URL,
+      "",
+      `Filename: ${fileName}`
+    ].join("\n")
+  );
+}
+
+function setWeeklyPlannerHeaderActionState(button, label, disabled) {
+  if (!button) return;
+
+  button.disabled = disabled === true;
+  const labelElement = button.querySelector(".weekly-planner-header-action__label");
+
+  if (labelElement) {
+    labelElement.textContent = String(label || "Save");
+  }
+}
+
+function getWeeklyPlannerButtonLabel(button, fallback) {
+  return String(
+    button?.querySelector(".weekly-planner-header-action__label")?.textContent ||
+    fallback ||
+    "Save"
+  );
+}
+
 async function downloadWeeklyPlannerImage(button) {
   const previewMessage = document.getElementById("weekly-planner-preview-message");
 
@@ -1221,14 +1314,29 @@ function getWeeklyPlannerDataForSave(value) {
 }
 
 function getWeeklyPlannerImageFileName() {
+  const teacherName = String(weeklyPlannerState.teacher?.teacherName || state?.username || "Teacher").trim();
+  const safeTeacherName = sanitizeWeeklyPlannerFileNamePart(teacherName) || "Teacher";
+  return `${safeTeacherName}_${getWeeklyPlannerTodayDateString()}.png`;
+}
+
+function getWeeklyPlannerTodayDateString() {
   const now = new Date();
   const pad = value => String(value).padStart(2, "0");
-  const timestamp = [
+  return [
     now.getFullYear(),
     pad(now.getMonth() + 1),
     pad(now.getDate())
-  ].join("-") + `-${pad(now.getHours())}-${pad(now.getMinutes())}`;
-  return `M4L-weekly-planner-${timestamp}.png`;
+  ].join("-");
+}
+
+function sanitizeWeeklyPlannerFileNamePart(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
 }
 
 function normalizeWeeklyPlannerPreviewStyle(value) {
