@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=97.1.8.4">
+<link rel="stylesheet" href="/styles.css?v=98.0">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -419,200 +419,94 @@
     </section>
 
 
-    <!-- WEEKLY PLANNER - V95.3.1 -->
+    <!-- WEEKLY PLANNER - V97.1.8.4.1 -->
     <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
       <div class="weekly-planner-global-panel">
-        <div class="weekly-planner-app-header weekly-planner-app-header--main" role="toolbar" aria-label="Weekly Planner actions">
-          <h2 class="weekly-planner-app-header__title">Weekly Planner</h2>
-
-          <button
-            class="weekly-planner-header-action weekly-planner-header-action--back"
-            type="button"
-            onclick="showScreen('admin-academics')"
-            aria-label="Back to Admin"
-          >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-            <span class="weekly-planner-header-action__label">Back</span>
+        <div class="weekly-planner-live-title-row">
+          <button class="weekly-planner-live-close" type="button" onclick="showScreen('admin-academics')" aria-label="Close Weekly Planner" title="Close">
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
           </button>
+          <h2>Weekly Planner</h2>
+        </div>
 
-          <button
-            class="weekly-planner-header-action weekly-planner-header-action--archive"
-            type="button"
-            onclick="showWeeklyPlannerArchive()"
-            aria-label="View planner archive"
-          >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-            <span class="weekly-planner-header-action__label">Archive</span>
+        <div class="weekly-planner-live-actions" role="toolbar" aria-label="Weekly Planner actions">
+          <button id="weekly-planner-preview-settings-toggle" class="weekly-planner-header-action weekly-planner-header-action--settings" type="button" onclick="toggleWeeklyPlannerPreviewSettings(this)" aria-label="Planner font and colour settings" aria-controls="weekly-planner-preview-settings" aria-expanded="false">
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span><span class="weekly-planner-header-action__label">Settings</span>
           </button>
-
-          <button
-            id="weekly-planner-save"
-            class="weekly-planner-header-action weekly-planner-header-action--save"
-            type="button"
-            onclick="saveWeeklyPlannerAndPreview(this)"
-            aria-label="Save and preview weekly planner"
-          >
-            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-            <span class="weekly-planner-header-action__label" data-weekly-planner-save-label>Save &amp; Preview</span>
+          <button class="weekly-planner-header-action weekly-planner-header-action--archive" type="button" onclick="showWeeklyPlannerArchive()" aria-label="View planner archive">
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span><span class="weekly-planner-header-action__label">Archive</span>
+          </button>
+          <button class="weekly-planner-header-action weekly-planner-header-action--download" type="button" onclick="downloadWeeklyPlannerImage(this)" aria-label="Save planner image to this device">
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span><span class="weekly-planner-header-action__label">Save</span>
+          </button>
+          <button class="weekly-planner-header-action weekly-planner-header-action--share" type="button" onclick="shareWeeklyPlannerImage(this)" aria-label="Share planner image">
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span><span class="weekly-planner-header-action__label">Share</span>
+          </button>
+          <button class="weekly-planner-header-action weekly-planner-header-action--submit" type="button" onclick="saveWeeklyPlannerPreviewToDrive(this)" aria-label="Submit planner image to Google Drive">
+            <span class="weekly-planner-header-action__icon" aria-hidden="true"></span><span class="weekly-planner-header-action__label">Submit</span>
           </button>
         </div>
 
-        <section class="weekly-planner-controls" aria-label="Planner details">
-          <label class="weekly-planner-field weekly-planner-field--teacher">
-            <span>Name</span>
-            <select id="weekly-planner-teacher"></select>
-          </label>
-
-          <label class="weekly-planner-field weekly-planner-field--week">
-            <span>Week commencing</span>
-            <input id="weekly-planner-week" type="date" />
-          </label>
-
-          <label class="weekly-planner-field weekly-planner-field--group">
-            <span>Group</span>
-            <input id="weekly-planner-group" type="text" list="weekly-planner-groups" placeholder="Group" />
-            <datalist id="weekly-planner-groups"></datalist>
-          </label>
+        <section id="weekly-planner-preview-settings" class="weekly-planner-preview-settings" aria-label="Planner font and colour settings" hidden>
+          <button type="button" class="weekly-planner-settings-close" onclick="setWeeklyPlannerPreviewSettingsOpen(false)" aria-label="Close planner settings" title="Close">
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          </button>
+          <fieldset class="weekly-planner-preview-setting-group"><legend>Text</legend><div class="weekly-planner-font-options">
+            <label class="weekly-planner-font-option weekly-planner-font-option--normal"><input type="radio" name="weekly-planner-preview-font" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" /><span>Standard</span></label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--comic"><input type="radio" name="weekly-planner-preview-font" value="comic" onchange="updateWeeklyPlannerPreviewStyle()" /><span>Comic Sans</span></label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--handwritten"><input type="radio" name="weekly-planner-preview-font" value="handwritten" onchange="updateWeeklyPlannerPreviewStyle()" checked /><span>Handwritten</span></label>
+            <label class="weekly-planner-font-option weekly-planner-font-option--classic"><input type="radio" name="weekly-planner-preview-font" value="classic" onchange="updateWeeklyPlannerPreviewStyle()" /><span>Classic</span></label>
+          </div></fieldset>
+          <fieldset class="weekly-planner-preview-setting-group"><legend>Colour</legend><div class="weekly-planner-color-options">
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color:var(--text)"><input type="radio" name="weekly-planner-preview-color" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" /><span><i style="--weekly-planner-swatch:var(--text)" aria-hidden="true"></i>Standard</span></label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color:#a626aa"><input type="radio" name="weekly-planner-preview-color" value="violet" onchange="updateWeeklyPlannerPreviewStyle()" checked /><span><i style="--weekly-planner-swatch:#a626aa" aria-hidden="true"></i>Violet</span></label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color:#0066a1"><input type="radio" name="weekly-planner-preview-color" value="turquoise" onchange="updateWeeklyPlannerPreviewStyle()" /><span><i style="--weekly-planner-swatch:#0066a1" aria-hidden="true"></i>Turquoise</span></label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color:#000080"><input type="radio" name="weekly-planner-preview-color" value="navy" onchange="updateWeeklyPlannerPreviewStyle()" /><span><i style="--weekly-planner-swatch:#000080" aria-hidden="true"></i>Navy</span></label>
+            <label class="weekly-planner-color-option" style="--weekly-planner-option-color:#7d7f7c"><input type="radio" name="weekly-planner-preview-color" value="grey" onchange="updateWeeklyPlannerPreviewStyle()" /><span><i style="--weekly-planner-swatch:#7d7f7c" aria-hidden="true"></i>Grey</span></label>
+          </div></fieldset>
         </section>
 
+        <section class="weekly-planner-controls" aria-label="Planner details">
+          <label class="weekly-planner-field weekly-planner-field--teacher"><span>Name</span><select id="weekly-planner-teacher"></select></label>
+          <label class="weekly-planner-field weekly-planner-field--week"><span>Week commencing</span><input id="weekly-planner-week" type="date" /></label>
+          <label class="weekly-planner-field weekly-planner-field--group"><span>Group</span><input id="weekly-planner-group" type="text" list="weekly-planner-groups" placeholder="Group" /><datalist id="weekly-planner-groups"></datalist></label>
+        </section>
         <p id="weekly-planner-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
         <input id="weekly-planner-feedback" type="hidden" value="" />
       </div>
 
-      <div class="weekly-planner-shell">
-        <div class="weekly-planner-rail-shell">
-          <div id="weekly-planner-dots" class="weekly-planner-dots" aria-label="Planner card position"></div>
-          <div
-            id="weekly-planner-rail"
-            class="weekly-planner-rail"
-            role="region"
-            aria-label="Monday to Thursday planner cards"
-            tabindex="0"
-          >
-            <p class="helper-text">Loading weekly planner...</p>
+      <div class="weekly-planner-live-workspace">
+        <div class="weekly-planner-preview-frame weekly-planner-live-preview-frame">
+          <img id="weekly-planner-preview-image" alt="Weekly planner. Tap a day to edit." />
+          <div class="weekly-planner-day-hotspots" aria-label="Edit a planner day">
+            <button type="button" data-weekly-planner-open-day="0" aria-label="Edit Monday"></button>
+            <button type="button" data-weekly-planner-open-day="1" aria-label="Edit Tuesday"></button>
+            <button type="button" data-weekly-planner-open-day="2" aria-label="Edit Wednesday"></button>
+            <button type="button" data-weekly-planner-open-day="3" aria-label="Edit Thursday"></button>
+            <button type="button" class="weekly-planner-feedback-hotspot" data-weekly-planner-open-day="4" aria-label="Edit weekly feedback"></button>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section id="weekly-planner-preview-screen" class="screen admin-theme weekly-planner-preview-screen">
-      <div class="weekly-planner-app-header" role="toolbar" aria-label="Planner Preview actions">
-  
-  <!-- COLUMN 1: Close -->
-  <button class="weekly-planner-header-action weekly-planner-header-action--back" type="button" onclick="returnToWeeklyPlanner()" aria-label="Close planner preview">
-    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-    <span class="weekly-planner-header-action__label"><span>Close</span></span>
-  </button>
-
-  <!-- COLUMN 2: Settings -->
-  <button id="weekly-planner-preview-settings-toggle" class="weekly-planner-preview-settings-toggle" type="button" onclick="toggleWeeklyPlannerPreviewSettings(this)" aria-label="Preview font and colour settings" aria-controls="weekly-planner-preview-settings" aria-expanded="false">
-    <span class="weekly-planner-preview-settings-icon" aria-hidden="true"></span>
-  </button>
-
-  <!-- COLUMN 3: Save -->
-  <button class="weekly-planner-header-action weekly-planner-header-action--save" type="button" onclick="downloadWeeklyPlannerImage(this)" aria-label="Save planner image">
-    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-    <span class="weekly-planner-header-action__label">Save</span>
-  </button>
-
-  <!-- COLUMN 4: Share -->
-  <button class="weekly-planner-header-action weekly-planner-header-action--share" type="button" onclick="shareWeeklyPlannerImage(this)" aria-label="Share planner image">
-    <span class="weekly-planner-header-action__icon" aria-hidden="true"></span>
-    <span class="weekly-planner-header-action__label">Share</span>
-  </button>
-
-</div>
-      
-      
-
-      <section
-        id="weekly-planner-preview-settings"
-        class="weekly-planner-preview-settings"
-        aria-label="Preview font and colour settings"
-        hidden
-      >
-        <fieldset class="weekly-planner-preview-setting-group">
-          <legend>Text</legend>
-          <div class="weekly-planner-font-options">
-            <label class="weekly-planner-font-option weekly-planner-font-option--normal">
-              <input type="radio" name="weekly-planner-preview-font" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span>Standard</span>
-            </label>
-            <label class="weekly-planner-font-option weekly-planner-font-option--comic">
-              <input type="radio" name="weekly-planner-preview-font" value="comic" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span>Comic Sans</span>
-            </label>
-            <label class="weekly-planner-font-option weekly-planner-font-option--handwritten">
-              <input type="radio" name="weekly-planner-preview-font" value="handwritten" onchange="updateWeeklyPlannerPreviewStyle()" checked />
-              <span>Handwritten</span>
-            </label>
-            <label class="weekly-planner-font-option weekly-planner-font-option--classic">
-              <input type="radio" name="weekly-planner-preview-font" value="classic" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span>Classic</span>
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset class="weekly-planner-preview-setting-group">
-          <legend>Colour</legend>
-          <div class="weekly-planner-color-options">
-            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: var(--text)">
-              <input type="radio" name="weekly-planner-preview-color" value="normal" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span><i style="--weekly-planner-swatch: var(--text)" aria-hidden="true"></i>Standard</span>
-            </label>
-            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #a626aa">
-              <input type="radio" name="weekly-planner-preview-color" value="violet" onchange="updateWeeklyPlannerPreviewStyle()" checked />
-              <span><i style="--weekly-planner-swatch: #a626aa" aria-hidden="true"></i>Violet</span>
-            </label>
-            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #0066a1">
-              <input type="radio" name="weekly-planner-preview-color" value="turquoise" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span><i style="--weekly-planner-swatch: #0066a1" aria-hidden="true"></i>Turquoise</span>
-            </label>
-            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #000080">
-              <input type="radio" name="weekly-planner-preview-color" value="navy" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span><i style="--weekly-planner-swatch: #000080" aria-hidden="true"></i>Navy</span>
-            </label>
-            <label class="weekly-planner-color-option" style="--weekly-planner-option-color: #7d7f7c">
-              <input type="radio" name="weekly-planner-preview-color" value="grey" onchange="updateWeeklyPlannerPreviewStyle()" />
-              <span><i style="--weekly-planner-swatch: #7d7f7c" aria-hidden="true"></i>Grey</span>
-            </label>
-          </div>
-        </fieldset>
-      </section>
-
-      <div class="weekly-planner-preview-shell">
-        <div class="weekly-planner-preview-frame">
-          <img
-            id="weekly-planner-preview-image"
-            alt="Weekly planner image preview"
-          />
-        </div>
-
         <p id="weekly-planner-preview-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
-
+        <p class="weekly-planner-edit-hint">Tap a day on the planner to edit it.</p>
       </div>
 
-      <dialog
-        id="weekly-planner-save-dialog"
-        class="weekly-planner-save-dialog"
-        aria-labelledby="weekly-planner-save-dialog-message"
-      >
-        <div class="weekly-planner-save-dialog-card">
-          <p id="weekly-planner-save-dialog-message" aria-live="polite"></p>
-          <button
-            type="button"
-            class="weekly-planner-save-dialog-close"
-            onclick="closeWeeklyPlannerSaveDialog()"
-            aria-label="Close save notice"
-            title="Close"
-          >
-            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
-          </button>
+      <dialog id="weekly-planner-day-editor" class="weekly-planner-day-editor" aria-labelledby="weekly-planner-day-editor-title">
+        <div class="weekly-planner-day-editor-card">
+          <div class="weekly-planner-day-editor-header">
+            <button type="button" class="weekly-planner-day-editor-cancel" onclick="closeWeeklyPlannerDayEditor(false)" aria-label="Close editor and return to planner" title="Close">
+              <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+            </button>
+            <h3 id="weekly-planner-day-editor-title">Edit day</h3>
+            <button type="button" class="weekly-planner-day-editor-done" onclick="closeWeeklyPlannerDayEditor(true)" aria-label="Save changes" title="Save">
+              <span class="app-icon" style="--app-icon-url:url('/icons/save.svg?v=97.1.8.4.1')" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="weekly-planner-shell"><div class="weekly-planner-rail-shell"><div id="weekly-planner-dots" class="weekly-planner-dots"></div><div id="weekly-planner-rail" class="weekly-planner-rail" role="region" aria-label="Planner day editor"><p class="helper-text">Loading weekly planner...</p></div></div></div>
         </div>
       </dialog>
+
+      <dialog id="weekly-planner-save-dialog" class="weekly-planner-save-dialog" aria-labelledby="weekly-planner-save-dialog-message"><div class="weekly-planner-save-dialog-card"><p id="weekly-planner-save-dialog-message" aria-live="polite"></p><button type="button" class="weekly-planner-save-dialog-close" onclick="closeWeeklyPlannerSaveDialog()" aria-label="Close save notice" title="Close"><span class="app-icon app-icon-xclose" aria-hidden="true"></span></button></div></dialog>
     </section>
-
-
 
     <section id="weekly-planner-archive-screen" class="screen admin-theme weekly-planner-archive-screen">
       <div class="weekly-planner-archive-container">
@@ -1018,6 +912,20 @@
 
   <div class="pdf-viewer-actions">
     <button
+      id="m4l-teaching-panel-toggle"
+      type="button"
+      class="pdf-viewer-icon-btn m4l-teaching-panel-toggle"
+      onclick="window.M4LTeachingPanel?.toggle()"
+      aria-label="Open teaching panel"
+      aria-controls="m4l-teaching-panel"
+      aria-expanded="false"
+      title="Teaching panel"
+    >
+      <span class="app-icon m4l-teaching-panel-toggle-icon" aria-hidden="true"></span>
+      <span class="pdf-viewer-icon-label">BOARD</span>
+    </button>
+
+    <button
       type="button"
       class="pdf-viewer-icon-btn"
       onclick="closePdfViewer()"
@@ -1025,7 +933,7 @@
       title="Back"
     >
       <span class="app-icon pdf-back-icon" aria-hidden="true"></span>
-      <span class="pdf-viewer-icon-label">closeK</span>
+      <span class="pdf-viewer-icon-label">CLOSE</span>
     </button>
   </div>
 </div>
@@ -1039,11 +947,117 @@
     <div id="pdf-library-list" class="pdf-library-list"></div>
   </aside>
 
-      <iframe
-        id="pdf-viewer-frame"
-        class="pdf-viewer-frame"
-        title="PDF Viewer"
-      ></iframe>
+      <div id="m4l-pdf-teaching-workspace" class="m4l-pdf-teaching-workspace">
+        <div class="m4l-pdf-pane">
+          <iframe
+            id="pdf-viewer-frame"
+            class="pdf-viewer-frame"
+            title="PDF Viewer"
+          ></iframe>
+        </div>
+
+        <div
+          id="m4l-teaching-panel-divider"
+          class="m4l-teaching-panel-divider"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize teaching panel"
+          tabindex="0"
+          hidden
+        ></div>
+
+        <aside
+          id="m4l-teaching-panel"
+          class="m4l-teaching-panel"
+          aria-label="Teaching panel"
+          aria-hidden="true"
+          hidden
+        >
+          <header class="m4l-teaching-panel-header">
+            <button
+              type="button"
+              class="m4l-teaching-panel-close"
+              onclick="window.M4LTeachingPanel?.close()"
+              aria-label="Close teaching panel"
+              title="Close"
+            >
+              <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+            </button>
+            <h3>Teaching Panel</h3>
+            <button
+              type="button"
+              class="m4l-teaching-panel-clear"
+              onclick="window.M4LTeachingPanel?.clearActive()"
+            >Clear</button>
+          </header>
+
+          <div class="m4l-teaching-panel-tabs" role="tablist" aria-label="Teaching panel modes">
+            <button
+              id="m4l-teaching-drawing-tab"
+              type="button"
+              class="m4l-teaching-tab is-active"
+              role="tab"
+              aria-selected="true"
+              aria-controls="m4l-teaching-drawing-view"
+              data-m4l-teaching-tab="drawing"
+            >Drawing</button>
+            <button
+              id="m4l-teaching-notes-tab"
+              type="button"
+              class="m4l-teaching-tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="m4l-teaching-notes-view"
+              data-m4l-teaching-tab="notes"
+            >Notes</button>
+          </div>
+
+          <section
+            id="m4l-teaching-drawing-view"
+            class="m4l-teaching-view is-active"
+            role="tabpanel"
+            aria-labelledby="m4l-teaching-drawing-tab"
+          >
+            <div class="m4l-teaching-tools" aria-label="Drawing tools">
+              <button type="button" class="m4l-teaching-tool is-active" data-m4l-draw-tool="pen">Pen</button>
+              <button type="button" class="m4l-teaching-tool" data-m4l-draw-tool="eraser">Eraser</button>
+              <label class="m4l-teaching-colour-label">
+                <span>Colour</span>
+                <input id="m4l-teaching-colour" type="color" value="#234569" aria-label="Drawing colour" />
+              </label>
+              <label class="m4l-teaching-width-label">
+                <span>Size</span>
+                <input id="m4l-teaching-width" type="range" min="1" max="18" value="4" aria-label="Line size" />
+              </label>
+            </div>
+
+            <div class="m4l-teaching-canvas-wrap">
+              <canvas id="m4l-teaching-canvas" aria-label="Teaching whiteboard"></canvas>
+            </div>
+
+            <div class="m4l-teaching-history-actions">
+              <button type="button" onclick="window.M4LTeachingPanel?.undo()">Undo</button>
+              <button type="button" onclick="window.M4LTeachingPanel?.redo()">Redo</button>
+              <button type="button" onclick="window.M4LTeachingPanel?.shareDrawing()">Share</button>
+            </div>
+          </section>
+
+          <section
+            id="m4l-teaching-notes-view"
+            class="m4l-teaching-view"
+            role="tabpanel"
+            aria-labelledby="m4l-teaching-notes-tab"
+            hidden
+          >
+            <label class="m4l-teaching-notes-label" for="m4l-teaching-notes">Lesson notes</label>
+            <textarea
+              id="m4l-teaching-notes"
+              class="m4l-teaching-notes"
+              placeholder="Type lesson points, examples, reminders or homework..."
+            ></textarea>
+          </section>
+        </aside>
+      </div>
     </section>
 
     <!-- PLACEHOLDER SCREEN -->
@@ -1068,12 +1082,13 @@
 <script src="/js/m4l-auth.js?v=87.2"></script>
 <script src="/js/m4l-shell.js?v=97.1.5.5"></script>
   <script src="/js/m4l-timetable.js?v=97.1.5.5"></script>
-  <script src="/js/m4l-weekly-planner.js?v=97.1.5.2"></script>
-  <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4"></script>
+  <script src="/js/m4l-weekly-planner.js?v=97.1.8.4.1"></script>
+  <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
-  <script src="/js/m4l-resources.js?v=97.1.8"></script>
+  <script src="/js/m4l-resources.js?v=98.0"></script>
+<script src="/js/m4l-teaching-panel.js?v=98.0"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
 <script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
 </body>
