@@ -1,4 +1,7 @@
-/* M4L v97.1.8 - All-subject PDF Library navigation (frontend only)
+/* M4L v98.0 - PDF Teaching Panel integration
+   Closes/resets the local teaching panel when the PDF viewer closes or changes.
+
+   M4L v97.1.8 - All-subject PDF Library navigation (frontend only)
    Adds same-subject/module PDF switching, Previous/Next controls, and a Library drawer.
 
    M4L v94.6 - Session-stable Library cache and mobile rail scrolling
@@ -1336,6 +1339,10 @@ function openPdfResource(link, title = "PDF Viewer", resourceId = "") {
   }
 
   clearInlineResourcePreviews();
+  window.M4LTeachingPanel?.prepareForPdf?.({
+    resourceId: currentPdfResourceId,
+    title: title || "PDF Viewer"
+  });
   viewerFrame.src = `${PDFJS_VIEWER_PATH}?file=${pdfFileForViewer}`;
 
   if (document.body) {
@@ -1447,6 +1454,10 @@ function openPdfLibraryResource(resourceId) {
 
   currentPdfResourceId = resource.id;
   currentPdfDirectLink = resource.link;
+  window.M4LTeachingPanel?.prepareForPdf?.({
+    resourceId: resource.id,
+    title: resource.title || "PDF Viewer"
+  });
   setDomText("pdf-viewer-title", resource.title || "PDF Viewer");
   viewerFrame.src = `${PDFJS_VIEWER_PATH}?file=${pdfFileForViewer}`;
   renderPdfLibraryNavigation();
@@ -1497,6 +1508,7 @@ function base64UrlEncode(value) {
 }
 
 function closePdfViewer() {
+  window.M4LTeachingPanel?.close?.({ reset: true });
   const viewerFrame = getDomElement("pdf-viewer-frame");
 
   if (viewerFrame) {
