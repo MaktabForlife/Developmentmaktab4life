@@ -1,5 +1,5 @@
 /* =========================
-   WEEKLY PLANNER ARCHIVE - V97.1.8.4
+   WEEKLY PLANNER ARCHIVE - V97.1.8.4.1
    Admin-only archive of past weekly planners:
    - Hub: a page-level header (bg --surface-card), then two labeled panels
      (bg --surface-app headers) - "View by date" (date picker + OPEN) and
@@ -323,7 +323,7 @@
   }
 
   .weekly-planner-archive-container {
-    max-width: 620px;
+    max-width: 600px;
     margin-inline: auto;
   }
 
