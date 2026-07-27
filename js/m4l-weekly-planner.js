@@ -1,9 +1,9 @@
-/* M4L v97.1.8.6 Weekly Planner
+/* M4L v97.1.5.2 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Current timetable supplies period order and subject defaults; times are not shown.
    - A new week can be prefilled from the previous planner.
-   - Planner records save through the Worker's direct Google Sheets API route.
-   - Preview Save uploads the portrait PNG to the configured Google Drive test folder after destination confirmation. */
+   - Save writes through the Worker's direct Google Sheets API route.
+   - The portrait PNG is generated in the browser and is never uploaded or stored. */
 
 const WEEKLY_PLANNER_DAYS = Object.freeze([
   { key: "monday", label: "Monday", timetableKeys: ["mon", "monday"] },
@@ -72,7 +72,6 @@ const weeklyPlannerState = {
   previewDataUrl: "",
   previewBlob: null,
   previewGenerationSequence: 0,
-  editorSnapshot: null,
   previewStyle: loadWeeklyPlannerPreviewStyle()
 };
 
@@ -109,8 +108,6 @@ async function initializeWeeklyPlanner() {
   if (!canReuseWeeklyPlannerSession()) {
     await loadWeeklyPlanner({ confirmDiscard: false });
   }
-
-  await generateWeeklyPlannerPreview();
 }
 
 async function bootstrapWeeklyPlanner() {
@@ -198,17 +195,6 @@ function bindWeeklyPlannerEvents() {
   if (saveDialog) {
     saveDialog.addEventListener("click", event => {
       if (event.target === saveDialog) closeWeeklyPlannerSaveDialog();
-    });
-  }
-
-  document.querySelectorAll("[data-weekly-planner-open-day]").forEach(button => {
-    button.addEventListener("click", () => openWeeklyPlannerDayEditor(Number(button.dataset.weeklyPlannerOpenDay || 0)));
-  });
-
-  const dayEditor = document.getElementById("weekly-planner-day-editor");
-  if (dayEditor) {
-    dayEditor.addEventListener("click", event => {
-      if (event.target === dayEditor) closeWeeklyPlannerDayEditor(false);
     });
   }
 }
@@ -372,12 +358,6 @@ async function performWeeklyPlannerLoad(teacher, week, loadKey) {
     setWeeklyPlannerMessage("Last week copied.", "success");
   } else {
     setWeeklyPlannerMessage("Planner ready.", "success");
-  }
-
-  try {
-    await generateWeeklyPlannerPreview();
-  } catch (error) {
-    setWeeklyPlannerMessage(error.message || "Unable to render the planner image.", "error");
   }
 
   return true;
@@ -609,32 +589,24 @@ function renderWeeklyPlannerCards() {
           <span class="weekly-planner-day-date">${weeklyPlannerEscapeHtml(formatWeeklyPlannerDisplayDate(day.date))}</span>
         </header>
         ${periods.map((period, periodIndex) => renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periods.length)).join("")}
+        <div class="weekly-planner-feedback-row">
+          <label for="weekly-planner-feedback-${dayIndex}">Weekly feedback</label>
+          <textarea
+            id="weekly-planner-feedback-${dayIndex}"
+            data-weekly-planner-feedback-field
+            rows="3"
+            placeholder="Teacher or administrator feedback"
+            ${readOnlyAttribute}
+          >${weeklyPlannerEscapeHtml(weeklyPlannerState.feedback)}</textarea>
+        </div>
         <div class="weekly-planner-add-period-wrap"${hiddenEditControls}>
           <button class="weekly-planner-add-period" type="button" data-weekly-planner-add-period="${dayIndex}">Add period</button>
         </div>
       </article>
     `;
-  }).join("") + `
-      <article class="weekly-planner-feedback-card" data-weekly-planner-feedback-card aria-label="Weekly feedback">
-        <header class="weekly-planner-day-heading weekly-planner-feedback-heading">
-          <h3>Weekly Feedback</h3>
-        </header>
-        <div class="weekly-planner-feedback-editor">
-          <label for="weekly-planner-feedback-editor">Weekly feedback</label>
-          <textarea
-            id="weekly-planner-feedback-editor"
-            data-weekly-planner-feedback-field
-            rows="6"
-            placeholder="Teacher or administrator feedback"
-            ${readOnlyAttribute}
-          >${weeklyPlannerEscapeHtml(weeklyPlannerState.feedback)}</textarea>
-        </div>
-      </article>
-    `;
+  }).join("");
 
-  const plannerEditorSections = [...plannerData.days, { label: "Weekly Feedback" }];
-
-  dots.innerHTML = plannerEditorSections.map((day, index) => {
+  dots.innerHTML = plannerData.days.map((day, index) => {
     const active = index === weeklyPlannerState.activeCardIndex;
     return `
       <button
@@ -785,7 +757,7 @@ function updateWeeklyPlannerActiveDotFromRail() {
   const rail = document.getElementById("weekly-planner-rail");
   if (!rail) return;
 
-  const cards = Array.from(rail.querySelectorAll(".weekly-planner-day-card, .weekly-planner-feedback-card"));
+  const cards = Array.from(rail.querySelectorAll(".weekly-planner-day-card"));
   if (!cards.length) return;
 
   const railCenter = rail.scrollLeft + rail.clientWidth / 2;
@@ -815,7 +787,7 @@ function setWeeklyPlannerActiveDot(index) {
 
 function scrollWeeklyPlannerToCard(index, smooth = true) {
   const rail = document.getElementById("weekly-planner-rail");
-  const cards = rail ? rail.querySelectorAll(".weekly-planner-day-card, .weekly-planner-feedback-card") : [];
+  const cards = rail ? rail.querySelectorAll(".weekly-planner-day-card") : [];
   const safeIndex = Math.max(0, Math.min(cards.length - 1, Number(index) || 0));
   const card = cards[safeIndex];
   if (!rail || !card) return;
@@ -848,7 +820,7 @@ async function saveWeeklyPlannerAndPreview(button) {
 
   const week = getWeeklyPlannerWeekMeta(weekInput ? weekInput.value : "");
   const labelElement = button?.querySelector("[data-weekly-planner-save-label]");
-  const originalLabel = String(labelElement?.textContent || "Save");
+  const originalLabel = String(labelElement?.textContent || "Save & Preview");
 
   if (button) {
     setWeeklyPlannerSaveButtonState(button, "Saving...", true);
@@ -898,6 +870,7 @@ async function saveWeeklyPlannerAndPreview(button) {
     
     try {
       await generateWeeklyPlannerPreview();
+      showScreen("weekly-planner-preview-screen");
     } catch (previewError) {
       setWeeklyPlannerMessage(
         `Planner saved, but the image preview could not be created: ${previewError.message || "unknown error"}`,
@@ -984,12 +957,12 @@ function applyWeeklyPlannerAccessMode() {
     saveButton.hidden = !weeklyPlannerState.canEdit && !canCopy;
     setWeeklyPlannerSaveButtonState(
       saveButton,
-      weeklyPlannerState.canEdit ? "Save" : "Copy to My Planner",
+      weeklyPlannerState.canEdit ? "Save & Preview" : "Copy to My Planner",
       false
     );
     saveButton.setAttribute(
       "aria-label",
-      weeklyPlannerState.canEdit ? "Save planner" : "Copy to my planner"
+      weeklyPlannerState.canEdit ? "Save and preview" : "Copy to my planner"
     );
   }
 }
@@ -1001,63 +974,13 @@ function setWeeklyPlannerSaveButtonState(button, label, disabled) {
   const labelElement = button.querySelector("[data-weekly-planner-save-label]");
 
   if (labelElement) {
-    labelElement.textContent = String(label || "Save");
+    labelElement.textContent = String(label || "Save & Preview");
   }
 }
 
 function returnToWeeklyPlanner() {
-  closeWeeklyPlannerDayEditor(false);
-}
-
-function openWeeklyPlannerDayEditor(dayIndex) {
-  if (!weeklyPlannerState.plannerData) return;
-  const editor = document.getElementById("weekly-planner-day-editor");
-  const title = document.getElementById("weekly-planner-day-editor-title");
-  weeklyPlannerState.activeCardIndex = Math.max(0, Math.min(WEEKLY_PLANNER_DAYS.length, Number(dayIndex) || 0));
-  weeklyPlannerState.editorSnapshot = {
-    plannerData: JSON.parse(JSON.stringify(weeklyPlannerState.plannerData)),
-    feedback: weeklyPlannerState.feedback,
-    dirty: weeklyPlannerState.dirty
-  };
-  renderWeeklyPlannerCards();
-
-  const isFeedbackEditor = weeklyPlannerState.activeCardIndex === WEEKLY_PLANNER_DAYS.length;
-  if (editor) {
-    editor.classList.toggle("is-feedback-mode", isFeedbackEditor);
-    editor.classList.toggle("is-day-mode", !isFeedbackEditor);
-  }
-
-  if (title) {
-    title.textContent = isFeedbackEditor
-      ? "Edit Weekly Feedback"
-      : `Edit ${WEEKLY_PLANNER_DAYS[weeklyPlannerState.activeCardIndex].label}`;
-  }
-  if (typeof editor?.showModal === "function") editor.showModal();
-  else editor?.setAttribute("open", "");
-  requestAnimationFrame(() => scrollWeeklyPlannerToCard(weeklyPlannerState.activeCardIndex, false));
-}
-
-async function closeWeeklyPlannerDayEditor(saveChanges) {
-  const editor = document.getElementById("weekly-planner-day-editor");
-  if (typeof editor?.close === "function" && editor.open) editor.close();
-  else editor?.removeAttribute("open");
-
-  editor?.classList.remove("is-feedback-mode", "is-day-mode");
-
-  if (saveChanges === true && weeklyPlannerState.canEdit) {
-    weeklyPlannerState.editorSnapshot = null;
-    await saveWeeklyPlannerAndPreview(null);
-  } else {
-    if (weeklyPlannerState.editorSnapshot) {
-      weeklyPlannerState.plannerData = weeklyPlannerState.editorSnapshot.plannerData;
-      weeklyPlannerState.feedback = weeklyPlannerState.editorSnapshot.feedback;
-      weeklyPlannerState.dirty = weeklyPlannerState.editorSnapshot.dirty;
-      const feedbackInput = document.getElementById("weekly-planner-feedback");
-      if (feedbackInput) feedbackInput.value = weeklyPlannerState.feedback;
-    }
-    weeklyPlannerState.editorSnapshot = null;
-    await generateWeeklyPlannerPreview();
-  }
+  setWeeklyPlannerPreviewSettingsOpen(false);
+  showScreen("weekly-planner-screen");
 }
 
 async function generateWeeklyPlannerPreview() {
@@ -1166,88 +1089,6 @@ async function shareWeeklyPlannerImage(button) {
   } finally {
     if (button) button.blur();
   }
-}
-
-async function saveWeeklyPlannerPreviewToDrive(button) {
-  const previewMessage = document.getElementById("weekly-planner-preview-message");
-  const originalLabel = getWeeklyPlannerButtonLabel(button, "Save");
-
-  try {
-    if (previewMessage) previewMessage.textContent = "";
-
-    if (!weeklyPlannerState.previewBlob || !weeklyPlannerState.previewDataUrl) {
-      await generateWeeklyPlannerPreview();
-    }
-
-    if (!weeklyPlannerState.previewBlob || !weeklyPlannerState.previewDataUrl) {
-      throw new Error("The planner preview is not ready to save.");
-    }
-
-    const fileName = getWeeklyPlannerImageFileName();
-    const confirmed = confirmWeeklyPlannerDriveSaveDestination(fileName);
-
-    if (!confirmed) {
-      if (previewMessage) previewMessage.textContent = "Save cancelled.";
-      return false;
-    }
-
-    setWeeklyPlannerHeaderActionState(button, "Saving...", true);
-
-    const result = await apiPost("/api/admin/weekly-planner/save-preview", {
-      fileName,
-      mimeType: "image/png",
-      dataUrl: weeklyPlannerState.previewDataUrl,
-      teacherName: String(weeklyPlannerState.teacher?.teacherName || state?.username || "Teacher").trim(),
-      saveDate: getWeeklyPlannerTodayDateString(),
-      weekStart: String(weeklyPlannerState.week?.weekStart || "")
-    }, state.token);
-
-    if (!result.success) {
-      throw new Error(result.error || result.detail || "Unable to save the planner preview to Google Drive.");
-    }
-
-    const savedName = result.fileName || fileName;
-    openWeeklyPlannerSaveDialog(
-      `Saved to ${result.destinationLabel || "Google Drive"}: ${savedName}`
-    );
-
-    if (previewMessage) previewMessage.textContent = "";
-    return true;
-  } catch (error) {
-    openWeeklyPlannerSaveDialog(error.message || "Unable to save the planner preview to Google Drive.");
-    return false;
-  } finally {
-    setWeeklyPlannerHeaderActionState(button, originalLabel, false);
-    if (button) button.blur();
-  }
-}
-
-function confirmWeeklyPlannerDriveSaveDestination(fileName) {
-  if (typeof window.confirm !== "function") return true;
-  return window.confirm([
-    "Submit this weekly planner to the configured Google Drive folder?",
-    "",
-    `Filename: ${fileName}`
-  ].join("\n"));
-}
-
-function setWeeklyPlannerHeaderActionState(button, label, disabled) {
-  if (!button) return;
-
-  button.disabled = disabled === true;
-  const labelElement = button.querySelector(".weekly-planner-header-action__label");
-
-  if (labelElement) {
-    labelElement.textContent = String(label || "Save");
-  }
-}
-
-function getWeeklyPlannerButtonLabel(button, fallback) {
-  return String(
-    button?.querySelector(".weekly-planner-header-action__label")?.textContent ||
-    fallback ||
-    "Save"
-  );
 }
 
 async function downloadWeeklyPlannerImage(button) {
@@ -1380,29 +1221,14 @@ function getWeeklyPlannerDataForSave(value) {
 }
 
 function getWeeklyPlannerImageFileName() {
-  const teacherName = String(weeklyPlannerState.teacher?.teacherName || state?.username || "Teacher").trim();
-  const safeTeacherName = sanitizeWeeklyPlannerFileNamePart(teacherName) || "Teacher";
-  return `${safeTeacherName}_${getWeeklyPlannerTodayDateString()}.png`;
-}
-
-function getWeeklyPlannerTodayDateString() {
   const now = new Date();
   const pad = value => String(value).padStart(2, "0");
-  return [
+  const timestamp = [
     now.getFullYear(),
     pad(now.getMonth() + 1),
     pad(now.getDate())
-  ].join("-");
-}
-
-function sanitizeWeeklyPlannerFileNamePart(value) {
-  return String(value || "")
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, " ")
-    .replace(/\s+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 80);
+  ].join("-") + `-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  return `M4L-weekly-planner-${timestamp}.png`;
 }
 
 function normalizeWeeklyPlannerPreviewStyle(value) {
@@ -1687,12 +1513,7 @@ function drawWeeklyPlannerFeedbackPanel(context, model, x, y, width, height, col
   context.font = "900 34px Arial, sans-serif";
   context.fillText("WEEKLY FEEDBACK", x + 28, y + 45);
 
-  const visibleFeedback = String(model.feedback || "").trim();
-  const previewFeedback = /^teacher or administrator feedback$/i.test(visibleFeedback)
-    ? ""
-    : visibleFeedback;
-
-  weeklyPlannerDrawTextBox(context, previewFeedback, x + 28, y + headingHeight + 18, width - 56, height - headingHeight - 52, {
+  weeklyPlannerDrawTextBox(context, model.feedback || "", x + 28, y + headingHeight + 18, width - 56, height - headingHeight - 52, {
     color: colors.ink,
     fontFamily: colors.inkFont,
     fontWeight: "700",
@@ -1924,8 +1745,6 @@ function weeklyPlannerEscapeAttribute(value) {
 window.showWeeklyPlanner = showWeeklyPlanner;
 window.saveWeeklyPlannerAndPreview = saveWeeklyPlannerAndPreview;
 window.returnToWeeklyPlanner = returnToWeeklyPlanner;
-window.openWeeklyPlannerDayEditor = openWeeklyPlannerDayEditor;
-window.closeWeeklyPlannerDayEditor = closeWeeklyPlannerDayEditor;
 window.shareWeeklyPlannerImage = shareWeeklyPlannerImage;
 window.downloadWeeklyPlannerImage = downloadWeeklyPlannerImage;
 window.closeWeeklyPlannerSaveDialog = closeWeeklyPlannerSaveDialog;

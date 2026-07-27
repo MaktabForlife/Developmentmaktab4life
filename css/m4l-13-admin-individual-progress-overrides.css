@@ -77,8 +77,8 @@
 #progress-report.admin-theme .admin-individual-progress-return-icon {
   display: block;
   background: currentColor;
-  -webkit-mask: url('/icons/xclose.svg?v=97.1.8.6') center / contain no-repeat;
-  mask: url('/icons/xclose.svg?v=97.1.8.6') center / contain no-repeat;
+  -webkit-mask: url('/icons/back.svg') center / contain no-repeat;
+  mask: url('/icons/back.svg?v=96.4') center / contain no-repeat;
 }
 
 #progress-report.admin-theme .admin-individual-progress-return-label {
@@ -674,55 +674,4 @@ top: calc(
     --admin-individual-progress-status-width: 50px;
     --admin-individual-progress-status-gutter: 12px;
   }
-}
-
-
-/* M4L v97.1.8.6 - Individual Progress header alignment and close control */
-#progress-report.admin-theme .admin-individual-progress-student-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr;
-  align-items: center;
-  justify-items: center;
-  min-height: 36px;
-}
-
-#progress-report.admin-theme .admin-individual-progress-student-name {
-  grid-column: 1;
-  width: 100%;
-  margin: 0;
-  padding: 0 44px;
-  text-align: center;
-}
-
-#progress-report.admin-theme .admin-individual-progress-return-btn {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  min-height: 34px;
-  margin: 0;
-  padding: 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  z-index: 2;
-}
-
-#progress-report.admin-theme .admin-individual-progress-return-icon {
-  width: 24px;
-  height: 24px;
-  display: block;
-  background: currentColor;
-  -webkit-mask: url('/icons/xclose.svg?v=97.1.8.6') center / contain no-repeat;
-  mask: url('/icons/xclose.svg?v=97.1.8.6') center / contain no-repeat;
-}
-
-#progress-report.admin-theme .admin-individual-progress-return-label {
-  display: none;
 }
