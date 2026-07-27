@@ -42,11 +42,6 @@ const FEATURE_DEFINITIONS = Object.freeze({
     BACKEND_GOOGLE_SHEETS,
     [BACKEND_GOOGLE_SHEETS]
   ),
-  "weekly-planner-drive": defineFeature(
-    "M4L_BACKEND_WEEKLY_PLANNER_DRIVE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
-  ),
   routing: defineFeature("", BACKEND_WORKER, [BACKEND_WORKER])
 });
 

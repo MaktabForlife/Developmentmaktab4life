@@ -367,10 +367,6 @@ function handleProgressUiClick(event) {
       );
       break;
   
-    case "close-student-progress-view":
-      showScreen("student-home");
-      break;
-
     case "toggle-student-progress-module-edit":  
       toggleStudentProgressModuleEdit(actionEl);  
       break;  
@@ -1689,15 +1685,6 @@ function renderStudentProgressGlobalActions(modules, activeModuleKey) {
 
   return `
     <div class="student-progress-global-actions student-progress-global-swipe" data-progress-global-actions data-student-progress-global-swipe>
-      <button
-        type="button"
-        class="student-progress-close-btn"
-        data-progress-action="close-student-progress-view"
-        aria-label="Return to Home"
-        title="Return to Home"
-      >
-        <span class="student-progress-close-icon" aria-hidden="true"></span>
-      </button>
       <div class="student-progress-top-control-row student-progress-stepper-row">
         ${renderStudentProgressStepperArrow(-1, !hasMultipleModules || activeIndex <= 0)}
         <div class="student-progress-top-control-dots student-progress-stepper-number-strip" data-progress-number-nav>
@@ -4047,6 +4034,7 @@ function renderAdminIndividualProgressGlobalPane(studentName, modules, activeInd
   return `
     <section class="admin-individual-progress-global-pane" aria-label="${escapeForAttribute(safeStudentName)} Individual Progress controls">
       <div class="admin-individual-progress-student-row">
+        <h3 class="admin-individual-progress-student-name">${escapeHtml(safeStudentName)}</h3>
         <button
           type="button"
           class="admin-individual-progress-return-btn"
@@ -4055,8 +4043,8 @@ function renderAdminIndividualProgressGlobalPane(studentName, modules, activeInd
           title="Close"
         >
           <span class="admin-individual-progress-return-icon" aria-hidden="true"></span>
+          <span class="admin-individual-progress-return-label">Close</span>
         </button>
-        <h3 class="admin-individual-progress-student-name">${escapeHtml(safeStudentName)}</h3>
       </div>
       <div class="admin-individual-progress-swipe-dots-row">
         ${renderAdminIndividualProgressSwipeDots(list, safeIndex)}
@@ -4243,15 +4231,7 @@ function updateAdminIndividualProgressSwipeDots(index = adminIndividualProgressA
     panel.classList.toggle("is-far", Math.abs(panelIndex - safeIndex) > 1);
   });
 
-  const track = getAdminIndividualProgressTrack();
-  if (track) {
-    track.dataset.progressActiveIndex = String(safeIndex);
-  }
-
-  const shell = document.querySelector("#admin-progress-dashboard [data-admin-individual-progress-shell]");
-  const dotRoot = shell || document.getElementById("admin-progress-dashboard") || document;
-  dotRoot.querySelectorAll(".admin-individual-progress-swipe-dot[data-progress-panel-index]").forEach(button => {
-    const buttonIndex = Number(button.dataset.progressPanelIndex || 0);
+  document.querySelectorAll("#admin-progress-dashboard .admin-individual-progress-swipe-dot").forEach((button, buttonIndex) => {
     const isActive = buttonIndex === safeIndex;
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-current", isActive ? "true" : "false");

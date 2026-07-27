@@ -3,7 +3,6 @@ import {
   readGoogleSheetValues,
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
-import { callAppsScript } from "../lib/apps-script.js";
 import { getAuthUser } from "../lib/auth.js";
 import { json } from "../lib/http.js";
 
@@ -366,49 +365,6 @@ export async function weeklyPlannerTeacherWeekRecordsEndpoint(request, env) {
     teacher,
     weekRecords
   });
-}
-
-export async function saveWeeklyPlannerPreviewToDriveEndpoint(request, env) {
-  const auth = await requireWeeklyPlannerAdmin(request, env);
-
-  if (!auth.ok) {
-    return auth.response;
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const fileName = String(body.fileName || "").trim();
-  const dataUrl = String(body.dataUrl || "").trim();
-  const mimeType = String(body.mimeType || "image/png").trim() || "image/png";
-  const teacherName = String(body.teacherName || auth.user.username || "Teacher").trim();
-  const saveDate = String(body.saveDate || "").trim();
-
-  if (!fileName) {
-    return json({ success: false, error: "Missing fileName" }, 400);
-  }
-
-  if (!dataUrl) {
-    return json({ success: false, error: "Missing preview image data" }, 400);
-  }
-
-  if (mimeType !== "image/png") {
-    return json({ success: false, error: "Only PNG planner previews are supported" }, 400);
-  }
-
-  const result = await callAppsScript(env, {
-    action: "saveWeeklyPlannerPreviewToDrive",
-    data: {
-      fileName,
-      dataUrl,
-      mimeType,
-      teacherName,
-      saveDate,
-      weekStart: String(body.weekStart || "").trim(),
-      requestedBy: String(auth.user.username || "").trim(),
-      requestedByAdminId: String(auth.user.adminid || "").trim()
-    }
-  });
-
-  return json(result);
 }
 
 export async function saveWeeklyPlannerEndpoint(request, env) {
