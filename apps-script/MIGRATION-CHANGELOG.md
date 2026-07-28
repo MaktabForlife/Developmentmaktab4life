@@ -1,5 +1,5 @@
 # Apps Script to Google Sheets Migration Ledger
-
+hook
 Last verified: 2026-07-28  
 Production milestone: V97.1.3  
 Development milestone: V98.1
