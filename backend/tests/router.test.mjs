@@ -14,6 +14,11 @@ const expectedPaths = [
   "/api/admin/weekly-planner/teachers",
   "/api/admin/weekly-planner/get",
   "/api/admin/weekly-planner/save",
+  "/api/admin/weekly-planner/save-preview",
+  "/api/admin/weekly-planner/archive-overview",
+  "/api/admin/weekly-planner/week-records",
+  "/api/admin/weekly-planner/teacher-history",
+  "/api/admin/weekly-planner/teacher-week-records",
   "/api/admin/backend-routing",
   "/api/admin/check-admin",
   "/api/admin/setup-pin",
@@ -139,6 +144,24 @@ const routingUnauthorized = await worker.fetch(new Request(
 assert.equal(routingUnauthorized.status, 401);
 assert.equal(routingUnauthorized.headers.get("X-M4L-Feature"), "routing");
 assert.equal(routingUnauthorized.headers.get("X-M4L-Backend"), "worker");
+
+const timetableWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/timetable/update-zoom",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ zoomlink: "https://zoom.test/direct" })
+  }
+), {
+  M4L_BACKEND_TIMETABLE_WRITE: "google-sheets"
+});
+assert.equal(timetableWriteUnauthorized.status, 401);
+assert.equal(timetableWriteUnauthorized.headers.get("X-M4L-Feature"), "timetable-write");
+assert.equal(timetableWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  timetableWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_TIMETABLE_WRITE"
+);
 
 console.log("Worker router tests passed.");
 

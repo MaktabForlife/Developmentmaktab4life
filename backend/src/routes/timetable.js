@@ -1,6 +1,9 @@
 import { callAppsScript } from "../lib/apps-script.js";
 import { getAuthUser, requireAdminOrSenior } from "../lib/auth.js";
-import { readGoogleSheetValues } from "../lib/google-sheets.js";
+import {
+  readGoogleSheetValues,
+  updateGoogleSheetValues
+} from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 
 const TIMETABLE_SHEET_NAME = "TimeTable";
@@ -162,6 +165,58 @@ export async function updateTimetableZoomLinkEndpoint(request, env) {
   return json(result);
 }
 
+export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) {
+  const auth = await requireAdminOrSenior(request, env);
+
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json();
+  const zoomlink = clean(body.zoomlink || body.zoomLink || body.link || "");
+  let rows;
+
+  try {
+    rows = await readGoogleSheetValues(env, TIMETABLE_SHEET_RANGE);
+  } catch (error) {
+    if (!isMissingTimetableSheetError(error)) {
+      throw error;
+    }
+
+    return json(missingTimetableSheetResponse());
+  }
+
+  const headers = Array.isArray(rows[0]) ? rows[0].slice() : [];
+  const headerMap = buildHeaderMap(headers);
+  let zoomLinkColumn = findColumn(
+    headerMap,
+    ["ZoomLink", "Zoom Link", "ClassLink", "MeetingLink"]
+  );
+
+  if (zoomLinkColumn < 0) {
+    zoomLinkColumn = headers.length;
+    const headerRange = `${TIMETABLE_SHEET_NAME}!${columnName(zoomLinkColumn)}1`;
+    await updateGoogleSheetValues(env, headerRange, [["ZoomLink"]]);
+    headers[zoomLinkColumn] = "ZoomLink";
+  }
+
+  const zoomLinkRange = `${TIMETABLE_SHEET_NAME}!${columnName(zoomLinkColumn)}2`;
+  await updateGoogleSheetValues(env, zoomLinkRange, [[zoomlink]]);
+
+  const updatedRows = rows.map(row => Array.isArray(row) ? row.slice() : []);
+  updatedRows[0] = headers;
+  updatedRows[1] = updatedRows[1] || [];
+  updatedRows[1][zoomLinkColumn] = zoomlink;
+
+  const timetable = buildTimetableResponse(updatedRows, {
+    groupNo: "ALL",
+    assignedTeacher: "ALL"
+  });
+  timetable.message = "Zoom link saved";
+
+  return json(timetable);
+}
+
 async function getTimetableRequestContext(request, env) {
   const authUser = await getAuthUser(request, env);
 
@@ -263,4 +318,17 @@ function isMissingTimetableSheetError(error) {
   return message.includes("Google Sheets API error 400:") &&
     message.includes("Unable to parse range") &&
     message.toLowerCase().includes(TIMETABLE_SHEET_NAME.toLowerCase());
+}
+
+function columnName(columnIndex) {
+  let value = Number(columnIndex) + 1;
+  let result = "";
+
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    result = String.fromCharCode(65 + remainder) + result;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return result;
 }
