@@ -22,6 +22,23 @@ assert.deepEqual(
   defaults.features["attendance-write"].availableBackends,
   [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
+assert.equal(defaults.features["curriculum-read"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["curriculum-read"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
+assert.equal(defaults.features["curriculum-write"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(defaults.features["curriculum-write"].availableBackends, [BACKEND_APPS_SCRIPT]);
+assert.equal(defaults.features["curriculum-resources-read"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["curriculum-resources-read"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
+assert.equal(defaults.features["curriculum-resources-write"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["curriculum-resources-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT]
+);
 assert.equal(defaults.features.progress.backend, BACKEND_APPS_SCRIPT);
 assert.equal(defaults.features.resources.backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
@@ -85,9 +102,28 @@ assert.equal(attendanceWriteMigration.valid, true);
 assert.equal(attendanceWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
 assert.equal(attendanceWriteMigration.source, "M4L_BACKEND_ATTENDANCE_WRITE");
 
+const curriculumReadMigration = getBackendSelection(
+  { M4L_BACKEND_CURRICULUM_READ: "direct" },
+  "curriculum-read"
+);
+assert.equal(curriculumReadMigration.valid, true);
+assert.equal(curriculumReadMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(curriculumReadMigration.source, "M4L_BACKEND_CURRICULUM_READ");
+
+const curriculumResourcesReadMigration = getBackendSelection(
+  { M4L_BACKEND_CURRICULUM_RESOURCES_READ: "direct" },
+  "curriculum-resources-read"
+);
+assert.equal(curriculumResourcesReadMigration.valid, true);
+assert.equal(curriculumResourcesReadMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(
+  curriculumResourcesReadMigration.source,
+  "M4L_BACKEND_CURRICULUM_RESOURCES_READ"
+);
+
 const prematureMigration = getBackendSelection(
-  { M4L_BACKEND_CURRICULUM: "direct" },
-  "curriculum"
+  { M4L_BACKEND_CURRICULUM_WRITE: "direct" },
+  "curriculum-write"
 );
 assert.equal(prematureMigration.valid, false);
 assert.equal(prematureMigration.backend, BACKEND_GOOGLE_SHEETS);
@@ -114,6 +150,19 @@ assert.equal(
 );
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_ATTENDANCE_WRITE,
+  "google-sheets"
+);
+assert.equal(wranglerConfig.vars.M4L_BACKEND_CURRICULUM_READ, "google-sheets");
+assert.equal(
+  wranglerConfig.vars.M4L_BACKEND_CURRICULUM_RESOURCES_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_CURRICULUM_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_CURRICULUM_RESOURCES_READ,
   "google-sheets"
 );
 

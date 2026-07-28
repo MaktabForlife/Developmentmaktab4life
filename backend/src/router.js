@@ -60,6 +60,11 @@ import {
   getResourcesAppsScriptEndpoint,
   getResourcesGoogleSheetsEndpoint
 } from "./routes/resources.js";
+import {
+  listSubjectResourcesGoogleSheetsEndpoint,
+  listSubjectsGoogleSheetsEndpoint,
+  listTasksGoogleSheetsEndpoint
+} from "./routes/curriculum.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -112,17 +117,17 @@ const ROUTES = new Map([
   ["/api/admin/student/search", appsScriptRoute("student-management", searchStudentsAdmin)],
   ["/api/admin/students/assignment-options", appsScriptRoute("task-assignment", getStudentAssignmentOptionsAdmin)],
 
-  ["/api/admin/subjects/create", appsScriptRoute("curriculum", createSubjectAdmin)],
-  ["/api/admin/subjects/list", appsScriptRoute("curriculum", listSubjectsAdmin)],
-  ["/api/admin/subjects/update", appsScriptRoute("curriculum", updateSubjectAdmin)],
+  ["/api/admin/subjects/create", appsScriptRoute("curriculum-write", createSubjectAdmin)],
+  ["/api/admin/subjects/list", curriculumReadRoute(listSubjectsAdmin, listSubjectsGoogleSheetsEndpoint)],
+  ["/api/admin/subjects/update", appsScriptRoute("curriculum-write", updateSubjectAdmin)],
 
-  ["/api/admin/subject-resources/create", appsScriptRoute("curriculum-resources", createSubjectResourceAdmin)],
-  ["/api/admin/subject-resources/list", appsScriptRoute("curriculum-resources", listSubjectResourcesAdmin)],
-  ["/api/admin/subject-resources/update", appsScriptRoute("curriculum-resources", updateSubjectResourceAdmin)],
+  ["/api/admin/subject-resources/create", appsScriptRoute("curriculum-resources-write", createSubjectResourceAdmin)],
+  ["/api/admin/subject-resources/list", curriculumResourcesReadRoute()],
+  ["/api/admin/subject-resources/update", appsScriptRoute("curriculum-resources-write", updateSubjectResourceAdmin)],
 
-  ["/api/admin/tasks/create", appsScriptRoute("curriculum", createTaskAdmin)],
-  ["/api/admin/tasks/list", appsScriptRoute("curriculum", listTasksAdmin)],
-  ["/api/admin/tasks/update", appsScriptRoute("curriculum", updateTaskAdmin)],
+  ["/api/admin/tasks/create", appsScriptRoute("curriculum-write", createTaskAdmin)],
+  ["/api/admin/tasks/list", curriculumReadRoute(listTasksAdmin, listTasksGoogleSheetsEndpoint)],
+  ["/api/admin/tasks/update", appsScriptRoute("curriculum-write", updateTaskAdmin)],
   ["/api/admin/tasks/assign", appsScriptRoute("task-assignment", assignTasksAdmin)],
   ["/api/admin/tasks/verify", appsScriptRoute("progress", verifyStudentTask)],
 
@@ -226,6 +231,20 @@ function attendanceWriteRoute() {
   return backendRoute("attendance-write", {
     [BACKEND_APPS_SCRIPT]: submitAbsentAttendance,
     [BACKEND_GOOGLE_SHEETS]: submitAbsentAttendanceGoogleSheetsEndpoint
+  });
+}
+
+function curriculumReadRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("curriculum-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function curriculumResourcesReadRoute() {
+  return backendRoute("curriculum-resources-read", {
+    [BACKEND_APPS_SCRIPT]: listSubjectResourcesAdmin,
+    [BACKEND_GOOGLE_SHEETS]: listSubjectResourcesGoogleSheetsEndpoint
   });
 }
 

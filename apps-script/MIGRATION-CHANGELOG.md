@@ -2,9 +2,9 @@
 
 Last updated: 2026-07-28
 
-Production milestone before V98.2: V98.1
+Latest development-verified milestone before V98.3: V98.2
 
-Development milestone: V98.2
+Development milestone: V98.3
 
 The live Google Apps Script project is the source of truth for `code.gs`. The
 repository copy is a reference snapshot only. Direct API migrations do not
@@ -41,9 +41,9 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.2 target
+## Current ownership and V98.3 target
 
-| Area | Operation / Apps Script action | V98.2 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.3 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -55,7 +55,10 @@ Cloudflare dashboard variable changes are required at merge time.
 | Authentication | lookup, login, PIN setup and reset | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Progress | task reads, status updates, verification and reports | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Student management | duplicate check, register, update, search and assignment options | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Curriculum | subject, task and curriculum-resource management | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | ACTIVE ROLLBACK |
+| Curriculum | subject and task create/update | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | ACTIVE ROLLBACK |
+| Curriculum resources | create/update | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Task assignment | assignment and population actions | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
@@ -114,6 +117,31 @@ Cloudflare dashboard variable changes are required at merge time.
   the South Africa timestamp, admin ID, absence rows and the mandatory
   `SYSTEM1` day-counter row.
 
+### Curriculum read
+
+- Worker implementation: `backend/src/routes/curriculum.js`
+- Router feature: `curriculum-read`
+- Routes:
+  - `/api/admin/subjects/list`
+  - `/api/admin/tasks/list`
+- Routing variable: `M4L_BACKEND_CURRICULUM_READ=google-sheets`
+- Active rollback actions:
+  - `listSubjects`
+  - `listTasks`
+- Subject and task create/update routes remain on the separate
+  `curriculum-write` Apps Script feature.
+
+### Curriculum-resource read
+
+- Worker implementation: `backend/src/routes/curriculum.js`
+- Router feature: `curriculum-resources-read`
+- Route: `/api/admin/subject-resources/list`
+- Routing variable:
+  `M4L_BACKEND_CURRICULUM_RESOURCES_READ=google-sheets`
+- Active rollback action: `listSubjectResources`
+- Curriculum-resource create/update routes remain on the separate
+  `curriculum-resources-write` Apps Script feature.
+
 ### Weekly Planner
 
 - Worker implementation: `backend/src/routes/weekly-planner.js`
@@ -123,6 +151,21 @@ Cloudflare dashboard variable changes are required at merge time.
 - No Planner record action was migrated from Apps Script.
 
 ## Change history
+
+### 2026-07-28 — V98.3
+
+- Added direct Google Sheets list handlers for Subjects, Tasks and Subject
+  Resources.
+- Split curriculum and curriculum-resource routing into independent read and
+  write features.
+- Kept all curriculum create/update operations on Apps Script.
+- Added `M4L_BACKEND_CURRICULUM_READ=google-sheets` and
+  `M4L_BACKEND_CURRICULUM_RESOURCES_READ=google-sheets` to both top-level
+  production variables and the development environment.
+- Retained `listSubjects`, `listTasks` and `listSubjectResources` in the live
+  Apps Script project as rollback paths.
+- Added automated tests for transformation parity, filtering, authorization,
+  missing sheets, routing headers, Apps Script fallback and write isolation.
 
 ### 2026-07-28 — V98.2
 

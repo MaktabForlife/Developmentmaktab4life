@@ -191,6 +191,37 @@ assert.equal(attendanceWriteUnauthorized.status, 401);
 assert.equal(attendanceWriteUnauthorized.headers.get("X-M4L-Feature"), "attendance-write");
 assert.equal(attendanceWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 
+const curriculumReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subjects/list",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  }
+), {
+  M4L_BACKEND_CURRICULUM_READ: "google-sheets"
+});
+assert.equal(curriculumReadUnauthorized.status, 401);
+assert.equal(curriculumReadUnauthorized.headers.get("X-M4L-Feature"), "curriculum-read");
+assert.equal(curriculumReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const curriculumResourcesReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subject-resources/list",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  }
+), {
+  M4L_BACKEND_CURRICULUM_RESOURCES_READ: "google-sheets"
+});
+assert.equal(curriculumResourcesReadUnauthorized.status, 401);
+assert.equal(
+  curriculumResourcesReadUnauthorized.headers.get("X-M4L-Feature"),
+  "curriculum-resources-read"
+);
+assert.equal(curriculumResourcesReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
 console.log("Worker router tests passed.");
 
 function response(data, status = 200) {
