@@ -205,6 +205,24 @@ assert.equal(curriculumReadUnauthorized.status, 401);
 assert.equal(curriculumReadUnauthorized.headers.get("X-M4L-Feature"), "curriculum-read");
 assert.equal(curriculumReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 
+const curriculumWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subjects/create",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subjectName: "Unauthorized Subject" })
+  }
+), {
+  M4L_BACKEND_CURRICULUM_WRITE: "google-sheets"
+});
+assert.equal(curriculumWriteUnauthorized.status, 401);
+assert.equal(curriculumWriteUnauthorized.headers.get("X-M4L-Feature"), "curriculum-write");
+assert.equal(curriculumWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  curriculumWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_CURRICULUM_WRITE"
+);
+
 const curriculumResourcesReadUnauthorized = await worker.fetch(new Request(
   "https://worker.test/api/admin/subject-resources/list",
   {
@@ -221,6 +239,31 @@ assert.equal(
   "curriculum-resources-read"
 );
 assert.equal(curriculumResourcesReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const curriculumResourcesWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subject-resources/create",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subjectid: "SUB1",
+      resourceName: "Unauthorized Resource",
+      resourceType: "PDF",
+      resourceLink: "https://example.test/unauthorized"
+    })
+  }
+), {
+  M4L_BACKEND_CURRICULUM_RESOURCES_WRITE: "google-sheets"
+});
+assert.equal(curriculumResourcesWriteUnauthorized.status, 401);
+assert.equal(
+  curriculumResourcesWriteUnauthorized.headers.get("X-M4L-Feature"),
+  "curriculum-resources-write"
+);
+assert.equal(
+  curriculumResourcesWriteUnauthorized.headers.get("X-M4L-Backend"),
+  "google-sheets"
+);
 
 console.log("Worker router tests passed.");
 

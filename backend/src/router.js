@@ -61,9 +61,15 @@ import {
   getResourcesGoogleSheetsEndpoint
 } from "./routes/resources.js";
 import {
+  createSubjectGoogleSheetsEndpoint,
+  createSubjectResourceGoogleSheetsEndpoint,
+  createTaskGoogleSheetsEndpoint,
   listSubjectResourcesGoogleSheetsEndpoint,
   listSubjectsGoogleSheetsEndpoint,
-  listTasksGoogleSheetsEndpoint
+  listTasksGoogleSheetsEndpoint,
+  updateSubjectGoogleSheetsEndpoint,
+  updateSubjectResourceGoogleSheetsEndpoint,
+  updateTaskGoogleSheetsEndpoint
 } from "./routes/curriculum.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
@@ -117,17 +123,35 @@ const ROUTES = new Map([
   ["/api/admin/student/search", appsScriptRoute("student-management", searchStudentsAdmin)],
   ["/api/admin/students/assignment-options", appsScriptRoute("task-assignment", getStudentAssignmentOptionsAdmin)],
 
-  ["/api/admin/subjects/create", appsScriptRoute("curriculum-write", createSubjectAdmin)],
+  ["/api/admin/subjects/create", curriculumWriteRoute(
+    createSubjectAdmin,
+    createSubjectGoogleSheetsEndpoint
+  )],
   ["/api/admin/subjects/list", curriculumReadRoute(listSubjectsAdmin, listSubjectsGoogleSheetsEndpoint)],
-  ["/api/admin/subjects/update", appsScriptRoute("curriculum-write", updateSubjectAdmin)],
+  ["/api/admin/subjects/update", curriculumWriteRoute(
+    updateSubjectAdmin,
+    updateSubjectGoogleSheetsEndpoint
+  )],
 
-  ["/api/admin/subject-resources/create", appsScriptRoute("curriculum-resources-write", createSubjectResourceAdmin)],
+  ["/api/admin/subject-resources/create", curriculumResourcesWriteRoute(
+    createSubjectResourceAdmin,
+    createSubjectResourceGoogleSheetsEndpoint
+  )],
   ["/api/admin/subject-resources/list", curriculumResourcesReadRoute()],
-  ["/api/admin/subject-resources/update", appsScriptRoute("curriculum-resources-write", updateSubjectResourceAdmin)],
+  ["/api/admin/subject-resources/update", curriculumResourcesWriteRoute(
+    updateSubjectResourceAdmin,
+    updateSubjectResourceGoogleSheetsEndpoint
+  )],
 
-  ["/api/admin/tasks/create", appsScriptRoute("curriculum-write", createTaskAdmin)],
+  ["/api/admin/tasks/create", curriculumWriteRoute(
+    createTaskAdmin,
+    createTaskGoogleSheetsEndpoint
+  )],
   ["/api/admin/tasks/list", curriculumReadRoute(listTasksAdmin, listTasksGoogleSheetsEndpoint)],
-  ["/api/admin/tasks/update", appsScriptRoute("curriculum-write", updateTaskAdmin)],
+  ["/api/admin/tasks/update", curriculumWriteRoute(
+    updateTaskAdmin,
+    updateTaskGoogleSheetsEndpoint
+  )],
   ["/api/admin/tasks/assign", appsScriptRoute("task-assignment", assignTasksAdmin)],
   ["/api/admin/tasks/verify", appsScriptRoute("progress", verifyStudentTask)],
 
@@ -241,10 +265,24 @@ function curriculumReadRoute(appsScriptHandler, googleSheetsHandler) {
   });
 }
 
+function curriculumWriteRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("curriculum-write", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
 function curriculumResourcesReadRoute() {
   return backendRoute("curriculum-resources-read", {
     [BACKEND_APPS_SCRIPT]: listSubjectResourcesAdmin,
     [BACKEND_GOOGLE_SHEETS]: listSubjectResourcesGoogleSheetsEndpoint
+  });
+}
+
+function curriculumResourcesWriteRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("curriculum-resources-write", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
   });
 }
 

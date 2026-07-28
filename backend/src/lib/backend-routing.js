@@ -42,7 +42,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "curriculum-write": defineFeature(
     "M4L_BACKEND_CURRICULUM_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
   "curriculum-resources-read": defineFeature(
     "M4L_BACKEND_CURRICULUM_RESOURCES_READ",
@@ -52,7 +52,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "curriculum-resources-write": defineFeature(
     "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
   "task-assignment": defineFeature(
     "M4L_BACKEND_TASK_ASSIGNMENT",

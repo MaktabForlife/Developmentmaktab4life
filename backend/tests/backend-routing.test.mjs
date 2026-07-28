@@ -28,7 +28,10 @@ assert.deepEqual(
   [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
 assert.equal(defaults.features["curriculum-write"].backend, BACKEND_APPS_SCRIPT);
-assert.deepEqual(defaults.features["curriculum-write"].availableBackends, [BACKEND_APPS_SCRIPT]);
+assert.deepEqual(
+  defaults.features["curriculum-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
 assert.equal(defaults.features["curriculum-resources-read"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features["curriculum-resources-read"].availableBackends,
@@ -37,7 +40,7 @@ assert.deepEqual(
 assert.equal(defaults.features["curriculum-resources-write"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features["curriculum-resources-write"].availableBackends,
-  [BACKEND_APPS_SCRIPT]
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
 assert.equal(defaults.features.progress.backend, BACKEND_APPS_SCRIPT);
 assert.equal(defaults.features.resources.backend, BACKEND_APPS_SCRIPT);
@@ -121,13 +124,24 @@ assert.equal(
   "M4L_BACKEND_CURRICULUM_RESOURCES_READ"
 );
 
-const prematureMigration = getBackendSelection(
+const curriculumWriteMigration = getBackendSelection(
   { M4L_BACKEND_CURRICULUM_WRITE: "direct" },
   "curriculum-write"
 );
-assert.equal(prematureMigration.valid, false);
-assert.equal(prematureMigration.backend, BACKEND_GOOGLE_SHEETS);
-assert.match(prematureMigration.error, /not enabled/);
+assert.equal(curriculumWriteMigration.valid, true);
+assert.equal(curriculumWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(curriculumWriteMigration.source, "M4L_BACKEND_CURRICULUM_WRITE");
+
+const curriculumResourcesWriteMigration = getBackendSelection(
+  { M4L_BACKEND_CURRICULUM_RESOURCES_WRITE: "direct" },
+  "curriculum-resources-write"
+);
+assert.equal(curriculumResourcesWriteMigration.valid, true);
+assert.equal(curriculumResourcesWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(
+  curriculumResourcesWriteMigration.source,
+  "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE"
+);
 
 const invalid = getBackendSelection({ M4L_BACKEND_PROGRESS: "somewhere-else" }, "progress");
 assert.equal(invalid.valid, false);
@@ -153,8 +167,13 @@ assert.equal(
   "google-sheets"
 );
 assert.equal(wranglerConfig.vars.M4L_BACKEND_CURRICULUM_READ, "google-sheets");
+assert.equal(wranglerConfig.vars.M4L_BACKEND_CURRICULUM_WRITE, "google-sheets");
 assert.equal(
   wranglerConfig.vars.M4L_BACKEND_CURRICULUM_RESOURCES_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.vars.M4L_BACKEND_CURRICULUM_RESOURCES_WRITE,
   "google-sheets"
 );
 assert.equal(
@@ -162,7 +181,15 @@ assert.equal(
   "google-sheets"
 );
 assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_CURRICULUM_WRITE,
+  "google-sheets"
+);
+assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_CURRICULUM_RESOURCES_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_CURRICULUM_RESOURCES_WRITE,
   "google-sheets"
 );
 

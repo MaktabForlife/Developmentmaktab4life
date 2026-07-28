@@ -12,7 +12,9 @@
     "M4L_BACKEND_ATTENDANCE_READ": "google-sheets",
     "M4L_BACKEND_ATTENDANCE_WRITE": "google-sheets",
     "M4L_BACKEND_CURRICULUM_READ": "google-sheets",
-    "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets"
+    "M4L_BACKEND_CURRICULUM_WRITE": "google-sheets",
+    "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets",
+    "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets"
   },
   "r2_buckets": [
     {
@@ -32,7 +34,9 @@
         "M4L_BACKEND_ATTENDANCE_READ": "google-sheets",
         "M4L_BACKEND_ATTENDANCE_WRITE": "google-sheets",
         "M4L_BACKEND_CURRICULUM_READ": "google-sheets",
-        "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets"
+        "M4L_BACKEND_CURRICULUM_WRITE": "google-sheets",
+        "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets",
+        "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets"
       },
       "r2_buckets": [
         {

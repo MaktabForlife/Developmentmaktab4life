@@ -2,9 +2,9 @@
 
 Last updated: 2026-07-28
 
-Latest development-verified milestone before V98.3: V98.2
+Latest development-verified milestone before V98.4: V98.2
 
-Development milestone: V98.3
+Development milestone: V98.4
 
 The live Google Apps Script project is the source of truth for `code.gs`. The
 repository copy is a reference snapshot only. Direct API migrations do not
@@ -41,7 +41,7 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.3 target
+## Current ownership and V98.4 target
 
 | Area | Operation / Apps Script action | V98.3 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
@@ -56,9 +56,9 @@ Cloudflare dashboard variable changes are required at merge time.
 | Progress | task reads, status updates, verification and reports | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Student management | duplicate check, register, update, search and assignment options | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Curriculum | subject and task create/update | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Curriculum | subject and task create/update | DIRECT | DIRECT | ACTIVE ROLLBACK |
 | Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Curriculum resources | create/update | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Curriculum resources | create/update | DIRECT | DIRECT | ACTIVE ROLLBACK |
 | Task assignment | assignment and population actions | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
@@ -128,8 +128,27 @@ Cloudflare dashboard variable changes are required at merge time.
 - Active rollback actions:
   - `listSubjects`
   - `listTasks`
-- Subject and task create/update routes remain on the separate
-  `curriculum-write` Apps Script feature.
+- Subject and task create/update routes use the separate `curriculum-write`
+  feature documented below.
+
+### Curriculum write
+
+- Worker implementation: `backend/src/routes/curriculum.js`
+- Router feature: `curriculum-write`
+- Routes:
+  - `/api/admin/subjects/create`
+  - `/api/admin/subjects/update`
+  - `/api/admin/tasks/create`
+  - `/api/admin/tasks/update`
+- Routing variable: `M4L_BACKEND_CURRICULUM_WRITE=google-sheets`
+- Active rollback actions:
+  - `createSubject`
+  - `updateSubject`
+  - `createTask`
+  - `updateTask`
+- V98.4 preserves the `SystemConfig` counters and the existing `SUBJ` and
+  `TASK` identifiers, duplicate-name checks, positional row schemas and Apps
+  Script response contracts.
 
 ### Curriculum-resource read
 
@@ -139,8 +158,23 @@ Cloudflare dashboard variable changes are required at merge time.
 - Routing variable:
   `M4L_BACKEND_CURRICULUM_RESOURCES_READ=google-sheets`
 - Active rollback action: `listSubjectResources`
-- Curriculum-resource create/update routes remain on the separate
-  `curriculum-resources-write` Apps Script feature.
+- Curriculum-resource create/update routes use the separate
+  `curriculum-resources-write` feature documented below.
+
+### Curriculum-resource write
+
+- Worker implementation: `backend/src/routes/curriculum.js`
+- Router feature: `curriculum-resources-write`
+- Routes:
+  - `/api/admin/subject-resources/create`
+  - `/api/admin/subject-resources/update`
+- Routing variable:
+  `M4L_BACKEND_CURRICULUM_RESOURCES_WRITE=google-sheets`
+- Active rollback actions:
+  - `createSubjectResource`
+  - `updateSubjectResource`
+- V98.4 preserves the `NextResourceNumber` counter, `RES` identifiers,
+  allowed resource types and the existing `SubjectResources` row schema.
 
 ### Weekly Planner
 
@@ -151,6 +185,24 @@ Cloudflare dashboard variable changes are required at merge time.
 - No Planner record action was migrated from Apps Script.
 
 ## Change history
+
+### 2026-07-28 — V98.4
+
+- Added direct Google Sheets create/update handlers for Subjects, Tasks and
+  Subject Resources.
+- Enabled both Apps Script and Google Sheets handlers for `curriculum-write`
+  and `curriculum-resources-write`.
+- Added `M4L_BACKEND_CURRICULUM_WRITE=google-sheets` and
+  `M4L_BACKEND_CURRICULUM_RESOURCES_WRITE=google-sheets` to both top-level
+  production variables and the development environment.
+- Retained all six live Apps Script write actions as rollback paths.
+- Preserved the existing `SystemConfig` counters, ID prefixes, validation,
+  duplicate detection, row order and response shapes.
+- Writes that update several fields are validated first and committed as one
+  complete row update, avoiding a partially updated row when validation fails.
+- Added automated tests for authorization, direct creates and updates, counter
+  increments, appends, duplicate prevention, routing headers, validation and
+  Apps Script fallback.
 
 ### 2026-07-28 — V98.3
 
