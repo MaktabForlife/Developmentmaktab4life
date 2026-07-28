@@ -23,7 +23,10 @@ assert.deepEqual(
   [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
 assert.equal(defaults.features["timetable-write"].backend, BACKEND_APPS_SCRIPT);
-assert.deepEqual(defaults.features["timetable-write"].availableBackends, [BACKEND_APPS_SCRIPT]);
+assert.deepEqual(
+  defaults.features["timetable-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
 assert.equal(defaults.features["weekly-planner"].backend, BACKEND_GOOGLE_SHEETS);
 assert.deepEqual(defaults.features["weekly-planner"].availableBackends, [BACKEND_GOOGLE_SHEETS]);
 assert.equal(defaults.routingLogsEnabled, false);
@@ -47,12 +50,13 @@ const timetableReadMigration = getBackendSelection(
 assert.equal(timetableReadMigration.valid, true);
 assert.equal(timetableReadMigration.backend, BACKEND_GOOGLE_SHEETS);
 
-const blockedTimetableWriteMigration = getBackendSelection(
+const timetableWriteMigration = getBackendSelection(
   { M4L_BACKEND_TIMETABLE_WRITE: "direct" },
   "timetable-write"
 );
-assert.equal(blockedTimetableWriteMigration.valid, false);
-assert.match(blockedTimetableWriteMigration.error, /not enabled/);
+assert.equal(timetableWriteMigration.valid, true);
+assert.equal(timetableWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(timetableWriteMigration.source, "M4L_BACKEND_TIMETABLE_WRITE");
 
 const prematureMigration = getBackendSelection(
   { M4L_BACKEND_CURRICULUM: "direct" },

@@ -51,7 +51,7 @@ Encrypted credentials remain in Cloudflare Worker secrets.
 */
 
 const SHEET_NAME = "StudentRecords";
-const BASE_STUDENT_LOGIN_URL = "https://developmentmaktab4life.pages.dev/student/";
+const BASE_STUDENT_LOGIN_URL = "ttps://rebootyourmaktab.maktabhelper.app/student/";
 const DEFAULT_STUDENT_GROUP = 1;
 const DEFAULT_WHATSAPP6 = "999999";
 const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID = "1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX";

@@ -50,7 +50,8 @@ import {
 import {
   getTimetableAppsScriptEndpoint,
   getTimetableGoogleSheetsEndpoint,
-  updateTimetableZoomLinkEndpoint
+  updateTimetableZoomLinkEndpoint,
+  updateTimetableZoomLinkGoogleSheetsEndpoint
 } from "./routes/timetable.js";
 import {
   getResourcesAppsScriptEndpoint,
@@ -74,7 +75,7 @@ const ROUTES = new Map([
   ["/api/timetable/get", timetableReadRoute()],
   ["/api/student/timetable/get", timetableReadRoute()],
   ["/api/admin/timetable/get", timetableReadRoute()],
-  ["/api/admin/timetable/update-zoom", appsScriptRoute("timetable-write", updateTimetableZoomLinkEndpoint)],
+  ["/api/admin/timetable/update-zoom", timetableWriteRoute()],
 
   ["/api/admin/weekly-planner/health", googleSheetsRoute("weekly-planner", weeklyPlannerHealthEndpoint)],
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],
@@ -194,6 +195,13 @@ function timetableReadRoute() {
   return backendRoute("timetable-read", {
     [BACKEND_APPS_SCRIPT]: getTimetableAppsScriptEndpoint,
     [BACKEND_GOOGLE_SHEETS]: getTimetableGoogleSheetsEndpoint
+  });
+}
+
+function timetableWriteRoute() {
+  return backendRoute("timetable-write", {
+    [BACKEND_APPS_SCRIPT]: updateTimetableZoomLinkEndpoint,
+    [BACKEND_GOOGLE_SHEETS]: updateTimetableZoomLinkGoogleSheetsEndpoint
   });
 }
 

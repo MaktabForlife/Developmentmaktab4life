@@ -1,7 +1,8 @@
 # Apps Script to Google Sheets Migration Ledger
-
-Last verified: 2026-07-20  
-Production milestone: V97.1.3
+hook
+Last verified: 2026-07-28  
+Production milestone: V97.1.3  
+Development milestone: V98.1
 
 This ledger records backend ownership at the operation level. A feature can have
 direct Google Sheets reads while its writes remain on Apps Script.
@@ -21,7 +22,7 @@ direct Google Sheets reads while its writes remain on Apps Script.
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Timetable | `updateTimetableZoomLink` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Timetable | `updateTimetableZoomLink` | DIRECT | APPS SCRIPT | ACTIVE ROLLBACK |
 | Weekly Planner | health, teachers, get and save | DIRECT ONLY | DIRECT ONLY | Not present |
 | Authentication | student/admin lookup, login, PIN setup and reset | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Attendance | `submitAbsentStudents`, `getStudentsForAttendance`, `getAttendanceReport` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
@@ -51,7 +52,19 @@ direct Google Sheets reads while its writes remain on Apps Script.
   `X-M4L-Backend: google-sheets` and
   `X-M4L-Backend-Source: M4L_BACKEND_TIMETABLE_READ`.
 - `updateTimetableZoomLink` is a separate write operation and remains on Apps
-  Script.
+  Script in production.
+
+### Timetable Zoom-link write
+
+- Worker implementation: `backend/src/routes/timetable.js`
+- Router feature: `timetable-write`
+- Development routing variable:
+  `M4L_BACKEND_TIMETABLE_WRITE=google-sheets`
+- Production default: Apps Script until direct-write promotion is approved.
+- Active rollback action: `updateTimetableZoomLink`
+- V98.1 development verification must confirm the response headers include
+  `X-M4L-Backend: google-sheets` and
+  `X-M4L-Backend-Source: M4L_BACKEND_TIMETABLE_WRITE`.
 
 ### Weekly Planner
 
@@ -62,6 +75,19 @@ direct Google Sheets reads while its writes remain on Apps Script.
   the direct path.
 
 ## Change history
+
+### 2026-07-28 — V98.1
+
+- Added a direct Google Sheets implementation for the global Timetable Zoom-link
+  write.
+- Enabled both Apps Script and Google Sheets handlers for the
+  `timetable-write` routing feature.
+- Explicitly selected `google-sheets` only in the Wrangler development
+  environment.
+- Kept production on the existing Apps Script default pending development
+  verification and later promotion.
+- Retained `updateTimetableZoomLink` in the live Apps Script project as the
+  active production path and development rollback.
 
 ### 2026-07-20 — V97.1.3
 
@@ -104,4 +130,3 @@ For every future operation:
 - Kept only the Google Drive PNG submission in Apps Script.
 - Moved the Drive folder ID, label and URL to the global configuration constants.
 - Drive save responses return destination label and URL to the frontend.
-

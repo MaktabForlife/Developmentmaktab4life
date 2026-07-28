@@ -18,7 +18,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "timetable-write": defineFeature(
     "M4L_BACKEND_TIMETABLE_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
   "student-management": defineFeature(
     "M4L_BACKEND_STUDENT_MANAGEMENT",

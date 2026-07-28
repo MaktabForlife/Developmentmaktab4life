@@ -7,7 +7,8 @@
     "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwwmDx0WuJWTj0gLRUnE3yC7v6gUrc8muEjENJJZ872taaRKxUFSjCGFOtsfelu2fcW/exec",
     "GOOGLE_SPREADSHEET_ID": "1KyYroAEEsDOZxvfNGb5hGKmaIevbq3U-UQ7at-sg6-g",
     "M4L_BACKEND_RESOURCES": "google-sheets",
-    "M4L_BACKEND_TIMETABLE_READ": "google-sheets"
+   "M4L_BACKEND_TIMETABLE_READ": "google-sheets",
+"M4L_BACKEND_TIMETABLE_WRITE": "google-sheets"
   },
   "r2_buckets": [
     {
@@ -22,7 +23,8 @@
         "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbw_-aTpK8XpXaS8Px8RO_J46P6_Wh8zHYYv3uyBiRihW6oFGVKb1IAHWhUQEDToLKby/exec",
         "GOOGLE_SPREADSHEET_ID": "1jXheppMeAEKdL8GUybExpvSK6YLRw5QeTnSZ1pWNktQ",
         "M4L_BACKEND_RESOURCES": "google-sheets",
-        "M4L_BACKEND_TIMETABLE_READ": "google-sheets"
+        "M4L_BACKEND_TIMETABLE_READ": "google-sheets",
+        "M4L_BACKEND_TIMETABLE_WRITE": "google-sheets"
       },
       "r2_buckets": [
         {

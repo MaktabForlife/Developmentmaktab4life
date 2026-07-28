@@ -99,7 +99,8 @@ const directEnv = {
     private_key: toPem(pkcs8, "PRIVATE KEY"),
     token_uri: "https://oauth2.googleapis.com/token"
   }),
-  M4L_BACKEND_TIMETABLE_READ: "google-sheets"
+  M4L_BACKEND_TIMETABLE_READ: "google-sheets",
+  M4L_BACKEND_TIMETABLE_WRITE: "google-sheets"
 };
 const studentToken = await makeSessionToken({
   type: "student",
@@ -119,7 +120,9 @@ const seniorToken = await makeSessionToken({
 }, sessionSecret);
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
+const sheetUpdates = [];
 let missingSheet = false;
+let directRows = timetableRows;
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -131,7 +134,6 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-timetable-token");
     const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
-    requestedRanges.push(range);
 
     if (missingSheet) {
       return response({
@@ -139,7 +141,13 @@ globalThis.fetch = async (input, init = {}) => {
       }, 400);
     }
 
-    return response({ values: timetableRows });
+    if ((init.method || "GET") === "PUT") {
+      sheetUpdates.push({ range, body: JSON.parse(init.body) });
+      return response({ updatedRows: 1 });
+    }
+
+    requestedRanges.push(range);
+    return response({ values: directRows });
   }
 
   throw new Error(`Unexpected direct-timetable fetch: ${url}`);
@@ -205,6 +213,65 @@ try {
     zoomlink: ""
   });
   assert.deepEqual(new Set(requestedRanges), new Set(["TimeTable!A:ZZ"]));
+
+  missingSheet = false;
+  directRows = timetableRows.map(row => row.slice());
+  sheetUpdates.length = 0;
+
+  const directZoomWrite = await postTimetable(
+    "/api/admin/timetable/update-zoom",
+    seniorToken,
+    { zoomlink: "https://zoom.test/direct" },
+    directEnv
+  );
+  assert.equal(directZoomWrite.response.status, 200);
+  assert.equal(directZoomWrite.response.headers.get("X-M4L-Feature"), "timetable-write");
+  assert.equal(directZoomWrite.response.headers.get("X-M4L-Backend"), "google-sheets");
+  assert.equal(
+    directZoomWrite.response.headers.get("X-M4L-Backend-Source"),
+    "M4L_BACKEND_TIMETABLE_WRITE"
+  );
+  assert.equal(directZoomWrite.data.success, true);
+  assert.equal(directZoomWrite.data.zoomlink, "https://zoom.test/direct");
+  assert.equal(directZoomWrite.data.message, "Zoom link saved");
+  assert.deepEqual(sheetUpdates, [{
+    range: "TimeTable!F2",
+    body: {
+      range: "TimeTable!F2",
+      majorDimension: "ROWS",
+      values: [["https://zoom.test/direct"]]
+    }
+  }]);
+
+  directRows = timetableRows.map(row => row.filter((value, index) => index !== 5));
+  sheetUpdates.length = 0;
+
+  const missingHeaderWrite = await postTimetable(
+    "/api/admin/timetable/update-zoom",
+    seniorToken,
+    { zoomLink: "https://zoom.test/header-created" },
+    directEnv
+  );
+  assert.equal(missingHeaderWrite.data.success, true);
+  assert.equal(missingHeaderWrite.data.zoomlink, "https://zoom.test/header-created");
+  assert.deepEqual(sheetUpdates, [
+    {
+      range: "TimeTable!H1",
+      body: {
+        range: "TimeTable!H1",
+        majorDimension: "ROWS",
+        values: [["ZoomLink"]]
+      }
+    },
+    {
+      range: "TimeTable!H2",
+      body: {
+        range: "TimeTable!H2",
+        majorDimension: "ROWS",
+        values: [["https://zoom.test/header-created"]]
+      }
+    }
+  ]);
 } finally {
   globalThis.fetch = originalFetch;
 }
@@ -274,7 +341,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("Direct TimeTable read tests passed.");
+console.log("Direct TimeTable read/write tests passed.");
 
 async function postTimetable(path, token, body, env) {
   const response = await worker.fetch(new Request(`https://worker.test${path}`, {
