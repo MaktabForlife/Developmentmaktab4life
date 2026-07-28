@@ -9,8 +9,11 @@ import {
 } from "./routes/auth.js";
 import {
   attendanceReport,
+  attendanceReportGoogleSheetsEndpoint,
   attendanceStudents,
-  submitAbsentAttendance
+  attendanceStudentsGoogleSheetsEndpoint,
+  submitAbsentAttendance,
+  submitAbsentAttendanceGoogleSheetsEndpoint
 } from "./routes/attendance.js";
 import {
   assignTasksAdmin,
@@ -97,9 +100,9 @@ const ROUTES = new Map([
   ["/api/setup-pin", appsScriptRoute("auth", setupPin)],
   ["/api/login", appsScriptRoute("auth", login)],
 
-  ["/api/attendance/submit-absent", appsScriptRoute("attendance", submitAbsentAttendance)],
-  ["/api/attendance/students", appsScriptRoute("attendance", attendanceStudents)],
-  ["/api/attendance/report", appsScriptRoute("attendance", attendanceReport)],
+  ["/api/attendance/submit-absent", attendanceWriteRoute()],
+  ["/api/attendance/students", attendanceStudentsReadRoute()],
+  ["/api/attendance/report", attendanceReportReadRoute()],
 
   ["/api/admin/check-student-duplicate", appsScriptRoute("student-management", checkStudentDuplicateAdmin)],
   ["/api/admin/register-student", appsScriptRoute("student-management", registerStudentAdmin)],
@@ -202,6 +205,27 @@ function timetableWriteRoute() {
   return backendRoute("timetable-write", {
     [BACKEND_APPS_SCRIPT]: updateTimetableZoomLinkEndpoint,
     [BACKEND_GOOGLE_SHEETS]: updateTimetableZoomLinkGoogleSheetsEndpoint
+  });
+}
+
+function attendanceStudentsReadRoute() {
+  return backendRoute("attendance-read", {
+    [BACKEND_APPS_SCRIPT]: attendanceStudents,
+    [BACKEND_GOOGLE_SHEETS]: attendanceStudentsGoogleSheetsEndpoint
+  });
+}
+
+function attendanceReportReadRoute() {
+  return backendRoute("attendance-read", {
+    [BACKEND_APPS_SCRIPT]: attendanceReport,
+    [BACKEND_GOOGLE_SHEETS]: attendanceReportGoogleSheetsEndpoint
+  });
+}
+
+function attendanceWriteRoute() {
+  return backendRoute("attendance-write", {
+    [BACKEND_APPS_SCRIPT]: submitAbsentAttendance,
+    [BACKEND_GOOGLE_SHEETS]: submitAbsentAttendanceGoogleSheetsEndpoint
   });
 }
 

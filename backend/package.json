@@ -10,6 +10,7 @@
     "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:resources": "node tests/resources.test.mjs",
     "test:routes": "node tests/router.test.mjs",
+    "test:attendance": "node tests/attendance.test.mjs",
     "test:timetable": "node tests/timetable.test.mjs",
     "test:weekly-planner": "node tests/weekly-planner.test.mjs"
   },

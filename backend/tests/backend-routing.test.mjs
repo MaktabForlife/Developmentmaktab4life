@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   BACKEND_APPS_SCRIPT,
   BACKEND_GOOGLE_SHEETS,
@@ -11,6 +12,16 @@ import {
 const defaults = getBackendRoutingDiagnostics({});
 assert.equal(defaults.features.auth.backend, BACKEND_APPS_SCRIPT);
 assert.equal(defaults.features.auth.source, "default");
+assert.equal(defaults.features["attendance-read"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["attendance-read"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
+assert.equal(defaults.features["attendance-write"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["attendance-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
 assert.equal(defaults.features.progress.backend, BACKEND_APPS_SCRIPT);
 assert.equal(defaults.features.resources.backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
@@ -58,6 +69,22 @@ assert.equal(timetableWriteMigration.valid, true);
 assert.equal(timetableWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
 assert.equal(timetableWriteMigration.source, "M4L_BACKEND_TIMETABLE_WRITE");
 
+const attendanceReadMigration = getBackendSelection(
+  { M4L_BACKEND_ATTENDANCE_READ: "direct" },
+  "attendance-read"
+);
+assert.equal(attendanceReadMigration.valid, true);
+assert.equal(attendanceReadMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(attendanceReadMigration.source, "M4L_BACKEND_ATTENDANCE_READ");
+
+const attendanceWriteMigration = getBackendSelection(
+  { M4L_BACKEND_ATTENDANCE_WRITE: "direct" },
+  "attendance-write"
+);
+assert.equal(attendanceWriteMigration.valid, true);
+assert.equal(attendanceWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(attendanceWriteMigration.source, "M4L_BACKEND_ATTENDANCE_WRITE");
+
 const prematureMigration = getBackendSelection(
   { M4L_BACKEND_CURRICULUM: "direct" },
   "curriculum"
@@ -74,5 +101,20 @@ assert.equal(normalizeBackendName("Apps Script"), BACKEND_APPS_SCRIPT);
 assert.equal(normalizeBackendName("sheets"), BACKEND_GOOGLE_SHEETS);
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "true" }), true);
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "false" }), false);
+
+const wranglerConfig = JSON.parse(readFileSync(
+  new URL("../wrangler.jsonc", import.meta.url),
+  "utf8"
+));
+assert.equal(wranglerConfig.vars.M4L_BACKEND_ATTENDANCE_READ, "google-sheets");
+assert.equal(wranglerConfig.vars.M4L_BACKEND_ATTENDANCE_WRITE, "google-sheets");
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_ATTENDANCE_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_ATTENDANCE_WRITE,
+  "google-sheets"
+);
 
 console.log("Backend routing configuration tests passed.");

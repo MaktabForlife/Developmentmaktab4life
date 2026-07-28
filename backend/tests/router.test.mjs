@@ -163,6 +163,34 @@ assert.equal(
   "M4L_BACKEND_TIMETABLE_WRITE"
 );
 
+const attendanceReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/attendance/students",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ classgroup: "ALL" })
+  }
+), {
+  M4L_BACKEND_ATTENDANCE_READ: "google-sheets"
+});
+assert.equal(attendanceReadUnauthorized.status, 401);
+assert.equal(attendanceReadUnauthorized.headers.get("X-M4L-Feature"), "attendance-read");
+assert.equal(attendanceReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const attendanceWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/attendance/submit-absent",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ date: "2026-07-28", absentStudents: [] })
+  }
+), {
+  M4L_BACKEND_ATTENDANCE_WRITE: "google-sheets"
+});
+assert.equal(attendanceWriteUnauthorized.status, 401);
+assert.equal(attendanceWriteUnauthorized.headers.get("X-M4L-Feature"), "attendance-write");
+assert.equal(attendanceWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
 console.log("Worker router tests passed.");
 
 function response(data, status = 200) {

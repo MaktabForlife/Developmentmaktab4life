@@ -4,7 +4,16 @@ export const BACKEND_WORKER = "worker";
 
 const FEATURE_DEFINITIONS = Object.freeze({
   auth: defineFeature("M4L_BACKEND_AUTH", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
-  attendance: defineFeature("M4L_BACKEND_ATTENDANCE", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
+  "attendance-read": defineFeature(
+    "M4L_BACKEND_ATTENDANCE_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "attendance-write": defineFeature(
+    "M4L_BACKEND_ATTENDANCE_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
   resources: defineFeature(
     "M4L_BACKEND_RESOURCES",
     BACKEND_APPS_SCRIPT,
