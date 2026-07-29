@@ -2,9 +2,9 @@
 
 Last updated: 2026-07-28
 
-Latest development-verified milestone before V98.4: V98.2
+Latest development-verified milestone before V98.5: V98.2
 
-Development milestone: V98.4
+Development milestone: V98.5
 
 The live Google Apps Script project is the source of truth for `code.gs`. The
 repository copy is a reference snapshot only. Direct API migrations do not
@@ -41,9 +41,9 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.4 target
+## Current ownership and V98.5 target
 
-| Area | Operation / Apps Script action | V98.3 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.5 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -54,12 +54,14 @@ Cloudflare dashboard variable changes are required at merge time.
 | Attendance | `submitAbsentStudents` | DIRECT | DIRECT | ACTIVE ROLLBACK |
 | Authentication | lookup, login, PIN setup and reset | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Progress | task reads, status updates, verification and reports | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Student management | duplicate check, register, update, search and assignment options | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Student management | `checkStudentDuplicate`, `searchStudents` | DIRECT | DIRECT | ACTIVE ROLLBACK |
+| Student management | `registerStudent`, `updateStudent` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | ACTIVE ROLLBACK |
 | Curriculum | subject and task create/update | DIRECT | DIRECT | ACTIVE ROLLBACK |
 | Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | ACTIVE ROLLBACK |
 | Curriculum resources | create/update | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Task assignment | assignment and population actions | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Task assignment | `getStudentAssignmentOptions` | DIRECT | DIRECT | ACTIVE ROLLBACK |
+| Task assignment | `assignTasksToStudents` and population actions | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
 
@@ -176,6 +178,39 @@ Cloudflare dashboard variable changes are required at merge time.
 - V98.4 preserves the `NextResourceNumber` counter, `RES` identifiers,
   allowed resource types and the existing `SubjectResources` row schema.
 
+### Student-management read
+
+- Worker implementation: `backend/src/routes/student-management.js`
+- Router feature: `student-management-read`
+- Routes:
+  - `/api/admin/check-student-duplicate`
+  - `/api/admin/students/search`
+  - `/api/admin/search-students`
+  - `/api/admin/student/search`
+- Routing variable:
+  `M4L_BACKEND_STUDENT_MANAGEMENT_READ=google-sheets`
+- Active rollback actions:
+  - `checkStudentDuplicate`
+  - `searchStudents`
+- V98.5 preserves normalized duplicate matching, suggested usernames, search
+  aliases, WhatsApp matching, `SYSTEM1` exclusion, group/name sorting and
+  result limits. PIN hashes and other authentication fields are never returned.
+- Student registration and updates remain on the separate
+  `student-management-write` Apps Script feature.
+
+### Task-assignment options read
+
+- Worker implementation: `backend/src/routes/student-management.js`
+- Router feature: `task-assignment-read`
+- Route: `/api/admin/students/assignment-options`
+- Routing variable: `M4L_BACKEND_TASK_ASSIGNMENT_READ=google-sheets`
+- Active rollback action: `getStudentAssignmentOptions`
+- V98.5 reads `SubjectList`, optional `ModuleList`, and `TaskList` directly,
+  preserving active filtering, General-module fallback, task counts and sort
+  order.
+- Task assignment writes remain on the separate `task-assignment-write` Apps
+  Script feature and do not read or modify `StudentTasks` in V98.5.
+
 ### Weekly Planner
 
 - Worker implementation: `backend/src/routes/weekly-planner.js`
@@ -185,6 +220,24 @@ Cloudflare dashboard variable changes are required at merge time.
 - No Planner record action was migrated from Apps Script.
 
 ## Change history
+
+### 2026-07-28 — V98.5
+
+- Added direct Google Sheets handlers for student duplicate checking, student
+  search and assignment-option loading.
+- Split Student Management into independent read and write routing features.
+- Split Task Assignment into independent read and write routing features.
+- Added `M4L_BACKEND_STUDENT_MANAGEMENT_READ=google-sheets` and
+  `M4L_BACKEND_TASK_ASSIGNMENT_READ=google-sheets` to both top-level production
+  variables and the development environment.
+- Added environment-specific `M4L_STUDENT_LOGIN_BASE` values so search results
+  retain the correct production or development student link.
+- Kept student registration, student updates and task-assignment writes on Apps
+  Script, with no direct access to `StudentTasks` in this migration.
+- Retained all three live Apps Script read actions as rollback paths.
+- Added automated tests for transformation parity, search aliases, duplicate
+  suggestions, sensitive-field exclusion, authorization, routing headers,
+  missing sheets, Apps Script fallback and write isolation.
 
 ### 2026-07-28 — V98.4
 

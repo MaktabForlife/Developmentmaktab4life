@@ -29,8 +29,13 @@ const FEATURE_DEFINITIONS = Object.freeze({
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  "student-management": defineFeature(
-    "M4L_BACKEND_STUDENT_MANAGEMENT",
+  "student-management-read": defineFeature(
+    "M4L_BACKEND_STUDENT_MANAGEMENT_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "student-management-write": defineFeature(
+    "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE",
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT]
   ),
@@ -54,8 +59,13 @@ const FEATURE_DEFINITIONS = Object.freeze({
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  "task-assignment": defineFeature(
-    "M4L_BACKEND_TASK_ASSIGNMENT",
+  "task-assignment-read": defineFeature(
+    "M4L_BACKEND_TASK_ASSIGNMENT_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "task-assignment-write": defineFeature(
+    "M4L_BACKEND_TASK_ASSIGNMENT_WRITE",
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT]
   ),

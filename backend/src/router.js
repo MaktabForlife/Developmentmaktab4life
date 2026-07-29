@@ -71,6 +71,11 @@ import {
   updateSubjectResourceGoogleSheetsEndpoint,
   updateTaskGoogleSheetsEndpoint
 } from "./routes/curriculum.js";
+import {
+  checkStudentDuplicateGoogleSheetsEndpoint,
+  getStudentAssignmentOptionsGoogleSheetsEndpoint,
+  searchStudentsGoogleSheetsEndpoint
+} from "./routes/student-management.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -115,13 +120,25 @@ const ROUTES = new Map([
   ["/api/attendance/students", attendanceStudentsReadRoute()],
   ["/api/attendance/report", attendanceReportReadRoute()],
 
-  ["/api/admin/check-student-duplicate", appsScriptRoute("student-management", checkStudentDuplicateAdmin)],
-  ["/api/admin/register-student", appsScriptRoute("student-management", registerStudentAdmin)],
-  ["/api/admin/update-student", appsScriptRoute("student-management", updateStudentAdmin)],
-  ["/api/admin/students/search", appsScriptRoute("student-management", searchStudentsAdmin)],
-  ["/api/admin/search-students", appsScriptRoute("student-management", searchStudentsAdmin)],
-  ["/api/admin/student/search", appsScriptRoute("student-management", searchStudentsAdmin)],
-  ["/api/admin/students/assignment-options", appsScriptRoute("task-assignment", getStudentAssignmentOptionsAdmin)],
+  ["/api/admin/check-student-duplicate", studentManagementReadRoute(
+    checkStudentDuplicateAdmin,
+    checkStudentDuplicateGoogleSheetsEndpoint
+  )],
+  ["/api/admin/register-student", appsScriptRoute("student-management-write", registerStudentAdmin)],
+  ["/api/admin/update-student", appsScriptRoute("student-management-write", updateStudentAdmin)],
+  ["/api/admin/students/search", studentManagementReadRoute(
+    searchStudentsAdmin,
+    searchStudentsGoogleSheetsEndpoint
+  )],
+  ["/api/admin/search-students", studentManagementReadRoute(
+    searchStudentsAdmin,
+    searchStudentsGoogleSheetsEndpoint
+  )],
+  ["/api/admin/student/search", studentManagementReadRoute(
+    searchStudentsAdmin,
+    searchStudentsGoogleSheetsEndpoint
+  )],
+  ["/api/admin/students/assignment-options", taskAssignmentReadRoute()],
 
   ["/api/admin/subjects/create", curriculumWriteRoute(
     createSubjectAdmin,
@@ -152,7 +169,7 @@ const ROUTES = new Map([
     updateTaskAdmin,
     updateTaskGoogleSheetsEndpoint
   )],
-  ["/api/admin/tasks/assign", appsScriptRoute("task-assignment", assignTasksAdmin)],
+  ["/api/admin/tasks/assign", appsScriptRoute("task-assignment-write", assignTasksAdmin)],
   ["/api/admin/tasks/verify", appsScriptRoute("progress", verifyStudentTask)],
 
   ["/api/tasks/student", appsScriptRoute("progress", getStudentTasksEndpoint)],
@@ -255,6 +272,20 @@ function attendanceWriteRoute() {
   return backendRoute("attendance-write", {
     [BACKEND_APPS_SCRIPT]: submitAbsentAttendance,
     [BACKEND_GOOGLE_SHEETS]: submitAbsentAttendanceGoogleSheetsEndpoint
+  });
+}
+
+function studentManagementReadRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("student-management-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function taskAssignmentReadRoute() {
+  return backendRoute("task-assignment-read", {
+    [BACKEND_APPS_SCRIPT]: getStudentAssignmentOptionsAdmin,
+    [BACKEND_GOOGLE_SHEETS]: getStudentAssignmentOptionsGoogleSheetsEndpoint
   });
 }
 

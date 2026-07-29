@@ -265,6 +265,62 @@ assert.equal(
   "google-sheets"
 );
 
+const studentManagementReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/students/search",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ listAll: true })
+  }
+), {
+  M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets"
+});
+assert.equal(studentManagementReadUnauthorized.status, 401);
+assert.equal(
+  studentManagementReadUnauthorized.headers.get("X-M4L-Feature"),
+  "student-management-read"
+);
+assert.equal(studentManagementReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  studentManagementReadUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_STUDENT_MANAGEMENT_READ"
+);
+
+const duplicateReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/check-student-duplicate",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "Test", whatsapp6: "123456", classgroup: "1" })
+  }
+), {
+  M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets"
+});
+assert.equal(duplicateReadUnauthorized.status, 401);
+assert.equal(duplicateReadUnauthorized.headers.get("X-M4L-Feature"), "student-management-read");
+assert.equal(duplicateReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const taskAssignmentReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/students/assignment-options",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  }
+), {
+  M4L_BACKEND_TASK_ASSIGNMENT_READ: "google-sheets"
+});
+assert.equal(taskAssignmentReadUnauthorized.status, 401);
+assert.equal(
+  taskAssignmentReadUnauthorized.headers.get("X-M4L-Feature"),
+  "task-assignment-read"
+);
+assert.equal(taskAssignmentReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  taskAssignmentReadUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_TASK_ASSIGNMENT_READ"
+);
+
 console.log("Worker router tests passed.");
 
 function response(data, status = 200) {

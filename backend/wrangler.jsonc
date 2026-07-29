@@ -14,7 +14,10 @@
     "M4L_BACKEND_CURRICULUM_READ": "google-sheets",
     "M4L_BACKEND_CURRICULUM_WRITE": "google-sheets",
     "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets",
-    "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets"
+    "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets",
+    "M4L_BACKEND_STUDENT_MANAGEMENT_READ": "google-sheets",
+    "M4L_BACKEND_TASK_ASSIGNMENT_READ": "google-sheets",
+    "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/"
   },
   "r2_buckets": [
     {
@@ -36,7 +39,10 @@
         "M4L_BACKEND_CURRICULUM_READ": "google-sheets",
         "M4L_BACKEND_CURRICULUM_WRITE": "google-sheets",
         "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets",
-        "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets"
+        "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets",
+        "M4L_BACKEND_STUDENT_MANAGEMENT_READ": "google-sheets",
+        "M4L_BACKEND_TASK_ASSIGNMENT_READ": "google-sheets",
+        "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/"
       },
       "r2_buckets": [
         {

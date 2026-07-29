@@ -58,6 +58,26 @@ assert.deepEqual(
   defaults.features["timetable-write"].availableBackends,
   [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
+assert.equal(defaults.features["student-management-read"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["student-management-read"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
+assert.equal(defaults.features["student-management-write"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["student-management-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT]
+);
+assert.equal(defaults.features["task-assignment-read"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["task-assignment-read"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
+assert.equal(defaults.features["task-assignment-write"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["task-assignment-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT]
+);
 assert.equal(defaults.features["weekly-planner"].backend, BACKEND_GOOGLE_SHEETS);
 assert.deepEqual(defaults.features["weekly-planner"].availableBackends, [BACKEND_GOOGLE_SHEETS]);
 assert.equal(defaults.routingLogsEnabled, false);
@@ -143,6 +163,39 @@ assert.equal(
   "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE"
 );
 
+const studentManagementReadMigration = getBackendSelection(
+  { M4L_BACKEND_STUDENT_MANAGEMENT_READ: "direct" },
+  "student-management-read"
+);
+assert.equal(studentManagementReadMigration.valid, true);
+assert.equal(studentManagementReadMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(
+  studentManagementReadMigration.source,
+  "M4L_BACKEND_STUDENT_MANAGEMENT_READ"
+);
+
+const taskAssignmentReadMigration = getBackendSelection(
+  { M4L_BACKEND_TASK_ASSIGNMENT_READ: "direct" },
+  "task-assignment-read"
+);
+assert.equal(taskAssignmentReadMigration.valid, true);
+assert.equal(taskAssignmentReadMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(taskAssignmentReadMigration.source, "M4L_BACKEND_TASK_ASSIGNMENT_READ");
+
+const blockedStudentWriteMigration = getBackendSelection(
+  { M4L_BACKEND_STUDENT_MANAGEMENT_WRITE: "google-sheets" },
+  "student-management-write"
+);
+assert.equal(blockedStudentWriteMigration.valid, false);
+assert.match(blockedStudentWriteMigration.error, /not enabled/);
+
+const blockedTaskAssignmentWriteMigration = getBackendSelection(
+  { M4L_BACKEND_TASK_ASSIGNMENT_WRITE: "google-sheets" },
+  "task-assignment-write"
+);
+assert.equal(blockedTaskAssignmentWriteMigration.valid, false);
+assert.match(blockedTaskAssignmentWriteMigration.error, /not enabled/);
+
 const invalid = getBackendSelection({ M4L_BACKEND_PROGRESS: "somewhere-else" }, "progress");
 assert.equal(invalid.valid, false);
 assert.match(invalid.error, /Invalid backend value/);
@@ -191,6 +244,27 @@ assert.equal(
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_CURRICULUM_RESOURCES_WRITE,
   "google-sheets"
+);
+assert.equal(
+  wranglerConfig.vars.M4L_BACKEND_STUDENT_MANAGEMENT_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_STUDENT_MANAGEMENT_READ,
+  "google-sheets"
+);
+assert.equal(wranglerConfig.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ, "google-sheets");
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.vars.M4L_STUDENT_LOGIN_BASE,
+  "https://rebootyourmaktab.maktabhelper.app/student/"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_STUDENT_LOGIN_BASE,
+  "https://developmentmaktab4life.pages.dev/student/"
 );
 
 console.log("Backend routing configuration tests passed.");
