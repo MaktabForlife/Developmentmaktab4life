@@ -1,18 +1,41 @@
 /*
 ===============================================================================
-MAKTABHELPER — APPS SCRIPT MIGRATION STATUS
-Last verified: 20 July 2026
-Production milestone: V97.1.3
+MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
+Last updated: 30 July 2026
+Migration map: V98.6
 ===============================================================================
 
+SOURCE OF TRUTH:
+- The repository file apps-script/code.gs is authoritative.
+- The Google Apps Script project is a deployment target, not an independent
+  editing source.
+- Make and review changes in the repository first, then synchronize this full
+  file to the Apps Script project and deploy a new Apps Script version.
+- Any emergency dashboard edit must be copied back into this repository before
+  the next application change.
+
 The application is being migrated gradually from Apps Script to direct
-Cloudflare Worker-to-Google Sheets API access.
+Cloudflare Worker-to-Google Sheets API access. A LEGACY ROLLBACK action remains
+callable only so its routing flag can be returned temporarily to apps-script.
 
 MIGRATED TO DIRECT GOOGLE SHEETS API:
 - Resource/Library reads
   Legacy Apps Script action retained: getStudentResources
-- Timetable reads
-  Legacy Apps Script action retained: getTimetable
+- Timetable reads and global Zoom-link writes
+  Legacy Apps Script actions retained: getTimetable, updateTimetableZoomLink
+- Attendance reads and writes
+  Legacy Apps Script actions retained: getStudentsForAttendance,
+  getAttendanceReport, submitAbsentStudents
+- Curriculum Subject and Task reads and writes
+  Legacy Apps Script actions retained: create/list/update Subject and Task
+- Curriculum Subject Resource reads and writes
+  Legacy Apps Script actions retained: create/list/update SubjectResource
+- Student search
+  Legacy Apps Script action retained: searchStudents
+- Existing-student updates
+  Legacy Apps Script action retained: updateStudent
+- Student assignment-option reads
+  Legacy Apps Script action retained: getStudentAssignmentOptions
 - Weekly Planner reads and writes
   Weekly Planner records use the direct Google Sheets API.
   The Google Drive preview submission remains a narrow Apps Script action because it uses DriveApp.
@@ -20,20 +43,20 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
 STILL ACTIVE ON APPS SCRIPT:
 - Student and Admin authentication
 - PIN setup and reset
-- Attendance reads and writes
 - Progress reads and writes
-- Timetable Zoom-link writes
-- Student management
-- Curriculum and task management
-- Student-task assignment
+- Student registration
+- Registration duplicate checking (registerStudent calls checkStudentDuplicate)
+- Task Resource administration
+- Student-task assignment and population writes
+- Weekly Planner preview submission to Google Drive
 
 IMPORTANT:
 - Migrated functions marked LEGACY ROLLBACK must not be modified, reused or
   removed without first checking the active Worker routing configuration.
 - Reads and writes are migrated separately. A migrated read does not mean its
   related write operation has also migrated.
-- getStudentResources and getTimetable remain here only as rollback paths.
-- updateTimetableZoomLink remains an active Apps Script operation.
+- The standalone direct duplicate endpoint does not make
+  checkStudentDuplicate legacy: registration still calls this function here.
 - Remove a legacy function and its doPost action together only after the
   rollback path has been explicitly retired.
 - Record every future migration in:
@@ -433,6 +456,13 @@ function normalizeUsername(username) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+/*
+ * MIGRATION STATUS: ACTIVE APPS SCRIPT DEPENDENCY.
+ * registerStudent calls this function before writing a student record.
+ * A standalone direct Worker endpoint exists, but the registration workflow
+ * has not migrated its duplicate validation. Do not mark or remove this as
+ * legacy until Student Management writes are migrated.
+ */
 function checkStudentDuplicate(data) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   const rows = sheet.getDataRange().getValues();
@@ -491,6 +521,12 @@ function getNextAvailableUsername(baseUsername) {
   return candidate;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.6).
+ * Normal existing-student updates use the targeted direct Google Sheets route
+ * selected by M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE. Student registration and
+ * its duplicate validation remain active Apps Script operations.
+ */
 function updateStudent(data) {
   const student = getStudentByUniqueId(data.uniqueid);
 
@@ -538,6 +574,11 @@ function updateStudent(data) {
    STUDENT MANAGEMENT MODULE
 ========================= */
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V98.5).
+ * Normal student-search traffic uses the direct Google Sheets route selected
+ * by M4L_BACKEND_STUDENT_MANAGEMENT_READ.
+ */
 function searchStudents(data) {
   data = data || {};
 
@@ -680,6 +721,12 @@ function normalizeStudentSearchText_(value) {
     .replace(/\s+/g, " ");
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V98.5).
+ * Normal assignment-option traffic uses the direct Google Sheets route
+ * selected by M4L_BACKEND_TASK_ASSIGNMENT_READ. Student-task assignment writes
+ * remain active in Apps Script.
+ */
 function getStudentAssignmentOptions() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -983,6 +1030,12 @@ function assignStudentTasksForSelection_(data) {
 
 const ATTENDANCE_TIMEZONE = "Africa/Johannesburg";
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK MODULE (V98.2).
+ * Applies to submitAbsentStudents, getStudentsForAttendance and
+ * getAttendanceReport. Normal traffic uses the direct Google Sheets routes
+ * selected by M4L_BACKEND_ATTENDANCE_READ and M4L_BACKEND_ATTENDANCE_WRITE.
+ */
 function submitAbsentStudents(data) {
   data = data || {};
 
@@ -1573,6 +1626,12 @@ function roundAttendancePercent_(value) {
 
 /*Start of Academic Module
 */
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK — SUBJECT OPERATIONS (V98.3/V98.4).
+ * Applies to createSubject, listSubjects and updateSubject. Normal traffic uses
+ * the direct Google Sheets routes selected by M4L_BACKEND_CURRICULUM_READ and
+ * M4L_BACKEND_CURRICULUM_WRITE.
+ */
 function generateSubjectId() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName("SystemConfig");
@@ -1784,6 +1843,13 @@ function updateSubject(data) {
   };
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK — SUBJECT RESOURCE OPERATIONS
+ * (V98.3/V98.4). Applies to createSubjectResource, listSubjectResources and
+ * updateSubjectResource. Normal traffic uses the direct routes selected by
+ * M4L_BACKEND_CURRICULUM_RESOURCES_READ and
+ * M4L_BACKEND_CURRICULUM_RESOURCES_WRITE.
+ */
 function generateResourceId() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName("SystemConfig");
@@ -2898,6 +2964,12 @@ function normalizeText(value) {
     .replace(/[^a-z0-9]/g, "");        // remove spaces, apostrophes, punctuation
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK — TASK OPERATIONS (V98.3/V98.4).
+ * Applies to createTask, listTasks and updateTask. Normal traffic uses the
+ * direct Google Sheets routes selected by M4L_BACKEND_CURRICULUM_READ and
+ * M4L_BACKEND_CURRICULUM_WRITE. Task assignment remains active in Apps Script.
+ */
 function generateTaskId() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName("SystemConfig");
@@ -5087,6 +5159,11 @@ function getTimetable(data) {
   };
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.1).
+ * Normal global Zoom-link writes use the direct Google Sheets route selected
+ * by M4L_BACKEND_TIMETABLE_WRITE.
+ */
 function updateTimetableZoomLink(data) {
   data = data || {};
 
@@ -5233,6 +5310,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
 
 if (body.action === "checkStudentDuplicate") {
+  // ACTIVE DEPENDENCY: registerStudent still uses this Apps Script validation.
   return jsonResponse(checkStudentDuplicate(body.data));
 }
 
@@ -5282,49 +5360,61 @@ if (body.action === "getAdminByUsername") {
   });
 }
 if (body.action === "updateStudent") {
+  // LEGACY ROLLBACK: existing-student updates normally use direct Google Sheets.
   return jsonResponse(updateStudent(body.data));
 }
 
 if (body.action === "searchStudents") {
+  // LEGACY ROLLBACK: student search normally uses direct Google Sheets.
   return jsonResponse(searchStudents(body.data));
 }
 
 if (body.action === "getStudentAssignmentOptions") {
+  // LEGACY ROLLBACK: assignment options normally use direct Google Sheets.
   return jsonResponse(getStudentAssignmentOptions());
 }
 
 if (body.action === "submitAbsentStudents") {
+  // LEGACY ROLLBACK: Attendance writes normally use direct Google Sheets.
   return jsonResponse(submitAbsentStudents(body.data));
 }
 
 if (body.action === "getStudentsForAttendance") {
+  // LEGACY ROLLBACK: Attendance student reads normally use direct Google Sheets.
   return jsonResponse(getStudentsForAttendance(body.classgroup));
 }
 
 if (body.action === "getAttendanceReport") {
+  // LEGACY ROLLBACK: Attendance reports normally use direct Google Sheets.
   return jsonResponse(getAttendanceReport(body.data));
 }
 // Academic function calls //
 if (body.action === "createSubject") {
+  // LEGACY ROLLBACK: Subject creates normally use direct Google Sheets.
   return jsonResponse(createSubject(body.data));
 }
 
 if (body.action === "listSubjects") {
+  // LEGACY ROLLBACK: Subject reads normally use direct Google Sheets.
   return jsonResponse(listSubjects());
 }
 
 if (body.action === "updateSubject") {
+  // LEGACY ROLLBACK: Subject updates normally use direct Google Sheets.
   return jsonResponse(updateSubject(body.data));
 }
 if (body.action === "createSubjectResource") {
+  // LEGACY ROLLBACK: Subject Resource creates normally use direct Google Sheets.
   return jsonResponse(createSubjectResource(body.data));
 }
 
 if (body.action === "listSubjectResources") {
+  // LEGACY ROLLBACK: Subject Resource reads normally use direct Google Sheets.
   return jsonResponse(listSubjectResources(body.subjectid));
 }
 
 if (body.action === "updateSubjectResource") {
+  // LEGACY ROLLBACK: Subject Resource updates normally use direct Google Sheets.
   return jsonResponse(updateSubjectResource(body.data));
 }
 
@@ -5344,14 +5434,17 @@ if (body.action === "updateTaskResource") {
 
 
 if (body.action === "createTask") {
+  // LEGACY ROLLBACK: Task creates normally use direct Google Sheets.
   return jsonResponse(createTask(body.data));
 }
 
 if (body.action === "listTasks") {
+  // LEGACY ROLLBACK: Task reads normally use direct Google Sheets.
   return jsonResponse(listTasks(body.data));
 }
 
 if (body.action === "updateTask") {
+  // LEGACY ROLLBACK: Task updates normally use direct Google Sheets.
   return jsonResponse(updateTask(body.data));
 }
 if (body.action === "assignTasksToStudents") {
@@ -5376,6 +5469,7 @@ if (body.action === "getTimetable") {
 }
 
 if (body.action === "updateTimetableZoomLink") {
+  // LEGACY ROLLBACK: global Zoom-link writes normally use direct Google Sheets.
   return jsonResponse(updateTimetableZoomLink(body.data));
 }
 
@@ -5431,5 +5525,3 @@ function doGet(e) {
     JSON.stringify({ status: "success", message: "Connected to Apps Script!" })
   ).setMimeType(ContentService.MimeType.JSON);
 }
-
-

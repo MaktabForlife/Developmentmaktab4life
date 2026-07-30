@@ -68,6 +68,11 @@ assert.deepEqual(
   defaults.features["student-management-write"].availableBackends,
   [BACKEND_APPS_SCRIPT]
 );
+assert.equal(defaults.features["student-management-update"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["student-management-update"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
 assert.equal(defaults.features["task-assignment-read"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features["task-assignment-read"].availableBackends,
@@ -167,6 +172,17 @@ const studentManagementReadMigration = getBackendSelection(
   { M4L_BACKEND_STUDENT_MANAGEMENT_READ: "direct" },
   "student-management-read"
 );
+
+const studentManagementUpdateMigration = getBackendSelection(
+  { M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE: "direct" },
+  "student-management-update"
+);
+assert.equal(studentManagementUpdateMigration.valid, true);
+assert.equal(studentManagementUpdateMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(
+  studentManagementUpdateMigration.source,
+  "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"
+);
 assert.equal(studentManagementReadMigration.valid, true);
 assert.equal(studentManagementReadMigration.backend, BACKEND_GOOGLE_SHEETS);
 assert.equal(
@@ -251,6 +267,14 @@ assert.equal(
 );
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_STUDENT_MANAGEMENT_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.vars.M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE,
   "google-sheets"
 );
 assert.equal(wranglerConfig.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ, "google-sheets");

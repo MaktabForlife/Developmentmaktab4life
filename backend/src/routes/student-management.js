@@ -1,5 +1,8 @@
 import { normalizeWhatsapp6, requireAdminOrSenior } from "../lib/auth.js";
-import { readGoogleSheetValues } from "../lib/google-sheets.js";
+import {
+  batchUpdateGoogleSheetValues,
+  readGoogleSheetValues
+} from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 
 const STUDENT_RECORDS_SHEET = "StudentRecords";
@@ -69,6 +72,117 @@ export async function searchStudentsGoogleSheetsEndpoint(request, env) {
     listAll,
     studentLoginBase: env.M4L_STUDENT_LOGIN_BASE || DEFAULT_STUDENT_LOGIN_BASE
   }));
+}
+
+export async function updateStudentGoogleSheetsEndpoint(request, env) {
+  const permission = await requireAdminOrSenior(request, env);
+
+  if (!permission.ok) {
+    return permission.response;
+  }
+
+  const body = await request.json();
+  const uniqueid = body.uniqueid;
+
+  if (!uniqueid) {
+    return json({ success: false, error: "Missing uniqueid" }, 400);
+  }
+
+  if (body.username !== undefined && String(body.username).trim() === "") {
+    return json({ success: false, error: "Username cannot be empty" }, 400);
+  }
+
+  if (body.classgroup !== undefined && String(body.classgroup).trim() === "") {
+    return json({ success: false, error: "classgroup cannot be empty" }, 400);
+  }
+
+  if (body.active !== undefined && typeof body.active !== "boolean") {
+    return json({ success: false, error: "active must be true or false" }, 400);
+  }
+
+  const rows = await readStudentManagementSheet(env, STUDENT_RECORDS_SHEET);
+
+  if (rows === null) {
+    return missingSheetResponse(STUDENT_RECORDS_SHEET);
+  }
+
+  const headerMap = buildHeaderMap(rows[0] || []);
+  const columns = {
+    studentid: findHeaderIndex(headerMap, ["StudentID", "StudentId", "studentid"]),
+    username: findHeaderIndex(headerMap, ["Username", "Name", "StudentName"]),
+    whatsapp6: findHeaderIndex(headerMap, [
+      "WhatsAppLast6",
+      "WhatsApp6",
+      "WhatsApp Last 6",
+      "whatsapp6"
+    ]),
+    uniqueid: findHeaderIndex(headerMap, ["UniqueID", "UniqueId", "uniqueid"]),
+    classgroup: findHeaderIndex(headerMap, ["ClassGroup", "Group", "classgroup"]),
+    active: findHeaderIndex(headerMap, ["Active", "active"])
+  };
+
+  if (Object.values(columns).some(index => index === -1)) {
+    return json({
+      success: false,
+      error: "StudentRecords required columns not found"
+    });
+  }
+
+  const rowIndex = rows.slice(1).findIndex(row => (
+    String(getValue(row, columns.uniqueid)).trim() === uniqueid
+  ));
+
+  if (rowIndex === -1) {
+    return json({ success: false, error: "Student not found" });
+  }
+
+  const studentRow = rows[rowIndex + 1];
+  const sheetRow = rowIndex + 2;
+  const updates = [];
+  const updatedValues = {};
+
+  if (body.username !== undefined) {
+    updatedValues.username = String(body.username).trim();
+    updates.push(singleCellUpdate(columns.username, sheetRow, updatedValues.username));
+  }
+
+  if (body.whatsapp6 !== undefined) {
+    updatedValues.whatsapp6 = normalizeWhatsapp6(body.whatsapp6);
+    updates.push(singleCellUpdate(columns.whatsapp6, sheetRow, updatedValues.whatsapp6));
+  }
+
+  if (body.classgroup !== undefined) {
+    updatedValues.classgroup = String(body.classgroup).trim();
+    updates.push(singleCellUpdate(columns.classgroup, sheetRow, updatedValues.classgroup));
+  }
+
+  if (body.active !== undefined) {
+    updatedValues.active = body.active;
+    updates.push(singleCellUpdate(columns.active, sheetRow, updatedValues.active));
+  }
+
+  if (updates.length > 0) {
+    await batchUpdateGoogleSheetValues(env, updates);
+  }
+
+  return json({
+    success: true,
+    message: "Student updated successfully",
+    studentid: getValue(studentRow, columns.studentid),
+    uniqueid: getValue(studentRow, columns.uniqueid),
+    username: body.username !== undefined
+      ? updatedValues.username
+      : getValue(studentRow, columns.username),
+    whatsapp6: body.whatsapp6 !== undefined
+      ? updatedValues.whatsapp6
+      : getValue(studentRow, columns.whatsapp6),
+    classgroup: body.classgroup !== undefined
+      ? updatedValues.classgroup
+      : getValue(studentRow, columns.classgroup),
+    active: body.active !== undefined
+      ? updatedValues.active
+      : getValue(studentRow, columns.active)
+  });
 }
 
 export async function getStudentAssignmentOptionsGoogleSheetsEndpoint(request, env) {
@@ -488,6 +602,39 @@ function buildHeaderMap(headers) {
   });
 
   return map;
+}
+
+function findHeaderIndex(headerMap, names) {
+  for (const name of names) {
+    const index = headerMap[normalizeHeader(name)];
+
+    if (index !== undefined) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function singleCellUpdate(columnIndex, rowNumber, value) {
+  return {
+    range: `${STUDENT_RECORDS_SHEET}!${columnIndexToA1(columnIndex)}${rowNumber}`,
+    majorDimension: "ROWS",
+    values: [[value]]
+  };
+}
+
+function columnIndexToA1(index) {
+  let value = Number(index) + 1;
+  let label = "";
+
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    label = String.fromCharCode(65 + remainder) + label;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return label;
 }
 
 function getCell(row, headerMap, names, fallback = "") {

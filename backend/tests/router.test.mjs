@@ -300,6 +300,27 @@ assert.equal(duplicateReadUnauthorized.status, 401);
 assert.equal(duplicateReadUnauthorized.headers.get("X-M4L-Feature"), "student-management-read");
 assert.equal(duplicateReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 
+const studentManagementUpdateUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/update-student",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uniqueid: "TEST", username: "Unauthorized" })
+  }
+), {
+  M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE: "google-sheets"
+});
+assert.equal(studentManagementUpdateUnauthorized.status, 401);
+assert.equal(
+  studentManagementUpdateUnauthorized.headers.get("X-M4L-Feature"),
+  "student-management-update"
+);
+assert.equal(studentManagementUpdateUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  studentManagementUpdateUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"
+);
+
 const taskAssignmentReadUnauthorized = await worker.fetch(new Request(
   "https://worker.test/api/admin/students/assignment-options",
   {

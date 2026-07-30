@@ -81,6 +81,7 @@ const directEnv = {
     token_uri: "https://oauth2.googleapis.com/token"
   }),
   M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets",
+  M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE: "google-sheets",
   M4L_BACKEND_TASK_ASSIGNMENT_READ: "google-sheets",
   M4L_STUDENT_LOGIN_BASE: "https://development.example.test/student/"
 };
@@ -92,6 +93,7 @@ const adminToken = await makeSessionToken({
 }, sessionSecret);
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
+const batchUpdates = [];
 let missingSheetName = "";
 
 globalThis.fetch = async (input, init = {}) => {
@@ -103,6 +105,13 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-student-management-token");
+
+    if (url.pathname.endsWith("/values:batchUpdate")) {
+      const payload = JSON.parse(init.body);
+      batchUpdates.push(payload);
+      return response({ totalUpdatedRows: payload.data.length });
+    }
+
     const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
     requestedRanges.push(range);
 
@@ -158,6 +167,85 @@ try {
   assert.equal(students.data.students[1].active, false);
   assert.equal(students.data.students.some(student => student.studentid === "SYSTEM1"), false);
   assert.equal(students.data.students.some(student => "pinhash" in student), false);
+
+  const updatedStudent = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    {
+      uniqueid: "LINK-AHMAD",
+      username: "  Ahmad Updated  ",
+      whatsapp6: "12 34",
+      classgroup: " 5 ",
+      active: false
+    },
+    directEnv
+  );
+  assert.equal(updatedStudent.response.status, 200);
+  assert.equal(
+    updatedStudent.response.headers.get("X-M4L-Feature"),
+    "student-management-update"
+  );
+  assert.equal(updatedStudent.response.headers.get("X-M4L-Backend"), "google-sheets");
+  assert.equal(
+    updatedStudent.response.headers.get("X-M4L-Backend-Source"),
+    "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"
+  );
+  assert.deepEqual(updatedStudent.data, {
+    success: true,
+    message: "Student updated successfully",
+    studentid: "ST1",
+    uniqueid: "LINK-AHMAD",
+    username: "Ahmad Updated",
+    whatsapp6: "001234",
+    classgroup: "5",
+    active: false
+  });
+  assert.equal(batchUpdates.length, 1);
+  assert.deepEqual(batchUpdates[0], {
+    valueInputOption: "RAW",
+    data: [
+      { range: "StudentRecords!B4", majorDimension: "ROWS", values: [["Ahmad Updated"]] },
+      { range: "StudentRecords!C4", majorDimension: "ROWS", values: [["001234"]] },
+      { range: "StudentRecords!G4", majorDimension: "ROWS", values: [["5"]] },
+      { range: "StudentRecords!K4", majorDimension: "ROWS", values: [[false]] }
+    ]
+  });
+  assert.equal(
+    batchUpdates[0].data.some(update => /StudentRecords![EFJ]4$/.test(update.range)),
+    false,
+    "Student updates must not overwrite PIN or failed-attempt fields"
+  );
+
+  const unchangedStudent = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    { uniqueid: "LINK-AHMAD" },
+    directEnv
+  );
+  assert.equal(unchangedStudent.data.success, true);
+  assert.equal(unchangedStudent.data.username, "Ahmad");
+  assert.equal(batchUpdates.length, 1, "An empty update must not call the write API");
+
+  const missingStudent = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    { uniqueid: "NOT-FOUND", username: "Nobody" },
+    directEnv
+  );
+  assert.deepEqual(missingStudent.data, { success: false, error: "Student not found" });
+  assert.equal(batchUpdates.length, 1);
+
+  const invalidActive = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    { uniqueid: "LINK-AHMAD", active: "false" },
+    directEnv
+  );
+  assert.equal(invalidActive.response.status, 400);
+  assert.deepEqual(invalidActive.data, {
+    success: false,
+    error: "active must be true or false"
+  });
 
   const phoneSearch = await postAdmin(
     "/api/admin/search-students",
@@ -271,13 +359,27 @@ try {
     { username: "New Student", whatsapp6: "123456", classgroup: "2" },
     {
       ...fallbackEnv,
-      M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets"
+      M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets",
+      M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE: "google-sheets"
     }
   );
   assert.equal(legacyRegister.response.headers.get("X-M4L-Feature"), "student-management-write");
   assert.equal(legacyRegister.response.headers.get("X-M4L-Backend"), "apps-script");
   assert.equal(appsScriptPayload.action, "registerStudent");
   assert.equal(appsScriptPayload.data.username, "New Student");
+
+  const legacyUpdate = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    { uniqueid: "LINK-AHMAD", username: "Legacy Update" },
+    fallbackEnv
+  );
+  assert.equal(legacyUpdate.response.headers.get("X-M4L-Feature"), "student-management-update");
+  assert.equal(legacyUpdate.response.headers.get("X-M4L-Backend"), "apps-script");
+  assert.deepEqual(appsScriptPayload, {
+    action: "updateStudent",
+    data: { uniqueid: "LINK-AHMAD", username: "Legacy Update" }
+  });
 
   const legacyAssign = await postAdmin(
     "/api/admin/tasks/assign",
@@ -295,7 +397,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("Direct Student Management read tests passed.");
+console.log("Direct Student Management read/update tests passed.");
 
 async function postAdmin(path, token, body, env) {
   const response = await worker.fetch(new Request(`https://worker.test${path}`, {

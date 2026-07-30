@@ -1,14 +1,16 @@
 # Apps Script to Google Sheets Migration Ledger
 
-Last updated: 2026-07-28
+Last updated: 2026-07-30
 
-Latest development-verified milestone before V98.5: V98.2
+Latest development-verified milestone before V98.6: V98.5
 
-Development milestone: V98.5
+Development milestone: V98.6
 
-The live Google Apps Script project is the source of truth for `code.gs`. The
-repository copy is a reference snapshot only. Direct API migrations do not
-remove or deploy live Apps Script functions unless that is explicitly stated.
+The repository file `apps-script/code.gs` is the source of truth. The live
+Google Apps Script project is a deployment target. Changes must be committed in
+the repository first, then the complete file must be synchronized to Apps
+Script and deployed as a new version. Any emergency dashboard edit must be
+copied back to the repository before the next application change.
 
 This ledger records backend ownership at the operation level. Reads and writes
 can migrate independently.
@@ -41,26 +43,29 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.5 target
+## Current ownership and V98.6 target
 
-| Area | Operation / Apps Script action | V98.5 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.6 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `updateTimetableZoomLink` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Weekly Planner | records and archives | DIRECT ONLY | DIRECT ONLY | Not present |
 | Weekly Planner | save preview PNG to Drive | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Attendance | `submitAbsentStudents` | DIRECT | DIRECT | ACTIVE ROLLBACK |
+| Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Attendance | `submitAbsentStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Authentication | lookup, login, PIN setup and reset | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Progress | task reads, status updates, verification and reports | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Student management | `checkStudentDuplicate`, `searchStudents` | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Student management | `registerStudent`, `updateStudent` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Curriculum | subject and task create/update | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Curriculum resources | create/update | DIRECT | DIRECT | ACTIVE ROLLBACK |
-| Task assignment | `getStudentAssignmentOptions` | DIRECT | DIRECT | ACTIVE ROLLBACK |
+| Student management | `searchStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Student management | `checkStudentDuplicate` used by registration | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Student management | standalone direct duplicate endpoint | IMPLEMENTED, UNUSED BY APP | IMPLEMENTED, UNUSED BY APP | Not removable: shared active function |
+| Student management | `registerStudent` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Student management | `updateStudent` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Curriculum | subject and task create/update | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Curriculum resources | create/update | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Task assignment | `getStudentAssignmentOptions` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Task assignment | `assignTasksToStudents` and population actions | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
@@ -101,7 +106,7 @@ Cloudflare dashboard variable changes are required at merge time.
   - `/api/attendance/students`
   - `/api/attendance/report`
 - Routing variable: `M4L_BACKEND_ATTENDANCE_READ=google-sheets`
-- Active rollback actions:
+- Legacy rollback actions:
   - `getStudentsForAttendance`
   - `getAttendanceReport`
 - V98.2 preserves teacher group restrictions, active-student filtering,
@@ -114,7 +119,7 @@ Cloudflare dashboard variable changes are required at merge time.
 - Router feature: `attendance-write`
 - Route: `/api/attendance/submit-absent`
 - Routing variable: `M4L_BACKEND_ATTENDANCE_WRITE=google-sheets`
-- Active rollback action: `submitAbsentStudents`
+- Legacy rollback action: `submitAbsentStudents`
 - V98.2 preserves required headers, existing and submitted duplicate checks,
   the South Africa timestamp, admin ID, absence rows and the mandatory
   `SYSTEM1` day-counter row.
@@ -127,7 +132,7 @@ Cloudflare dashboard variable changes are required at merge time.
   - `/api/admin/subjects/list`
   - `/api/admin/tasks/list`
 - Routing variable: `M4L_BACKEND_CURRICULUM_READ=google-sheets`
-- Active rollback actions:
+- Legacy rollback actions:
   - `listSubjects`
   - `listTasks`
 - Subject and task create/update routes use the separate `curriculum-write`
@@ -143,7 +148,7 @@ Cloudflare dashboard variable changes are required at merge time.
   - `/api/admin/tasks/create`
   - `/api/admin/tasks/update`
 - Routing variable: `M4L_BACKEND_CURRICULUM_WRITE=google-sheets`
-- Active rollback actions:
+- Legacy rollback actions:
   - `createSubject`
   - `updateSubject`
   - `createTask`
@@ -159,7 +164,7 @@ Cloudflare dashboard variable changes are required at merge time.
 - Route: `/api/admin/subject-resources/list`
 - Routing variable:
   `M4L_BACKEND_CURRICULUM_RESOURCES_READ=google-sheets`
-- Active rollback action: `listSubjectResources`
+- Legacy rollback action: `listSubjectResources`
 - Curriculum-resource create/update routes use the separate
   `curriculum-resources-write` feature documented below.
 
@@ -172,7 +177,7 @@ Cloudflare dashboard variable changes are required at merge time.
   - `/api/admin/subject-resources/update`
 - Routing variable:
   `M4L_BACKEND_CURRICULUM_RESOURCES_WRITE=google-sheets`
-- Active rollback actions:
+- Legacy rollback actions:
   - `createSubjectResource`
   - `updateSubjectResource`
 - V98.4 preserves the `NextResourceNumber` counter, `RES` identifiers,
@@ -189,14 +194,35 @@ Cloudflare dashboard variable changes are required at merge time.
   - `/api/admin/student/search`
 - Routing variable:
   `M4L_BACKEND_STUDENT_MANAGEMENT_READ=google-sheets`
-- Active rollback actions:
-  - `checkStudentDuplicate`
+- Legacy rollback actions:
   - `searchStudents`
-- V98.5 preserves normalized duplicate matching, suggested usernames, search
-  aliases, WhatsApp matching, `SYSTEM1` exclusion, group/name sorting and
-  result limits. PIN hashes and other authentication fields are never returned.
-- Student registration and updates remain on the separate
-  `student-management-write` Apps Script feature.
+- V98.5 preserves search aliases, WhatsApp matching, `SYSTEM1` exclusion,
+  group/name sorting and result limits. PIN hashes and other authentication
+  fields are never returned.
+- A standalone direct `check-student-duplicate` route was implemented, but the
+  registration screen does not call it. Registration still calls
+  `registerStudent`, which uses the active Apps Script `checkStudentDuplicate`
+  function. Duplicate validation must not be marked as migrated yet.
+- Student registration remains on the separate `student-management-write`
+  Apps Script feature.
+
+### Existing-student update
+
+- Worker implementation: `backend/src/routes/student-management.js`
+- Router feature: `student-management-update`
+- Route: `/api/admin/update-student`
+- Routing variable:
+  `M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE=google-sheets`
+- Legacy rollback action: `updateStudent`
+- V98.6 preserves the existing request validation and response contract.
+- The direct route reads the current StudentRecords row and sends one targeted
+  Sheets values batch request containing only supplied Username, WhatsApp,
+  ClassGroup and Active cells.
+- StudentID, UniqueID, PIN setup, PIN hash, failed attempts, dates and all
+  StudentTasks data are not written by this route.
+- Registration remains on Apps Script because it also performs duplicate
+  validation, identifier generation and initial task assignment. V98.6 does
+  not change registration or duplicate-checking logic.
 
 ### Task-assignment options read
 
@@ -204,7 +230,7 @@ Cloudflare dashboard variable changes are required at merge time.
 - Router feature: `task-assignment-read`
 - Route: `/api/admin/students/assignment-options`
 - Routing variable: `M4L_BACKEND_TASK_ASSIGNMENT_READ=google-sheets`
-- Active rollback action: `getStudentAssignmentOptions`
+- Legacy rollback action: `getStudentAssignmentOptions`
 - V98.5 reads `SubjectList`, optional `ModuleList`, and `TaskList` directly,
   preserving active filtering, General-module fallback, task counts and sort
   order.
@@ -221,10 +247,40 @@ Cloudflare dashboard variable changes are required at merge time.
 
 ## Change history
 
+### 2026-07-30 — V98.6
+
+- Migrated only `/api/admin/update-student` to a direct Google Sheets handler.
+- Added the independent dual-backend `student-management-update` feature and
+  `M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE` routing flag.
+- Added the Google Sheets values batch-update client operation so non-adjacent
+  student cells are committed together without rewriting PIN or identity data.
+- Added the direct flag to both production and development Wrangler variables,
+  preserving seamless promotion by a normal branch merge.
+- Kept `registerStudent`, its duplicate validation and StudentTasks population
+  on the Apps Script-only `student-management-write` feature.
+- Marked only `updateStudent` as a legacy rollback action in the repository
+  Apps Script source of truth.
+- Added tests for targeted cells, response parity, validation, authorization,
+  no-change requests, missing students, routing headers and Apps Script
+  fallback.
+
+### 2026-07-30 — Apps Script source-of-truth transition
+
+- Made repository `apps-script/code.gs` the authoritative source.
+- Defined the Apps Script dashboard as a deployment target only.
+- Added comment-only legacy rollback markers to every action currently routed
+  through direct Google Sheets.
+- Kept authentication, Student Management writes, registration duplicate
+  checking, Task Resource administration, StudentTasks operations and Weekly
+  Planner Drive submission explicitly active.
+- Corrected the V98.5 record: student search and assignment-option reads are
+  direct, while registration duplicate checking remains active in Apps Script.
+- No executable Apps Script logic was changed.
+
 ### 2026-07-28 — V98.5
 
-- Added direct Google Sheets handlers for student duplicate checking, student
-  search and assignment-option loading.
+- Added direct Google Sheets handlers for a standalone student duplicate check,
+  student search and assignment-option loading.
 - Split Student Management into independent read and write routing features.
 - Split Task Assignment into independent read and write routing features.
 - Added `M4L_BACKEND_STUDENT_MANAGEMENT_READ=google-sheets` and
@@ -234,7 +290,9 @@ Cloudflare dashboard variable changes are required at merge time.
   retain the correct production or development student link.
 - Kept student registration, student updates and task-assignment writes on Apps
   Script, with no direct access to `StudentTasks` in this migration.
-- Retained all three live Apps Script read actions as rollback paths.
+- Retained student search and assignment-option Apps Script actions as rollback
+  paths. The duplicate-check function remains active because registration uses
+  it directly.
 - Added automated tests for transformation parity, search aliases, duplicate
   suggestions, sensitive-field exclusion, authorization, routing headers,
   missing sheets, Apps Script fallback and write isolation.

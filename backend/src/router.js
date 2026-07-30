@@ -74,7 +74,8 @@ import {
 import {
   checkStudentDuplicateGoogleSheetsEndpoint,
   getStudentAssignmentOptionsGoogleSheetsEndpoint,
-  searchStudentsGoogleSheetsEndpoint
+  searchStudentsGoogleSheetsEndpoint,
+  updateStudentGoogleSheetsEndpoint
 } from "./routes/student-management.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
@@ -125,7 +126,7 @@ const ROUTES = new Map([
     checkStudentDuplicateGoogleSheetsEndpoint
   )],
   ["/api/admin/register-student", appsScriptRoute("student-management-write", registerStudentAdmin)],
-  ["/api/admin/update-student", appsScriptRoute("student-management-write", updateStudentAdmin)],
+  ["/api/admin/update-student", studentManagementUpdateRoute()],
   ["/api/admin/students/search", studentManagementReadRoute(
     searchStudentsAdmin,
     searchStudentsGoogleSheetsEndpoint
@@ -279,6 +280,13 @@ function studentManagementReadRoute(appsScriptHandler, googleSheetsHandler) {
   return backendRoute("student-management-read", {
     [BACKEND_APPS_SCRIPT]: appsScriptHandler,
     [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function studentManagementUpdateRoute() {
+  return backendRoute("student-management-update", {
+    [BACKEND_APPS_SCRIPT]: updateStudentAdmin,
+    [BACKEND_GOOGLE_SHEETS]: updateStudentGoogleSheetsEndpoint
   });
 }
 
