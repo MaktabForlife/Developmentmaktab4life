@@ -119,20 +119,6 @@ try {
     }
   });
 
-  proxiedPayload = null;
-  const blockedMigration = await worker.fetch(new Request("https://worker.test/api/check-student", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uniqueid: "TEST-LINK" })
-  }), {
-    APPS_SCRIPT_URL: "https://script.example.test/exec",
-    M4L_BACKEND_AUTH: "google-sheets"
-  });
-
-  assert.equal(blockedMigration.status, 503);
-  assert.equal(blockedMigration.headers.get("X-M4L-Feature"), "auth");
-  assert.equal(blockedMigration.headers.get("X-M4L-Backend"), "google-sheets");
-  assert.equal(proxiedPayload, null, "An unavailable direct backend must not fall through to Apps Script");
 } finally {
   globalThis.fetch = originalFetch;
 }
@@ -161,6 +147,221 @@ assert.equal(timetableWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sh
 assert.equal(
   timetableWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
   "M4L_BACKEND_TIMETABLE_WRITE"
+);
+
+const attendanceReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/attendance/students",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ classgroup: "ALL" })
+  }
+), {
+  M4L_BACKEND_ATTENDANCE_READ: "google-sheets"
+});
+assert.equal(attendanceReadUnauthorized.status, 401);
+assert.equal(attendanceReadUnauthorized.headers.get("X-M4L-Feature"), "attendance-read");
+assert.equal(attendanceReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const attendanceWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/attendance/submit-absent",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ date: "2026-07-28", absentStudents: [] })
+  }
+), {
+  M4L_BACKEND_ATTENDANCE_WRITE: "google-sheets"
+});
+assert.equal(attendanceWriteUnauthorized.status, 401);
+assert.equal(attendanceWriteUnauthorized.headers.get("X-M4L-Feature"), "attendance-write");
+assert.equal(attendanceWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const curriculumReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subjects/list",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  }
+), {
+  M4L_BACKEND_CURRICULUM_READ: "google-sheets"
+});
+assert.equal(curriculumReadUnauthorized.status, 401);
+assert.equal(curriculumReadUnauthorized.headers.get("X-M4L-Feature"), "curriculum-read");
+assert.equal(curriculumReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const curriculumWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subjects/create",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subjectName: "Unauthorized Subject" })
+  }
+), {
+  M4L_BACKEND_CURRICULUM_WRITE: "google-sheets"
+});
+assert.equal(curriculumWriteUnauthorized.status, 401);
+assert.equal(curriculumWriteUnauthorized.headers.get("X-M4L-Feature"), "curriculum-write");
+assert.equal(curriculumWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  curriculumWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_CURRICULUM_WRITE"
+);
+
+const curriculumResourcesReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subject-resources/list",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  }
+), {
+  M4L_BACKEND_CURRICULUM_RESOURCES_READ: "google-sheets"
+});
+assert.equal(curriculumResourcesReadUnauthorized.status, 401);
+assert.equal(
+  curriculumResourcesReadUnauthorized.headers.get("X-M4L-Feature"),
+  "curriculum-resources-read"
+);
+assert.equal(curriculumResourcesReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const curriculumResourcesWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/subject-resources/create",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subjectid: "SUB1",
+      resourceName: "Unauthorized Resource",
+      resourceType: "PDF",
+      resourceLink: "https://example.test/unauthorized"
+    })
+  }
+), {
+  M4L_BACKEND_CURRICULUM_RESOURCES_WRITE: "google-sheets"
+});
+assert.equal(curriculumResourcesWriteUnauthorized.status, 401);
+assert.equal(
+  curriculumResourcesWriteUnauthorized.headers.get("X-M4L-Feature"),
+  "curriculum-resources-write"
+);
+assert.equal(
+  curriculumResourcesWriteUnauthorized.headers.get("X-M4L-Backend"),
+  "google-sheets"
+);
+
+const studentManagementReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/students/search",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ listAll: true })
+  }
+), {
+  M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets"
+});
+assert.equal(studentManagementReadUnauthorized.status, 401);
+assert.equal(
+  studentManagementReadUnauthorized.headers.get("X-M4L-Feature"),
+  "student-management-read"
+);
+assert.equal(studentManagementReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  studentManagementReadUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_STUDENT_MANAGEMENT_READ"
+);
+
+const duplicateReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/check-student-duplicate",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "Test", whatsapp6: "123456", classgroup: "1" })
+  }
+), {
+  M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets"
+});
+assert.equal(duplicateReadUnauthorized.status, 401);
+assert.equal(duplicateReadUnauthorized.headers.get("X-M4L-Feature"), "student-management-read");
+assert.equal(duplicateReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+
+const studentManagementUpdateUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/update-student",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uniqueid: "TEST", username: "Unauthorized" })
+  }
+), {
+  M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE: "google-sheets"
+});
+assert.equal(studentManagementUpdateUnauthorized.status, 401);
+assert.equal(
+  studentManagementUpdateUnauthorized.headers.get("X-M4L-Feature"),
+  "student-management-update"
+);
+assert.equal(studentManagementUpdateUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  studentManagementUpdateUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"
+);
+
+const taskAssignmentReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/students/assignment-options",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  }
+), {
+  M4L_BACKEND_TASK_ASSIGNMENT_READ: "google-sheets"
+});
+assert.equal(taskAssignmentReadUnauthorized.status, 401);
+assert.equal(
+  taskAssignmentReadUnauthorized.headers.get("X-M4L-Feature"),
+  "task-assignment-read"
+);
+assert.equal(taskAssignmentReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  taskAssignmentReadUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_TASK_ASSIGNMENT_READ"
+);
+
+const progressReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/tasks/student",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subjectid: "ALL" })
+  }
+), {
+  M4L_BACKEND_PROGRESS_READ: "google-sheets"
+});
+assert.equal(progressReadUnauthorized.status, 401);
+assert.equal(progressReadUnauthorized.headers.get("X-M4L-Feature"), "progress-read");
+assert.equal(progressReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  progressReadUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_PROGRESS_READ"
+);
+
+const progressWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/tasks/update-complete",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ studenttaskid: "STASK1", complete: true })
+  }
+), {
+  M4L_BACKEND_PROGRESS_WRITE: "google-sheets"
+});
+assert.equal(progressWriteUnauthorized.status, 401);
+assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Feature"), "progress-write");
+assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  progressWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_PROGRESS_WRITE"
 );
 
 console.log("Worker router tests passed.");

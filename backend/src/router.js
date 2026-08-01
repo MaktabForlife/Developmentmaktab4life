@@ -8,9 +8,21 @@ import {
   resetPin
 } from "./routes/auth.js";
 import {
+  adminLoginGoogleSheetsEndpoint,
+  checkAdminGoogleSheetsEndpoint,
+  checkStudentGoogleSheetsEndpoint,
+  resetStudentPinGoogleSheetsEndpoint,
+  setupAdminPinGoogleSheetsEndpoint,
+  setupStudentPinGoogleSheetsEndpoint,
+  studentLoginGoogleSheetsEndpoint
+} from "./routes/auth-google-sheets.js";
+import {
   attendanceReport,
+  attendanceReportGoogleSheetsEndpoint,
   attendanceStudents,
-  submitAbsentAttendance
+  attendanceStudentsGoogleSheetsEndpoint,
+  submitAbsentAttendance,
+  submitAbsentAttendanceGoogleSheetsEndpoint
 } from "./routes/attendance.js";
 import {
   assignTasksAdmin,
@@ -37,6 +49,15 @@ import {
   verifyStudentTask
 } from "./routes/progress.js";
 import {
+  getStudentTasksGoogleSheetsEndpoint,
+  taskProgressDetailGoogleSheetsEndpoint,
+  taskProgressReportGoogleSheetsEndpoint
+} from "./routes/progress-read.js";
+import {
+  updateTaskCompleteGoogleSheetsEndpoint,
+  verifyStudentTaskGoogleSheetsEndpoint
+} from "./routes/progress-write.js";
+import {
   getWeeklyPlannerEndpoint,
   saveWeeklyPlannerEndpoint,
   saveWeeklyPlannerPreviewToDriveEndpoint,
@@ -57,6 +78,25 @@ import {
   getResourcesAppsScriptEndpoint,
   getResourcesGoogleSheetsEndpoint
 } from "./routes/resources.js";
+import {
+  createSubjectGoogleSheetsEndpoint,
+  createSubjectResourceGoogleSheetsEndpoint,
+  createTaskGoogleSheetsEndpoint,
+  listSubjectResourcesGoogleSheetsEndpoint,
+  listSubjectsGoogleSheetsEndpoint,
+  listTasksGoogleSheetsEndpoint,
+  updateSubjectGoogleSheetsEndpoint,
+  updateSubjectResourceGoogleSheetsEndpoint,
+  updateTaskGoogleSheetsEndpoint
+} from "./routes/curriculum.js";
+import {
+  checkStudentDuplicateGoogleSheetsEndpoint,
+  getStudentAssignmentOptionsGoogleSheetsEndpoint,
+  searchStudentsGoogleSheetsEndpoint,
+  updateStudentGoogleSheetsEndpoint
+} from "./routes/student-management.js";
+import { registerStudentGoogleSheetsEndpoint } from "./routes/student-registration.js";
+import { assignTasksGoogleSheetsEndpoint } from "./routes/task-assignment.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -88,45 +128,90 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
 
-  ["/api/admin/check-admin", appsScriptRoute("auth", checkAdmin)],
-  ["/api/admin/setup-pin", appsScriptRoute("auth", setupAdminPin)],
-  ["/api/admin/login", appsScriptRoute("auth", adminLogin)],
-  ["/api/admin/reset-pin", appsScriptRoute("auth", resetPin)],
+  ["/api/admin/check-admin", authRoute(checkAdmin, checkAdminGoogleSheetsEndpoint)],
+  ["/api/admin/setup-pin", authRoute(setupAdminPin, setupAdminPinGoogleSheetsEndpoint)],
+  ["/api/admin/login", authRoute(adminLogin, adminLoginGoogleSheetsEndpoint)],
+  ["/api/admin/reset-pin", authRoute(resetPin, resetStudentPinGoogleSheetsEndpoint)],
 
-  ["/api/check-student", appsScriptRoute("auth", checkStudent)],
-  ["/api/setup-pin", appsScriptRoute("auth", setupPin)],
-  ["/api/login", appsScriptRoute("auth", login)],
+  ["/api/check-student", authRoute(checkStudent, checkStudentGoogleSheetsEndpoint)],
+  ["/api/setup-pin", authRoute(setupPin, setupStudentPinGoogleSheetsEndpoint)],
+  ["/api/login", authRoute(login, studentLoginGoogleSheetsEndpoint)],
 
-  ["/api/attendance/submit-absent", appsScriptRoute("attendance", submitAbsentAttendance)],
-  ["/api/attendance/students", appsScriptRoute("attendance", attendanceStudents)],
-  ["/api/attendance/report", appsScriptRoute("attendance", attendanceReport)],
+  ["/api/attendance/submit-absent", attendanceWriteRoute()],
+  ["/api/attendance/students", attendanceStudentsReadRoute()],
+  ["/api/attendance/report", attendanceReportReadRoute()],
 
-  ["/api/admin/check-student-duplicate", appsScriptRoute("student-management", checkStudentDuplicateAdmin)],
-  ["/api/admin/register-student", appsScriptRoute("student-management", registerStudentAdmin)],
-  ["/api/admin/update-student", appsScriptRoute("student-management", updateStudentAdmin)],
-  ["/api/admin/students/search", appsScriptRoute("student-management", searchStudentsAdmin)],
-  ["/api/admin/search-students", appsScriptRoute("student-management", searchStudentsAdmin)],
-  ["/api/admin/student/search", appsScriptRoute("student-management", searchStudentsAdmin)],
-  ["/api/admin/students/assignment-options", appsScriptRoute("task-assignment", getStudentAssignmentOptionsAdmin)],
+  ["/api/admin/check-student-duplicate", studentManagementReadRoute(
+    checkStudentDuplicateAdmin,
+    checkStudentDuplicateGoogleSheetsEndpoint
+  )],
+  ["/api/admin/register-student", studentManagementWriteRoute()],
+  ["/api/admin/update-student", studentManagementUpdateRoute()],
+  ["/api/admin/students/search", studentManagementReadRoute(
+    searchStudentsAdmin,
+    searchStudentsGoogleSheetsEndpoint
+  )],
+  ["/api/admin/search-students", studentManagementReadRoute(
+    searchStudentsAdmin,
+    searchStudentsGoogleSheetsEndpoint
+  )],
+  ["/api/admin/student/search", studentManagementReadRoute(
+    searchStudentsAdmin,
+    searchStudentsGoogleSheetsEndpoint
+  )],
+  ["/api/admin/students/assignment-options", taskAssignmentReadRoute()],
 
-  ["/api/admin/subjects/create", appsScriptRoute("curriculum", createSubjectAdmin)],
-  ["/api/admin/subjects/list", appsScriptRoute("curriculum", listSubjectsAdmin)],
-  ["/api/admin/subjects/update", appsScriptRoute("curriculum", updateSubjectAdmin)],
+  ["/api/admin/subjects/create", curriculumWriteRoute(
+    createSubjectAdmin,
+    createSubjectGoogleSheetsEndpoint
+  )],
+  ["/api/admin/subjects/list", curriculumReadRoute(listSubjectsAdmin, listSubjectsGoogleSheetsEndpoint)],
+  ["/api/admin/subjects/update", curriculumWriteRoute(
+    updateSubjectAdmin,
+    updateSubjectGoogleSheetsEndpoint
+  )],
 
-  ["/api/admin/subject-resources/create", appsScriptRoute("curriculum-resources", createSubjectResourceAdmin)],
-  ["/api/admin/subject-resources/list", appsScriptRoute("curriculum-resources", listSubjectResourcesAdmin)],
-  ["/api/admin/subject-resources/update", appsScriptRoute("curriculum-resources", updateSubjectResourceAdmin)],
+  ["/api/admin/subject-resources/create", curriculumResourcesWriteRoute(
+    createSubjectResourceAdmin,
+    createSubjectResourceGoogleSheetsEndpoint
+  )],
+  ["/api/admin/subject-resources/list", curriculumResourcesReadRoute()],
+  ["/api/admin/subject-resources/update", curriculumResourcesWriteRoute(
+    updateSubjectResourceAdmin,
+    updateSubjectResourceGoogleSheetsEndpoint
+  )],
 
-  ["/api/admin/tasks/create", appsScriptRoute("curriculum", createTaskAdmin)],
-  ["/api/admin/tasks/list", appsScriptRoute("curriculum", listTasksAdmin)],
-  ["/api/admin/tasks/update", appsScriptRoute("curriculum", updateTaskAdmin)],
-  ["/api/admin/tasks/assign", appsScriptRoute("task-assignment", assignTasksAdmin)],
-  ["/api/admin/tasks/verify", appsScriptRoute("progress", verifyStudentTask)],
+  ["/api/admin/tasks/create", curriculumWriteRoute(
+    createTaskAdmin,
+    createTaskGoogleSheetsEndpoint
+  )],
+  ["/api/admin/tasks/list", curriculumReadRoute(listTasksAdmin, listTasksGoogleSheetsEndpoint)],
+  ["/api/admin/tasks/update", curriculumWriteRoute(
+    updateTaskAdmin,
+    updateTaskGoogleSheetsEndpoint
+  )],
+  ["/api/admin/tasks/assign", taskAssignmentWriteRoute()],
+  ["/api/admin/tasks/verify", progressWriteRoute(
+    verifyStudentTask,
+    verifyStudentTaskGoogleSheetsEndpoint
+  )],
 
-  ["/api/tasks/student", appsScriptRoute("progress", getStudentTasksEndpoint)],
-  ["/api/tasks/update-complete", appsScriptRoute("progress", updateTaskComplete)],
-  ["/api/progress/tasks", appsScriptRoute("progress", taskProgressReport)],
-  ["/api/progress/task-detail", appsScriptRoute("progress", taskProgressDetail)]
+  ["/api/tasks/student", progressReadRoute(
+    getStudentTasksEndpoint,
+    getStudentTasksGoogleSheetsEndpoint
+  )],
+  ["/api/tasks/update-complete", progressWriteRoute(
+    updateTaskComplete,
+    updateTaskCompleteGoogleSheetsEndpoint
+  )],
+  ["/api/progress/tasks", progressReadRoute(
+    taskProgressReport,
+    taskProgressReportGoogleSheetsEndpoint
+  )],
+  ["/api/progress/task-detail", progressReadRoute(
+    taskProgressDetail,
+    taskProgressDetailGoogleSheetsEndpoint
+  )]
 ]);
 
 export function routeRequest(request, env, pathname) {
@@ -191,6 +276,13 @@ function resourcesRoute() {
   });
 }
 
+function authRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("auth", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
 function timetableReadRoute() {
   return backendRoute("timetable-read", {
     [BACKEND_APPS_SCRIPT]: getTimetableAppsScriptEndpoint,
@@ -202,6 +294,104 @@ function timetableWriteRoute() {
   return backendRoute("timetable-write", {
     [BACKEND_APPS_SCRIPT]: updateTimetableZoomLinkEndpoint,
     [BACKEND_GOOGLE_SHEETS]: updateTimetableZoomLinkGoogleSheetsEndpoint
+  });
+}
+
+function attendanceStudentsReadRoute() {
+  return backendRoute("attendance-read", {
+    [BACKEND_APPS_SCRIPT]: attendanceStudents,
+    [BACKEND_GOOGLE_SHEETS]: attendanceStudentsGoogleSheetsEndpoint
+  });
+}
+
+function attendanceReportReadRoute() {
+  return backendRoute("attendance-read", {
+    [BACKEND_APPS_SCRIPT]: attendanceReport,
+    [BACKEND_GOOGLE_SHEETS]: attendanceReportGoogleSheetsEndpoint
+  });
+}
+
+function attendanceWriteRoute() {
+  return backendRoute("attendance-write", {
+    [BACKEND_APPS_SCRIPT]: submitAbsentAttendance,
+    [BACKEND_GOOGLE_SHEETS]: submitAbsentAttendanceGoogleSheetsEndpoint
+  });
+}
+
+function studentManagementReadRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("student-management-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function studentManagementUpdateRoute() {
+  return backendRoute("student-management-update", {
+    [BACKEND_APPS_SCRIPT]: updateStudentAdmin,
+    [BACKEND_GOOGLE_SHEETS]: updateStudentGoogleSheetsEndpoint
+  });
+}
+
+function studentManagementWriteRoute() {
+  return backendRoute("student-management-write", {
+    [BACKEND_APPS_SCRIPT]: registerStudentAdmin,
+    [BACKEND_GOOGLE_SHEETS]: registerStudentGoogleSheetsEndpoint
+  });
+}
+
+function taskAssignmentReadRoute() {
+  return backendRoute("task-assignment-read", {
+    [BACKEND_APPS_SCRIPT]: getStudentAssignmentOptionsAdmin,
+    [BACKEND_GOOGLE_SHEETS]: getStudentAssignmentOptionsGoogleSheetsEndpoint
+  });
+}
+
+function taskAssignmentWriteRoute() {
+  return backendRoute("task-assignment-write", {
+    [BACKEND_APPS_SCRIPT]: assignTasksAdmin,
+    [BACKEND_GOOGLE_SHEETS]: assignTasksGoogleSheetsEndpoint
+  });
+}
+
+function progressReadRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("progress-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function progressWriteRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("progress-write", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function curriculumReadRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("curriculum-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function curriculumWriteRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("curriculum-write", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function curriculumResourcesReadRoute() {
+  return backendRoute("curriculum-resources-read", {
+    [BACKEND_APPS_SCRIPT]: listSubjectResourcesAdmin,
+    [BACKEND_GOOGLE_SHEETS]: listSubjectResourcesGoogleSheetsEndpoint
+  });
+}
+
+function curriculumResourcesWriteRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("curriculum-resources-write", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
   });
 }
 

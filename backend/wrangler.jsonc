@@ -6,9 +6,24 @@
   "vars": {
     "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwwmDx0WuJWTj0gLRUnE3yC7v6gUrc8muEjENJJZ872taaRKxUFSjCGFOtsfelu2fcW/exec",
     "GOOGLE_SPREADSHEET_ID": "1KyYroAEEsDOZxvfNGb5hGKmaIevbq3U-UQ7at-sg6-g",
+    "M4L_BACKEND_AUTH": "google-sheets",
     "M4L_BACKEND_RESOURCES": "google-sheets",
-   "M4L_BACKEND_TIMETABLE_READ": "google-sheets",
-"M4L_BACKEND_TIMETABLE_WRITE": "google-sheets"
+    "M4L_BACKEND_TIMETABLE_READ": "google-sheets",
+    "M4L_BACKEND_TIMETABLE_WRITE": "google-sheets",
+    "M4L_BACKEND_ATTENDANCE_READ": "google-sheets",
+    "M4L_BACKEND_ATTENDANCE_WRITE": "google-sheets",
+    "M4L_BACKEND_CURRICULUM_READ": "google-sheets",
+    "M4L_BACKEND_CURRICULUM_WRITE": "google-sheets",
+    "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets",
+    "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets",
+    "M4L_BACKEND_STUDENT_MANAGEMENT_READ": "google-sheets",
+    "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE": "google-sheets",
+    "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE": "google-sheets",
+    "M4L_BACKEND_TASK_ASSIGNMENT_READ": "google-sheets",
+    "M4L_BACKEND_TASK_ASSIGNMENT_WRITE": "google-sheets",
+    "M4L_BACKEND_PROGRESS_READ": "google-sheets",
+    "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
+    "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/"
   },
   "r2_buckets": [
     {
@@ -22,9 +37,24 @@
       "vars": {
         "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbw_-aTpK8XpXaS8Px8RO_J46P6_Wh8zHYYv3uyBiRihW6oFGVKb1IAHWhUQEDToLKby/exec",
         "GOOGLE_SPREADSHEET_ID": "1jXheppMeAEKdL8GUybExpvSK6YLRw5QeTnSZ1pWNktQ",
+        "M4L_BACKEND_AUTH": "google-sheets",
         "M4L_BACKEND_RESOURCES": "google-sheets",
         "M4L_BACKEND_TIMETABLE_READ": "google-sheets",
-        "M4L_BACKEND_TIMETABLE_WRITE": "google-sheets"
+        "M4L_BACKEND_TIMETABLE_WRITE": "google-sheets",
+        "M4L_BACKEND_ATTENDANCE_READ": "google-sheets",
+        "M4L_BACKEND_ATTENDANCE_WRITE": "google-sheets",
+        "M4L_BACKEND_CURRICULUM_READ": "google-sheets",
+        "M4L_BACKEND_CURRICULUM_WRITE": "google-sheets",
+        "M4L_BACKEND_CURRICULUM_RESOURCES_READ": "google-sheets",
+        "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE": "google-sheets",
+        "M4L_BACKEND_STUDENT_MANAGEMENT_READ": "google-sheets",
+        "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE": "google-sheets",
+        "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE": "google-sheets",
+        "M4L_BACKEND_TASK_ASSIGNMENT_READ": "google-sheets",
+        "M4L_BACKEND_TASK_ASSIGNMENT_WRITE": "google-sheets",
+        "M4L_BACKEND_PROGRESS_READ": "google-sheets",
+        "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
+        "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/"
       },
       "r2_buckets": [
         {

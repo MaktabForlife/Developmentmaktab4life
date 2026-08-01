@@ -3,8 +3,21 @@ export const BACKEND_GOOGLE_SHEETS = "google-sheets";
 export const BACKEND_WORKER = "worker";
 
 const FEATURE_DEFINITIONS = Object.freeze({
-  auth: defineFeature("M4L_BACKEND_AUTH", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
-  attendance: defineFeature("M4L_BACKEND_ATTENDANCE", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
+  auth: defineFeature(
+    "M4L_BACKEND_AUTH",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "attendance-read": defineFeature(
+    "M4L_BACKEND_ATTENDANCE_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "attendance-write": defineFeature(
+    "M4L_BACKEND_ATTENDANCE_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
   resources: defineFeature(
     "M4L_BACKEND_RESOURCES",
     BACKEND_APPS_SCRIPT,
@@ -20,23 +33,61 @@ const FEATURE_DEFINITIONS = Object.freeze({
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  "student-management": defineFeature(
-    "M4L_BACKEND_STUDENT_MANAGEMENT",
+  "student-management-read": defineFeature(
+    "M4L_BACKEND_STUDENT_MANAGEMENT_READ",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  curriculum: defineFeature("M4L_BACKEND_CURRICULUM", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
-  "curriculum-resources": defineFeature(
-    "M4L_BACKEND_CURRICULUM_RESOURCES",
+  "student-management-write": defineFeature(
+    "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  "task-assignment": defineFeature(
-    "M4L_BACKEND_TASK_ASSIGNMENT",
+  "student-management-update": defineFeature(
+    "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
-  progress: defineFeature("M4L_BACKEND_PROGRESS", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
+  "curriculum-read": defineFeature(
+    "M4L_BACKEND_CURRICULUM_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "curriculum-write": defineFeature(
+    "M4L_BACKEND_CURRICULUM_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "curriculum-resources-read": defineFeature(
+    "M4L_BACKEND_CURRICULUM_RESOURCES_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "curriculum-resources-write": defineFeature(
+    "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "task-assignment-read": defineFeature(
+    "M4L_BACKEND_TASK_ASSIGNMENT_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "task-assignment-write": defineFeature(
+    "M4L_BACKEND_TASK_ASSIGNMENT_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "progress-read": defineFeature(
+    "M4L_BACKEND_PROGRESS_READ",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
+  "progress-write": defineFeature(
+    "M4L_BACKEND_PROGRESS_WRITE",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
   "weekly-planner": defineFeature(
     "M4L_BACKEND_WEEKLY_PLANNER",
     BACKEND_GOOGLE_SHEETS,

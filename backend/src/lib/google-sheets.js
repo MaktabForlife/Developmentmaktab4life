@@ -51,6 +51,38 @@ export async function appendGoogleSheetValues(env, range, values) {
   });
 }
 
+export async function batchUpdateGoogleSheetValues(env, data) {
+  const spreadsheetId = String(env.GOOGLE_SPREADSHEET_ID || "").trim();
+
+  if (!spreadsheetId) {
+    throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error("Google Sheets batch update requires at least one range");
+  }
+
+  const accessToken = await getGoogleSheetsAccessToken(env);
+  const url = [
+    "https://sheets.googleapis.com/v4/spreadsheets/",
+    encodeURIComponent(spreadsheetId),
+    "/values:batchUpdate"
+  ].join("");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json;charset=UTF-8"
+    },
+    body: JSON.stringify({
+      valueInputOption: "RAW",
+      data
+    })
+  });
+
+  return parseGoogleSheetsResponse(response);
+}
+
 function getGoogleServiceAccountConfig(env) {
   const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
@@ -247,6 +279,11 @@ async function callGoogleSheetsValuesApi(env, range, options = {}) {
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body)
   });
+
+  return parseGoogleSheetsResponse(response);
+}
+
+async function parseGoogleSheetsResponse(response) {
   const text = await response.text();
   let data = {};
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   appendGoogleSheetValues,
+  batchUpdateGoogleSheetValues,
   readGoogleSheetValues,
   updateGoogleSheetValues
 } from "../src/lib/google-sheets.js";
@@ -68,11 +69,27 @@ try {
 
   await updateGoogleSheetValues(env, "Data!A2:B2", [["A", "B"]]);
   await appendGoogleSheetValues(env, "Data!A:B", [["C", "D"]]);
+  await batchUpdateGoogleSheetValues(env, [
+    {
+      range: "Data!B2",
+      majorDimension: "ROWS",
+      values: [["Updated"]]
+    },
+    {
+      range: "Data!D2",
+      majorDimension: "ROWS",
+      values: [[true]]
+    }
+  ]);
+  await assert.rejects(
+    () => batchUpdateGoogleSheetValues(env, []),
+    /requires at least one range/
+  );
 
   assert.equal(oauthCalls, 1, "The reusable client should reuse a valid access token");
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 3);
+  assert.equal(sheetsCalls.length, 4);
 
   assert.equal(sheetsCalls[0].method, "GET");
   assert.equal(sheetsCalls[0].url.pathname.endsWith("/values/Data!A%3AB"), true);
@@ -95,6 +112,24 @@ try {
     range: "Data!A:B",
     majorDimension: "ROWS",
     values: [["C", "D"]]
+  });
+
+  assert.equal(sheetsCalls[3].method, "POST");
+  assert.equal(sheetsCalls[3].url.pathname.endsWith("/values:batchUpdate"), true);
+  assert.deepEqual(JSON.parse(sheetsCalls[3].body), {
+    valueInputOption: "RAW",
+    data: [
+      {
+        range: "Data!B2",
+        majorDimension: "ROWS",
+        values: [["Updated"]]
+      },
+      {
+        range: "Data!D2",
+        majorDimension: "ROWS",
+        values: [[true]]
+      }
+    ]
   });
 } finally {
   globalThis.fetch = originalFetch;

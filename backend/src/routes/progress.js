@@ -99,7 +99,7 @@ function getProgressActorForAppsScript(authUser) {
   };
 }
 
-function normalizeProgressStatusUpdates(body, mode, authUser) {
+export function normalizeProgressStatusUpdates(body, mode, authUser) {
   const sourceRows = getProgressUpdateRows(body);
   const updates = [];
   const errors = [];
@@ -277,7 +277,6 @@ export async function taskProgressDetail(request, env) {
 
   return json(result);
 }
-
 
 
 
