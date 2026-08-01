@@ -75,7 +75,7 @@ assert.deepEqual(
 assert.equal(defaults.features["student-management-write"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features["student-management-write"].availableBackends,
-  [BACKEND_APPS_SCRIPT]
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
 assert.equal(defaults.features["student-management-update"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
@@ -223,12 +223,16 @@ assert.equal(progressWriteMigration.valid, true);
 assert.equal(progressWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
 assert.equal(progressWriteMigration.source, "M4L_BACKEND_PROGRESS_WRITE");
 
-const blockedStudentWriteMigration = getBackendSelection(
+const studentWriteMigration = getBackendSelection(
   { M4L_BACKEND_STUDENT_MANAGEMENT_WRITE: "google-sheets" },
   "student-management-write"
 );
-assert.equal(blockedStudentWriteMigration.valid, false);
-assert.match(blockedStudentWriteMigration.error, /not enabled/);
+assert.equal(studentWriteMigration.valid, true);
+assert.equal(studentWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(
+  studentWriteMigration.source,
+  "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE"
+);
 
 const blockedTaskAssignmentWriteMigration = getBackendSelection(
   { M4L_BACKEND_TASK_ASSIGNMENT_WRITE: "google-sheets" },
@@ -295,6 +299,14 @@ assert.equal(
 );
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_STUDENT_MANAGEMENT_READ,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.vars.M4L_BACKEND_STUDENT_MANAGEMENT_WRITE,
+  "google-sheets"
+);
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_STUDENT_MANAGEMENT_WRITE,
   "google-sheets"
 );
 assert.equal(

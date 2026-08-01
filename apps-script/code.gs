@@ -2,7 +2,7 @@
 ===============================================================================
 MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
 Last updated: 1 August 2026
-Migration map: V98.8
+Migration map: V98.9
 ===============================================================================
 
 SOURCE OF TRUTH:
@@ -34,6 +34,8 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
   Legacy Apps Script action retained: searchStudents
 - Existing-student updates
   Legacy Apps Script action retained: updateStudent
+- Student registration, duplicate validation and registration-time task assignment
+  Legacy Apps Script actions retained: registerStudent, checkStudentDuplicate
 - Student task loading, Progress reports, completion and verification writes
   Legacy Apps Script actions retained: getStudentTasks,
   getTaskProgressReport, getTaskProgressDetail, updateStudentTaskStatus
@@ -47,10 +49,8 @@ STILL ACTIVE ON APPS SCRIPT:
 - Student and Admin authentication
 - PIN setup and reset
 - getStudentTaskById compatibility lookup
-- Student registration
-- Registration duplicate checking (registerStudent calls checkStudentDuplicate)
 - Task Resource administration
-- Student-task assignment and population writes
+- Standalone student-task assignment and population writes
 - Weekly Planner preview submission to Google Drive
 
 IMPORTANT:
@@ -58,8 +58,8 @@ IMPORTANT:
   removed without first checking the active Worker routing configuration.
 - Reads and writes are migrated separately. A migrated read does not mean its
   related write operation has also migrated.
-- The standalone direct duplicate endpoint does not make
-  checkStudentDuplicate legacy: registration still calls this function here.
+- Registration-time task assignment is direct in V98.9. The standalone
+  assignTasksToStudents and population actions remain active on Apps Script.
 - Remove a legacy function and its doPost action together only after the
   rollback path has been explicitly retired.
 - Record every future migration in:
@@ -96,6 +96,12 @@ function normalizeWhatsapp6_(value) {
   return digits.slice(-6).padStart(6, "0");
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.9).
+ * Normal registration traffic uses the direct Google Sheets route selected by
+ * M4L_BACKEND_STUDENT_MANAGEMENT_WRITE. This executable implementation remains
+ * unchanged for an explicit routing rollback.
+ */
 function registerStudent(data) {
   data = data || {};
 
@@ -460,11 +466,10 @@ function normalizeUsername(username) {
 }
 
 /*
- * MIGRATION STATUS: ACTIVE APPS SCRIPT DEPENDENCY.
- * registerStudent calls this function before writing a student record.
- * A standalone direct Worker endpoint exists, but the registration workflow
- * has not migrated its duplicate validation. Do not mark or remove this as
- * legacy until Student Management writes are migrated.
+ * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.9).
+ * Normal registration duplicate validation now runs inside the direct Google
+ * Sheets registration route. This function remains callable with the legacy
+ * registerStudent action for an explicit routing rollback.
  */
 function checkStudentDuplicate(data) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
@@ -527,8 +532,8 @@ function getNextAvailableUsername(baseUsername) {
 /*
  * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.6).
  * Normal existing-student updates use the targeted direct Google Sheets route
- * selected by M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE. Student registration and
- * its duplicate validation remain active Apps Script operations.
+ * selected by M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE. Registration is tracked
+ * separately by the V98.9 student-management-write migration.
  */
 function updateStudent(data) {
   const student = getStudentByUniqueId(data.uniqueid);
@@ -5331,11 +5336,12 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
 
 if (body.action === "checkStudentDuplicate") {
-  // ACTIVE DEPENDENCY: registerStudent still uses this Apps Script validation.
+  // LEGACY ROLLBACK: registration duplicate validation normally runs direct.
   return jsonResponse(checkStudentDuplicate(body.data));
 }
 
     if (body.action === "registerStudent") {
+      // LEGACY ROLLBACK: student registration normally uses direct Google Sheets.
       return jsonResponse(registerStudent(body.data));
     }
 

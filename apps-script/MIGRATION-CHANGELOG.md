@@ -43,9 +43,9 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.8 target
+## Current ownership and V98.9 target
 
-| Area | Operation / Apps Script action | V98.8 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.9 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -59,9 +59,8 @@ Cloudflare dashboard variable changes are required at merge time.
 | Progress | `updateStudentTaskStatus` completion and verification writes | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Progress | `getStudentTaskById` compatibility lookup | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Student management | `searchStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Student management | `checkStudentDuplicate` used by registration | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Student management | standalone direct duplicate endpoint | IMPLEMENTED, UNUSED BY APP | IMPLEMENTED, UNUSED BY APP | Not removable: shared active function |
-| Student management | `registerStudent` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Student management | `checkStudentDuplicate` used by registration | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Student management | `registerStudent` and registration-time task assignment | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Student management | `updateStudent` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Curriculum | subject and task create/update | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -201,12 +200,9 @@ Cloudflare dashboard variable changes are required at merge time.
 - V98.5 preserves search aliases, WhatsApp matching, `SYSTEM1` exclusion,
   group/name sorting and result limits. PIN hashes and other authentication
   fields are never returned.
-- A standalone direct `check-student-duplicate` route was implemented, but the
-  registration screen does not call it. Registration still calls
-  `registerStudent`, which uses the active Apps Script `checkStudentDuplicate`
-  function. Duplicate validation must not be marked as migrated yet.
-- Student registration remains on the separate `student-management-write`
-  Apps Script feature.
+- In V98.5, the standalone direct `check-student-duplicate` route was not yet
+  used by registration. Registration and its shared duplicate validation were
+  subsequently migrated through `student-management-write` in V98.9.
 
 ### Existing-student update
 
@@ -222,9 +218,29 @@ Cloudflare dashboard variable changes are required at merge time.
   ClassGroup and Active cells.
 - StudentID, UniqueID, PIN setup, PIN hash, failed attempts, dates and all
   StudentTasks data are not written by this route.
-- Registration remains on Apps Script because it also performs duplicate
-  validation, identifier generation and initial task assignment. V98.6 does
-  not change registration or duplicate-checking logic.
+- At V98.6, registration remained on Apps Script because it also performed
+  duplicate validation, identifier generation and initial task assignment.
+  Those operations were subsequently migrated together in V98.9.
+
+### Student registration
+
+- Worker implementation: `backend/src/routes/student-registration.js`
+- Router feature: `student-management-write`
+- Route: `/api/admin/register-student`
+- Routing variable:
+  `M4L_BACKEND_STUDENT_MANAGEMENT_WRITE=google-sheets`
+- Legacy rollback actions:
+  - `registerStudent`
+  - `checkStudentDuplicate`
+- V98.9 preserves the existing duplicate rule, confirmed-duplicate username
+  suffixing, `MAKTAB` and `STASK` counters, ten-character student link,
+  StudentRecords row contract and registration-time assignment of active
+  tasks.
+- The route retains ADMIN/SENIOR authorization and uses the environment's
+  student login base. Manual selected-module requests retain their existing
+  fallback to all active tasks when no modules are supplied.
+- The standalone `/api/admin/tasks/assign` action and population utilities
+  remain on Apps Script and are not changed by V98.9.
 
 ### Progress read
 
@@ -291,6 +307,24 @@ Cloudflare dashboard variable changes are required at merge time.
 - No Planner record action was migrated from Apps Script.
 
 ## Change history
+
+### 2026-08-01 — V98.9
+
+- Migrated `/api/admin/register-student` to direct Google Sheets access.
+- Enabled both Apps Script and Google Sheets handlers for the
+  `student-management-write` routing feature.
+- Added `M4L_BACKEND_STUDENT_MANAGEMENT_WRITE=google-sheets` to both production
+  and development Wrangler variables for seamless branch promotion.
+- Preserved registration duplicate confirmation, username suffixing, student
+  and StudentTask identifiers, row schemas, active-task filtering and response
+  fields without changing registration business logic.
+- Kept standalone task assignment, population utilities, compatibility lookup,
+  authentication and Task Resource administration on Apps Script.
+- Marked `registerStudent` and `checkStudentDuplicate` as legacy rollback in the
+  repository Apps Script source of truth without changing executable logic.
+- Added automated tests for registration, duplicate no-write behaviour,
+  confirmation, selected-module filtering, initial task assignment, routing
+  headers, authorization, missing sheets and Apps Script fallback.
 
 ### 2026-08-01 — V98.8
 

@@ -37,7 +37,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "student-management-write": defineFeature(
     "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
   "student-management-update": defineFeature(
     "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE",
