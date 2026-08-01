@@ -10,6 +10,7 @@
     "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:resources": "node tests/resources.test.mjs",
     "test:routes": "node tests/router.test.mjs",
+    "test:auth": "node tests/auth.test.mjs",
     "test:attendance": "node tests/attendance.test.mjs",
     "test:curriculum": "node tests/curriculum.test.mjs",
     "test:curriculum-write": "node tests/curriculum-write.test.mjs",

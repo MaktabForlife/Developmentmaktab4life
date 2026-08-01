@@ -8,6 +8,15 @@ import {
   resetPin
 } from "./routes/auth.js";
 import {
+  adminLoginGoogleSheetsEndpoint,
+  checkAdminGoogleSheetsEndpoint,
+  checkStudentGoogleSheetsEndpoint,
+  resetStudentPinGoogleSheetsEndpoint,
+  setupAdminPinGoogleSheetsEndpoint,
+  setupStudentPinGoogleSheetsEndpoint,
+  studentLoginGoogleSheetsEndpoint
+} from "./routes/auth-google-sheets.js";
+import {
   attendanceReport,
   attendanceReportGoogleSheetsEndpoint,
   attendanceStudents,
@@ -119,14 +128,14 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
 
-  ["/api/admin/check-admin", appsScriptRoute("auth", checkAdmin)],
-  ["/api/admin/setup-pin", appsScriptRoute("auth", setupAdminPin)],
-  ["/api/admin/login", appsScriptRoute("auth", adminLogin)],
-  ["/api/admin/reset-pin", appsScriptRoute("auth", resetPin)],
+  ["/api/admin/check-admin", authRoute(checkAdmin, checkAdminGoogleSheetsEndpoint)],
+  ["/api/admin/setup-pin", authRoute(setupAdminPin, setupAdminPinGoogleSheetsEndpoint)],
+  ["/api/admin/login", authRoute(adminLogin, adminLoginGoogleSheetsEndpoint)],
+  ["/api/admin/reset-pin", authRoute(resetPin, resetStudentPinGoogleSheetsEndpoint)],
 
-  ["/api/check-student", appsScriptRoute("auth", checkStudent)],
-  ["/api/setup-pin", appsScriptRoute("auth", setupPin)],
-  ["/api/login", appsScriptRoute("auth", login)],
+  ["/api/check-student", authRoute(checkStudent, checkStudentGoogleSheetsEndpoint)],
+  ["/api/setup-pin", authRoute(setupPin, setupStudentPinGoogleSheetsEndpoint)],
+  ["/api/login", authRoute(login, studentLoginGoogleSheetsEndpoint)],
 
   ["/api/attendance/submit-absent", attendanceWriteRoute()],
   ["/api/attendance/students", attendanceStudentsReadRoute()],
@@ -264,6 +273,13 @@ function resourcesRoute() {
   return backendRoute("resources", {
     [BACKEND_APPS_SCRIPT]: getResourcesAppsScriptEndpoint,
     [BACKEND_GOOGLE_SHEETS]: getResourcesGoogleSheetsEndpoint
+  });
+}
+
+function authRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("auth", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
   });
 }
 

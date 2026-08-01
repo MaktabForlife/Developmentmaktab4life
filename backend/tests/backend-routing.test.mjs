@@ -12,6 +12,10 @@ import {
 const defaults = getBackendRoutingDiagnostics({});
 assert.equal(defaults.features.auth.backend, BACKEND_APPS_SCRIPT);
 assert.equal(defaults.features.auth.source, "default");
+assert.deepEqual(
+  defaults.features.auth.availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
 assert.equal(defaults.features["attendance-read"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features["attendance-read"].availableBackends,
@@ -100,6 +104,14 @@ const explicitLegacy = getBackendSelection({ M4L_BACKEND_AUTH: "legacy" }, "auth
 assert.equal(explicitLegacy.valid, true);
 assert.equal(explicitLegacy.backend, BACKEND_APPS_SCRIPT);
 assert.equal(explicitLegacy.source, "M4L_BACKEND_AUTH");
+
+const authMigration = getBackendSelection(
+  { M4L_BACKEND_AUTH: "google-sheets" },
+  "auth"
+);
+assert.equal(authMigration.valid, true);
+assert.equal(authMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(authMigration.source, "M4L_BACKEND_AUTH");
 
 const resourceMigration = getBackendSelection(
   { M4L_BACKEND_RESOURCES: "direct" },
@@ -261,6 +273,11 @@ const wranglerConfig = JSON.parse(readFileSync(
   new URL("../wrangler.jsonc", import.meta.url),
   "utf8"
 ));
+assert.equal(wranglerConfig.vars.M4L_BACKEND_AUTH, "google-sheets");
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_AUTH,
+  "google-sheets"
+);
 assert.equal(wranglerConfig.vars.M4L_BACKEND_ATTENDANCE_READ, "google-sheets");
 assert.equal(wranglerConfig.vars.M4L_BACKEND_ATTENDANCE_WRITE, "google-sheets");
 assert.equal(

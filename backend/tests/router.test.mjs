@@ -119,20 +119,6 @@ try {
     }
   });
 
-  proxiedPayload = null;
-  const blockedMigration = await worker.fetch(new Request("https://worker.test/api/check-student", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uniqueid: "TEST-LINK" })
-  }), {
-    APPS_SCRIPT_URL: "https://script.example.test/exec",
-    M4L_BACKEND_AUTH: "google-sheets"
-  });
-
-  assert.equal(blockedMigration.status, 503);
-  assert.equal(blockedMigration.headers.get("X-M4L-Feature"), "auth");
-  assert.equal(blockedMigration.headers.get("X-M4L-Backend"), "google-sheets");
-  assert.equal(proxiedPayload, null, "An unavailable direct backend must not fall through to Apps Script");
 } finally {
   globalThis.fetch = originalFetch;
 }

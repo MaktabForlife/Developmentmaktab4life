@@ -2,9 +2,9 @@
 
 Last updated: 2026-08-01
 
-Latest development-verified milestone before V98.10: V98.9
+Latest development-verified milestone before V98.11: V98.10
 
-Development milestone: V98.10
+Development milestone: V98.11
 
 The repository file `apps-script/code.gs` is the source of truth. The live
 Google Apps Script project is a deployment target. Changes must be committed in
@@ -43,9 +43,9 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.10 target
+## Current ownership and V98.11 target
 
-| Area | Operation / Apps Script action | V98.10 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.11 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -54,7 +54,9 @@ Cloudflare dashboard variable changes are required at merge time.
 | Weekly Planner | save preview PNG to Drive | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Attendance | `submitAbsentStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Authentication | lookup, login, PIN setup and reset | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Authentication | routed Student/Admin lookup and login reads | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Authentication | routed Student/Admin PIN setup and Student PIN reset | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Admin utilities | `registerAdmin`, `getAdminByUsername` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Progress | `getStudentTasks`, `getTaskProgressReport`, `getTaskProgressDetail` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Progress | `updateStudentTaskStatus` completion and verification writes | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Progress | `getStudentTaskById` compatibility lookup | APPS SCRIPT | APPS SCRIPT | ACTIVE |
@@ -71,6 +73,38 @@ Cloudflare dashboard variable changes are required at merge time.
 | Task assignment | `populateAllStudentTasks` and population utilities | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
+
+### Authentication
+
+- Worker implementation: `backend/src/routes/auth-google-sheets.js`
+- Router feature: `auth`
+- Routes:
+  - `/api/check-student`
+  - `/api/setup-pin`
+  - `/api/login`
+  - `/api/admin/check-admin`
+  - `/api/admin/setup-pin`
+  - `/api/admin/login`
+  - `/api/admin/reset-pin`
+- Routing variable: `M4L_BACKEND_AUTH=google-sheets`
+- Legacy rollback actions:
+  - `getStudentByUniqueId`
+  - `getStudentForLogin`
+  - `setStudentPin`
+  - `resetStudentPin`
+  - `getAdminByUniqueId`
+  - `setAdminPin`
+- V98.11 changes only the record-access backend. Four-digit validation, PIN
+  hashing with the existing Worker secret, strict active/PIN-setup checks,
+  session-token issuance, public response fields and Student PIN-reset
+  authorization remain unchanged.
+- PIN hashes are used only inside the Worker and are never returned to the
+  browser. Setup/reset writes target only the existing PIN setup, PIN hash and
+  failed-attempt cells.
+- Existing failed-attempt and last-login values are not newly updated because
+  the legacy routed flow did not implement those writes.
+- `registerAdmin` and `getAdminByUsername` are not Worker routes and remain
+  active Apps Script utilities.
 
 ### Resources read
 
@@ -325,6 +359,27 @@ Cloudflare dashboard variable changes are required at merge time.
 - No Planner record action was migrated from Apps Script.
 
 ## Change history
+
+### 2026-08-01 — V98.11
+
+- Migrated all seven routed Student/Admin authentication endpoints to direct
+  Google Sheets access.
+- Enabled both Apps Script and Google Sheets handlers for the `auth` routing
+  feature.
+- Added `M4L_BACKEND_AUTH=google-sheets` to both production and development
+  Wrangler variables for seamless branch promotion.
+- Preserved request validation, PIN hashing, strict boolean checks, response
+  messages/statuses, token claims and Admin/SENIOR Student-PIN-reset permission.
+- Kept PIN hashes out of browser responses and limited direct writes to the
+  same authentication fields used by Apps Script.
+- Left `registerAdmin` and `getAdminByUsername` active in Apps Script because
+  they are not routed by the Worker.
+- Marked only the six migrated Apps Script data actions as legacy rollback,
+  without changing their executable logic.
+- Added automated tests for Student/Admin checks, setup, login, reset,
+  permissions, disabled and unconfigured accounts, incorrect PINs, missing
+  sheets, routing headers, token claims, sensitive-field isolation and Apps
+  Script fallback.
 
 ### 2026-08-01 — V98.10
 

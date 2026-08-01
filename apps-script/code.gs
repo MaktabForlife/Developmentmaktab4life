@@ -2,7 +2,7 @@
 ===============================================================================
 MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
 Last updated: 1 August 2026
-Migration map: V98.10
+Migration map: V98.11
 ===============================================================================
 
 SOURCE OF TRUTH:
@@ -19,6 +19,10 @@ Cloudflare Worker-to-Google Sheets API access. A LEGACY ROLLBACK action remains
 callable only so its routing flag can be returned temporarily to apps-script.
 
 MIGRATED TO DIRECT GOOGLE SHEETS API:
+- Routed Student and Admin authentication lookups, PIN setup/reset and login
+  Legacy Apps Script actions retained: getStudentByUniqueId,
+  getStudentForLogin, setStudentPin, resetStudentPin, getAdminByUniqueId,
+  setAdminPin
 - Resource/Library reads
   Legacy Apps Script action retained: getStudentResources
 - Timetable reads and global Zoom-link writes
@@ -48,8 +52,7 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
   The Google Drive preview submission remains a narrow Apps Script action because it uses DriveApp.
 
 STILL ACTIVE ON APPS SCRIPT:
-- Student and Admin authentication
-- PIN setup and reset
+- Admin registration and username lookup: registerAdmin, getAdminByUsername
 - getStudentTaskById compatibility lookup
 - Task Resource administration
 - Student-task population utilities, including populateAllStudentTasks
@@ -235,6 +238,10 @@ function generateUniqueId() {
   return id;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK AUTH READ (V98.11).
+ * Routed student-link checks use direct Google Sheets through M4L_BACKEND_AUTH.
+ */
 function getStudentByUniqueId(uniqueId) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
@@ -257,6 +264,10 @@ function getStudentByUniqueId(uniqueId) {
   return null;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK AUTH WRITE (V98.11).
+ * Routed student PIN setup uses direct Google Sheets through M4L_BACKEND_AUTH.
+ */
 function setStudentPin(data) {
   const student = getStudentByUniqueId(data.uniqueid);
 
@@ -277,6 +288,10 @@ function setStudentPin(data) {
   };
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK AUTH READ (V98.11).
+ * Routed student login reads use direct Google Sheets through M4L_BACKEND_AUTH.
+ */
 function getStudentForLogin(uniqueId) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
@@ -302,6 +317,10 @@ function getStudentForLogin(uniqueId) {
 }
 
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK AUTH WRITE (V98.11).
+ * Routed student PIN resets use direct Google Sheets through M4L_BACKEND_AUTH.
+ */
 function resetStudentPin(uniqueId) {
   const student = getStudentByUniqueId(uniqueId);
 
@@ -407,6 +426,10 @@ function getAdminByUsername(username) {
 
 
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK AUTH WRITE (V98.11).
+ * Routed Admin PIN setup uses direct Google Sheets through M4L_BACKEND_AUTH.
+ */
 function setAdminPin(data) {
   const admin = getAdminByUniqueId(data.uniqueid);
 
@@ -430,6 +453,11 @@ function setAdminPin(data) {
 }
 
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK AUTH READ (V98.11).
+ * Routed Admin link checks and login reads use direct Google Sheets through
+ * M4L_BACKEND_AUTH.
+ */
 function getAdminByUniqueId(uniqueId) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName("AdminRecords");
@@ -5356,6 +5384,7 @@ if (body.action === "checkStudentDuplicate") {
     }
 
     if (body.action === "getStudentByUniqueId") {
+      // LEGACY ROLLBACK: routed student-link checks normally use direct Google Sheets.
       return jsonResponse({
         success: true,
         student: getStudentByUniqueId(body.uniqueid)
@@ -5363,16 +5392,19 @@ if (body.action === "checkStudentDuplicate") {
     }
 
     if (body.action === "setStudentPin") {
+      // LEGACY ROLLBACK: routed student PIN setup normally uses direct Google Sheets.
       return jsonResponse(setStudentPin(body.data));
     }
 
 if (body.action === "getStudentForLogin") {
+  // LEGACY ROLLBACK: routed student login reads normally use direct Google Sheets.
   return jsonResponse({
     success: true,
     student: getStudentForLogin(body.uniqueid)
   });
 }
 if (body.action === "resetStudentPin") {
+  // LEGACY ROLLBACK: routed student PIN resets normally use direct Google Sheets.
   return jsonResponse(resetStudentPin(body.uniqueid));
 }
 if (body.action === "registerAdmin") {
@@ -5380,11 +5412,13 @@ if (body.action === "registerAdmin") {
 }
 
 if (body.action === "setAdminPin") {
+  // LEGACY ROLLBACK: routed Admin PIN setup normally uses direct Google Sheets.
   return jsonResponse(setAdminPin(body.data));
 }
 
 
 if (body.action === "getAdminByUniqueId") {
+  // LEGACY ROLLBACK: routed Admin authentication reads normally use direct Google Sheets.
   return jsonResponse({
     success: true,
     admin: getAdminByUniqueId(body.uniqueid)

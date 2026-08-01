@@ -3,7 +3,11 @@ export const BACKEND_GOOGLE_SHEETS = "google-sheets";
 export const BACKEND_WORKER = "worker";
 
 const FEATURE_DEFINITIONS = Object.freeze({
-  auth: defineFeature("M4L_BACKEND_AUTH", BACKEND_APPS_SCRIPT, [BACKEND_APPS_SCRIPT]),
+  auth: defineFeature(
+    "M4L_BACKEND_AUTH",
+    BACKEND_APPS_SCRIPT,
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+  ),
   "attendance-read": defineFeature(
     "M4L_BACKEND_ATTENDANCE_READ",
     BACKEND_APPS_SCRIPT,
