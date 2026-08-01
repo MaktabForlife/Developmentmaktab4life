@@ -87,6 +87,7 @@ import {
   updateStudentGoogleSheetsEndpoint
 } from "./routes/student-management.js";
 import { registerStudentGoogleSheetsEndpoint } from "./routes/student-registration.js";
+import { assignTasksGoogleSheetsEndpoint } from "./routes/task-assignment.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -180,7 +181,7 @@ const ROUTES = new Map([
     updateTaskAdmin,
     updateTaskGoogleSheetsEndpoint
   )],
-  ["/api/admin/tasks/assign", appsScriptRoute("task-assignment-write", assignTasksAdmin)],
+  ["/api/admin/tasks/assign", taskAssignmentWriteRoute()],
   ["/api/admin/tasks/verify", progressWriteRoute(
     verifyStudentTask,
     verifyStudentTaskGoogleSheetsEndpoint
@@ -326,6 +327,13 @@ function taskAssignmentReadRoute() {
   return backendRoute("task-assignment-read", {
     [BACKEND_APPS_SCRIPT]: getStudentAssignmentOptionsAdmin,
     [BACKEND_GOOGLE_SHEETS]: getStudentAssignmentOptionsGoogleSheetsEndpoint
+  });
+}
+
+function taskAssignmentWriteRoute() {
+  return backendRoute("task-assignment-write", {
+    [BACKEND_APPS_SCRIPT]: assignTasksAdmin,
+    [BACKEND_GOOGLE_SHEETS]: assignTasksGoogleSheetsEndpoint
   });
 }
 

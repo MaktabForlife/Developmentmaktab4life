@@ -72,7 +72,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "task-assignment-write": defineFeature(
     "M4L_BACKEND_TASK_ASSIGNMENT_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
   "progress-read": defineFeature(
     "M4L_BACKEND_PROGRESS_READ",

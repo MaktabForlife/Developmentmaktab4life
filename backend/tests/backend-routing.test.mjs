@@ -90,7 +90,7 @@ assert.deepEqual(
 assert.equal(defaults.features["task-assignment-write"].backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features["task-assignment-write"].availableBackends,
-  [BACKEND_APPS_SCRIPT]
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
 assert.equal(defaults.features["weekly-planner"].backend, BACKEND_GOOGLE_SHEETS);
 assert.deepEqual(defaults.features["weekly-planner"].availableBackends, [BACKEND_GOOGLE_SHEETS]);
@@ -234,12 +234,16 @@ assert.equal(
   "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE"
 );
 
-const blockedTaskAssignmentWriteMigration = getBackendSelection(
+const taskAssignmentWriteMigration = getBackendSelection(
   { M4L_BACKEND_TASK_ASSIGNMENT_WRITE: "google-sheets" },
   "task-assignment-write"
 );
-assert.equal(blockedTaskAssignmentWriteMigration.valid, false);
-assert.match(blockedTaskAssignmentWriteMigration.error, /not enabled/);
+assert.equal(taskAssignmentWriteMigration.valid, true);
+assert.equal(taskAssignmentWriteMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(
+  taskAssignmentWriteMigration.source,
+  "M4L_BACKEND_TASK_ASSIGNMENT_WRITE"
+);
 
 const invalid = getBackendSelection(
   { M4L_BACKEND_PROGRESS_READ: "somewhere-else" },
@@ -320,6 +324,11 @@ assert.equal(
 assert.equal(wranglerConfig.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ, "google-sheets");
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ,
+  "google-sheets"
+);
+assert.equal(wranglerConfig.vars.M4L_BACKEND_TASK_ASSIGNMENT_WRITE, "google-sheets");
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_TASK_ASSIGNMENT_WRITE,
   "google-sheets"
 );
 assert.equal(wranglerConfig.vars.M4L_BACKEND_PROGRESS_READ, "google-sheets");

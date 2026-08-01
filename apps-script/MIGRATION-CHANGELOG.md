@@ -2,9 +2,9 @@
 
 Last updated: 2026-08-01
 
-Latest development-verified milestone before V98.8: V98.7
+Latest development-verified milestone before V98.10: V98.9
 
-Development milestone: V98.8
+Development milestone: V98.10
 
 The repository file `apps-script/code.gs` is the source of truth. The live
 Google Apps Script project is a deployment target. Changes must be committed in
@@ -43,9 +43,9 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.9 target
+## Current ownership and V98.10 target
 
-| Area | Operation / Apps Script action | V98.9 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.10 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -67,7 +67,8 @@ Cloudflare dashboard variable changes are required at merge time.
 | Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Curriculum resources | create/update | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Task assignment | `getStudentAssignmentOptions` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Task assignment | `assignTasksToStudents` and population actions | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Task assignment | `assignTasksToStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Task assignment | `populateAllStudentTasks` and population utilities | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
 
@@ -239,8 +240,9 @@ Cloudflare dashboard variable changes are required at merge time.
 - The route retains ADMIN/SENIOR authorization and uses the environment's
   student login base. Manual selected-module requests retain their existing
   fallback to all active tasks when no modules are supplied.
-- The standalone `/api/admin/tasks/assign` action and population utilities
-  remain on Apps Script and are not changed by V98.9.
+- At V98.9, the standalone `/api/admin/tasks/assign` action and population
+  utilities remained on Apps Script. The standalone action is subsequently
+  migrated in V98.10; population utilities remain active in Apps Script.
 
 ### Progress read
 
@@ -263,7 +265,7 @@ Cloudflare dashboard variable changes are required at merge time.
   and response fields.
 - V98.7 left completion and verification on Apps Script. V98.8 migrates those
   writes through the separate `progress-write` feature documented below.
-- Task assignment and Task Resource administration are not changed.
+- At V98.7, task assignment and Task Resource administration were not changed.
 
 ### Progress write
 
@@ -282,8 +284,8 @@ Cloudflare dashboard variable changes are required at merge time.
   restrictions, administrator verification, status normalization, clear-date
   behaviour, duplicate StudentTaskID protection, and all-or-nothing request
   validation.
-- `getStudentTaskById`, task assignment, registration and Task Resource
-  administration remain on Apps Script.
+- At V98.8, `getStudentTaskById`, task assignment, registration and Task
+  Resource administration remained on Apps Script.
 
 ### Task-assignment options read
 
@@ -295,8 +297,24 @@ Cloudflare dashboard variable changes are required at merge time.
 - V98.5 reads `SubjectList`, optional `ModuleList`, and `TaskList` directly,
   preserving active filtering, General-module fallback, task counts and sort
   order.
-- Task assignment writes remain on the separate `task-assignment-write` Apps
-  Script feature and do not read or modify `StudentTasks` in V98.5.
+- At V98.5, task assignment writes remained on the separate
+  `task-assignment-write` Apps Script feature and did not read or modify
+  `StudentTasks` through this read route.
+
+### Standalone task-assignment write
+
+- Worker implementation: `backend/src/routes/task-assignment.js`
+- Router feature: `task-assignment-write`
+- Route: `/api/admin/tasks/assign`
+- Routing variable: `M4L_BACKEND_TASK_ASSIGNMENT_WRITE=google-sheets`
+- Legacy rollback action: `assignTasksToStudents`
+- V98.10 preserves ADMIN/SENIOR authorization, explicit student/task
+  selections, whole-group and all-student selection, subject-wide task
+  selection, strict boolean active filtering, duplicate skipping, the
+  `NextStudentTaskNumber` counter, the existing ten-column StudentTasks row
+  contract and response counters.
+- `populateAllStudentTasks` and its related population utilities are not routed
+  through this Worker endpoint and remain active Apps Script operations.
 
 ### Weekly Planner
 
@@ -308,6 +326,24 @@ Cloudflare dashboard variable changes are required at merge time.
 
 ## Change history
 
+### 2026-08-01 — V98.10
+
+- Migrated `/api/admin/tasks/assign` to direct Google Sheets access.
+- Enabled both Apps Script and Google Sheets handlers for the
+  `task-assignment-write` routing feature.
+- Added `M4L_BACKEND_TASK_ASSIGNMENT_WRITE=google-sheets` to both production
+  and development Wrangler variables for seamless branch promotion.
+- Preserved the existing selection modes, strict active-record checks,
+  duplicate and invalid-record counters, `STASK` identifier allocation,
+  ten-column row layout and response contract without changing business logic.
+- Left `populateAllStudentTasks` and related population utilities active in
+  Apps Script and outside this migration.
+- Marked only `assignTasksToStudents` as legacy rollback in the repository Apps
+  Script source of truth without changing its executable logic.
+- Added automated tests for explicit, whole-group, all-student and subject-wide
+  selection, permissions, counters, fixed row layout, missing data, routing
+  headers and Apps Script fallback.
+
 ### 2026-08-01 — V98.9
 
 - Migrated `/api/admin/register-student` to direct Google Sheets access.
@@ -318,8 +354,9 @@ Cloudflare dashboard variable changes are required at merge time.
 - Preserved registration duplicate confirmation, username suffixing, student
   and StudentTask identifiers, row schemas, active-task filtering and response
   fields without changing registration business logic.
-- Kept standalone task assignment, population utilities, compatibility lookup,
-  authentication and Task Resource administration on Apps Script.
+- At V98.9, standalone task assignment, population utilities, compatibility
+  lookup, authentication and Task Resource administration remained on Apps
+  Script. V98.10 subsequently migrates only the standalone assignment route.
 - Marked `registerStudent` and `checkStudentDuplicate` as legacy rollback in the
   repository Apps Script source of truth without changing executable logic.
 - Added automated tests for registration, duplicate no-write behaviour,

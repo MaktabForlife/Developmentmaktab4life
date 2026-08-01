@@ -2,7 +2,7 @@
 ===============================================================================
 MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
 Last updated: 1 August 2026
-Migration map: V98.9
+Migration map: V98.10
 ===============================================================================
 
 SOURCE OF TRUTH:
@@ -41,6 +41,8 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
   getTaskProgressReport, getTaskProgressDetail, updateStudentTaskStatus
 - Student assignment-option reads
   Legacy Apps Script action retained: getStudentAssignmentOptions
+- Standalone student-task assignment writes
+  Legacy Apps Script action retained: assignTasksToStudents
 - Weekly Planner reads and writes
   Weekly Planner records use the direct Google Sheets API.
   The Google Drive preview submission remains a narrow Apps Script action because it uses DriveApp.
@@ -50,7 +52,7 @@ STILL ACTIVE ON APPS SCRIPT:
 - PIN setup and reset
 - getStudentTaskById compatibility lookup
 - Task Resource administration
-- Standalone student-task assignment and population writes
+- Student-task population utilities, including populateAllStudentTasks
 - Weekly Planner preview submission to Google Drive
 
 IMPORTANT:
@@ -58,8 +60,9 @@ IMPORTANT:
   removed without first checking the active Worker routing configuration.
 - Reads and writes are migrated separately. A migrated read does not mean its
   related write operation has also migrated.
-- Registration-time task assignment is direct in V98.9. The standalone
-  assignTasksToStudents and population actions remain active on Apps Script.
+- Registration-time task assignment is direct in V98.9. Standalone
+  assignTasksToStudents traffic is direct in V98.10; population utilities
+  remain active on Apps Script.
 - Remove a legacy function and its doPost action together only after the
   rollback path has been explicitly retired.
 - Record every future migration in:
@@ -732,8 +735,8 @@ function normalizeStudentSearchText_(value) {
 /*
  * MIGRATION STATUS: LEGACY ROLLBACK READ (V98.5).
  * Normal assignment-option traffic uses the direct Google Sheets route
- * selected by M4L_BACKEND_TASK_ASSIGNMENT_READ. Student-task assignment writes
- * remain active in Apps Script.
+ * selected by M4L_BACKEND_TASK_ASSIGNMENT_READ. The standalone assignment write
+ * is migrated separately by V98.10.
  */
 function getStudentAssignmentOptions() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2976,7 +2979,8 @@ function normalizeText(value) {
  * MIGRATION STATUS: LEGACY ROLLBACK — TASK OPERATIONS (V98.3/V98.4).
  * Applies to createTask, listTasks and updateTask. Normal traffic uses the
  * direct Google Sheets routes selected by M4L_BACKEND_CURRICULUM_READ and
- * M4L_BACKEND_CURRICULUM_WRITE. Task assignment remains active in Apps Script.
+ * M4L_BACKEND_CURRICULUM_WRITE. Standalone assignment is migrated separately
+ * by V98.10; population utilities remain active in Apps Script.
  */
 function generateTaskId() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
@@ -3282,6 +3286,12 @@ function generateStudentTaskId() {
   throw new Error("NextStudentTaskNumber not found");
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.10).
+ * Normal standalone task-assignment traffic uses the direct Google Sheets route
+ * selected by M4L_BACKEND_TASK_ASSIGNMENT_WRITE. This executable implementation
+ * remains unchanged for an explicit routing rollback.
+ */
 function assignTasksToStudents(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -5475,6 +5485,7 @@ if (body.action === "updateTask") {
   return jsonResponse(updateTask(body.data));
 }
 if (body.action === "assignTasksToStudents") {
+  // LEGACY ROLLBACK: standalone task assignment normally uses direct Google Sheets.
   return jsonResponse(assignTasksToStudents(body.data));
 }
 

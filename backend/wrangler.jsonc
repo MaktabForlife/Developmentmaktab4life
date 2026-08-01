@@ -19,6 +19,7 @@
     "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE": "google-sheets",
     "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE": "google-sheets",
     "M4L_BACKEND_TASK_ASSIGNMENT_READ": "google-sheets",
+    "M4L_BACKEND_TASK_ASSIGNMENT_WRITE": "google-sheets",
     "M4L_BACKEND_PROGRESS_READ": "google-sheets",
     "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
     "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/"
@@ -48,6 +49,7 @@
         "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE": "google-sheets",
         "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE": "google-sheets",
         "M4L_BACKEND_TASK_ASSIGNMENT_READ": "google-sheets",
+        "M4L_BACKEND_TASK_ASSIGNMENT_WRITE": "google-sheets",
         "M4L_BACKEND_PROGRESS_READ": "google-sheets",
         "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
         "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/"
