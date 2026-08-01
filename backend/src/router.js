@@ -45,6 +45,10 @@ import {
   taskProgressReportGoogleSheetsEndpoint
 } from "./routes/progress-read.js";
 import {
+  updateTaskCompleteGoogleSheetsEndpoint,
+  verifyStudentTaskGoogleSheetsEndpoint
+} from "./routes/progress-write.js";
+import {
   getWeeklyPlannerEndpoint,
   saveWeeklyPlannerEndpoint,
   saveWeeklyPlannerPreviewToDriveEndpoint,
@@ -176,13 +180,19 @@ const ROUTES = new Map([
     updateTaskGoogleSheetsEndpoint
   )],
   ["/api/admin/tasks/assign", appsScriptRoute("task-assignment-write", assignTasksAdmin)],
-  ["/api/admin/tasks/verify", appsScriptRoute("progress-write", verifyStudentTask)],
+  ["/api/admin/tasks/verify", progressWriteRoute(
+    verifyStudentTask,
+    verifyStudentTaskGoogleSheetsEndpoint
+  )],
 
   ["/api/tasks/student", progressReadRoute(
     getStudentTasksEndpoint,
     getStudentTasksGoogleSheetsEndpoint
   )],
-  ["/api/tasks/update-complete", appsScriptRoute("progress-write", updateTaskComplete)],
+  ["/api/tasks/update-complete", progressWriteRoute(
+    updateTaskComplete,
+    updateTaskCompleteGoogleSheetsEndpoint
+  )],
   ["/api/progress/tasks", progressReadRoute(
     taskProgressReport,
     taskProgressReportGoogleSheetsEndpoint
@@ -313,6 +323,13 @@ function taskAssignmentReadRoute() {
 
 function progressReadRoute(appsScriptHandler, googleSheetsHandler) {
   return backendRoute("progress-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
+  });
+}
+
+function progressWriteRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("progress-write", {
     [BACKEND_APPS_SCRIPT]: appsScriptHandler,
     [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
   });

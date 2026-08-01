@@ -82,7 +82,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "progress-write": defineFeature(
     "M4L_BACKEND_PROGRESS_WRITE",
     BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
+    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
   "weekly-planner": defineFeature(
     "M4L_BACKEND_WEEKLY_PLANNER",

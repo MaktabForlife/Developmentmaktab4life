@@ -2,9 +2,9 @@
 
 Last updated: 2026-08-01
 
-Latest development-verified milestone before V98.7: V98.6
+Latest development-verified milestone before V98.8: V98.7
 
-Development milestone: V98.7
+Development milestone: V98.8
 
 The repository file `apps-script/code.gs` is the source of truth. The live
 Google Apps Script project is a deployment target. Changes must be committed in
@@ -43,9 +43,9 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.7 target
+## Current ownership and V98.8 target
 
-| Area | Operation / Apps Script action | V98.7 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.8 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -56,7 +56,7 @@ Cloudflare dashboard variable changes are required at merge time.
 | Attendance | `submitAbsentStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Authentication | lookup, login, PIN setup and reset | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Progress | `getStudentTasks`, `getTaskProgressReport`, `getTaskProgressDetail` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Progress | `updateStudentTaskStatus` completion and verification writes | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| Progress | `updateStudentTaskStatus` completion and verification writes | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Progress | `getStudentTaskById` compatibility lookup | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | Student management | `searchStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Student management | `checkStudentDuplicate` used by registration | APPS SCRIPT | APPS SCRIPT | ACTIVE |
@@ -245,9 +245,29 @@ Cloudflare dashboard variable changes are required at merge time.
   restrictions, active-student and Group 0 filtering, TaskList display
   ownership, module compatibility filtering, percentage calculations, sorting
   and response fields.
-- Completion and verification continue through the Apps Script-only
-  `progress-write` feature. Task assignment and Task Resource administration
-  are not changed.
+- V98.7 left completion and verification on Apps Script. V98.8 migrates those
+  writes through the separate `progress-write` feature documented below.
+- Task assignment and Task Resource administration are not changed.
+
+### Progress write
+
+- Worker implementation: `backend/src/routes/progress-write.js`
+- Router feature: `progress-write`
+- Routes:
+  - `/api/tasks/update-complete`
+  - `/api/admin/tasks/verify`
+- Routing variable: `M4L_BACKEND_PROGRESS_WRITE=google-sheets`
+- Legacy rollback action: `updateStudentTaskStatus`
+- V98.8 reads `StudentTasks` and `StudentRecords`, validates the complete batch
+  before writing, then sends one targeted Google Sheets values batch request
+  containing only the requested CompleteStatus/CompleteDate or
+  VerifyStatus/VerifyDate cells.
+- The migration preserves student self-only completion, teacher assigned-group
+  restrictions, administrator verification, status normalization, clear-date
+  behaviour, duplicate StudentTaskID protection, and all-or-nothing request
+  validation.
+- `getStudentTaskById`, task assignment, registration and Task Resource
+  administration remain on Apps Script.
 
 ### Task-assignment options read
 
@@ -271,6 +291,26 @@ Cloudflare dashboard variable changes are required at merge time.
 - No Planner record action was migrated from Apps Script.
 
 ## Change history
+
+### 2026-08-01 — V98.8
+
+- Migrated existing StudentTasks completion and verification writes to the
+  direct Google Sheets API.
+- Enabled both Apps Script and Google Sheets implementations for the
+  `progress-write` routing feature.
+- Added `M4L_BACKEND_PROGRESS_WRITE=google-sheets` to both production and
+  development Wrangler variables for seamless branch promotion.
+- Preserved student, teacher and administrator authorization boundaries and
+  the existing status normalization and response contracts.
+- Kept each validated batch all-or-nothing and limited the Sheets request to
+  the affected status/date cells.
+- Kept `getStudentTaskById`, task assignment, registration and Task Resource
+  administration on Apps Script.
+- Marked `updateStudentTaskStatus` as legacy rollback in the repository Apps
+  Script source of truth without changing its executable logic.
+- Added automated tests for completion, verification, clearing, permissions,
+  duplicate IDs, missing records and sheets, routing headers, targeted ranges,
+  Apps Script fallback and no-partial-write validation.
 
 ### 2026-08-01 — V98.7
 

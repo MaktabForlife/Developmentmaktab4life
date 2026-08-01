@@ -2,7 +2,7 @@
 ===============================================================================
 MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
 Last updated: 1 August 2026
-Migration map: V98.7
+Migration map: V98.8
 ===============================================================================
 
 SOURCE OF TRUTH:
@@ -34,9 +34,9 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
   Legacy Apps Script action retained: searchStudents
 - Existing-student updates
   Legacy Apps Script action retained: updateStudent
-- Student task loading and Progress reports
+- Student task loading, Progress reports, completion and verification writes
   Legacy Apps Script actions retained: getStudentTasks,
-  getTaskProgressReport, getTaskProgressDetail
+  getTaskProgressReport, getTaskProgressDetail, updateStudentTaskStatus
 - Student assignment-option reads
   Legacy Apps Script action retained: getStudentAssignmentOptions
 - Weekly Planner reads and writes
@@ -46,7 +46,7 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
 STILL ACTIVE ON APPS SCRIPT:
 - Student and Admin authentication
 - PIN setup and reset
-- Progress status writes, verification and getStudentTaskById compatibility lookup
+- getStudentTaskById compatibility lookup
 - Student registration
 - Registration duplicate checking (registerStudent calls checkStudentDuplicate)
 - Task Resource administration
@@ -4295,6 +4295,11 @@ function buildStudentTaskStatusValidationFailure_(normalized, validationErrors, 
   return response;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK WRITE (V98.8).
+ * Normal completion and verification updates use the direct Google Sheets
+ * Progress write route selected by M4L_BACKEND_PROGRESS_WRITE.
+ */
 function updateStudentTaskStatus(data) {
   const normalized = normalizeStudentTaskStatusUpdates_(data);
 
@@ -5496,6 +5501,7 @@ if (body.action === "saveWeeklyPlannerPreviewToDrive") {
 
 
 if (body.action === "updateStudentTaskStatus") {
+  // LEGACY ROLLBACK: Progress status writes normally use direct Google Sheets.
   return jsonResponse(updateStudentTaskStatus(body.data));
 }
 

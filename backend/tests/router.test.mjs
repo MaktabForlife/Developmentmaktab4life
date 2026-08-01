@@ -367,10 +367,16 @@ const progressWriteUnauthorized = await worker.fetch(new Request(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ studenttaskid: "STASK1", complete: true })
   }
-), {});
+), {
+  M4L_BACKEND_PROGRESS_WRITE: "google-sheets"
+});
 assert.equal(progressWriteUnauthorized.status, 401);
 assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Feature"), "progress-write");
-assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Backend"), "apps-script");
+assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  progressWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_PROGRESS_WRITE"
+);
 
 console.log("Worker router tests passed.");
 
