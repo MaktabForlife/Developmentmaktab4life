@@ -97,7 +97,8 @@ assert.equal(health.headers.get("X-M4L-Backend"), "google-sheets");
 const routing = await callWorker("/api/admin/backend-routing", {}, token);
 assert.equal(routing.status, 200);
 assert.equal(routing.data.features.auth.backend, "apps-script");
-assert.equal(routing.data.features.progress.backend, "apps-script");
+assert.equal(routing.data.features["progress-read"].backend, "apps-script");
+assert.equal(routing.data.features["progress-write"].backend, "apps-script");
 assert.equal(routing.data.features["weekly-planner"].backend, "google-sheets");
 assert.equal(routing.data.routingLogsEnabled, false);
 

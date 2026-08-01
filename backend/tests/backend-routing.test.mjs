@@ -42,7 +42,16 @@ assert.deepEqual(
   defaults.features["curriculum-resources-write"].availableBackends,
   [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
 );
-assert.equal(defaults.features.progress.backend, BACKEND_APPS_SCRIPT);
+assert.equal(defaults.features["progress-read"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["progress-read"].availableBackends,
+  [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
+);
+assert.equal(defaults.features["progress-write"].backend, BACKEND_APPS_SCRIPT);
+assert.deepEqual(
+  defaults.features["progress-write"].availableBackends,
+  [BACKEND_APPS_SCRIPT]
+);
 assert.equal(defaults.features.resources.backend, BACKEND_APPS_SCRIPT);
 assert.deepEqual(
   defaults.features.resources.availableBackends,
@@ -198,6 +207,21 @@ assert.equal(taskAssignmentReadMigration.valid, true);
 assert.equal(taskAssignmentReadMigration.backend, BACKEND_GOOGLE_SHEETS);
 assert.equal(taskAssignmentReadMigration.source, "M4L_BACKEND_TASK_ASSIGNMENT_READ");
 
+const progressReadMigration = getBackendSelection(
+  { M4L_BACKEND_PROGRESS_READ: "direct" },
+  "progress-read"
+);
+assert.equal(progressReadMigration.valid, true);
+assert.equal(progressReadMigration.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(progressReadMigration.source, "M4L_BACKEND_PROGRESS_READ");
+
+const blockedProgressWriteMigration = getBackendSelection(
+  { M4L_BACKEND_PROGRESS_WRITE: "google-sheets" },
+  "progress-write"
+);
+assert.equal(blockedProgressWriteMigration.valid, false);
+assert.match(blockedProgressWriteMigration.error, /not enabled/);
+
 const blockedStudentWriteMigration = getBackendSelection(
   { M4L_BACKEND_STUDENT_MANAGEMENT_WRITE: "google-sheets" },
   "student-management-write"
@@ -212,7 +236,10 @@ const blockedTaskAssignmentWriteMigration = getBackendSelection(
 assert.equal(blockedTaskAssignmentWriteMigration.valid, false);
 assert.match(blockedTaskAssignmentWriteMigration.error, /not enabled/);
 
-const invalid = getBackendSelection({ M4L_BACKEND_PROGRESS: "somewhere-else" }, "progress");
+const invalid = getBackendSelection(
+  { M4L_BACKEND_PROGRESS_READ: "somewhere-else" },
+  "progress-read"
+);
 assert.equal(invalid.valid, false);
 assert.match(invalid.error, /Invalid backend value/);
 
@@ -280,6 +307,11 @@ assert.equal(
 assert.equal(wranglerConfig.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ, "google-sheets");
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_TASK_ASSIGNMENT_READ,
+  "google-sheets"
+);
+assert.equal(wranglerConfig.vars.M4L_BACKEND_PROGRESS_READ, "google-sheets");
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_PROGRESS_READ,
   "google-sheets"
 );
 assert.equal(

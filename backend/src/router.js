@@ -40,6 +40,11 @@ import {
   verifyStudentTask
 } from "./routes/progress.js";
 import {
+  getStudentTasksGoogleSheetsEndpoint,
+  taskProgressDetailGoogleSheetsEndpoint,
+  taskProgressReportGoogleSheetsEndpoint
+} from "./routes/progress-read.js";
+import {
   getWeeklyPlannerEndpoint,
   saveWeeklyPlannerEndpoint,
   saveWeeklyPlannerPreviewToDriveEndpoint,
@@ -171,12 +176,21 @@ const ROUTES = new Map([
     updateTaskGoogleSheetsEndpoint
   )],
   ["/api/admin/tasks/assign", appsScriptRoute("task-assignment-write", assignTasksAdmin)],
-  ["/api/admin/tasks/verify", appsScriptRoute("progress", verifyStudentTask)],
+  ["/api/admin/tasks/verify", appsScriptRoute("progress-write", verifyStudentTask)],
 
-  ["/api/tasks/student", appsScriptRoute("progress", getStudentTasksEndpoint)],
-  ["/api/tasks/update-complete", appsScriptRoute("progress", updateTaskComplete)],
-  ["/api/progress/tasks", appsScriptRoute("progress", taskProgressReport)],
-  ["/api/progress/task-detail", appsScriptRoute("progress", taskProgressDetail)]
+  ["/api/tasks/student", progressReadRoute(
+    getStudentTasksEndpoint,
+    getStudentTasksGoogleSheetsEndpoint
+  )],
+  ["/api/tasks/update-complete", appsScriptRoute("progress-write", updateTaskComplete)],
+  ["/api/progress/tasks", progressReadRoute(
+    taskProgressReport,
+    taskProgressReportGoogleSheetsEndpoint
+  )],
+  ["/api/progress/task-detail", progressReadRoute(
+    taskProgressDetail,
+    taskProgressDetailGoogleSheetsEndpoint
+  )]
 ]);
 
 export function routeRequest(request, env, pathname) {
@@ -294,6 +308,13 @@ function taskAssignmentReadRoute() {
   return backendRoute("task-assignment-read", {
     [BACKEND_APPS_SCRIPT]: getStudentAssignmentOptionsAdmin,
     [BACKEND_GOOGLE_SHEETS]: getStudentAssignmentOptionsGoogleSheetsEndpoint
+  });
+}
+
+function progressReadRoute(appsScriptHandler, googleSheetsHandler) {
+  return backendRoute("progress-read", {
+    [BACKEND_APPS_SCRIPT]: appsScriptHandler,
+    [BACKEND_GOOGLE_SHEETS]: googleSheetsHandler
   });
 }
 

@@ -1,8 +1,8 @@
 /*
 ===============================================================================
 MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
-Last updated: 30 July 2026
-Migration map: V98.6
+Last updated: 1 August 2026
+Migration map: V98.7
 ===============================================================================
 
 SOURCE OF TRUTH:
@@ -34,6 +34,9 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
   Legacy Apps Script action retained: searchStudents
 - Existing-student updates
   Legacy Apps Script action retained: updateStudent
+- Student task loading and Progress reports
+  Legacy Apps Script actions retained: getStudentTasks,
+  getTaskProgressReport, getTaskProgressDetail
 - Student assignment-option reads
   Legacy Apps Script action retained: getStudentAssignmentOptions
 - Weekly Planner reads and writes
@@ -43,7 +46,7 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
 STILL ACTIVE ON APPS SCRIPT:
 - Student and Admin authentication
 - PIN setup and reset
-- Progress reads and writes
+- Progress status writes, verification and getStudentTaskById compatibility lookup
 - Student registration
 - Registration duplicate checking (registerStudent calls checkStudentDuplicate)
 - Task Resource administration
@@ -4006,6 +4009,11 @@ function getStudentTaskSheetRows_() {
   return { sheet, rows, headerMap };
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V98.7).
+ * Normal student task loading uses the direct Google Sheets Progress read
+ * route selected by M4L_BACKEND_PROGRESS_READ.
+ */
 function getStudentTasks(data) {
   const studentId = String(data.studentid || "").trim();
   const subjectIdFilter = String(data.subjectid || "ALL").trim();
@@ -4533,6 +4541,10 @@ function getStudentTaskById(studentTaskId) {
 
   return null;
 }
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V98.7).
+ * Normal Progress summary reports use the direct Google Sheets route.
+ */
 function getTaskProgressReport(data) {
   const requestedStudentId = String(data.studentid || "ALL").trim();
   const requestedGroup = String(data.classgroup || "ALL").trim();
@@ -4716,6 +4728,10 @@ function percent(part, total) {
   return Math.round((part / total) * 1000) / 10;
 }
 
+/*
+ * MIGRATION STATUS: LEGACY ROLLBACK READ (V98.7).
+ * Normal Progress detail reports use the direct Google Sheets route.
+ */
 function getTaskProgressDetail(data) {
   const requestedStudentId = String(data.studentid || "ALL").trim();
   const requestedGroup = String(data.classgroup || "ALL").trim();
@@ -5456,6 +5472,7 @@ if (body.action === "populateAllStudentTasks") {
 }
 
 if (body.action === "getStudentTasks") {
+  // LEGACY ROLLBACK: student task loading normally uses direct Google Sheets.
   return jsonResponse(getStudentTasks(body.data));
 }
 if (body.action === "getStudentResources") {
@@ -5489,10 +5506,12 @@ if (body.action === "getStudentTaskById") {
   });
 }
 if (body.action === "getTaskProgressReport") {
+  // LEGACY ROLLBACK: Progress summaries normally use direct Google Sheets.
   return jsonResponse(getTaskProgressReport(body.data));
 }
 
 if (body.action === "getTaskProgressDetail") {
+  // LEGACY ROLLBACK: Progress details normally use direct Google Sheets.
   return jsonResponse(getTaskProgressDetail(body.data));
 }
 

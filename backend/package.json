@@ -14,6 +14,7 @@
     "test:curriculum": "node tests/curriculum.test.mjs",
     "test:curriculum-write": "node tests/curriculum-write.test.mjs",
     "test:student-management": "node tests/student-management.test.mjs",
+    "test:progress-read": "node tests/progress-read.test.mjs",
     "test:timetable": "node tests/timetable.test.mjs",
     "test:weekly-planner": "node tests/weekly-planner.test.mjs"
   },

@@ -342,6 +342,36 @@ assert.equal(
   "M4L_BACKEND_TASK_ASSIGNMENT_READ"
 );
 
+const progressReadUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/tasks/student",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subjectid: "ALL" })
+  }
+), {
+  M4L_BACKEND_PROGRESS_READ: "google-sheets"
+});
+assert.equal(progressReadUnauthorized.status, 401);
+assert.equal(progressReadUnauthorized.headers.get("X-M4L-Feature"), "progress-read");
+assert.equal(progressReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  progressReadUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_PROGRESS_READ"
+);
+
+const progressWriteUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/tasks/update-complete",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ studenttaskid: "STASK1", complete: true })
+  }
+), {});
+assert.equal(progressWriteUnauthorized.status, 401);
+assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Feature"), "progress-write");
+assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Backend"), "apps-script");
+
 console.log("Worker router tests passed.");
 
 function response(data, status = 200) {
