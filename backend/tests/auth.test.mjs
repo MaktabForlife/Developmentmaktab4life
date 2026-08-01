@@ -25,17 +25,17 @@ let missingSheetName = "";
 function resetSheets() {
   studentRows = [
     STUDENT_HEADERS,
-    ["ST1", "Student One", "111111", "STUDENT-LINK", true, studentHash, "2", "", "", 4, true, "Admin"],
-    ["ST2", "Student Two", "222222", "STUDENT-SETUP", false, "", "3", "", "", 7, true, "Admin"],
-    ["ST3", "Disabled Student", "333333", "STUDENT-DISABLED", true, studentHash, "4", "", "", 0, false, "Admin"],
+    ["ST1", "Student One", "111111", "STUDENT-LINK", "TRUE", studentHash, "2", "", "", 4, "TRUE", "Admin"],
+    ["ST2", "Student Two", "222222", "STUDENT-SETUP", "FALSE", "", "3", "", "", 7, "TRUE", "Admin"],
+    ["ST3", "Disabled Student", "333333", "STUDENT-DISABLED", "TRUE", studentHash, "4", "", "", 0, "FALSE", "Admin"],
     ["ST4", "String Boolean", "444444", "STUDENT-STRING", "TRUE", studentHash, "5", "", "", 0, "TRUE", "Admin"]
   ];
   adminRows = [
     ADMIN_HEADERS,
-    ["ADMIN1", "Admin One", "ADMIN-LINK", true, adminHash, "ADMIN", "ALL", true, "", "", ""],
-    ["ADMIN2", "Senior Two", "ADMIN-SETUP", false, "", "SENIOR", "2", true, "", "", ""],
-    ["ADMIN3", "Disabled Admin", "ADMIN-DISABLED", true, adminHash, "ADMIN", "ALL", false, "", "", ""],
-    ["ADMIN4", "Teacher Four", "TEACHER-LINK", true, adminHash, "TEACHER", "4", true, "", "", ""]
+    ["ADMIN1", "Admin One", "ADMIN-LINK", "TRUE", adminHash, "ADMIN", "ALL", "TRUE", "", "", ""],
+    ["ADMIN2", "Senior Two", "ADMIN-SETUP", "FALSE", "", "SENIOR", "2", "TRUE", "", "", ""],
+    ["ADMIN3", "Disabled Admin", "ADMIN-DISABLED", "TRUE", adminHash, "ADMIN", "ALL", "FALSE", "", "", ""],
+    ["ADMIN4", "Teacher Four", "TEACHER-LINK", "TRUE", adminHash, "TEACHER", "4", "TRUE", "", "", ""]
   ];
   reads = [];
   updates = [];

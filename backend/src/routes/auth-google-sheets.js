@@ -326,12 +326,12 @@ function findStudentByUniqueId(rows, uniqueid) {
         studentid: getValue(row, 0),
         username: getValue(row, 1),
         uniqueid: getValue(row, 3),
-        pinsetup: getValue(row, 4),
+        pinsetup: normalizeBooleanCell(getValue(row, 4)),
         pinhash: getValue(row, 5),
         classgroup: getValue(row, 6),
         lastlogin: getValue(row, 8),
         failedattempts: getValue(row, 9),
-        active: getValue(row, 10)
+        active: normalizeBooleanCell(getValue(row, 10))
       };
     }
   }
@@ -351,11 +351,11 @@ function findAdminByUniqueId(rows, uniqueid) {
         adminid: getValue(row, 0),
         username: getValue(row, 1),
         uniqueid: getValue(row, 2),
-        pinsetup: getValue(row, 3),
+        pinsetup: normalizeBooleanCell(getValue(row, 3)),
         pinhash: getValue(row, 4),
         role: getValue(row, 5),
         assignedgroup: getValue(row, 6),
-        active: getValue(row, 7),
+        active: normalizeBooleanCell(getValue(row, 7)),
         createdate: getValue(row, 8),
         lastlogin: getValue(row, 9)
       };
@@ -409,4 +409,19 @@ function isMissingSheetError(error, sheetName) {
 function getValue(row, index) {
   const value = Array.isArray(row) ? row[index] : "";
   return value === undefined || value === null ? "" : value;
+}
+
+function normalizeBooleanCell(value) {
+  if (value === true || value === false) {
+    return value;
+  }
+
+  const text = String(value === undefined || value === null ? "" : value)
+    .trim()
+    .toLowerCase();
+
+  if (text === "true") return true;
+  if (text === "false") return false;
+
+  return value;
 }

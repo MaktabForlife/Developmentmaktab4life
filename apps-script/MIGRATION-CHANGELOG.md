@@ -98,6 +98,9 @@ Cloudflare dashboard variable changes are required at merge time.
   hashing with the existing Worker secret, strict active/PIN-setup checks,
   session-token issuance, public response fields and Student PIN-reset
   authorization remain unchanged.
+- The direct route normalizes Google Sheets API formatted boolean text
+  (`TRUE`/`FALSE`) before applying those strict active and PIN-setup checks,
+  matching the boolean values returned by Apps Script `getValues()`.
 - PIN hashes are used only inside the Worker and are never returned to the
   browser. Setup/reset writes target only the existing PIN setup, PIN hash and
   failed-attempt cells.
@@ -380,6 +383,9 @@ Cloudflare dashboard variable changes are required at merge time.
   permissions, disabled and unconfigured accounts, incorrect PINs, missing
   sheets, routing headers, token claims, sensitive-field isolation and Apps
   Script fallback.
+- Corrected direct Sheets boolean parity after development verification showed
+  both Student and Admin `Active` cells arriving as formatted `TRUE`/`FALSE`
+  text rather than JavaScript booleans.
 
 ### 2026-08-01 — V98.10
 
