@@ -1,8 +1,8 @@
 /*
 ===============================================================================
 MAKTABHELPER — APPS SCRIPT MIGRATION STATUS AND SOURCE-OF-TRUTH POLICY
-Last updated: 1 August 2026
-Migration map: V98.11
+Last updated: 2 August 2026
+Migration map: V98.12
 ===============================================================================
 
 SOURCE OF TRUTH:
@@ -50,6 +50,10 @@ MIGRATED TO DIRECT GOOGLE SHEETS API:
 - Weekly Planner reads and writes
   Weekly Planner records use the direct Google Sheets API.
   The Google Drive preview submission remains a narrow Apps Script action because it uses DriveApp.
+- UI-managed operational configuration
+  StudentLoginBaseUrl, WeeklyPlannerDriveFolderId and
+  WeeklyPlannerDriveFolderLabel are stored in SystemConfig by the ADMIN-only
+  direct Worker route. Apps Script reads them but does not own their UI writes.
 
 STILL ACTIVE ON APPS SCRIPT:
 - Admin registration and username lookup: registerAdmin, getAdminByUsername
@@ -57,6 +61,8 @@ STILL ACTIVE ON APPS SCRIPT:
 - Task Resource administration
 - Student-task population utilities, including populateAllStudentTasks
 - Weekly Planner preview submission to Google Drive
+- Reading UI-managed SystemConfig values required by the remaining active
+  operations and retained registration/search rollback functions
 
 IMPORTANT:
 - Migrated functions marked LEGACY ROLLBACK must not be modified, reused or
@@ -83,12 +89,13 @@ Encrypted credentials remain in Cloudflare Worker secrets.
 */
 
 const SHEET_NAME = "StudentRecords";
-const BASE_STUDENT_LOGIN_URL = "https://developmentmaktab4life.pages.dev/student/";
 const DEFAULT_STUDENT_GROUP = 1;
 const DEFAULT_WHATSAPP6 = "999999";
-const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID = "1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX";
-const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX?usp=share_link";
-const WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL = "Weekly Planner";
+const SYSTEM_CONFIG_SHEET_NAME = "SystemConfig";
+const STUDENT_LOGIN_BASE_CONFIG_KEY = "StudentLoginBaseUrl";
+const WEEKLY_PLANNER_DRIVE_FOLDER_ID_CONFIG_KEY = "WeeklyPlannerDriveFolderId";
+const WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_CONFIG_KEY = "WeeklyPlannerDriveFolderLabel";
+const DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL = "Weekly Planner";
 
 
 
@@ -201,7 +208,7 @@ function registerStudent(data) {
     active: true,
     uniqueid: uniqueId,
     registeredby: registeredby,
-    loginUrl: BASE_STUDENT_LOGIN_URL + uniqueId,
+    loginUrl: getStudentLoginBaseUrl_() + uniqueId,
     assignment: assignmentResult
   };
 }
@@ -643,6 +650,7 @@ function searchStudents(data) {
     return { success: true, students: [], count: 0 };
   }
 
+  const studentLoginBaseUrl = getStudentLoginBaseUrl_();
   const matches = [];
 
   for (let i = 1; i < rows.length; i++) {
@@ -687,7 +695,7 @@ function searchStudents(data) {
         lastlogin: lastlogin,
         active: active === true || String(active).toLowerCase() === "true",
         registeredby: registeredby,
-        loginUrl: BASE_STUDENT_LOGIN_URL + uniqueId
+        loginUrl: studentLoginBaseUrl + uniqueId
       });
     }
   }
@@ -5268,7 +5276,78 @@ function updateTimetableZoomLink(data) {
 }
 
 /* =========================
-   WEEKLY PLANNER PREVIEW DRIVE SAVE - V97.1.8.5 
+   UI-MANAGED SYSTEM CONFIGURATION - V98.12
+========================= */
+
+function getSystemConfigValue_(key, required) {
+  const configKey = String(key || "").trim();
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(SYSTEM_CONFIG_SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error("SystemConfig sheet not found");
+  }
+
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 1) {
+    if (required) throw new Error("SystemConfig is empty");
+    return "";
+  }
+
+  const rows = sheet.getRange(1, 1, lastRow, 2).getDisplayValues();
+  const matches = rows.filter(function(row) {
+    return String(row[0] || "").trim() === configKey;
+  });
+
+  if (matches.length > 1) {
+    throw new Error("SystemConfig contains duplicate " + configKey + " rows");
+  }
+
+  const value = matches.length ? String(matches[0][1] || "").trim() : "";
+
+  if (required && !value) {
+    throw new Error(configKey + " is not configured in System Settings");
+  }
+
+  return value;
+}
+
+function getStudentLoginBaseUrl_() {
+  const value = getSystemConfigValue_(STUDENT_LOGIN_BASE_CONFIG_KEY, true);
+
+  if (!/^https:\/\/[^\s/]+(?:\/[^\s]*)?$/i.test(value)) {
+    throw new Error("StudentLoginBaseUrl is invalid in System Settings");
+  }
+
+  return value.endsWith("/") ? value : value + "/";
+}
+
+function getWeeklyPlannerDriveConfig_() {
+  const folderId = getSystemConfigValue_(
+    WEEKLY_PLANNER_DRIVE_FOLDER_ID_CONFIG_KEY,
+    true
+  );
+
+  if (!/^[A-Za-z0-9_-]{10,128}$/.test(folderId)) {
+    throw new Error("WeeklyPlannerDriveFolderId is invalid in System Settings");
+  }
+
+  const folderLabel = getSystemConfigValue_(
+    WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_CONFIG_KEY,
+    false
+  ) || DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL;
+
+  return {
+    folderId: folderId,
+    folderLabel: folderLabel,
+    folderUrl: "https://drive.google.com/drive/folders/" + encodeURIComponent(folderId)
+  };
+}
+
+/* =========================
+   WEEKLY PLANNER PREVIEW DRIVE SAVE - V98.12
 ========================= */
 
 function saveWeeklyPlannerPreviewToDrive(data) {
@@ -5292,10 +5371,17 @@ function saveWeeklyPlannerPreviewToDrive(data) {
     return { success: false, error: "Missing preview image data" };
   }
 
+  let driveConfig = {
+    folderId: "",
+    folderLabel: DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL,
+    folderUrl: ""
+  };
+
   try {
+    driveConfig = getWeeklyPlannerDriveConfig_();
     const bytes = Utilities.base64Decode(base64);
     const blob = Utilities.newBlob(bytes, mimeType, fileName);
-    const folder = DriveApp.getFolderById(WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID);
+    const folder = DriveApp.getFolderById(driveConfig.folderId);
     const file = folder.createFile(blob);
 
     return {
@@ -5304,9 +5390,9 @@ function saveWeeklyPlannerPreviewToDrive(data) {
       fileName: file.getName(),
       fileId: file.getId(),
       fileUrl: file.getUrl(),
-      folderId: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_ID,
-      destinationLabel: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL,
-      destinationUrl: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL,
+      folderId: driveConfig.folderId,
+      destinationLabel: driveConfig.folderLabel,
+      destinationUrl: driveConfig.folderUrl,
       teacherName: String(data.teacherName || "").trim(),
       saveDate: String(data.saveDate || "").trim(),
       weekStart: String(data.weekStart || "").trim(),
@@ -5318,15 +5404,18 @@ function saveWeeklyPlannerPreviewToDrive(data) {
 
     return {
       success: false,
-      error: "Unable to save Weekly Planner. The configured Google Drive folder is not accessible. Please verify that the folder has been shared with the M4L Apps Script account.",
-      destinationLabel: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_LABEL,
-      destinationUrl: WEEKLY_PLANNER_PREVIEW_DRIVE_FOLDER_URL
+      error: error && error.message
+        ? error.message
+        : "Unable to save Weekly Planner. Verify the configured Google Drive folder and Apps Script access.",
+      destinationLabel: driveConfig.folderLabel,
+      destinationUrl: driveConfig.folderUrl
     };
   }
 }
 
 function testDriveAccess() {
-  const folder = DriveApp.getFolderById("1Uz-unVcnO729RE88_pr9Y1cNp8lNgRcX");
+  const driveConfig = getWeeklyPlannerDriveConfig_();
+  const folder = DriveApp.getFolderById(driveConfig.folderId);
   folder.createFile("test.txt", "M4L Drive access test");
 }
 

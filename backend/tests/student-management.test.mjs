@@ -58,6 +58,10 @@ const taskRows = [
   ["TASK5", "SUB1", "Inactive", "", "", "", "", false, "", "M1", "First Module", "Aqidah"]
 ];
 
+const systemConfigRows = [
+  ["StudentLoginBaseUrl", "https://development.example.test/student/"]
+];
+
 const keyPair = await crypto.subtle.generateKey(
   {
     name: "RSASSA-PKCS1-v1_5",
@@ -82,8 +86,7 @@ const directEnv = {
   }),
   M4L_BACKEND_STUDENT_MANAGEMENT_READ: "google-sheets",
   M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE: "google-sheets",
-  M4L_BACKEND_TASK_ASSIGNMENT_READ: "google-sheets",
-  M4L_STUDENT_LOGIN_BASE: "https://development.example.test/student/"
+  M4L_BACKEND_TASK_ASSIGNMENT_READ: "google-sheets"
 };
 const adminToken = await makeSessionToken({
   type: "admin",
@@ -123,6 +126,7 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
     if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
+    if (range === "SystemConfig!A:D") return response({ values: systemConfigRows });
 
     throw new Error(`Unexpected student-management range: ${range}`);
   }
@@ -310,7 +314,8 @@ try {
       "StudentRecords!A:ZZ",
       "SubjectList!A:ZZ",
       "ModuleList!A:ZZ",
-      "TaskList!A:ZZ"
+      "TaskList!A:ZZ",
+      "SystemConfig!A:D"
     ])
   );
 } finally {

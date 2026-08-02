@@ -4,13 +4,13 @@ import {
   readGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { getStudentLoginBaseUrl } from "../lib/system-config.js";
 
 const STUDENT_RECORDS_SHEET = "StudentRecords";
 const SUBJECT_LIST_SHEET = "SubjectList";
 const MODULE_LIST_SHEET = "ModuleList";
 const TASK_LIST_SHEET = "TaskList";
 const FULL_SHEET_RANGE = "A:ZZ";
-const DEFAULT_STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktabhelper.app/student/";
 
 export async function checkStudentDuplicateGoogleSheetsEndpoint(request, env) {
   const permission = await requireAdminOrSenior(request, env);
@@ -66,11 +66,24 @@ export async function searchStudentsGoogleSheetsEndpoint(request, env) {
     return missingSheetResponse(STUDENT_RECORDS_SHEET);
   }
 
+  let studentLoginBaseUrl;
+
+  try {
+    studentLoginBaseUrl = await getStudentLoginBaseUrl(env);
+  } catch (error) {
+    return json({
+      success: false,
+      error: error && error.message
+        ? error.message
+        : "Student login URL is not configured in System Settings"
+    }, 503);
+  }
+
   return json(buildStudentSearchResponse(rows, {
     query,
     whatsapp6,
     listAll,
-    studentLoginBase: env.M4L_STUDENT_LOGIN_BASE || DEFAULT_STUDENT_LOGIN_BASE
+    studentLoginBase: studentLoginBaseUrl
   }));
 }
 
@@ -260,9 +273,7 @@ export function buildStudentSearchResponse(rows = [], options = {}) {
   }
 
   const headerMap = buildHeaderMap(rows[0] || []);
-  const loginBase = ensureTrailingSlash(
-    options.studentLoginBase || DEFAULT_STUDENT_LOGIN_BASE
-  );
+  const loginBase = ensureTrailingSlash(options.studentLoginBase);
   const matches = [];
 
   rows.slice(1).forEach(row => {
@@ -687,7 +698,7 @@ function isActiveValue(value) {
 }
 
 function ensureTrailingSlash(value) {
-  const text = clean(value) || DEFAULT_STUDENT_LOGIN_BASE;
+  const text = clean(value);
   return text.endsWith("/") ? text : `${text}/`;
 }
 

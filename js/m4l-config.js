@@ -28,14 +28,12 @@
 
   const PROD_CONFIG = {
     ENV_NAME: "production",
-   API_BASE: "https://api.rebootyourmaktab.maktabhelper.app",
-   STUDENT_LOGIN_BASE: "https://rebootyourmaktab.maktabhelper.app/student/"
+   API_BASE: "https://api.rebootyourmaktab.maktabhelper.app"
   };
 
   const DEV_CONFIG = {
     ENV_NAME: "development",
-    API_BASE: "https://devrebootworker.maktab4life.workers.dev",
-    STUDENT_LOGIN_BASE: "https://developmentmaktab4life.pages.dev/student/"
+    API_BASE: "https://devrebootworker.maktab4life.workers.dev"
   };
 
   function isDevelopmentHost(hostname) {

@@ -98,6 +98,8 @@ assert.deepEqual(
 );
 assert.equal(defaults.features["weekly-planner"].backend, BACKEND_GOOGLE_SHEETS);
 assert.deepEqual(defaults.features["weekly-planner"].availableBackends, [BACKEND_GOOGLE_SHEETS]);
+assert.equal(defaults.features["system-settings"].backend, BACKEND_GOOGLE_SHEETS);
+assert.deepEqual(defaults.features["system-settings"].availableBackends, [BACKEND_GOOGLE_SHEETS]);
 assert.equal(defaults.routingLogsEnabled, false);
 
 const explicitLegacy = getBackendSelection({ M4L_BACKEND_AUTH: "legacy" }, "auth");
@@ -257,6 +259,14 @@ assert.equal(
   "M4L_BACKEND_TASK_ASSIGNMENT_WRITE"
 );
 
+const systemSettingsSelection = getBackendSelection(
+  { M4L_BACKEND_SYSTEM_SETTINGS: "google-sheets" },
+  "system-settings"
+);
+assert.equal(systemSettingsSelection.valid, true);
+assert.equal(systemSettingsSelection.backend, BACKEND_GOOGLE_SHEETS);
+assert.equal(systemSettingsSelection.source, "M4L_BACKEND_SYSTEM_SETTINGS");
+
 const invalid = getBackendSelection(
   { M4L_BACKEND_PROGRESS_READ: "somewhere-else" },
   "progress-read"
@@ -276,6 +286,11 @@ const wranglerConfig = JSON.parse(readFileSync(
 assert.equal(wranglerConfig.vars.M4L_BACKEND_AUTH, "google-sheets");
 assert.equal(
   wranglerConfig.env.development.vars.M4L_BACKEND_AUTH,
+  "google-sheets"
+);
+assert.equal(wranglerConfig.vars.M4L_BACKEND_SYSTEM_SETTINGS, "google-sheets");
+assert.equal(
+  wranglerConfig.env.development.vars.M4L_BACKEND_SYSTEM_SETTINGS,
   "google-sheets"
 );
 assert.equal(wranglerConfig.vars.M4L_BACKEND_ATTENDANCE_READ, "google-sheets");

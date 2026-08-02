@@ -1,10 +1,10 @@
 # Apps Script to Google Sheets Migration Ledger
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
-Latest development-verified milestone before V98.11: V98.10
+Latest production-verified milestone before V98.12: V98.11
 
-Development milestone: V98.11
+Development milestone: V98.12
 
 The repository file `apps-script/code.gs` is the source of truth. The live
 Google Apps Script project is a deployment target. Changes must be committed in
@@ -43,15 +43,16 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.11 target
+## Current ownership and V98.12 target
 
-| Area | Operation / Apps Script action | V98.11 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.12 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
 | Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Timetable | `updateTimetableZoomLink` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Weekly Planner | records and archives | DIRECT ONLY | DIRECT ONLY | Not present |
 | Weekly Planner | save preview PNG to Drive | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+| System configuration | UI read/write of approved `SystemConfig` keys | DIRECT ONLY | DIRECT ONLY | Read by active Apps Script functions |
 | Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Attendance | `submitAbsentStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
 | Authentication | routed Student/Admin lookup and login reads | DIRECT | DIRECT | LEGACY ROLLBACK |
@@ -361,7 +362,80 @@ Cloudflare dashboard variable changes are required at merge time.
 - Preview PNG submission: Apps Script by design because it uses Google Drive
 - No Planner record action was migrated from Apps Script.
 
+### UI-managed system configuration
+
+- Worker implementation:
+  - `backend/src/lib/system-config.js`
+  - `backend/src/routes/system-settings.js`
+- Router feature: `system-settings`
+- Routes:
+  - `/api/admin/system-settings/get`
+  - `/api/admin/system-settings/save`
+- Routing variable: `M4L_BACKEND_SYSTEM_SETTINGS=google-sheets`
+- The feature is direct Google Sheets only and is explicitly selected in both
+  top-level production and development Wrangler variables.
+- Only an authenticated account with the exact `ADMIN` role may read or write
+  these settings. `SENIOR` and `TEACHER` accounts are rejected.
+- The Worker uses an allowlist and can manage only these `SystemConfig` keys:
+  - `StudentLoginBaseUrl`
+  - `WeeklyPlannerDriveFolderId`
+  - `WeeklyPlannerDriveFolderLabel`
+- Existing identifier counters and all other `SystemConfig` rows are outside
+  the route's write scope.
+- The folder input accepts either a Google Drive folder URL or its folder ID;
+  only the extracted ID is stored. The Apps Script Drive action derives the
+  folder URL and accesses the folder with `DriveApp`.
+- The sheet stores operational configuration only. Worker credentials,
+  service-account JSON and session secrets remain Cloudflare secrets and must
+  never be entered through the UI.
+- During the first V98.12 promotion, `M4L_STUDENT_LOGIN_BASE` remains in
+  Wrangler solely as a registration/search fallback until each environment's
+  `SystemConfig` row has been seeded. The direct code always prefers the sheet.
+  Remove the fallback in a later release after Development and Production are
+  both verified.
+- The V98.12 Apps Script source intentionally has no hard-coded fallback for
+  the login URL or Drive folder. Save both values through System Settings in
+  the target environment before deploying that Apps Script version.
+
+#### V98.12 environment deployment sequence
+
+For each environment, keep the currently working Apps Script deployment active
+while seeding the new settings:
+
+1. deploy the V98.12 Worker and Pages files;
+2. sign in with an `ADMIN` account and save System Settings;
+3. reload the screen and confirm all settings are read from `SystemConfig`;
+4. synchronize the full repository `apps-script/code.gs` to that environment's
+   Apps Script project and deploy a new version;
+5. verify Student registration/search generates the correct login URL;
+6. submit one Weekly Planner preview and confirm it reaches the configured
+   Drive folder.
+
+Complete and verify this sequence in Development before repeating it in
+Production.
+
 ## Change history
+
+### 2026-08-02 — V98.12
+
+- Added an ADMIN-only System Settings screen for the Student login base URL and
+  Weekly Planner Google Drive destination.
+- Added direct Google Sheets read/write routes for the three approved
+  `SystemConfig` keys, with input validation, duplicate-key detection and
+  update audit metadata.
+- Added `M4L_BACKEND_SYSTEM_SETTINGS=google-sheets` to both Wrangler
+  environments so promotion remains a normal Development-to-Production merge.
+- Changed direct Student registration/search to prefer
+  `StudentLoginBaseUrl` from `SystemConfig`; retained the current Wrangler value
+  only as a temporary first-deployment fallback.
+- Removed the Student login URL from browser configuration and made student
+  management use the login URL returned by the API.
+- Removed hard-coded login and Weekly Planner Drive destinations from the Apps
+  Script source of truth. Active and rollback Apps Script functions now read
+  the same UI-managed `SystemConfig` rows.
+- Added automated coverage for strict ADMIN authorization, allowlisted writes,
+  validation, counter isolation, routing headers, Student registration/search
+  use of the sheet value and both production/development routing flags.
 
 ### 2026-08-01 — V98.11
 
