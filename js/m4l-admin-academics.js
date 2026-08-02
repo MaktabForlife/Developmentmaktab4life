@@ -33,6 +33,10 @@ function prepareAdminAcademicsScreen() {
       button.textContent = "Students";
     }
   });
+
+  if (window.M4LSystemSettings && typeof window.M4LSystemSettings.syncAccess === "function") {
+    window.M4LSystemSettings.syncAccess();
+  }
 }
 
 /* =========================

@@ -20,6 +20,8 @@ const expectedPaths = [
   "/api/admin/weekly-planner/teacher-history",
   "/api/admin/weekly-planner/teacher-week-records",
   "/api/admin/backend-routing",
+  "/api/admin/system-settings/get",
+  "/api/admin/system-settings/save",
   "/api/admin/check-admin",
   "/api/admin/setup-pin",
   "/api/admin/login",
@@ -130,6 +132,20 @@ const routingUnauthorized = await worker.fetch(new Request(
 assert.equal(routingUnauthorized.status, 401);
 assert.equal(routingUnauthorized.headers.get("X-M4L-Feature"), "routing");
 assert.equal(routingUnauthorized.headers.get("X-M4L-Backend"), "worker");
+
+const systemSettingsUnauthorized = await worker.fetch(new Request(
+  "https://worker.test/api/admin/system-settings/get",
+  { method: "POST" }
+), {
+  M4L_BACKEND_SYSTEM_SETTINGS: "google-sheets"
+});
+assert.equal(systemSettingsUnauthorized.status, 401);
+assert.equal(systemSettingsUnauthorized.headers.get("X-M4L-Feature"), "system-settings");
+assert.equal(systemSettingsUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
+assert.equal(
+  systemSettingsUnauthorized.headers.get("X-M4L-Backend-Source"),
+  "M4L_BACKEND_SYSTEM_SETTINGS"
+);
 
 const timetableWriteUnauthorized = await worker.fetch(new Request(
   "https://worker.test/api/admin/timetable/update-zoom",

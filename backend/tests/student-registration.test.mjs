@@ -23,7 +23,8 @@ const studentRows = [
 ];
 const systemConfigRows = [
   ["NextStudentNumber", 200],
-  ["NextStudentTaskNumber", 500]
+  ["NextStudentTaskNumber", 500],
+  ["StudentLoginBaseUrl", "https://development.example.test/student/"]
 ];
 const taskRows = [
   [
@@ -85,8 +86,7 @@ const directEnv = {
     private_key: toPem(pkcs8, "PRIVATE KEY"),
     token_uri: "https://oauth2.googleapis.com/token"
   }),
-  M4L_BACKEND_STUDENT_MANAGEMENT_WRITE: "google-sheets",
-  M4L_STUDENT_LOGIN_BASE: "https://development.example.test/student/"
+  M4L_BACKEND_STUDENT_MANAGEMENT_WRITE: "google-sheets"
 };
 const adminToken = await makeSessionToken({
   type: "admin",
@@ -133,6 +133,7 @@ globalThis.fetch = async (input, init = {}) => {
 
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "SystemConfig!A:ZZ") return response({ values: systemConfigRows });
+    if (range === "SystemConfig!A:D") return response({ values: systemConfigRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
 
@@ -326,6 +327,7 @@ try {
     new Set([
       "StudentRecords!A:ZZ",
       "SystemConfig!A:ZZ",
+      "SystemConfig!A:D",
       "StudentTasks!A:ZZ",
       "TaskList!A:ZZ"
     ])

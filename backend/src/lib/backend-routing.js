@@ -88,6 +88,11 @@ const FEATURE_DEFINITIONS = Object.freeze({
     BACKEND_APPS_SCRIPT,
     [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
   ),
+  "system-settings": defineFeature(
+    "M4L_BACKEND_SYSTEM_SETTINGS",
+    BACKEND_GOOGLE_SHEETS,
+    [BACKEND_GOOGLE_SHEETS]
+  ),
   "weekly-planner": defineFeature(
     "M4L_BACKEND_WEEKLY_PLANNER",
     BACKEND_GOOGLE_SHEETS,

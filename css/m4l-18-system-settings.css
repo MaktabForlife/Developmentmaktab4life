@@ -1,0 +1,133 @@
+/* M4L V98.12 - UI-managed application configuration. */
+
+#system-settings-screen {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--surface-app);
+}
+
+.system-settings-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.system-settings-header h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.system-settings-close,
+.system-settings-reload {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--primary);
+}
+
+.system-settings-reload .app-icon {
+  --app-icon-url: url('/icons/refresh.svg');
+}
+
+.system-settings-form {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+.system-settings-card {
+  padding: 16px;
+  border: 2px solid var(--surface-track);
+  border-radius: 16px;
+  background: var(--surface-card);
+}
+
+.system-settings-card h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.system-settings-field {
+  display: grid;
+  gap: 6px;
+}
+
+.system-settings-field + .system-settings-field {
+  margin-top: 14px;
+}
+
+.system-settings-field > span:first-child {
+  font-weight: 700;
+}
+
+.system-settings-field input {
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--surface-track);
+  background: var(--surface-card);
+  color: var(--text);
+}
+
+.system-settings-help,
+.system-settings-destination {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.system-settings-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--text);
+  background: var(--surface-chip);
+  font-weight: 700;
+}
+
+.system-settings-save .app-icon {
+  --app-icon-url: url('/icons/save.svg');
+}
+
+.system-settings-message {
+  min-height: 24px;
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+}
+
+.system-settings-message[data-kind="success"] {
+  color: var(--primary);
+}
+
+.system-settings-message[data-kind="warning"] {
+  color: var(--text);
+}
+
+.system-settings-message[data-kind="error"] {
+  color: var(--error);
+}
+
+#system-settings-screen[aria-busy="true"] {
+  cursor: progress;
+}
+
+@media (min-width: 768px) {
+  .system-settings-form {
+    gap: 18px;
+  }
+
+  .system-settings-card {
+    padding: 20px;
+  }
+}

@@ -1245,7 +1245,7 @@ async function resetManagedStudentPin() {
 
 function renderStudentMessageResult(student, context) {
   const normalized = normalizeManagedStudent(student);
-  const loginLink = buildStudentLoginLink(normalized.uniqueid);
+  const loginLink = normalized.loginUrl || buildStudentLoginLink(normalized.uniqueid);
   const message = buildStudentWelcomeMessage(loginLink);
   const assignment = normalized.assignment || {};
   const assignmentLine = context === "registered"
@@ -1329,6 +1329,7 @@ function normalizeManagedStudent(student) {
     username: student.username || student.Username || student.name || student.Name || "",
     whatsapp6: String(student.whatsapp6 || student.WhatsAppLast6 || student.whatsappLast6 || "").trim(),
     uniqueid: student.uniqueid || student.UniqueID || student.uniqueId || "",
+    loginUrl: student.loginUrl || student.LoginUrl || student.loginurl || "",
     classgroup: String(student.classgroup || student.ClassGroup || student.group || student.Group || DEFAULT_STUDENT_GROUP).trim(),
     active: student.active === true || String(student.active).toLowerCase() === "true",
     assignment: student.assignment || null
@@ -1336,7 +1337,7 @@ function normalizeManagedStudent(student) {
 }
 
 function buildStudentLoginLink(uniqueid) {
-  return STUDENT_LOGIN_BASE + String(uniqueid || "").trim();
+  return `${window.location.origin}/student/${String(uniqueid || "").trim()}`;
 }
 
 function buildStudentWelcomeMessage(loginLink) {

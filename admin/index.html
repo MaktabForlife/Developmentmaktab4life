@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=98.0a">
+<link rel="stylesheet" href="/styles.css?v=98.12">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -161,7 +161,97 @@
         <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
         <button class="list-btn" onclick="showAdminTimetableAdmin()">Timetable</button>
         <button class="list-btn" onclick="showAdminZoomLinkAdmin()">Zoom Link</button>
+        <button
+          id="open-system-settings-btn"
+          class="list-btn hidden"
+          data-system-settings-action="open"
+          type="button"
+          aria-hidden="true"
+        >System Settings</button>
       </div>
+    </section>
+
+    <!-- ADMIN SYSTEM SETTINGS -->
+    <section id="system-settings-screen" class="screen admin-theme" aria-labelledby="system-settings-title">
+      <header class="system-settings-header">
+        <button
+          type="button"
+          class="system-settings-close icon-action-btn"
+          data-header-action="screen"
+          data-header-target="admin-academics"
+          aria-label="Close System Settings"
+          title="Close"
+        >
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
+        <h2 id="system-settings-title">System Settings</h2>
+        <button
+          type="button"
+          class="system-settings-reload icon-action-btn"
+          data-system-settings-action="reload"
+          aria-label="Reload System Settings"
+          title="Reload"
+        >
+          <span class="app-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Reload</span>
+        </button>
+      </header>
+
+      <form id="system-settings-form" class="system-settings-form">
+        <section class="system-settings-card" aria-labelledby="system-settings-login-heading">
+          <h3 id="system-settings-login-heading">Student Login</h3>
+          <label class="system-settings-field" for="system-settings-student-login-url">
+            <span>Student login base URL</span>
+            <input
+              id="system-settings-student-login-url"
+              name="studentLoginBaseUrl"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://example.org/student/"
+              required
+            />
+            <span class="system-settings-help">New student links will use this address.</span>
+          </label>
+        </section>
+
+        <section class="system-settings-card" aria-labelledby="system-settings-drive-heading">
+          <h3 id="system-settings-drive-heading">Weekly Planner Drive</h3>
+          <label class="system-settings-field" for="system-settings-drive-folder">
+            <span>Google Drive folder URL or ID</span>
+            <input
+              id="system-settings-drive-folder"
+              name="weeklyPlannerDriveFolder"
+              type="text"
+              autocomplete="off"
+              placeholder="Paste the Google Drive folder URL"
+              required
+            />
+            <span class="system-settings-help">The Apps Script account must have access to this folder.</span>
+          </label>
+
+          <label class="system-settings-field" for="system-settings-drive-label">
+            <span>Destination label</span>
+            <input
+              id="system-settings-drive-label"
+              name="weeklyPlannerDriveFolderLabel"
+              type="text"
+              maxlength="80"
+              value="Weekly Planner"
+              required
+            />
+          </label>
+
+          <p id="system-settings-drive-destination" class="system-settings-destination"></p>
+        </section>
+
+        <button type="submit" class="system-settings-save" data-system-settings-action="save">
+          <span class="app-icon" aria-hidden="true"></span>
+          <span>Save Settings</span>
+        </button>
+        <p id="system-settings-message" class="system-settings-message" role="status" aria-live="polite"></p>
+      </form>
     </section>
 
     <!-- SHARED LIBRARY SCREEN -->
@@ -1087,6 +1177,7 @@
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
+<script src="/js/m4l-system-settings.js?v=98.12"></script>
   <script src="/js/m4l-resources.js?v=98.0"></script>
 <script src="/js/m4l-teaching-panel.js?v=98.0"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>

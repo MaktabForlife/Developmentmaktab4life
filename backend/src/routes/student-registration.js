@@ -5,6 +5,7 @@ import {
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { getStudentLoginBaseUrl } from "../lib/system-config.js";
 import { buildStudentDuplicateResponse } from "./student-management.js";
 
 const STUDENT_RECORDS_SHEET = "StudentRecords";
@@ -13,7 +14,6 @@ const TASK_LIST_SHEET = "TaskList";
 const SYSTEM_CONFIG_SHEET = "SystemConfig";
 const FULL_SHEET_RANGE = "A:ZZ";
 const STUDENT_RECORDS_APPEND_RANGE = `${STUDENT_RECORDS_SHEET}!A:L`;
-const DEFAULT_STUDENT_LOGIN_BASE = "https://rebootyourmaktab.maktabhelper.app/student/";
 const UNIQUE_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export async function registerStudentGoogleSheetsEndpoint(request, env) {
@@ -52,6 +52,19 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
     permission.user.uniqueid ||
     "ADMIN"
   );
+  let studentLoginBaseUrl;
+
+  try {
+    studentLoginBaseUrl = await getStudentLoginBaseUrl(env);
+  } catch (error) {
+    return json({
+      success: false,
+      error: error && error.message
+        ? error.message
+        : "Student login URL is not configured in System Settings"
+    }, 503);
+  }
+
   const studentRows = await readRegistrationSheet(env, STUDENT_RECORDS_SHEET);
 
   if (studentRows === null) {
@@ -127,9 +140,7 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
     active: true,
     uniqueid,
     registeredby,
-    loginUrl: `${ensureTrailingSlash(
-      env.M4L_STUDENT_LOGIN_BASE || DEFAULT_STUDENT_LOGIN_BASE
-    )}${uniqueid}`,
+    loginUrl: `${studentLoginBaseUrl}${uniqueid}`,
     assignment
   });
 }
@@ -488,11 +499,6 @@ function columnIndexToA1(index) {
   }
 
   return label;
-}
-
-function ensureTrailingSlash(value) {
-  const text = clean(value) || DEFAULT_STUDENT_LOGIN_BASE;
-  return text.endsWith("/") ? text : `${text}/`;
 }
 
 function isMissingSheetError(error, sheetName) {

@@ -97,6 +97,10 @@ import {
 } from "./routes/student-management.js";
 import { registerStudentGoogleSheetsEndpoint } from "./routes/student-registration.js";
 import { assignTasksGoogleSheetsEndpoint } from "./routes/task-assignment.js";
+import {
+  getSystemSettingsGoogleSheetsEndpoint,
+  saveSystemSettingsGoogleSheetsEndpoint
+} from "./routes/system-settings.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -127,6 +131,8 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teacher-history", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherHistoryEndpoint)],
   ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
+  ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
+  ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],
 
   ["/api/admin/check-admin", authRoute(checkAdmin, checkAdminGoogleSheetsEndpoint)],
   ["/api/admin/setup-pin", authRoute(setupAdminPin, setupAdminPinGoogleSheetsEndpoint)],
