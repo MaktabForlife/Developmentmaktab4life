@@ -76,53 +76,42 @@ const notFound = await worker.fetch(new Request("https://worker.test/not-a-route
 assert.equal(notFound.status, 404);
 assert.deepEqual(await notFound.json(), { success: false, error: "Not found" });
 
-const originalFetch = globalThis.fetch;
-let proxiedPayload = null;
+const retiredAppsScriptRoutes = [
+  ["auth", "M4L_BACKEND_AUTH", "/api/check-student"],
+  ["attendance-read", "M4L_BACKEND_ATTENDANCE_READ", "/api/attendance/students"],
+  ["attendance-write", "M4L_BACKEND_ATTENDANCE_WRITE", "/api/attendance/submit-absent"],
+  ["resources", "M4L_BACKEND_RESOURCES", "/api/resources/list"],
+  ["timetable-read", "M4L_BACKEND_TIMETABLE_READ", "/api/timetable/get"],
+  ["timetable-write", "M4L_BACKEND_TIMETABLE_WRITE", "/api/admin/timetable/update-zoom"],
+  ["student-management-read", "M4L_BACKEND_STUDENT_MANAGEMENT_READ", "/api/admin/students/search"],
+  ["student-management-write", "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE", "/api/admin/register-student"],
+  ["student-management-update", "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE", "/api/admin/update-student"],
+  ["curriculum-read", "M4L_BACKEND_CURRICULUM_READ", "/api/admin/subjects/list"],
+  ["curriculum-write", "M4L_BACKEND_CURRICULUM_WRITE", "/api/admin/subjects/create"],
+  ["curriculum-resources-read", "M4L_BACKEND_CURRICULUM_RESOURCES_READ", "/api/admin/subject-resources/list"],
+  ["curriculum-resources-write", "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE", "/api/admin/subject-resources/create"],
+  ["task-assignment-read", "M4L_BACKEND_TASK_ASSIGNMENT_READ", "/api/admin/students/assignment-options"],
+  ["task-assignment-write", "M4L_BACKEND_TASK_ASSIGNMENT_WRITE", "/api/admin/tasks/assign"],
+  ["progress-read", "M4L_BACKEND_PROGRESS_READ", "/api/tasks/student"],
+  ["progress-write", "M4L_BACKEND_PROGRESS_WRITE", "/api/tasks/update-complete"]
+];
 
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  proxiedPayload = JSON.parse(init.body);
-  return response({
-    student: {
-      studentid: "STUDENT1",
-      username: "Test Student",
-      classgroup: "1",
-      pinsetup: true,
-      active: true
-    }
-  });
-};
-
-try {
-  const checkStudent = await worker.fetch(new Request("https://worker.test/api/check-student", {
+for (const [feature, envVar, path] of retiredAppsScriptRoutes) {
+  const rejected = await worker.fetch(new Request(`https://worker.test${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uniqueid: "TEST-LINK" })
+    body: "{}"
   }), {
-    APPS_SCRIPT_URL: "https://script.example.test/exec"
+    [envVar]: "apps-script"
   });
+  const rejectedData = await rejected.json();
 
-  assert.equal(checkStudent.status, 200);
-  assert.equal(checkStudent.headers.get("X-M4L-Feature"), "auth");
-  assert.equal(checkStudent.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(checkStudent.headers.get("X-M4L-Backend-Source"), "default");
-  assert.match(checkStudent.headers.get("Access-Control-Expose-Headers"), /X-M4L-Backend/);
-  assert.deepEqual(proxiedPayload, {
-    action: "getStudentByUniqueId",
-    uniqueid: "TEST-LINK"
-  });
-  assert.deepEqual(await checkStudent.json(), {
-    success: true,
-    student: {
-      studentid: "STUDENT1",
-      username: "Test Student",
-      classgroup: "1",
-      pinsetup: true
-    }
-  });
-
-} finally {
-  globalThis.fetch = originalFetch;
+  assert.equal(rejected.status, 503, `${feature} must reject the retired Apps Script backend`);
+  assert.equal(rejected.headers.get("X-M4L-Feature"), feature);
+  assert.equal(rejected.headers.get("X-M4L-Backend"), "apps-script");
+  assert.equal(rejected.headers.get("X-M4L-Backend-Source"), envVar);
+  assert.equal(rejectedData.error, "Backend routing configuration error");
+  assert.match(rejectedData.detail, /apps-script is not enabled/);
 }
 
 const routingUnauthorized = await worker.fetch(new Request(
@@ -381,10 +370,3 @@ assert.equal(
 );
 
 console.log("Worker router tests passed.");
-
-function response(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-}

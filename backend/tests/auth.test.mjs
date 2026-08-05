@@ -343,42 +343,6 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-let appsScriptPayload = null;
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  appsScriptPayload = JSON.parse(init.body);
-  return response({
-    success: true,
-    student: {
-      studentid: "LEGACY1",
-      username: "Legacy Student",
-      classgroup: "1",
-      pinsetup: true,
-      active: true
-    }
-  });
-};
-
-try {
-  const fallback = await post("/api/check-student", {
-    uniqueid: "LEGACY-LINK"
-  }, {
-    PIN_SECRET: pinSecret,
-    SESSION_SECRET: sessionSecret,
-    APPS_SCRIPT_URL: "https://script.example.test/exec"
-  });
-
-  assert.equal(fallback.response.headers.get("X-M4L-Feature"), "auth");
-  assert.equal(fallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(fallback.response.headers.get("X-M4L-Backend-Source"), "default");
-  assert.deepEqual(appsScriptPayload, {
-    action: "getStudentByUniqueId",
-    uniqueid: "LEGACY-LINK"
-  });
-} finally {
-  globalThis.fetch = originalFetch;
-}
-
 console.log("Direct Authentication tests passed.");
 
 function applySheetUpdate(update) {
