@@ -336,33 +336,6 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-let appsScriptPayload = null;
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  appsScriptPayload = JSON.parse(init.body);
-  return response({ success: true, studentid: "LEGACY1" });
-};
-
-try {
-  const fallback = await postAdmin(
-    "/api/admin/register-student",
-    adminToken,
-    { username: "Legacy Student", whatsapp6: "654321", classgroup: "3" },
-    {
-      SESSION_SECRET: sessionSecret,
-      APPS_SCRIPT_URL: "https://script.example.test/exec"
-    }
-  );
-
-  assert.equal(fallback.response.headers.get("X-M4L-Feature"), "student-management-write");
-  assert.equal(fallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(appsScriptPayload.action, "registerStudent");
-  assert.equal(appsScriptPayload.data.username, "Legacy Student");
-  assert.equal(appsScriptPayload.data.registeredby, "Admin User");
-} finally {
-  globalThis.fetch = originalFetch;
-}
-
 console.log("Direct Student Registration tests passed.");
 
 async function postAdmin(path, token, body, env) {

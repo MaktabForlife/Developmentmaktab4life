@@ -311,65 +311,6 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-let appsScriptPayload = null;
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  appsScriptPayload = JSON.parse(init.body);
-  return response({ success: true });
-};
-
-try {
-  const fallbackEnv = {
-    SESSION_SECRET: sessionSecret,
-    APPS_SCRIPT_URL: "https://script.example.test/exec"
-  };
-
-  const subjectFallback = await postCurriculum(
-    "/api/admin/subjects/update",
-    adminToken,
-    { subjectid: "SUB1", subjectName: "Updated Subject" },
-    fallbackEnv
-  );
-  assert.equal(subjectFallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.deepEqual(appsScriptPayload, {
-    action: "updateSubject",
-    data: { subjectid: "SUB1", subjectName: "Updated Subject" }
-  });
-
-  const taskFallback = await postCurriculum(
-    "/api/admin/tasks/create",
-    adminToken,
-    { subjectid: "SUB1", taskName: "Fallback Task" },
-    fallbackEnv
-  );
-  assert.equal(taskFallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.deepEqual(appsScriptPayload, {
-    action: "createTask",
-    data: {
-      subjectid: "SUB1",
-      taskName: "Fallback Task",
-      audioLink: "",
-      visualLink: "",
-      videoLink: "",
-      pdfLink: ""
-    }
-  });
-
-  const resourceFallback = await postCurriculum(
-    "/api/admin/subject-resources/update",
-    adminToken,
-    { resourceid: "RES1", active: false },
-    fallbackEnv
-  );
-  assert.equal(resourceFallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.deepEqual(appsScriptPayload, {
-    action: "updateSubjectResource",
-    data: { resourceid: "RES1", active: false }
-  });
-} finally {
-  globalThis.fetch = originalFetch;
-}
-
 console.log("Direct Curriculum write tests passed.");
 
 function writeRequests() {

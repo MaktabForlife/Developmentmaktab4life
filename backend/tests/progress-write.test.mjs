@@ -279,42 +279,6 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-let appsScriptPayload = null;
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  appsScriptPayload = JSON.parse(init.body);
-  return response({
-    success: true,
-    message: "Student task progress updated successfully",
-    updatedCount: 1,
-    failedCount: 0,
-    results: []
-  });
-};
-
-try {
-  const fallback = await post(
-    "/api/tasks/update-complete",
-    studentToken,
-    { studenttaskid: "STASK1", complete: true },
-    {
-      SESSION_SECRET: sessionSecret,
-      APPS_SCRIPT_URL: "https://script.example.test/exec"
-    }
-  );
-  assert.equal(fallback.response.headers.get("X-M4L-Feature"), "progress-write");
-  assert.equal(fallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(appsScriptPayload.action, "updateStudentTaskStatus");
-  assert.deepEqual(appsScriptPayload.data.updates, [{
-    studenttaskid: "STASK1",
-    completeStatus: "COMPLETE"
-  }]);
-  assert.equal(appsScriptPayload.data.actor.type, "student");
-  assert.equal(appsScriptPayload.data.actor.studentid, "ST1");
-} finally {
-  globalThis.fetch = originalFetch;
-}
-
 console.log("Direct Progress write tests passed.");
 
 function cellMap(payload) {

@@ -40,6 +40,9 @@ further change.
 - `ACTIVE APPS SCRIPT`: the application still depends on this action.
 - `LEGACY ROLLBACK`: the direct Worker route is normal; the Apps Script action
   remains temporarily callable for an explicit routing rollback.
+- `RETIRED ROUTE`: the function remains in the deployed Apps Script source
+  during an observation period, but V98.13 no longer exposes it through the
+  Worker. Restoring the V98.12 Worker version restores that fallback.
 - `DIRECT ONLY`: no Apps Script implementation exists.
 
 Do not remove a legacy function without also removing its `doPost` action, and

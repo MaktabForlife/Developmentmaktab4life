@@ -177,40 +177,6 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-let appsScriptPayload = null;
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  appsScriptPayload = JSON.parse(init.body);
-  return response({ success: true, groups: [], count: 0 });
-};
-
-try {
-  const legacyResult = await worker.fetch(new Request(
-    "https://worker.test/api/resources/list",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: "{}"
-    }
-  ), {
-    SESSION_SECRET: sessionSecret,
-    APPS_SCRIPT_URL: "https://script.example.test/exec"
-  });
-
-  assert.equal(legacyResult.status, 200);
-  assert.equal(legacyResult.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(legacyResult.headers.get("X-M4L-Backend-Source"), "default");
-  assert.deepEqual(appsScriptPayload, {
-    action: "getStudentResources",
-    data: {}
-  });
-} finally {
-  globalThis.fetch = originalFetch;
-}
-
 console.log("Direct Resource read tests passed.");
 
 async function makeSessionToken(payload, secret) {

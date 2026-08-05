@@ -1,10 +1,10 @@
 # Apps Script to Google Sheets Migration Ledger
 
-Last updated: 2026-08-02
+Last updated: 2026-08-05
 
-Latest production-verified milestone before V98.12: V98.11
+Latest production-verified milestone: V98.12
 
-Development milestone: V98.12
+Development milestone: V98.13
 
 The repository file `apps-script/code.gs` is the source of truth. The live
 Google Apps Script project is a deployment target. Changes must be committed in
@@ -27,6 +27,9 @@ can migrate independently.
   Script action remains available for an explicit routing rollback.
 - **LEGACY ROLLBACK**: production has passed its direct-route verification and
   the retained Apps Script action is no longer the normal path.
+- **RETIRED ROUTE**: the Apps Script source remains deployed for an observation
+  period, but the Worker no longer exposes it as a selectable backend. Restore
+  the V98.12 Worker version to reinstate the old routing fallback.
 - **DIRECT ONLY**: the operation was introduced on the direct Worker path and
   has no Apps Script implementation.
 
@@ -47,34 +50,34 @@ inactive until the same commit is merged into `main`. Production promotion is
 therefore one normal branch merge: no individual file edits, Wrangler edits, or
 Cloudflare dashboard variable changes are required at merge time.
 
-## Current ownership and V98.12 target
+## Current ownership and V98.13 target
 
-| Area | Operation / Apps Script action | V98.12 development | Production after merge | Live Apps Script status |
+| Area | Operation / Apps Script action | V98.13 development | Production after merge | Live Apps Script status |
 |---|---|---:|---:|---|
-| Resources | `getStudentResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Timetable | `getTimetable` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Timetable | `updateTimetableZoomLink` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Resources | `getStudentResources` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Timetable | `getTimetable` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Timetable | `updateTimetableZoomLink` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
 | Weekly Planner | records and archives | DIRECT ONLY | DIRECT ONLY | Not present |
 | Weekly Planner | save preview PNG to Drive | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 | System configuration | UI read/write of approved `SystemConfig` keys | DIRECT ONLY | DIRECT ONLY | Read by active Apps Script functions |
-| Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Attendance | `submitAbsentStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Authentication | routed Student/Admin lookup and login reads | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Authentication | routed Student/Admin PIN setup and Student PIN reset | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Attendance | `submitAbsentStudents` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Authentication | routed Student/Admin lookup and login reads | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Authentication | routed Student/Admin PIN setup and Student PIN reset | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
 | Admin utilities | `registerAdmin`, `getAdminByUsername` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Progress | `getStudentTasks`, `getTaskProgressReport`, `getTaskProgressDetail` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Progress | `updateStudentTaskStatus` completion and verification writes | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Progress | `getStudentTasks`, `getTaskProgressReport`, `getTaskProgressDetail` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Progress | `updateStudentTaskStatus` completion and verification writes | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
 | Progress | `getStudentTaskById` compatibility lookup | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Student management | `searchStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Student management | `checkStudentDuplicate` used by registration | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Student management | `registerStudent` and registration-time task assignment | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Student management | `updateStudent` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Curriculum | `listSubjects`, `listTasks` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Curriculum | subject and task create/update | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Curriculum resources | `listSubjectResources` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Curriculum resources | create/update | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Task assignment | `getStudentAssignmentOptions` | DIRECT | DIRECT | LEGACY ROLLBACK |
-| Task assignment | `assignTasksToStudents` | DIRECT | DIRECT | LEGACY ROLLBACK |
+| Student management | `searchStudents` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Student management | `checkStudentDuplicate` used by registration | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Student management | `registerStudent` and registration-time task assignment | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Student management | `updateStudent` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Curriculum | `listSubjects`, `listTasks` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Curriculum | subject and task create/update | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Curriculum resources | `listSubjectResources` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Curriculum resources | create/update | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Task assignment | `getStudentAssignmentOptions` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
+| Task assignment | `assignTasksToStudents` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
 | Task assignment | `populateAllStudentTasks` and population utilities | APPS SCRIPT | APPS SCRIPT | ACTIVE |
 
 ## Migrated operations
@@ -420,6 +423,28 @@ Production.
 
 ## Change history
 
+### 2026-08-05 — V98.13
+
+- Retired the selectable Apps Script fallback for every feature whose direct
+  Google Sheets route has passed Development and Production verification.
+- Made Authentication, Attendance, Resources, Timetable, Student Management,
+  Curriculum, Curriculum Resources, Task Assignment and Progress direct-only
+  in the routing definitions and route table.
+- Kept every explicit `M4L_BACKEND_*=google-sheets` value in both production
+  and development Wrangler configuration so deployed intent remains visible
+  and seamless branch promotion remains unchanged.
+- Preserved the Apps Script-only Weekly Planner Drive action and
+  `APPS_SCRIPT_URL`; saving the preview PNG still uses the active Apps Script
+  deployment and UI-managed Drive folder.
+- Left `apps-script/code.gs` executable logic unchanged for an observation
+  period. The retired functions remain available only if the V98.12 Worker is
+  restored; they are no longer callable through the V98.13 Worker router.
+- Replaced fallback-success tests with explicit rejection tests for all 17
+  retired feature routes while retaining the complete direct-route test suite.
+- Changed migration rollback procedure: a retired feature can no longer be
+  rolled back by setting its flag to `apps-script`; restore the V98.12 Worker
+  version/source instead.
+
 ### 2026-08-02 — V98.12
 
 - Added an ADMIN-only System Settings screen for the Student login base URL and
@@ -673,13 +698,14 @@ Production.
 
 ## Required migration procedure
 
-For every future operation:
+For a future operation that still begins in Apps Script:
 
 1. Record reads and writes separately in this ledger.
-2. Compare the direct implementation with the live Apps Script source of truth.
+2. Compare the direct implementation with the repository Apps Script source of
+   truth.
 3. Add the direct Worker handler without removing the Apps Script handler.
-4. Make the routing feature dual-backend and keep Apps Script as its code-level
-   default for rollback safety.
+4. During parity testing only, make the routing feature dual-backend and keep
+   Apps Script as its code-level default.
 5. In the same development commit, explicitly set the new Google Sheets routing
    flag in both top-level `vars` and `env.development.vars`.
 6. Add automated parity, authorization, routing and error-path tests.
@@ -695,8 +721,14 @@ For every future operation:
 11. Wait for both Pages and Worker production deployments to finish, then test
     the same operation against production.
 12. Mark the Apps Script action **LEGACY ROLLBACK** only after production passes.
-13. Remove an Apps Script `doPost` action and function together only after its
-    rollback path has been explicitly retired.
+13. After an agreed observation period, remove the Apps Script handler from the
+    route map, make the feature Google-Sheets-only, add rejection coverage and
+    mark the action **RETIRED ROUTE**.
+14. Remove an Apps Script `doPost` action and function together only in a later
+    audited cleanup release.
 
-If rollback is required, change the affected routing flag to `apps-script` in a
-tracked commit and keep development and production configurations synchronized.
+For the routes retired in V98.13, setting a routing flag to `apps-script` now
+returns a routing configuration error by design. Roll back those routes by
+restoring the V98.12 Worker version/source, not by changing an environment
+variable. Keep the full Apps Script source deployed throughout the V98.13
+observation period so that rollback remains available.

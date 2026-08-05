@@ -3,101 +3,28 @@ export const BACKEND_GOOGLE_SHEETS = "google-sheets";
 export const BACKEND_WORKER = "worker";
 
 const FEATURE_DEFINITIONS = Object.freeze({
-  auth: defineFeature(
-    "M4L_BACKEND_AUTH",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "attendance-read": defineFeature(
-    "M4L_BACKEND_ATTENDANCE_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "attendance-write": defineFeature(
-    "M4L_BACKEND_ATTENDANCE_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  resources: defineFeature(
-    "M4L_BACKEND_RESOURCES",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "timetable-read": defineFeature(
-    "M4L_BACKEND_TIMETABLE_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "timetable-write": defineFeature(
-    "M4L_BACKEND_TIMETABLE_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "student-management-read": defineFeature(
-    "M4L_BACKEND_STUDENT_MANAGEMENT_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "student-management-write": defineFeature(
-    "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "student-management-update": defineFeature(
-    "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "curriculum-read": defineFeature(
-    "M4L_BACKEND_CURRICULUM_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "curriculum-write": defineFeature(
-    "M4L_BACKEND_CURRICULUM_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "curriculum-resources-read": defineFeature(
-    "M4L_BACKEND_CURRICULUM_RESOURCES_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "curriculum-resources-write": defineFeature(
-    "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "task-assignment-read": defineFeature(
-    "M4L_BACKEND_TASK_ASSIGNMENT_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "task-assignment-write": defineFeature(
-    "M4L_BACKEND_TASK_ASSIGNMENT_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "progress-read": defineFeature(
-    "M4L_BACKEND_PROGRESS_READ",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "progress-write": defineFeature(
-    "M4L_BACKEND_PROGRESS_WRITE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT, BACKEND_GOOGLE_SHEETS]
-  ),
-  "system-settings": defineFeature(
-    "M4L_BACKEND_SYSTEM_SETTINGS",
-    BACKEND_GOOGLE_SHEETS,
-    [BACKEND_GOOGLE_SHEETS]
-  ),
-  "weekly-planner": defineFeature(
-    "M4L_BACKEND_WEEKLY_PLANNER",
-    BACKEND_GOOGLE_SHEETS,
-    [BACKEND_GOOGLE_SHEETS]
-  ),
+  // V98.13 retires the routed Apps Script fallbacks after production parity
+  // verification. These features now reject every backend except direct
+  // Google Sheets, even if an old environment value requests Apps Script.
+  auth: defineGoogleSheetsOnlyFeature("M4L_BACKEND_AUTH"),
+  "attendance-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ATTENDANCE_READ"),
+  "attendance-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ATTENDANCE_WRITE"),
+  resources: defineGoogleSheetsOnlyFeature("M4L_BACKEND_RESOURCES"),
+  "timetable-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TIMETABLE_READ"),
+  "timetable-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TIMETABLE_WRITE"),
+  "student-management-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_READ"),
+  "student-management-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_WRITE"),
+  "student-management-update": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"),
+  "curriculum-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_READ"),
+  "curriculum-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_WRITE"),
+  "curriculum-resources-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_RESOURCES_READ"),
+  "curriculum-resources-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_RESOURCES_WRITE"),
+  "task-assignment-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TASK_ASSIGNMENT_READ"),
+  "task-assignment-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TASK_ASSIGNMENT_WRITE"),
+  "progress-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_PROGRESS_READ"),
+  "progress-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_PROGRESS_WRITE"),
+  "system-settings": defineGoogleSheetsOnlyFeature("M4L_BACKEND_SYSTEM_SETTINGS"),
+  "weekly-planner": defineGoogleSheetsOnlyFeature("M4L_BACKEND_WEEKLY_PLANNER"),
   "weekly-planner-drive": defineFeature(
     "M4L_BACKEND_WEEKLY_PLANNER_DRIVE",
     BACKEND_APPS_SCRIPT,
@@ -219,4 +146,8 @@ function defineFeature(envVar, defaultBackend, availableBackends) {
     defaultBackend,
     availableBackends: Object.freeze(availableBackends.slice())
   });
+}
+
+function defineGoogleSheetsOnlyFeature(envVar) {
+  return defineFeature(envVar, BACKEND_GOOGLE_SHEETS, [BACKEND_GOOGLE_SHEETS]);
 }

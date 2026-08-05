@@ -289,49 +289,6 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-let appsScriptPayload = null;
-globalThis.fetch = async (input, init = {}) => {
-  assert.equal(String(input), "https://script.example.test/exec");
-  appsScriptPayload = JSON.parse(init.body);
-  return response({ success: true, assignedCount: 1 });
-};
-
-try {
-  const fallback = await postAdmin(
-    adminToken,
-    {
-      taskids: ["TASK1"],
-      studentids: ["ST1"],
-      classgroup: "2",
-      assignAllStudents: false,
-      assignAllTasksForSubject: false,
-      subjectid: "SUB1"
-    },
-    {
-      SESSION_SECRET: sessionSecret,
-      APPS_SCRIPT_URL: "https://script.example.test/exec"
-    }
-  );
-
-  assert.equal(fallback.response.headers.get("X-M4L-Feature"), "task-assignment-write");
-  assert.equal(fallback.response.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(fallback.response.headers.get("X-M4L-Backend-Source"), "default");
-  assert.deepEqual(appsScriptPayload, {
-    action: "assignTasksToStudents",
-    data: {
-      assignedBy: "ADMIN1",
-      taskids: ["TASK1"],
-      studentids: ["ST1"],
-      classgroup: "2",
-      assignAllStudents: false,
-      assignAllTasksForSubject: false,
-      subjectid: "SUB1"
-    }
-  });
-} finally {
-  globalThis.fetch = originalFetch;
-}
-
 console.log("Direct Task Assignment Write tests passed.");
 
 async function postAdmin(token, body, env) {
