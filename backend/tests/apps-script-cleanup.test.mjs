@@ -8,34 +8,39 @@ const manifest = JSON.parse(readFileSync(
   "utf8"
 ));
 
-const EXPECTED_ACTIONS = [
-  "createTaskResource",
-  "getAdminByUsername",
-  "getStudentTaskById",
-  "listTaskResources",
-  "populateAllStudentTasks",
-  "registerAdmin",
-  "saveWeeklyPlannerPreviewToDrive",
-  "updateTaskResource"
-].sort();
-
-const RETAINED_FUNCTIONS = [
+const EXPECTED_FUNCTIONS = [
   "authorizeM4LServices",
-  "createTaskResource",
   "doGet",
   "doPost",
+  "extractWeeklyPlannerPreviewBase64_",
+  "getSystemConfigValue_",
+  "getWeeklyPlannerDriveConfig_",
+  "jsonResponse",
+  "sanitizeWeeklyPlannerDriveFileName_",
+  "saveWeeklyPlannerPreviewToDrive"
+].sort();
+
+const REMOVED_UTILITY_FUNCTIONS = [
+  "createTaskResource",
+  "findTaskResourceByTaskAndName",
+  "findTaskResourceByTaskAndNameExcludingId",
+  "generateAdminId",
+  "generateTaskResourceId",
+  "generateUniqueId",
   "getAdminByUsername",
   "getStudentTaskById",
+  "getStudentTaskSheetRows_",
+  "getTaskMapByIds",
   "listTaskResources",
   "populateAllStudentTasks",
   "registerAdmin",
-  "saveWeeklyPlannerPreviewToDrive",
+  "reserveStudentTaskIds_",
   "testPopulateAllStudentTasksDryRun",
   "testPopulateAllStudentTasksReal",
   "updateTaskResource"
 ];
 
-const RETIRED_ACTION_FUNCTIONS = [
+const RETIRED_ROUTE_FUNCTIONS = [
   "assignTasksToStudents",
   "checkStudentDuplicate",
   "createSubject",
@@ -71,38 +76,56 @@ const RETIRED_ACTION_FUNCTIONS = [
 
 new vm.Script(code, { filename: "apps-script/code.gs" });
 
-const actions = Array.from(code.matchAll(/case\s+"([^"]+)"\s*:/g), match => match[1]).sort();
-assert.deepEqual(actions, EXPECTED_ACTIONS, "doPost must expose only the audited V98.14 action allowlist");
+const declaredFunctions = Array.from(
+  code.matchAll(/^function\s+([A-Za-z0-9_$]+)\s*\(/gm),
+  match => match[1]
+).sort();
+assert.deepEqual(
+  declaredFunctions,
+  EXPECTED_FUNCTIONS,
+  "Apps Script must contain only the audited Weekly Planner Drive bridge dependency closure"
+);
 
-for (const functionName of RETAINED_FUNCTIONS) {
-  const matches = code.match(new RegExp(`\\bfunction\\s+${functionName}\\s*\\(`, "g")) || [];
-  assert.equal(matches.length, 1, `${functionName} must be retained exactly once`);
-}
+const publicActions = Array.from(new Set([
+  ...Array.from(code.matchAll(/case\s+"([^"]+)"\s*:/g), match => match[1]),
+  ...Array.from(code.matchAll(/body\.action\s*===\s*"([^"]+)"/g), match => match[1])
+])).sort();
+assert.deepEqual(
+  publicActions,
+  ["saveWeeklyPlannerPreviewToDrive"],
+  "doPost must expose only the Weekly Planner Drive action"
+);
 
-for (const functionName of RETIRED_ACTION_FUNCTIONS) {
+for (const functionName of [...REMOVED_UTILITY_FUNCTIONS, ...RETIRED_ROUTE_FUNCTIONS]) {
   assert.doesNotMatch(
     code,
     new RegExp(`\\bfunction\\s+${functionName}\\s*\\(`),
-    `${functionName} must remain removed after its route retirement`
+    `${functionName} must remain removed from the final Apps Script bridge`
   );
 }
 
-assert.doesNotMatch(code, /LEGACY ROLLBACK|RETIRED ROUTE/);
+assert.doesNotMatch(code, /LEGACY ROLLBACK|RETIRED ROUTE|ACTIVE UTILITY/);
 assert.doesNotMatch(code, /\bcallAppsScript\b|\brequireAdminOrSenior\b|\bgetAuthUser\b/);
 assert.doesNotMatch(code, /async\s+function/);
+assert.doesNotMatch(
+  code,
+  /\.(?:appendRow|setValue|setValues|clear|clearContent|deleteRow|insertRowAfter|insertRowsAfter)\s*\(/,
+  "The Drive bridge may read SystemConfig but must not write Google Sheets data"
+);
 assert.match(code, /DriveApp\.getFolderById/);
+assert.match(code, /folder\.createFile\(/);
 assert.match(code, /WeeklyPlannerDriveFolderId/);
 assert.match(code, /WeeklyPlannerDriveFolderLabel/);
-assert.ok(code.split("\n").length < 1600, "Retired Apps Script code should not silently return");
+assert.ok(code.split("\n").length < 400, "Apps Script should remain a narrow Drive bridge");
 
 assert.equal(manifest.runtimeVersion, "V8");
 assert.ok(
   manifest.oauthScopes.includes("https://www.googleapis.com/auth/spreadsheets.currentonly"),
-  "Retained maintenance utilities require the bound-spreadsheet scope"
+  "The bridge reads the UI-managed Drive destination from the bound SystemConfig sheet"
 );
 assert.ok(
   manifest.oauthScopes.includes("https://www.googleapis.com/auth/drive"),
   "Weekly Planner submission requires the Drive scope"
 );
 
-console.log("Apps Script V98.14 cleanup allowlist and dependency checks passed.");
+console.log("Apps Script V98.14 final Drive-only bridge checks passed.");

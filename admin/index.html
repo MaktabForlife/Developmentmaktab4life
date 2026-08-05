@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=98.12">
+<link rel="stylesheet" href="/styles.css?v=99.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -1002,6 +1002,21 @@
 
   <div class="pdf-viewer-actions">
     <button
+      id="pdf-split-toggle"
+      type="button"
+      class="pdf-viewer-icon-btn pdf-split-toggle"
+      onclick="togglePdfSplitView()"
+      aria-label="Open split PDF view"
+      aria-controls="m4l-pdf-secondary-pane"
+      aria-expanded="false"
+      title="Split PDF view"
+      hidden
+    >
+      <span class="app-icon pdf-split-icon" aria-hidden="true"></span>
+      <span id="pdf-split-toggle-label" class="pdf-viewer-icon-label">SPLIT</span>
+    </button>
+
+    <button
       id="m4l-teaching-panel-toggle"
       type="button"
       class="pdf-viewer-icon-btn m4l-teaching-panel-toggle"
@@ -1038,12 +1053,59 @@
   </aside>
 
       <div id="m4l-pdf-teaching-workspace" class="m4l-pdf-teaching-workspace">
-        <div class="m4l-pdf-pane">
-          <iframe
-            id="pdf-viewer-frame"
-            class="pdf-viewer-frame"
-            title="PDF Viewer"
-          ></iframe>
+        <div id="m4l-pdf-split-container" class="m4l-pdf-split-container">
+          <section id="m4l-pdf-primary-pane" class="m4l-pdf-pane m4l-pdf-split-pane m4l-pdf-primary-pane">
+            <header id="m4l-pdf-primary-header" class="m4l-pdf-split-pane-header" hidden>
+              <span class="m4l-pdf-pane-badge" aria-hidden="true">A</span>
+              <span id="m4l-pdf-primary-title" class="m4l-pdf-pane-title">PDF A</span>
+            </header>
+            <iframe
+              id="pdf-viewer-frame"
+              class="pdf-viewer-frame"
+              title="Primary PDF Viewer"
+            ></iframe>
+          </section>
+
+          <div
+            id="m4l-pdf-split-divider"
+            class="m4l-pdf-split-divider"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize split PDF panes"
+            aria-valuemin="30"
+            aria-valuemax="70"
+            aria-valuenow="50"
+            tabindex="0"
+            hidden
+          ></div>
+
+          <section
+            id="m4l-pdf-secondary-pane"
+            class="m4l-pdf-split-pane m4l-pdf-secondary-pane"
+            aria-label="Second PDF"
+            hidden
+          >
+            <header class="m4l-pdf-split-pane-header">
+              <span class="m4l-pdf-pane-badge" aria-hidden="true">B</span>
+              <span id="m4l-pdf-secondary-title" class="m4l-pdf-pane-title">PDF B</span>
+              <div class="m4l-pdf-pane-actions">
+                <button type="button" class="m4l-pdf-pane-action" onclick="openSecondaryPdfDirect()" aria-label="Open PDF B outside the app" title="Open PDF B">
+                  <span class="app-icon pdf-open-icon" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="m4l-pdf-pane-action" onclick="chooseSecondaryPdf()" aria-label="Choose a different PDF B" title="Change PDF B">
+                  <span class="app-icon pdf-library-icon" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="m4l-pdf-pane-action" onclick="closePdfSplitView()" aria-label="Close PDF B" title="Close PDF B">
+                  <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+                </button>
+              </div>
+            </header>
+            <iframe
+              id="pdf-viewer-frame-secondary"
+              class="pdf-viewer-frame"
+              title="Secondary PDF Viewer"
+            ></iframe>
+          </section>
         </div>
 
         <div
@@ -1170,7 +1232,7 @@
 <script src="/app.js?v=94.1"></script>
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=87.2"></script>
-<script src="/js/m4l-shell.js?v=97.1.5.5"></script>
+<script src="/js/m4l-shell.js?v=99.1"></script>
   <script src="/js/m4l-timetable.js?v=97.1.5.5"></script>
   <script src="/js/m4l-weekly-planner.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
@@ -1178,8 +1240,8 @@
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=55"></script>
 <script src="/js/m4l-system-settings.js?v=98.12"></script>
-  <script src="/js/m4l-resources.js?v=98.0"></script>
-<script src="/js/m4l-teaching-panel.js?v=98.0"></script>
+  <script src="/js/m4l-resources.js?v=99.1"></script>
+<script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
 <script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
 </body>

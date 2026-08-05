@@ -1,9 +1,115 @@
-# V98.14 — Audited Apps Script cleanup
+# V99.1 — Large-screen split PDF viewer
 
 ## Scope
 
-V98.14 removes the Apps Script implementations whose Worker routes were made
-direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
+V99.1 adds a teacher/admin split workspace that opens two independent PDF.js
+viewers side by side. The feature is available only when the PDF workspace is
+at least 1024px wide; student PDF screens remain single-view.
+
+## Behaviour
+
+- `SPLIT` opens the existing PDF Library drawer with the heading
+  `Choose second PDF`.
+- The selected document opens as PDF B beside the current PDF A.
+- Both PDF.js viewers retain independent page, zoom, search, scroll and
+  annotation state.
+- A draggable and keyboard-accessible divider starts at 50/50 and enforces
+  usable minimum pane widths.
+- PDF B provides Open, Change and Close controls.
+- Previous/Next and the normal Library drawer continue to control PDF A.
+- Opening the Teaching Board suspends split mode without unloading PDF B;
+  `RESTORE` returns to the two-PDF workspace.
+- Dropping below 1024px suspends split mode. The SPLIT control is hidden and the
+  normal single viewer remains active.
+- Closing or navigating away from the PDF screen unloads both iframes.
+
+## Files changed
+
+- `admin/index.html`
+- `student/index.html` (shared script cache versions only)
+- `index.html` (shared script cache versions only)
+- `styles.css`
+- `css/m4l-19-pdf-split-view.css` (new)
+- `icons/split.svg` (new)
+- `js/m4l-resources.js`
+- `js/m4l-shell.js`
+- `js/m4l-teaching-panel.js`
+- `version.json`
+- `js/version.json`
+- `backend/package.json`
+- `backend/tests/pdf-split-view.test.mjs` (new)
+- `CHANGES.md`
+
+## Deployment
+
+Frontend-only. No Worker, Google Sheets or Apps Script deployment is required.
+
+---
+
+# V99.0 — Persistent PDF.js annotation tool state
+
+## Scope
+
+V99.0 fixes the existing PDF.js annotation editor rather than adding a second
+whiteboard overlay. Pen and freehand-highlighter colour and thickness now remain
+the active preset for subsequent annotations during the same PDF session.
+
+## Files changed
+
+- `pdf-viewer/build/pdf.mjs`
+- `pdf-viewer/web/viewer.mjs`
+- `pdf-viewer/web/viewer.html`
+- `js/m4l-resources.js`
+- `admin/index.html`
+- `student/index.html`
+- `index.html`
+- `version.json`
+- `js/version.json`
+- `backend/tests/pdfjs-annotation-session.test.mjs` (new)
+- `backend/package.json`
+- `CHANGES.md`
+
+## Annotation behaviour
+
+- Newly committed Pen drawings and freehand highlights are no longer
+  auto-selected, so the main controls configure the next annotation rather than
+  silently modifying the previous one.
+- Changing Pen colour, thickness or opacity commits the current group of strokes
+  first when necessary, allowing one lesson page to contain several independent
+  pen colours and widths.
+- Freehand Highlighter colour and thickness remain active for subsequent
+  highlights, and the previous highlight remains unchanged.
+- Existing annotations can still be selected deliberately and edited with the
+  controls PDF.js provides for the selected annotation.
+- Corrected the highlighter-thickness undo command type so it is no longer
+  grouped as an ink-thickness operation.
+- The original PDF remains unchanged unless the teacher explicitly uses PDF.js
+  save/download behaviour.
+
+## Automated verification
+
+- Added a PDF.js annotation-session test covering Pen drawing-session commits,
+  deliberate selected-annotation edits, Highlighter thickness defaults,
+  auto-selection guards, the corrected undo type and cache-version URLs.
+- All existing backend, routing, authentication, attendance, curriculum,
+  progress, timetable, system-settings and Weekly Planner tests pass.
+
+## Cache delivery
+
+- Bumped the application version to `99.0`.
+- Versioned the PDF.js viewer entry and modified module URLs so the seven-day
+  `/pdf-viewer/*` cache cannot retain the pre-V99.0 annotation logic.
+
+---
+
+
+# V98.14 — Final audited Apps Script cleanup
+
+## Scope
+
+V98.14 completes the Apps Script reduction. Worker-to-Google-Sheets routing is
+unchanged, and all application data management remains owned by the UI and
+authenticated Worker routes.
 
 ## Files changed
 
@@ -17,11 +123,10 @@ direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
 
 ## Apps Script result
 
-- Reduced `code.gs` from 5,716 lines to 1,246 lines.
-- Removed 31 retired `doPost` actions and their legacy implementations.
-- Removed unreachable migration helpers, duplicate Task Resource helpers and
-  dead Worker-style handlers embedded in Apps Script source.
-- Retained exactly eight callable actions:
+- Reduced `code.gs` from 5,716 lines to 257 lines.
+- Removed all retired migration actions and all standalone Sheets-maintenance
+  utilities.
+- Removed the final seven utility actions:
   - `registerAdmin`
   - `getAdminByUsername`
   - `createTaskResource`
@@ -29,20 +134,34 @@ direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
   - `updateTaskResource`
   - `populateAllStudentTasks`
   - `getStudentTaskById`
+- Removed the two manual StudentTasks population tests and all helpers used only
+  by the deleted utilities.
+- Retained exactly one callable action:
   - `saveWeeklyPlannerPreviewToDrive`
-- Retained `authorizeM4LServices` and both manual StudentTasks population test
-  utilities.
+- Retained `authorizeM4LServices` and the read-only SystemConfig helpers needed
+  to resolve the UI-managed Drive destination.
+- Confirmed Apps Script contains no Google Sheets mutation calls.
+
+## Architecture boundary
+
+- Every current and future Sheets data change is initiated in the M4L UI and
+  implemented through an authenticated Worker route.
+- `populateAllStudentTasks` was a completed one-time startup utility.
+- Admin registration, Task Resource administration and any future maintenance
+  features must be built in the UI/Worker rather than restored to Apps Script.
+- Apps Script is now the narrow Weekly Planner Google Drive bridge.
 
 ## Automated verification
 
-- Added an Apps Script syntax/allowlist/dependency-boundary test.
+- The Apps Script guard enforces the exact nine-function Drive dependency
+  closure and one-action public allowlist.
+- The guard blocks reintroduction of retired utility functions and common Sheet
+  mutation calls.
 - Existing direct-only routing diagnostics remain enforced.
 - Weekly Planner Drive routing remains `apps-script` only.
-- All 17 backend suites pass, including the new Apps Script cleanup guard.
-- The unchanged standalone frontend Weekly Planner test still has the same
-  pre-existing assertion mismatch as the V98.13 ZIP: the UI label is `Save`
-  while the test expects `Save & Preview`. This was not changed in the Apps
-  Script cleanup.
+- The unchanged standalone frontend Weekly Planner test retains the pre-existing
+  assertion mismatch from V98.13: the UI label is `Save`, while the test expects
+  `Save & Preview`.
 
 ## Deployment gate
 
@@ -51,6 +170,7 @@ diagnostics and an actual Drive PNG save must be verified in V98.13 Production
 before deploying the V98.14 Apps Script source.
 
 ---
+
 
 # V97.1.6.4 — Hub restructure, mirrored large-screen sizing, Save/Share
 

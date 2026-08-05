@@ -1,4 +1,9 @@
-/* M4L v98.0 - PDF Teaching Panel integration
+/* M4L v99.1 - Large-screen split PDF viewer
+   Adds an admin/teacher-only second PDF.js pane at 1024px and wider.
+   Reuses the existing PDF Library drawer, preserves independent PDF.js state,
+   and coordinates split mode with the Teaching Panel.
+
+   M4L v98.0 - PDF Teaching Panel integration
    Closes/resets the local teaching panel when the PDF viewer closes or changes.
 
    M4L v97.1.8 - All-subject PDF Library navigation (frontend only)
@@ -26,11 +31,23 @@ let studentResourceViewMode = "student";
 let libraryResourceSessionReady = false;
 
 const PDFJS_VIEWER_PATH = "/pdf-viewer/web/viewer.html";
+const PDFJS_VIEWER_VERSION = "99.0";
 
 let previousPdfScreenId = "";
 let currentPdfDirectLink = "";
 let currentPdfResourceId = "";
+let currentPdfTitle = "";
 let currentPdfLibraryItems = [];
+
+const PDF_SPLIT_MIN_WIDTH = 1024;
+const pdfSplitState = {
+  enabled: false,
+  selectingSecondary: false,
+  secondaryResourceId: "",
+  secondaryDirectLink: "",
+  secondaryTitle: "",
+  primaryRatio: 0.5
+};
 
 const LIBRARY_RESOURCE_TYPES = [
   {
@@ -1318,8 +1335,10 @@ function openPdfResource(link, title = "PDF Viewer", resourceId = "") {
     ? document.querySelector(".screen.active")
     : null;
   previousPdfScreenId = activeScreen ? activeScreen.id : "";
+  resetPdfSplitView({ clearSecondary: true });
   currentPdfDirectLink = cleanLink;
   currentPdfResourceId = String(resourceId || "");
+  currentPdfTitle = title || "PDF Viewer";
   currentPdfLibraryItems = buildCurrentPdfLibraryItems(currentPdfResourceId, cleanLink);
 
   viewerScreen.classList.remove("student-theme", "admin-theme");
@@ -1329,7 +1348,8 @@ function openPdfResource(link, title = "PDF Viewer", resourceId = "") {
     viewerScreen.classList.add("student-theme");
   }
 
-  setDomText("pdf-viewer-title", title || "PDF Viewer");
+  setDomText("pdf-viewer-title", currentPdfTitle);
+  updatePdfSplitPaneLabels();
   renderPdfLibraryNavigation();
 
   const pdfFileForViewer = getPdfViewerFileParam(cleanLink);
@@ -1343,7 +1363,7 @@ function openPdfResource(link, title = "PDF Viewer", resourceId = "") {
     resourceId: currentPdfResourceId,
     title: title || "PDF Viewer"
   });
-  viewerFrame.src = `${PDFJS_VIEWER_PATH}?file=${pdfFileForViewer}`;
+  viewerFrame.src = `${PDFJS_VIEWER_PATH}?v=${PDFJS_VIEWER_VERSION}&file=${pdfFileForViewer}`;
 
   if (document.body) {
     document.body.classList.add("pdf-viewer-open");
@@ -1392,6 +1412,104 @@ function getCurrentPdfLibraryIndex() {
   return currentPdfLibraryItems.findIndex(resource => resource.id === currentPdfResourceId);
 }
 
+function isPdfSplitLargeScreen() {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia === "function") {
+    return window.matchMedia(`(min-width: ${PDF_SPLIT_MIN_WIDTH}px)`).matches;
+  }
+  return Number(window.innerWidth || 0) >= PDF_SPLIT_MIN_WIDTH;
+}
+
+function hasPdfSplitUi() {
+  return !!(
+    getDomElement("pdf-split-toggle") &&
+    getDomElement("m4l-pdf-split-container") &&
+    getDomElement("pdf-viewer-frame-secondary")
+  );
+}
+
+function canUsePdfSplitView() {
+  return hasPdfSplitUi() && isPdfSplitLargeScreen() && currentPdfLibraryItems.length > 1;
+}
+
+function getPdfViewerUrl(link) {
+  const pdfFileForViewer = getPdfViewerFileParam(link);
+  return pdfFileForViewer
+    ? `${PDFJS_VIEWER_PATH}?v=${PDFJS_VIEWER_VERSION}&file=${pdfFileForViewer}`
+    : "";
+}
+
+function updatePdfSplitPaneLabels() {
+  setDomText("m4l-pdf-primary-title", currentPdfTitle || "PDF A");
+  setDomText("m4l-pdf-secondary-title", pdfSplitState.secondaryTitle || "PDF B");
+}
+
+function applyPdfSplitRatio() {
+  const container = getDomElement("m4l-pdf-split-container");
+  const divider = getDomElement("m4l-pdf-split-divider");
+  if (!container || !divider) return false;
+
+  const availableWidth = Math.max(0, container.clientWidth - (divider.offsetWidth || 10));
+  if (!availableWidth) return false;
+
+  const minPaneWidth = Math.min(320, Math.floor(availableWidth / 2));
+  const minimumRatio = availableWidth ? minPaneWidth / availableWidth : 0.3;
+  const maximumRatio = 1 - minimumRatio;
+  pdfSplitState.primaryRatio = Math.max(minimumRatio, Math.min(maximumRatio, pdfSplitState.primaryRatio));
+
+  const primaryWidth = Math.round(availableWidth * pdfSplitState.primaryRatio);
+  container.style.setProperty("--m4l-pdf-primary-width", `${primaryWidth}px`);
+  divider.setAttribute("aria-valuenow", String(Math.round(pdfSplitState.primaryRatio * 100)));
+  return true;
+}
+
+function renderPdfSplitControls() {
+  const button = getDomElement("pdf-split-toggle");
+  const buttonLabel = getDomElement("pdf-split-toggle-label");
+  const container = getDomElement("m4l-pdf-split-container");
+  const primaryHeader = getDomElement("m4l-pdf-primary-header");
+  const divider = getDomElement("m4l-pdf-split-divider");
+  const secondaryPane = getDomElement("m4l-pdf-secondary-pane");
+  const available = canUsePdfSplitView();
+  const enabled = available && pdfSplitState.enabled && !!pdfSplitState.secondaryDirectLink;
+
+  if (button) {
+    button.hidden = !available;
+    button.setAttribute("aria-expanded", enabled ? "true" : "false");
+    button.setAttribute(
+      "aria-label",
+      enabled
+        ? "Choose a different second PDF"
+        : pdfSplitState.secondaryDirectLink
+          ? "Restore split PDF view"
+          : "Open split PDF view"
+    );
+    button.title = enabled
+      ? "Change PDF B"
+      : pdfSplitState.secondaryDirectLink
+        ? "Restore split PDF view"
+        : "Split PDF view";
+  }
+
+  if (buttonLabel) {
+    buttonLabel.textContent = enabled
+      ? "CHANGE"
+      : pdfSplitState.secondaryDirectLink
+        ? "RESTORE"
+        : "SPLIT";
+  }
+
+  container?.classList.toggle("is-split-open", enabled);
+  if (primaryHeader) primaryHeader.hidden = !enabled;
+  if (divider) divider.hidden = !enabled;
+  if (secondaryPane) secondaryPane.hidden = !enabled;
+  document.body?.classList.toggle("pdf-split-view-open", enabled);
+
+  updatePdfSplitPaneLabels();
+  if (enabled) requestAnimationFrame(applyPdfSplitRatio);
+  return enabled;
+}
+
 function renderPdfLibraryNavigation() {
   const previousButton = getDomElement("pdf-library-previous");
   const nextButton = getDomElement("pdf-library-next");
@@ -1409,17 +1527,20 @@ function renderPdfLibraryNavigation() {
   if (previousButton) previousButton.disabled = !hasLibrary || index <= 0;
   if (nextButton) nextButton.disabled = !hasLibrary || index >= currentPdfLibraryItems.length - 1;
   if (libraryCount) libraryCount.textContent = hasLibrary ? `${index + 1}/${currentPdfLibraryItems.length}` : "";
+  renderPdfSplitControls();
 
   if (!drawerList) return;
 
   if (!hasLibrary) {
     drawerList.innerHTML = "";
-    closePdfLibraryDrawer();
+    closePdfLibraryDrawer({ cancelSplitSelection: true, rerender: false });
     return;
   }
 
   if (drawerHeading) {
-    drawerHeading.textContent = "PDF Library";
+    drawerHeading.textContent = pdfSplitState.selectingSecondary
+      ? "Choose second PDF"
+      : "PDF Library";
   }
 
   let currentSubjectKey = "";
@@ -1429,40 +1550,80 @@ function renderPdfLibraryNavigation() {
       : "";
 
     currentSubjectKey = resource.subjectKey;
+    const isPrimary = resource.id === currentPdfResourceId;
+    const isSecondary = resource.id === pdfSplitState.secondaryResourceId;
+    const isActive = pdfSplitState.selectingSecondary ? isSecondary : isPrimary;
+    const disablePrimary = pdfSplitState.selectingSecondary && isPrimary;
+    const paneBadge = isPrimary
+      ? '<span class="pdf-library-item-pane-badge">A</span>'
+      : isSecondary
+        ? '<span class="pdf-library-item-pane-badge">B</span>'
+        : "";
 
     return `${subjectHeading}
       <button
         type="button"
-        class="pdf-library-item${resource.id === currentPdfResourceId ? " is-active" : ""}"
+        class="pdf-library-item${isActive ? " is-active" : ""}"
         data-pdf-library-resource-id="${escapeForAttribute(resource.id)}"
-        aria-current="${resource.id === currentPdfResourceId ? "true" : "false"}"
+        aria-current="${isActive ? "true" : "false"}"
+        ${disablePrimary ? 'disabled aria-label="Already open as PDF A"' : ""}
       >
         <span class="pdf-library-item-number">${itemIndex + 1}</span>
         <span class="pdf-library-item-title">${escapeHtml(resource.title)}</span>
+        ${paneBadge}
       </button>`;
   }).join("");
 }
 
-function openPdfLibraryResource(resourceId) {
-  const resource = libraryResourceMap.get(String(resourceId || ""));
-
-  if (!resource || !isPdfLibraryResource(resource)) return false;
-
-  const pdfFileForViewer = getPdfViewerFileParam(resource.link);
+function loadPrimaryPdfResource(resource) {
+  const viewerUrl = getPdfViewerUrl(resource && resource.link);
   const viewerFrame = getDomElement("pdf-viewer-frame");
-  if (!pdfFileForViewer || !viewerFrame) return false;
+  if (!resource || !viewerUrl || !viewerFrame) return false;
 
   currentPdfResourceId = resource.id;
   currentPdfDirectLink = resource.link;
+  currentPdfTitle = resource.title || "PDF Viewer";
   window.M4LTeachingPanel?.prepareForPdf?.({
     resourceId: resource.id,
-    title: resource.title || "PDF Viewer"
+    title: currentPdfTitle
   });
-  setDomText("pdf-viewer-title", resource.title || "PDF Viewer");
-  viewerFrame.src = `${PDFJS_VIEWER_PATH}?file=${pdfFileForViewer}`;
+  setDomText("pdf-viewer-title", currentPdfTitle);
+  viewerFrame.src = viewerUrl;
+  updatePdfSplitPaneLabels();
   renderPdfLibraryNavigation();
-  closePdfLibraryDrawer();
+  closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
   return true;
+}
+
+function loadSecondaryPdfResource(resource) {
+  if (!resource || !isPdfLibraryResource(resource) || !canUsePdfSplitView()) return false;
+
+  const viewerUrl = getPdfViewerUrl(resource.link);
+  const viewerFrame = getDomElement("pdf-viewer-frame-secondary");
+  if (!viewerUrl || !viewerFrame) return false;
+
+  window.M4LTeachingPanel?.close?.();
+  pdfSplitState.secondaryResourceId = resource.id;
+  pdfSplitState.secondaryDirectLink = resource.link;
+  pdfSplitState.secondaryTitle = resource.title || "PDF B";
+  pdfSplitState.selectingSecondary = false;
+  pdfSplitState.enabled = true;
+  viewerFrame.src = viewerUrl;
+
+  closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
+  renderPdfLibraryNavigation();
+  return true;
+}
+
+function openPdfLibraryResource(resourceId) {
+  const resource = libraryResourceMap.get(String(resourceId || ""));
+  if (!resource || !isPdfLibraryResource(resource)) return false;
+
+  if (pdfSplitState.selectingSecondary) {
+    return loadSecondaryPdfResource(resource);
+  }
+
+  return loadPrimaryPdfResource(resource);
 }
 
 function stepPdfLibrary(direction) {
@@ -1472,13 +1633,10 @@ function stepPdfLibrary(direction) {
   return openPdfLibraryResource(currentPdfLibraryItems[nextIndex].id);
 }
 
-function togglePdfLibraryDrawer() {
+function openPdfLibraryDrawer() {
   const drawer = getDomElement("pdf-library-drawer");
   const toggle = getDomElement("pdf-library-toggle");
-  if (!drawer || drawer.hidden === false) {
-    closePdfLibraryDrawer();
-    return false;
-  }
+  if (!drawer) return false;
   drawer.hidden = false;
   if (toggle) toggle.setAttribute("aria-expanded", "true");
   const activeItem = drawer.querySelector(".pdf-library-item.is-active");
@@ -1486,11 +1644,175 @@ function togglePdfLibraryDrawer() {
   return true;
 }
 
-function closePdfLibraryDrawer() {
+function togglePdfLibraryDrawer() {
+  const drawer = getDomElement("pdf-library-drawer");
+  if (!drawer || drawer.hidden === false) {
+    closePdfLibraryDrawer();
+    return false;
+  }
+
+  pdfSplitState.selectingSecondary = false;
+  renderPdfLibraryNavigation();
+  return openPdfLibraryDrawer();
+}
+
+function closePdfLibraryDrawer(options = {}) {
   const drawer = getDomElement("pdf-library-drawer");
   const toggle = getDomElement("pdf-library-toggle");
+  const cancelSplitSelection = options.cancelSplitSelection !== false;
+  const shouldRerender = options.rerender !== false;
+
   if (drawer) drawer.hidden = true;
   if (toggle) toggle.setAttribute("aria-expanded", "false");
+
+  if (cancelSplitSelection && pdfSplitState.selectingSecondary) {
+    pdfSplitState.selectingSecondary = false;
+    if (shouldRerender) renderPdfLibraryNavigation();
+  }
+}
+
+function chooseSecondaryPdf() {
+  if (!canUsePdfSplitView()) return false;
+  window.M4LTeachingPanel?.close?.();
+  pdfSplitState.selectingSecondary = true;
+  renderPdfLibraryNavigation();
+  return openPdfLibraryDrawer();
+}
+
+function togglePdfSplitView() {
+  if (!canUsePdfSplitView()) return false;
+
+  if (pdfSplitState.enabled) {
+    return chooseSecondaryPdf();
+  }
+
+  if (pdfSplitState.secondaryDirectLink) {
+    window.M4LTeachingPanel?.close?.();
+    pdfSplitState.enabled = true;
+    pdfSplitState.selectingSecondary = false;
+    renderPdfLibraryNavigation();
+    return true;
+  }
+
+  return chooseSecondaryPdf();
+}
+
+function closePdfSplitView(options = {}) {
+  const preserveSecondary = options.preserveSecondary === true;
+  const viewerFrame = getDomElement("pdf-viewer-frame-secondary");
+
+  pdfSplitState.enabled = false;
+  pdfSplitState.selectingSecondary = false;
+
+  if (!preserveSecondary) {
+    pdfSplitState.secondaryResourceId = "";
+    pdfSplitState.secondaryDirectLink = "";
+    pdfSplitState.secondaryTitle = "";
+    if (viewerFrame) {
+      viewerFrame.src = "";
+      viewerFrame.removeAttribute("src");
+    }
+  }
+
+  closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
+  renderPdfLibraryNavigation();
+  return true;
+}
+
+function suspendPdfSplitForTeachingPanel() {
+  if (!pdfSplitState.enabled && !pdfSplitState.selectingSecondary) return false;
+  return closePdfSplitView({ preserveSecondary: true });
+}
+
+function resetPdfSplitView(options = {}) {
+  const clearSecondary = options.clearSecondary !== false;
+  const viewerFrame = getDomElement("pdf-viewer-frame-secondary");
+  pdfSplitState.enabled = false;
+  pdfSplitState.selectingSecondary = false;
+  pdfSplitState.primaryRatio = 0.5;
+
+  if (clearSecondary) {
+    pdfSplitState.secondaryResourceId = "";
+    pdfSplitState.secondaryDirectLink = "";
+    pdfSplitState.secondaryTitle = "";
+    if (viewerFrame) {
+      viewerFrame.src = "";
+      viewerFrame.removeAttribute("src");
+    }
+  }
+
+  const container = getDomElement("m4l-pdf-split-container");
+  container?.style.removeProperty("--m4l-pdf-primary-width");
+  renderPdfSplitControls();
+  return true;
+}
+
+function openSecondaryPdfDirect() {
+  return safeOpenExternalLink(pdfSplitState.secondaryDirectLink);
+}
+
+function bindPdfSplitDivider() {
+  const divider = getDomElement("m4l-pdf-split-divider");
+  const container = getDomElement("m4l-pdf-split-container");
+  if (!divider || !container || divider.dataset.pdfSplitBound === "true") return false;
+  divider.dataset.pdfSplitBound = "true";
+
+  const updateFromClientX = clientX => {
+    const rect = container.getBoundingClientRect();
+    const dividerWidth = divider.offsetWidth || 10;
+    const availableWidth = Math.max(1, rect.width - dividerWidth);
+    const minPaneWidth = Math.min(320, Math.floor(availableWidth / 2));
+    const rawWidth = Number(clientX) - rect.left;
+    const width = Math.max(minPaneWidth, Math.min(availableWidth - minPaneWidth, rawWidth));
+    pdfSplitState.primaryRatio = width / availableWidth;
+    applyPdfSplitRatio();
+  };
+
+  divider.addEventListener("pointerdown", event => {
+    if (!pdfSplitState.enabled || !isPdfSplitLargeScreen()) return;
+    event.preventDefault();
+    divider.setPointerCapture?.(event.pointerId);
+
+    const move = moveEvent => updateFromClientX(moveEvent.clientX);
+    const stop = stopEvent => {
+      divider.releasePointerCapture?.(stopEvent.pointerId);
+      divider.removeEventListener("pointermove", move);
+      divider.removeEventListener("pointerup", stop);
+      divider.removeEventListener("pointercancel", stop);
+    };
+
+    divider.addEventListener("pointermove", move);
+    divider.addEventListener("pointerup", stop);
+    divider.addEventListener("pointercancel", stop);
+  });
+
+  divider.addEventListener("keydown", event => {
+    if (!pdfSplitState.enabled || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    event.preventDefault();
+    pdfSplitState.primaryRatio += event.key === "ArrowLeft" ? -0.025 : 0.025;
+    applyPdfSplitRatio();
+  });
+
+  divider.addEventListener("dblclick", () => {
+    pdfSplitState.primaryRatio = 0.5;
+    applyPdfSplitRatio();
+  });
+  return true;
+}
+
+function bindPdfSplitResize() {
+  if (typeof window === "undefined" || document.body?.dataset.pdfSplitResizeBound === "true") return false;
+  if (document.body) document.body.dataset.pdfSplitResizeBound = "true";
+
+  window.addEventListener("resize", () => {
+    if (!isPdfSplitLargeScreen() && (pdfSplitState.enabled || pdfSplitState.selectingSecondary)) {
+      closePdfSplitView({ preserveSecondary: true });
+      return;
+    }
+    renderPdfSplitControls();
+    if (pdfSplitState.enabled) requestAnimationFrame(applyPdfSplitRatio);
+  });
+  return true;
 }
 
 function base64UrlEncode(value) {
@@ -1509,6 +1831,7 @@ function base64UrlEncode(value) {
 
 function closePdfViewer() {
   window.M4LTeachingPanel?.close?.({ reset: true });
+  resetPdfSplitView({ clearSecondary: true });
   const viewerFrame = getDomElement("pdf-viewer-frame");
 
   if (viewerFrame) {
@@ -1518,6 +1841,7 @@ function closePdfViewer() {
 
   currentPdfDirectLink = "";
   currentPdfResourceId = "";
+  currentPdfTitle = "";
   currentPdfLibraryItems = [];
   closePdfLibraryDrawer();
   renderPdfLibraryNavigation();
@@ -1553,6 +1877,10 @@ function bindMediaViewerHandlers() {
   if (document.body) {
     document.body.dataset.mediaViewerHandlersBound = "true";
   }
+
+  bindPdfSplitDivider();
+  bindPdfSplitResize();
+  renderPdfSplitControls();
 
   document.addEventListener("click", event => {
     const libraryItem = event.target && event.target.closest
@@ -1798,8 +2126,22 @@ window.M4LResources = {
   stepPdfLibrary: typeof stepPdfLibrary === "function" ? stepPdfLibrary : undefined,
   togglePdfLibraryDrawer: typeof togglePdfLibraryDrawer === "function" ? togglePdfLibraryDrawer : undefined,
   closePdfLibraryDrawer: typeof closePdfLibraryDrawer === "function" ? closePdfLibraryDrawer : undefined,
+  togglePdfSplitView: typeof togglePdfSplitView === "function" ? togglePdfSplitView : undefined,
+  chooseSecondaryPdf: typeof chooseSecondaryPdf === "function" ? chooseSecondaryPdf : undefined,
+  closePdfSplitView: typeof closePdfSplitView === "function" ? closePdfSplitView : undefined,
+  openSecondaryPdfDirect: typeof openSecondaryPdfDirect === "function" ? openSecondaryPdfDirect : undefined,
   getResourceName: typeof getResourceName === "function" ? getResourceName : undefined,
   getResourceType: typeof getResourceType === "function" ? getResourceType : undefined,
   getResourceFormat: typeof getResourceFormat === "function" ? getResourceFormat : undefined,
   getResourceLink: typeof getResourceLink === "function" ? getResourceLink : undefined
 };
+
+window.M4LPdfSplitView = Object.freeze({
+  canUse: canUsePdfSplitView,
+  toggle: togglePdfSplitView,
+  chooseSecondary: chooseSecondaryPdf,
+  close: closePdfSplitView,
+  suspendForTeachingPanel: suspendPdfSplitForTeachingPanel,
+  reset: resetPdfSplitView,
+  isOpen: () => pdfSplitState.enabled
+});
