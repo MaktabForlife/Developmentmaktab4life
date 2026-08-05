@@ -1,9 +1,10 @@
-# V98.14 — Audited Apps Script cleanup
+# V98.14 — Final audited Apps Script cleanup
 
 ## Scope
 
-V98.14 removes the Apps Script implementations whose Worker routes were made
-direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
+V98.14 completes the Apps Script reduction. Worker-to-Google-Sheets routing is
+unchanged, and all application data management remains owned by the UI and
+authenticated Worker routes.
 
 ## Files changed
 
@@ -17,11 +18,10 @@ direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
 
 ## Apps Script result
 
-- Reduced `code.gs` from 5,716 lines to 1,246 lines.
-- Removed 31 retired `doPost` actions and their legacy implementations.
-- Removed unreachable migration helpers, duplicate Task Resource helpers and
-  dead Worker-style handlers embedded in Apps Script source.
-- Retained exactly eight callable actions:
+- Reduced `code.gs` from 5,716 lines to 257 lines.
+- Removed all retired migration actions and all standalone Sheets-maintenance
+  utilities.
+- Removed the final seven utility actions:
   - `registerAdmin`
   - `getAdminByUsername`
   - `createTaskResource`
@@ -29,20 +29,34 @@ direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
   - `updateTaskResource`
   - `populateAllStudentTasks`
   - `getStudentTaskById`
+- Removed the two manual StudentTasks population tests and all helpers used only
+  by the deleted utilities.
+- Retained exactly one callable action:
   - `saveWeeklyPlannerPreviewToDrive`
-- Retained `authorizeM4LServices` and both manual StudentTasks population test
-  utilities.
+- Retained `authorizeM4LServices` and the read-only SystemConfig helpers needed
+  to resolve the UI-managed Drive destination.
+- Confirmed Apps Script contains no Google Sheets mutation calls.
+
+## Architecture boundary
+
+- Every current and future Sheets data change is initiated in the M4L UI and
+  implemented through an authenticated Worker route.
+- `populateAllStudentTasks` was a completed one-time startup utility.
+- Admin registration, Task Resource administration and any future maintenance
+  features must be built in the UI/Worker rather than restored to Apps Script.
+- Apps Script is now the narrow Weekly Planner Google Drive bridge.
 
 ## Automated verification
 
-- Added an Apps Script syntax/allowlist/dependency-boundary test.
+- The Apps Script guard enforces the exact nine-function Drive dependency
+  closure and one-action public allowlist.
+- The guard blocks reintroduction of retired utility functions and common Sheet
+  mutation calls.
 - Existing direct-only routing diagnostics remain enforced.
 - Weekly Planner Drive routing remains `apps-script` only.
-- All 17 backend suites pass, including the new Apps Script cleanup guard.
-- The unchanged standalone frontend Weekly Planner test still has the same
-  pre-existing assertion mismatch as the V98.13 ZIP: the UI label is `Save`
-  while the test expects `Save & Preview`. This was not changed in the Apps
-  Script cleanup.
+- The unchanged standalone frontend Weekly Planner test retains the pre-existing
+  assertion mismatch from V98.13: the UI label is `Save`, while the test expects
+  `Save & Preview`.
 
 ## Deployment gate
 
@@ -51,6 +65,7 @@ diagnostics and an actual Drive PNG save must be verified in V98.13 Production
 before deploying the V98.14 Apps Script source.
 
 ---
+
 
 # V97.1.6.4 — Hub restructure, mirrored large-screen sizing, Save/Share
 

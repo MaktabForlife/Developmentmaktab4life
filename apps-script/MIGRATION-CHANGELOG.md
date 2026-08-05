@@ -24,14 +24,12 @@ can migrate independently.
 ## Status definitions
 
 - **DIRECT**: the Worker calls the Google Sheets API and owns the operation.
-- **APPS SCRIPT**: the Worker or an approved maintenance caller invokes an
-  action in the live Apps Script project.
+- **APPS SCRIPT**: the Worker invokes the live Apps Script project only for an
+  operation that requires Google Drive.
 - **DIRECT ONLY**: the operation has no callable Apps Script implementation.
 - **REMOVED IN V98.14**: the V98.13 route was already direct-only and its
   retired Apps Script action, implementation and unreachable helpers were
   deleted by the audited V98.14 cleanup.
-- **ACTIVE UTILITY**: an intentionally retained Apps Script maintenance or
-  compatibility operation pending a later migrate-or-retire decision.
 
 Historical entries below retain their original **ACTIVE ROLLBACK**,
 **LEGACY ROLLBACK** and **RETIRED ROUTE** wording to describe the state at that
@@ -55,17 +53,17 @@ as `google-sheets` in both top-level `vars` and `env.development.vars` in
 | System configuration | UI read/write of approved keys | DIRECT ONLY | Read-only helper retained for Drive config |
 | Attendance | all routed reads/writes | DIRECT ONLY | REMOVED IN V98.14 |
 | Authentication | routed Student/Admin lookup, login and PIN operations | DIRECT ONLY | REMOVED IN V98.14 |
-| Admin utilities | `registerAdmin`, `getAdminByUsername` | Not routed | ACTIVE UTILITY |
+| Admin utilities | `registerAdmin`, `getAdminByUsername` | Future changes must use UI/Worker | REMOVED IN V98.14 |
 | Progress | routed reads and status writes | DIRECT ONLY | REMOVED IN V98.14 |
-| Progress | `getStudentTaskById` | Not routed | ACTIVE UTILITY |
+| Progress | `getStudentTaskById` | Current UI uses direct Progress routes | REMOVED IN V98.14 |
 | Student management | duplicate check, registration, search and update | DIRECT ONLY | REMOVED IN V98.14 |
 | Curriculum | Subject/Task read/write | DIRECT ONLY | REMOVED IN V98.14 |
 | Curriculum resources | Subject Resource read/write | DIRECT ONLY | REMOVED IN V98.14 |
-| Task Resources | create/list/update | Not routed | ACTIVE UTILITY |
+| Task Resources | create/list/update | Future administration must use UI/Worker | REMOVED IN V98.14 |
 | Task assignment | option reads and standalone assignment | DIRECT ONLY | REMOVED IN V98.14 |
-| Task assignment | `populateAllStudentTasks` and manual population tests | Not routed | ACTIVE UTILITY |
+| Task assignment | `populateAllStudentTasks` and manual population tests | One-time startup utility complete | REMOVED IN V98.14 |
 
-The exact retained function dependency closure is recorded in
+The final Drive-only function dependency closure is recorded in
 `apps-script/V98.14-AUDIT.md` and enforced by
 `backend/tests/apps-script-cleanup.test.mjs`.
 
@@ -103,8 +101,9 @@ The exact retained function dependency closure is recorded in
   failed-attempt cells.
 - Existing failed-attempt and last-login values are not newly updated because
   the legacy routed flow did not implement those writes.
-- `registerAdmin` and `getAdminByUsername` are not Worker routes and remain
-  active Apps Script utilities.
+- `registerAdmin` and `getAdminByUsername` had no current UI/Worker callers and
+  were removed in the final V98.14 cleanup. Any future Admin-registration
+  feature must be implemented through the authenticated UI and Worker.
 
 ### Resources read
 
@@ -347,8 +346,9 @@ The exact retained function dependency closure is recorded in
   selection, strict boolean active filtering, duplicate skipping, the
   `NextStudentTaskNumber` counter, the existing ten-column StudentTasks row
   contract and response counters.
-- `populateAllStudentTasks` and its related population utilities are not routed
-  through this Worker endpoint and remain active Apps Script operations.
+- `populateAllStudentTasks` was a one-time startup utility. It and its manual
+  test helpers were removed in V98.14; future bulk assignment changes must use
+  an authenticated UI/Worker operation.
 
 ### Weekly Planner
 
@@ -414,20 +414,23 @@ Production.
 
 ### 2026-08-05 — V98.14
 
-- Removed all 31 retired migration actions from `doPost` and deleted their
-  legacy Apps Script implementations after tracing shared helper dependencies.
-- Reduced `apps-script/code.gs` from 5,716 lines to 1,246 lines.
-- Preserved the eight audited callable actions: Admin registration/lookup, Task
-  Resource create/list/update, StudentTasks population, StudentTask
-  compatibility lookup and Weekly Planner PNG-to-Drive submission.
-- Preserved `authorizeM4LServices` and the two manual StudentTasks population
-  test utilities.
-- Removed duplicate Task Resource helper declarations and dead Worker-style
-  request handlers embedded in Apps Script source.
+- Removed all 31 retired migration actions and their dependency-only helpers
+  after tracing the complete Apps Script call graph.
+- Completed the final utility decision: removed Admin registration/lookup, Task
+  Resource create/list/update, the one-time `populateAllStudentTasks` utility
+  and tests, and the unused `getStudentTaskById` compatibility lookup.
+- Reduced `apps-script/code.gs` from 5,716 lines to 257 lines.
+- Retained exactly one callable action: `saveWeeklyPlannerPreviewToDrive`.
+- Retained only its read-only SystemConfig/Drive dependency closure and the
+  manual `authorizeM4LServices` authorization check.
+- Confirmed Apps Script contains no Google Sheets mutation operation. New data
+  features must be implemented through the authenticated UI and Worker.
+- Removed duplicate Task Resource helpers and dead Worker-style request handlers
+  embedded in the historical Apps Script source.
 - Left the V98.13 Worker direct Google Sheets routing unchanged.
 - Added `apps-script/V98.14-AUDIT.md` and
-  `backend/tests/apps-script-cleanup.test.mjs` to enforce the action allowlist,
-  retained dependency boundary and OAuth scopes.
+  `backend/tests/apps-script-cleanup.test.mjs` to enforce the exact function
+  closure, one-action allowlist, no-Sheets-write boundary and OAuth scopes.
 - Deployment remains gated on recording the live V98.13 production verification
   because repository tests cannot prove Student/Admin login or Drive writes in
   Production.
