@@ -1,4 +1,7 @@
-/* M4L v98.0 Teaching Panel
+/* M4L v99.1 Teaching Panel / PDF Split coordination
+   Opening the Teaching Panel suspends the second PDF pane without unloading it.
+
+   M4L v98.0 Teaching Panel
    Frontend-only companion panel for the in-app PDF viewer.
    Features: slide-out/resizable panel, freehand drawing, eraser,
    undo/redo, clear, PNG save/share, and typed notes.
@@ -57,6 +60,8 @@
 
   function open() {
     if (!ensureInit()) return false;
+
+    window.M4LPdfSplitView?.suspendForTeachingPanel?.();
 
     const panel = byId("m4l-teaching-panel");
     const divider = byId("m4l-teaching-panel-divider");

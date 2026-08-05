@@ -1,3 +1,108 @@
+# V99.1 — Large-screen split PDF viewer
+
+## Scope
+
+V99.1 adds a teacher/admin split workspace that opens two independent PDF.js
+viewers side by side. The feature is available only when the PDF workspace is
+at least 1024px wide; student PDF screens remain single-view.
+
+## Behaviour
+
+- `SPLIT` opens the existing PDF Library drawer with the heading
+  `Choose second PDF`.
+- The selected document opens as PDF B beside the current PDF A.
+- Both PDF.js viewers retain independent page, zoom, search, scroll and
+  annotation state.
+- A draggable and keyboard-accessible divider starts at 50/50 and enforces
+  usable minimum pane widths.
+- PDF B provides Open, Change and Close controls.
+- Previous/Next and the normal Library drawer continue to control PDF A.
+- Opening the Teaching Board suspends split mode without unloading PDF B;
+  `RESTORE` returns to the two-PDF workspace.
+- Dropping below 1024px suspends split mode. The SPLIT control is hidden and the
+  normal single viewer remains active.
+- Closing or navigating away from the PDF screen unloads both iframes.
+
+## Files changed
+
+- `admin/index.html`
+- `student/index.html` (shared script cache versions only)
+- `index.html` (shared script cache versions only)
+- `styles.css`
+- `css/m4l-19-pdf-split-view.css` (new)
+- `icons/split.svg` (new)
+- `js/m4l-resources.js`
+- `js/m4l-shell.js`
+- `js/m4l-teaching-panel.js`
+- `version.json`
+- `js/version.json`
+- `backend/package.json`
+- `backend/tests/pdf-split-view.test.mjs` (new)
+- `CHANGES.md`
+
+## Deployment
+
+Frontend-only. No Worker, Google Sheets or Apps Script deployment is required.
+
+---
+
+# V99.0 — Persistent PDF.js annotation tool state
+
+## Scope
+
+V99.0 fixes the existing PDF.js annotation editor rather than adding a second
+whiteboard overlay. Pen and freehand-highlighter colour and thickness now remain
+the active preset for subsequent annotations during the same PDF session.
+
+## Files changed
+
+- `pdf-viewer/build/pdf.mjs`
+- `pdf-viewer/web/viewer.mjs`
+- `pdf-viewer/web/viewer.html`
+- `js/m4l-resources.js`
+- `admin/index.html`
+- `student/index.html`
+- `index.html`
+- `version.json`
+- `js/version.json`
+- `backend/tests/pdfjs-annotation-session.test.mjs` (new)
+- `backend/package.json`
+- `CHANGES.md`
+
+## Annotation behaviour
+
+- Newly committed Pen drawings and freehand highlights are no longer
+  auto-selected, so the main controls configure the next annotation rather than
+  silently modifying the previous one.
+- Changing Pen colour, thickness or opacity commits the current group of strokes
+  first when necessary, allowing one lesson page to contain several independent
+  pen colours and widths.
+- Freehand Highlighter colour and thickness remain active for subsequent
+  highlights, and the previous highlight remains unchanged.
+- Existing annotations can still be selected deliberately and edited with the
+  controls PDF.js provides for the selected annotation.
+- Corrected the highlighter-thickness undo command type so it is no longer
+  grouped as an ink-thickness operation.
+- The original PDF remains unchanged unless the teacher explicitly uses PDF.js
+  save/download behaviour.
+
+## Automated verification
+
+- Added a PDF.js annotation-session test covering Pen drawing-session commits,
+  deliberate selected-annotation edits, Highlighter thickness defaults,
+  auto-selection guards, the corrected undo type and cache-version URLs.
+- All existing backend, routing, authentication, attendance, curriculum,
+  progress, timetable, system-settings and Weekly Planner tests pass.
+
+## Cache delivery
+
+- Bumped the application version to `99.0`.
+- Versioned the PDF.js viewer entry and modified module URLs so the seven-day
+  `/pdf-viewer/*` cache cannot retain the pre-V99.0 annotation logic.
+
+---
+
+
 # V98.14 — Final audited Apps Script cleanup
 
 ## Scope

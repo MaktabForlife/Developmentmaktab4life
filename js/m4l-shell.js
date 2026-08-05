@@ -1003,10 +1003,14 @@ function cleanupM4LAppHistoryLayerBeforeRestore(activeScreenId, targetScreenId) 
   const targetId = String(targetScreenId || "");
 
   if (activeId === "pdf-viewer-screen" && targetId !== "pdf-viewer-screen") {
-    const viewerFrame = document.getElementById("pdf-viewer-frame");
-    if (viewerFrame) {
-      viewerFrame.src = "";
-    }
+    ["pdf-viewer-frame", "pdf-viewer-frame-secondary"].forEach(frameId => {
+      const viewerFrame = document.getElementById(frameId);
+      if (viewerFrame) {
+        viewerFrame.src = "";
+        viewerFrame.removeAttribute("src");
+      }
+    });
+    window.M4LPdfSplitView?.reset?.({ clearSecondary: true });
 
     if (document.body) {
       document.body.classList.remove("pdf-viewer-open");
