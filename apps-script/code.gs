@@ -5413,10 +5413,34 @@ function saveWeeklyPlannerPreviewToDrive(data) {
   }
 }
 
-function testDriveAccess() {
+/**
+ * ONE-TIME DEPLOYMENT AUTHORIZATION CHECK - V98.12.
+ *
+ * Run this manually once in each Apps Script project after adding or changing
+ * OAuth scopes. It validates the bound spreadsheet and configured Drive folder
+ * without creating, changing or deleting a file.
+ */
+function authorizeM4LServices() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!spreadsheet) {
+    throw new Error("This Apps Script project is not bound to a Google Sheet");
+  }
+
   const driveConfig = getWeeklyPlannerDriveConfig_();
   const folder = DriveApp.getFolderById(driveConfig.folderId);
-  folder.createFile("test.txt", "M4L Drive access test");
+
+  const result = {
+    success: true,
+    spreadsheetId: spreadsheet.getId(),
+    spreadsheetName: spreadsheet.getName(),
+    folderId: folder.getId(),
+    folderName: folder.getName(),
+    folderUrl: driveConfig.folderUrl
+  };
+
+  console.log(JSON.stringify(result));
+  return result;
 }
 
 

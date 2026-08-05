@@ -12,6 +12,10 @@ the repository first, then the complete file must be synchronized to Apps
 Script and deployed as a new version. Any emergency dashboard edit must be
 copied back to the repository before the next application change.
 
+`apps-script/appsscript.json` is also authoritative. Development and Production
+use the same manifest, including `USER_DEPLOYING`, `ANYONE_ANONYMOUS`, the
+current-spreadsheet scope and the Drive scope.
+
 This ledger records backend ownership at the operation level. Reads and writes
 can migrate independently.
 
@@ -433,6 +437,12 @@ Production.
 - Removed hard-coded login and Weekly Planner Drive destinations from the Apps
   Script source of truth. Active and rollback Apps Script functions now read
   the same UI-managed `SystemConfig` rows.
+- Added the identical live Development/Production `appsscript.json` to the
+  repository, preserving its timezone, web-app execution identity and access
+  while explicitly declaring current-spreadsheet and Drive scopes.
+- Replaced the file-creating `testDriveAccess` utility with
+  `authorizeM4LServices`, which performs the one-time authorization/access check
+  without writing a test file to the configured folder.
 - Added automated coverage for strict ADMIN authorization, allowlisted writes,
   validation, counter isolation, routing headers, Student registration/search
   use of the sheet value and both production/development routing flags.
