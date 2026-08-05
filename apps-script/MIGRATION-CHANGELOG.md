@@ -2,9 +2,11 @@
 
 Last updated: 2026-08-05
 
-Latest production-verified milestone: V98.12
+Latest production-verified milestone recorded in this repository: V98.12
 
-Development milestone: V98.13
+Merged production baseline supplied for this build: V98.13
+
+Development milestone: V98.14
 
 The repository file `apps-script/code.gs` is the source of truth. The live
 Google Apps Script project is a deployment target. Changes must be committed in
@@ -22,63 +24,50 @@ can migrate independently.
 ## Status definitions
 
 - **DIRECT**: the Worker calls the Google Sheets API and owns the operation.
-- **APPS SCRIPT**: the Worker calls an action in the live Apps Script project.
-- **ACTIVE ROLLBACK**: the direct route is selected, while the matching Apps
-  Script action remains available for an explicit routing rollback.
-- **LEGACY ROLLBACK**: production has passed its direct-route verification and
-  the retained Apps Script action is no longer the normal path.
-- **RETIRED ROUTE**: the Apps Script source remains deployed for an observation
-  period, but the Worker no longer exposes it as a selectable backend. Restore
-  the V98.12 Worker version to reinstate the old routing fallback.
-- **DIRECT ONLY**: the operation was introduced on the direct Worker path and
-  has no Apps Script implementation.
+- **APPS SCRIPT**: the Worker or an approved maintenance caller invokes an
+  action in the live Apps Script project.
+- **DIRECT ONLY**: the operation has no callable Apps Script implementation.
+- **REMOVED IN V98.14**: the V98.13 route was already direct-only and its
+  retired Apps Script action, implementation and unreachable helpers were
+  deleted by the audited V98.14 cleanup.
+- **ACTIVE UTILITY**: an intentionally retained Apps Script maintenance or
+  compatibility operation pending a later migrate-or-retire decision.
+
+Historical entries below retain their original **ACTIVE ROLLBACK**,
+**LEGACY ROLLBACK** and **RETIRED ROUTE** wording to describe the state at that
+time.
 
 ## Seamless promotion rule
 
-Following the workflow we have now established, the development branch must
-contain the complete production-ready configuration from the beginning.
+The development branch must contain the complete production-ready routing
+configuration from the beginning. Migrated features remain explicitly selected
+as `google-sheets` in both top-level `vars` and `env.development.vars` in
+`backend/wrangler.jsonc`. V98.14 does not change those routing definitions.
 
-For each migrated feature, its Google Sheets routing flag must be present in
-both locations in `backend/wrangler.jsonc`:
+## Current ownership after V98.14
 
-1. top-level `vars`, used by the production Worker when `main` is deployed;
-2. `env.development.vars`, used by `devrebootworker` during development tests.
+| Area | Operation / Apps Script action | Worker ownership | Apps Script status |
+|---|---|---:|---|
+| Resources | `getStudentResources` | DIRECT ONLY | REMOVED IN V98.14 |
+| Timetable | `getTimetable`, `updateTimetableZoomLink` | DIRECT ONLY | REMOVED IN V98.14 |
+| Weekly Planner | records and archives | DIRECT ONLY | Not present |
+| Weekly Planner | `saveWeeklyPlannerPreviewToDrive` | APPS SCRIPT | ACTIVE |
+| System configuration | UI read/write of approved keys | DIRECT ONLY | Read-only helper retained for Drive config |
+| Attendance | all routed reads/writes | DIRECT ONLY | REMOVED IN V98.14 |
+| Authentication | routed Student/Admin lookup, login and PIN operations | DIRECT ONLY | REMOVED IN V98.14 |
+| Admin utilities | `registerAdmin`, `getAdminByUsername` | Not routed | ACTIVE UTILITY |
+| Progress | routed reads and status writes | DIRECT ONLY | REMOVED IN V98.14 |
+| Progress | `getStudentTaskById` | Not routed | ACTIVE UTILITY |
+| Student management | duplicate check, registration, search and update | DIRECT ONLY | REMOVED IN V98.14 |
+| Curriculum | Subject/Task read/write | DIRECT ONLY | REMOVED IN V98.14 |
+| Curriculum resources | Subject Resource read/write | DIRECT ONLY | REMOVED IN V98.14 |
+| Task Resources | create/list/update | Not routed | ACTIVE UTILITY |
+| Task assignment | option reads and standalone assignment | DIRECT ONLY | REMOVED IN V98.14 |
+| Task assignment | `populateAllStudentTasks` and manual population tests | Not routed | ACTIVE UTILITY |
 
-The development deployment selects `--env development`, so it uses the
-development spreadsheet and flags. The top-level production values remain
-inactive until the same commit is merged into `main`. Production promotion is
-therefore one normal branch merge: no individual file edits, Wrangler edits, or
-Cloudflare dashboard variable changes are required at merge time.
-
-## Current ownership and V98.13 target
-
-| Area | Operation / Apps Script action | V98.13 development | Production after merge | Live Apps Script status |
-|---|---|---:|---:|---|
-| Resources | `getStudentResources` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Timetable | `getTimetable` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Timetable | `updateTimetableZoomLink` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Weekly Planner | records and archives | DIRECT ONLY | DIRECT ONLY | Not present |
-| Weekly Planner | save preview PNG to Drive | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| System configuration | UI read/write of approved `SystemConfig` keys | DIRECT ONLY | DIRECT ONLY | Read by active Apps Script functions |
-| Attendance | `getStudentsForAttendance`, `getAttendanceReport` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Attendance | `submitAbsentStudents` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Authentication | routed Student/Admin lookup and login reads | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Authentication | routed Student/Admin PIN setup and Student PIN reset | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Admin utilities | `registerAdmin`, `getAdminByUsername` | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Progress | `getStudentTasks`, `getTaskProgressReport`, `getTaskProgressDetail` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Progress | `updateStudentTaskStatus` completion and verification writes | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Progress | `getStudentTaskById` compatibility lookup | APPS SCRIPT | APPS SCRIPT | ACTIVE |
-| Student management | `searchStudents` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Student management | `checkStudentDuplicate` used by registration | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Student management | `registerStudent` and registration-time task assignment | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Student management | `updateStudent` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Curriculum | `listSubjects`, `listTasks` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Curriculum | subject and task create/update | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Curriculum resources | `listSubjectResources` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Curriculum resources | create/update | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Task assignment | `getStudentAssignmentOptions` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Task assignment | `assignTasksToStudents` | DIRECT ONLY | DIRECT ONLY | RETIRED ROUTE |
-| Task assignment | `populateAllStudentTasks` and population utilities | APPS SCRIPT | APPS SCRIPT | ACTIVE |
+The exact retained function dependency closure is recorded in
+`apps-script/V98.14-AUDIT.md` and enforced by
+`backend/tests/apps-script-cleanup.test.mjs`.
 
 ## Migrated operations
 
@@ -423,6 +412,26 @@ Production.
 
 ## Change history
 
+### 2026-08-05 — V98.14
+
+- Removed all 31 retired migration actions from `doPost` and deleted their
+  legacy Apps Script implementations after tracing shared helper dependencies.
+- Reduced `apps-script/code.gs` from 5,716 lines to 1,246 lines.
+- Preserved the eight audited callable actions: Admin registration/lookup, Task
+  Resource create/list/update, StudentTasks population, StudentTask
+  compatibility lookup and Weekly Planner PNG-to-Drive submission.
+- Preserved `authorizeM4LServices` and the two manual StudentTasks population
+  test utilities.
+- Removed duplicate Task Resource helper declarations and dead Worker-style
+  request handlers embedded in Apps Script source.
+- Left the V98.13 Worker direct Google Sheets routing unchanged.
+- Added `apps-script/V98.14-AUDIT.md` and
+  `backend/tests/apps-script-cleanup.test.mjs` to enforce the action allowlist,
+  retained dependency boundary and OAuth scopes.
+- Deployment remains gated on recording the live V98.13 production verification
+  because repository tests cannot prove Student/Admin login or Drive writes in
+  Production.
+
 ### 2026-08-05 — V98.13
 
 - Retired the selectable Apps Script fallback for every feature whose direct
@@ -727,8 +736,9 @@ For a future operation that still begins in Apps Script:
 14. Remove an Apps Script `doPost` action and function together only in a later
     audited cleanup release.
 
-For the routes retired in V98.13, setting a routing flag to `apps-script` now
-returns a routing configuration error by design. Roll back those routes by
-restoring the V98.12 Worker version/source, not by changing an environment
-variable. Keep the full Apps Script source deployed throughout the V98.13
-observation period so that rollback remains available.
+For the routes retired in V98.13, setting a routing flag to `apps-script` still
+returns a routing configuration error by design. V98.14 has now removed their
+Apps Script implementations. Emergency rollback therefore requires restoring a
+matched historical pair: the V98.12 Worker source and the pre-cleanup V98.13
+Apps Script source. Do not mix a historical Worker fallback with the V98.14
+narrow Apps Script bridge.

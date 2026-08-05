@@ -1,3 +1,57 @@
+# V98.14 — Audited Apps Script cleanup
+
+## Scope
+
+V98.14 removes the Apps Script implementations whose Worker routes were made
+direct-only in V98.13. Worker-to-Google-Sheets routing is unchanged.
+
+## Files changed
+
+- `apps-script/code.gs`
+- `apps-script/README.md`
+- `apps-script/MIGRATION-CHANGELOG.md`
+- `apps-script/V98.14-AUDIT.md` (new)
+- `backend/tests/apps-script-cleanup.test.mjs` (new)
+- `backend/package.json`
+- `CHANGES.md`
+
+## Apps Script result
+
+- Reduced `code.gs` from 5,716 lines to 1,246 lines.
+- Removed 31 retired `doPost` actions and their legacy implementations.
+- Removed unreachable migration helpers, duplicate Task Resource helpers and
+  dead Worker-style handlers embedded in Apps Script source.
+- Retained exactly eight callable actions:
+  - `registerAdmin`
+  - `getAdminByUsername`
+  - `createTaskResource`
+  - `listTaskResources`
+  - `updateTaskResource`
+  - `populateAllStudentTasks`
+  - `getStudentTaskById`
+  - `saveWeeklyPlannerPreviewToDrive`
+- Retained `authorizeM4LServices` and both manual StudentTasks population test
+  utilities.
+
+## Automated verification
+
+- Added an Apps Script syntax/allowlist/dependency-boundary test.
+- Existing direct-only routing diagnostics remain enforced.
+- Weekly Planner Drive routing remains `apps-script` only.
+- All 17 backend suites pass, including the new Apps Script cleanup guard.
+- The unchanged standalone frontend Weekly Planner test still has the same
+  pre-existing assertion mismatch as the V98.13 ZIP: the UI label is `Save`
+  while the test expects `Save & Preview`. This was not changed in the Apps
+  Script cleanup.
+
+## Deployment gate
+
+Live Student/Admin authentication, a representative direct read/write, routing
+diagnostics and an actual Drive PNG save must be verified in V98.13 Production
+before deploying the V98.14 Apps Script source.
+
+---
+
 # V97.1.6.4 — Hub restructure, mirrored large-screen sizing, Save/Share
 
 ## Files changed (7)
