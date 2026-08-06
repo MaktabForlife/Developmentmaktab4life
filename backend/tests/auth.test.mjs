@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import worker from "../src/worker.js";
-import { hashPin, verifySessionToken } from "../src/lib/auth.js";
+import {
+  createSaltedPinHash,
+  createSessionToken,
+  getAuthUser,
+  hashPin,
+  isSaltedPinHash,
+  verifyPin,
+  verifySessionToken
+} from "../src/lib/auth.js";
 
 const STUDENT_HEADERS = [
   "StudentID", "Username", "WhatsAppLast6", "UniqueID", "PinSetup", "PinHash",
@@ -65,7 +73,8 @@ const directEnv = {
     private_key: toPem(pkcs8, "PRIVATE KEY"),
     token_uri: "https://oauth2.googleapis.com/token"
   }),
-  M4L_BACKEND_AUTH: "google-sheets"
+  M4L_BACKEND_AUTH: "google-sheets",
+  M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS: "true"
 };
 
 resetSheets();
@@ -103,6 +112,17 @@ globalThis.fetch = async (input, init = {}) => {
 
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "AdminRecords!A:ZZ") return response({ values: adminRows });
+
+    const studentCredentialRange = /^StudentRecords!A(\d+):F\1$/.exec(range);
+    if (studentCredentialRange) {
+      return response({ values: [studentRows[Number(studentCredentialRange[1]) - 1] || []] });
+    }
+
+    const adminCredentialRange = /^AdminRecords!A(\d+):E\1$/.exec(range);
+    if (adminCredentialRange) {
+      return response({ values: [adminRows[Number(adminCredentialRange[1]) - 1] || []] });
+    }
+
     throw new Error(`Unexpected authentication range: ${range}`);
   }
 
@@ -117,6 +137,14 @@ globalThis.fetch = async (input, init = {}) => {
 };
 
 try {
+  const saltedHashOne = await createSaltedPinHash("1234", pinSecret);
+  const saltedHashTwo = await createSaltedPinHash("1234", pinSecret);
+  assert.equal(isSaltedPinHash(saltedHashOne), true);
+  assert.equal(isSaltedPinHash(saltedHashTwo), true);
+  assert.notEqual(saltedHashOne, saltedHashTwo, "The same PIN must receive different random salts");
+  assert.equal((await verifyPin("1234", saltedHashOne, pinSecret)).valid, true);
+  assert.equal((await verifyPin("9999", saltedHashOne, pinSecret)).valid, false);
+
   const checkedStudent = await post("/api/check-student", {
     uniqueid: "STUDENT-LINK"
   }, directEnv);
@@ -185,6 +213,11 @@ try {
   assert.equal(studentSession.type, "student");
   assert.equal(studentSession.studentid, "ST1");
   assert.equal(studentSession.classgroup, "2");
+  assert.equal(studentSession.sv, 2);
+  assert.equal(studentSession.authrow, 2);
+  assert.equal(typeof studentSession.cv, "string");
+  assert.equal(isSaltedPinHash(studentRows[1][5]), true, "Legacy student hash should migrate after login");
+  assert.equal((await verifyPin("1234", studentRows[1][5], pinSecret)).valid, true);
 
   const wrongStudentPin = await post("/api/login", {
     uniqueid: "STUDENT-LINK",
@@ -219,6 +252,10 @@ try {
   assert.equal(adminSession.type, "admin");
   assert.equal(adminSession.adminid, "ADMIN1");
   assert.equal(adminSession.role, "ADMIN");
+  assert.equal(adminSession.sv, 2);
+  assert.equal(adminSession.authrow, 2);
+  assert.equal(isSaltedPinHash(adminRows[1][4]), true, "Legacy admin hash should migrate after login");
+  assert.equal((await verifyPin("4321", adminRows[1][4], pinSecret)).valid, true);
 
   const studentSetup = await post("/api/setup-pin", {
     uniqueid: "STUDENT-SETUP",
@@ -229,7 +266,9 @@ try {
     studentid: "ST2",
     username: "Student Two"
   });
-  const expectedStudentSetupHash = await hashPin("2468", pinSecret);
+  const expectedStudentSetupHash = studentRows[2][5];
+  assert.equal(isSaltedPinHash(expectedStudentSetupHash), true);
+  assert.equal((await verifyPin("2468", expectedStudentSetupHash, pinSecret)).valid, true);
   assert.deepEqual(batchUpdates.slice(-2), [
     {
       range: "StudentRecords!E3:F3",
@@ -243,7 +282,6 @@ try {
     }
   ]);
   assert.equal(studentRows[2][4], true);
-  assert.equal(studentRows[2][5], expectedStudentSetupHash);
   assert.equal(studentRows[2][9], 0);
 
   const setupStudentLogin = await post("/api/login", {
@@ -263,7 +301,9 @@ try {
     role: "SENIOR",
     assignedgroup: "2"
   });
-  const expectedAdminSetupHash = await hashPin("8642", pinSecret);
+  const expectedAdminSetupHash = adminRows[2][4];
+  assert.equal(isSaltedPinHash(expectedAdminSetupHash), true);
+  assert.equal((await verifyPin("8642", expectedAdminSetupHash, pinSecret)).valid, true);
   assert.deepEqual(updates.at(-1), {
     range: "AdminRecords!D3:E3",
     payload: {
@@ -273,7 +313,24 @@ try {
     }
   });
   assert.equal(adminRows[2][3], true);
-  assert.equal(adminRows[2][4], expectedAdminSetupHash);
+
+  const studentWritesBeforeOverwrite = batchUpdates.length;
+  const blockedStudentOverwrite = await post("/api/setup-pin", {
+    uniqueid: "STUDENT-SETUP",
+    pin: "1111"
+  }, directEnv);
+  assert.equal(blockedStudentOverwrite.response.status, 409);
+  assert.equal(blockedStudentOverwrite.data.code, "PIN_ALREADY_SET");
+  assert.equal(batchUpdates.length, studentWritesBeforeOverwrite);
+
+  const adminWritesBeforeOverwrite = updates.length;
+  const blockedAdminOverwrite = await post("/api/admin/setup-pin", {
+    uniqueid: "ADMIN-SETUP",
+    pin: "1111"
+  }, directEnv);
+  assert.equal(blockedAdminOverwrite.response.status, 409);
+  assert.equal(blockedAdminOverwrite.data.code, "PIN_ALREADY_SET");
+  assert.equal(updates.length, adminWritesBeforeOverwrite);
 
   const resetStudent = await post(
     "/api/admin/reset-pin",
@@ -300,6 +357,22 @@ try {
     }
   ]);
 
+  const resetStudentAuth = await getAuthUser(new Request("https://worker.test/api/tasks/student", {
+    headers: { Authorization: `Bearer ${studentLogin.data.token}` }
+  }), directEnv);
+  assert.equal(resetStudentAuth, null, "Resetting a PIN must invalidate the student's active token");
+
+  const legacySessionToken = await createSessionToken({
+    type: "student",
+    studentid: "ST2",
+    username: "Student Two",
+    classgroup: "3"
+  }, directEnv);
+  const legacySessionAuth = await getAuthUser(new Request("https://worker.test/api/tasks/student", {
+    headers: { Authorization: `Bearer ${legacySessionToken}` }
+  }), directEnv);
+  assert.equal(legacySessionAuth, null, "V100 must reject sessions that are not credential-bound");
+
   const teacherLogin = await post("/api/admin/login", {
     uniqueid: "TEACHER-LINK",
     pin: "4321"
@@ -314,7 +387,8 @@ try {
   );
   assert.equal(forbiddenReset.response.status, 403);
   assert.equal(forbiddenReset.data.error, "Forbidden");
-  assert.equal(reads.length, readCountBeforeForbiddenReset);
+  assert.equal(reads.length, readCountBeforeForbiddenReset + 1);
+  assert.equal(reads.at(-1), "AdminRecords!A5:E5");
 
   const invalidPin = await post("/api/setup-pin", {
     uniqueid: "STUDENT-SETUP",
@@ -322,6 +396,30 @@ try {
   }, directEnv);
   assert.equal(invalidPin.response.status, 400);
   assert.equal(invalidPin.data.error, "PIN must be 4 digits");
+
+  const numericPin = await post("/api/login", {
+    uniqueid: "STUDENT-SETUP",
+    pin: 2468
+  }, directEnv);
+  assert.equal(numericPin.response.status, 400);
+  assert.equal(numericPin.data.error, "PIN must be 4 digits");
+
+  const readsBeforeRateLimit = reads.length;
+  const rateLimited = await post("/api/login", {
+    uniqueid: "STUDENT-SETUP",
+    pin: "2468"
+  }, {
+    ...directEnv,
+    AUTH_LOGIN_RATE_LIMITER: {
+      async limit() {
+        return { success: false };
+      }
+    }
+  });
+  assert.equal(rateLimited.response.status, 429);
+  assert.equal(rateLimited.response.headers.get("Retry-After"), "60");
+  assert.equal(rateLimited.data.code, "AUTH_RATE_LIMITED");
+  assert.equal(reads.length, readsBeforeRateLimit, "Rate-limited login should stop before reading Sheets");
 
   missingSheetName = "StudentRecords";
   const missingStudents = await post("/api/check-student", {

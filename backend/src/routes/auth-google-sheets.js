@@ -1,4 +1,11 @@
-import { createSessionToken, getAuthUser, hashPin } from "../lib/auth.js";
+import {
+  createAuthRateLimitKey,
+  createSaltedPinHash,
+  createSessionToken,
+  getAuthUser,
+  isValidFourDigitPin,
+  verifyPin
+} from "../lib/auth.js";
 import {
   batchUpdateGoogleSheetValues,
   readGoogleSheetValues,
@@ -9,6 +16,7 @@ import { json } from "../lib/http.js";
 const ADMIN_RECORDS_SHEET = "AdminRecords";
 const STUDENT_RECORDS_SHEET = "StudentRecords";
 const FULL_SHEET_RANGE = "A:ZZ";
+const LOGIN_RATE_LIMIT_SECONDS = 60;
 
 export async function checkAdminGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
@@ -49,8 +57,8 @@ export async function setupAdminPinGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Missing uniqueid" }, 400);
   }
 
-  if (!/^\d{4}$/.test(pin)) {
-    return json({ success: false, error: "PIN must be 4 digits" }, 400);
+  if (!isValidFourDigitPin(pin)) {
+    return invalidPinResponse();
   }
 
   const rows = await readAuthenticationSheet(env, ADMIN_RECORDS_SHEET);
@@ -62,15 +70,19 @@ export async function setupAdminPinGoogleSheetsEndpoint(request, env) {
   const admin = findAdminByUniqueId(rows, uniqueid);
 
   if (!admin) {
-    return json({ success: false, error: "Admin not found" });
+    return json({ success: false, error: "Admin not found" }, 404);
   }
 
-  const pinhash = await hashPin(pin, env.PIN_SECRET);
-  await updateGoogleSheetValues(
-    env,
-    `${ADMIN_RECORDS_SHEET}!D${admin.row}:E${admin.row}`,
-    [[true, pinhash]]
-  );
+  if (admin.active !== true) {
+    return json({ success: false, error: "Admin account disabled" }, 403);
+  }
+
+  if (pinAlreadyConfigured(admin)) {
+    return pinOverwriteBlockedResponse();
+  }
+
+  const pinhash = await createSaltedPinHash(pin, env.PIN_SECRET);
+  await updateAdminPinFields(env, admin.row, true, pinhash);
 
   return json({
     success: true,
@@ -90,8 +102,14 @@ export async function adminLoginGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Missing uniqueid" }, 400);
   }
 
-  if (!/^\d{4}$/.test(pin)) {
-    return json({ success: false, error: "PIN must be 4 digits" }, 400);
+  if (!isValidFourDigitPin(pin)) {
+    return invalidPinResponse();
+  }
+
+  const throttled = await enforceLoginRateLimit(env, "admin", uniqueid);
+
+  if (throttled) {
+    return throttled;
   }
 
   const rows = await readAuthenticationSheet(env, ADMIN_RECORDS_SHEET);
@@ -110,14 +128,21 @@ export async function adminLoginGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Account disabled" }, 403);
   }
 
-  if (admin.pinsetup !== true) {
+  if (admin.pinsetup !== true || !String(admin.pinhash || "").trim()) {
     return json({ success: false, error: "Admin PIN not set up yet" }, 403);
   }
 
-  const enteredHash = await hashPin(pin, env.PIN_SECRET);
+  const verification = await verifyPin(pin, admin.pinhash, env.PIN_SECRET);
 
-  if (enteredHash !== admin.pinhash) {
+  if (!verification.valid) {
     return json({ success: false, error: "Incorrect PIN" }, 401);
+  }
+
+  let credentialHash = String(admin.pinhash);
+
+  if (verification.needsMigration) {
+    credentialHash = verification.upgradedHash;
+    await updateAdminPinFields(env, admin.row, true, credentialHash);
   }
 
   const token = await createSessionToken({
@@ -125,7 +150,9 @@ export async function adminLoginGoogleSheetsEndpoint(request, env) {
     adminid: admin.adminid,
     username: admin.username,
     role: admin.role,
-    assignedgroup: admin.assignedgroup
+    assignedgroup: admin.assignedgroup,
+    authrow: admin.row,
+    credentialHash
   }, env);
 
   return json({
@@ -169,8 +196,8 @@ export async function setupStudentPinGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Missing uniqueid" }, 400);
   }
 
-  if (!/^\d{4}$/.test(pin)) {
-    return json({ success: false, error: "PIN must be 4 digits" }, 400);
+  if (!isValidFourDigitPin(pin)) {
+    return invalidPinResponse();
   }
 
   const rows = await readAuthenticationSheet(env, STUDENT_RECORDS_SHEET);
@@ -182,10 +209,18 @@ export async function setupStudentPinGoogleSheetsEndpoint(request, env) {
   const student = findStudentByUniqueId(rows, uniqueid);
 
   if (!student) {
-    return json({ success: false, error: "Student not found" });
+    return json({ success: false, error: "Student not found" }, 404);
   }
 
-  const pinhash = await hashPin(pin, env.PIN_SECRET);
+  if (student.active !== true) {
+    return json({ success: false, error: "Account disabled" }, 403);
+  }
+
+  if (pinAlreadyConfigured(student)) {
+    return pinOverwriteBlockedResponse();
+  }
+
+  const pinhash = await createSaltedPinHash(pin, env.PIN_SECRET);
   await updateStudentPinFields(env, student.row, true, pinhash);
 
   return json({
@@ -204,8 +239,14 @@ export async function studentLoginGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Missing uniqueid" }, 400);
   }
 
-  if (!/^\d{4}$/.test(pin)) {
-    return json({ success: false, error: "PIN must be 4 digits" }, 400);
+  if (!isValidFourDigitPin(pin)) {
+    return invalidPinResponse();
+  }
+
+  const throttled = await enforceLoginRateLimit(env, "student", uniqueid);
+
+  if (throttled) {
+    return throttled;
   }
 
   const rows = await readAuthenticationSheet(env, STUDENT_RECORDS_SHEET);
@@ -224,21 +265,30 @@ export async function studentLoginGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Account disabled" }, 403);
   }
 
-  if (student.pinsetup !== true) {
+  if (student.pinsetup !== true || !String(student.pinhash || "").trim()) {
     return json({ success: false, error: "PIN not set up yet" }, 403);
   }
 
-  const enteredHash = await hashPin(pin, env.PIN_SECRET);
+  const verification = await verifyPin(pin, student.pinhash, env.PIN_SECRET);
 
-  if (enteredHash !== student.pinhash) {
+  if (!verification.valid) {
     return json({ success: false, error: "Incorrect PIN" }, 401);
+  }
+
+  let credentialHash = String(student.pinhash);
+
+  if (verification.needsMigration) {
+    credentialHash = verification.upgradedHash;
+    await updateStudentPinFields(env, student.row, true, credentialHash);
   }
 
   const token = await createSessionToken({
     type: "student",
     studentid: student.studentid,
     username: student.username,
-    classgroup: student.classgroup
+    classgroup: student.classgroup,
+    authrow: student.row,
+    credentialHash
   }, env);
 
   return json({
@@ -276,7 +326,7 @@ export async function resetStudentPinGoogleSheetsEndpoint(request, env) {
   const student = findStudentByUniqueId(rows, uniqueid);
 
   if (!student) {
-    return json({ success: false, error: "Student not found" });
+    return json({ success: false, error: "Student not found" }, 404);
   }
 
   await updateStudentPinFields(env, student.row, false, "");
@@ -287,6 +337,38 @@ export async function resetStudentPinGoogleSheetsEndpoint(request, env) {
     studentid: student.studentid,
     username: student.username
   });
+}
+
+async function enforceLoginRateLimit(env, accountType, uniqueid) {
+  const limiter = env.AUTH_LOGIN_RATE_LIMITER;
+
+  if (!limiter || typeof limiter.limit !== "function") {
+    return null;
+  }
+
+  const key = await createAuthRateLimitKey(accountType, uniqueid, env);
+  const result = await limiter.limit({ key });
+
+  if (result && result.success) {
+    return null;
+  }
+
+  const response = json({
+    success: false,
+    error: "Too many login attempts. Please wait one minute and try again.",
+    code: "AUTH_RATE_LIMITED",
+    retryAfter: LOGIN_RATE_LIMIT_SECONDS
+  }, 429);
+  response.headers.set("Retry-After", String(LOGIN_RATE_LIMIT_SECONDS));
+  return response;
+}
+
+async function updateAdminPinFields(env, row, pinsetup, pinhash) {
+  await updateGoogleSheetValues(
+    env,
+    `${ADMIN_RECORDS_SHEET}!D${row}:E${row}`,
+    [[pinsetup, pinhash]]
+  );
 }
 
 async function updateStudentPinFields(env, row, pinsetup, pinhash) {
@@ -393,6 +475,22 @@ function publicAdmin(admin, includePinSetup) {
   }
 
   return result;
+}
+
+function invalidPinResponse() {
+  return json({ success: false, error: "PIN must be 4 digits" }, 400);
+}
+
+function pinAlreadyConfigured(account) {
+  return account.pinsetup === true || Boolean(String(account.pinhash || "").trim());
+}
+
+function pinOverwriteBlockedResponse() {
+  return json({
+    success: false,
+    error: "PIN is already set. An authorised admin must reset it before a new PIN can be created.",
+    code: "PIN_ALREADY_SET"
+  }, 409);
 }
 
 function missingSheetResponse(sheetName) {

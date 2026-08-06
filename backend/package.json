@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "1.0.0",
+  "version": "100.0.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -27,6 +27,6 @@
     "test:pdf-split": "node tests/pdf-split-view.test.mjs"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.36.0"
   }
 }

@@ -24,7 +24,8 @@
     "M4L_BACKEND_PROGRESS_READ": "google-sheets",
     "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
     "M4L_BACKEND_SYSTEM_SETTINGS": "google-sheets",
-    "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/"
+    "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/",
+    "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true"
   },
   "r2_buckets": [
     {
@@ -56,14 +57,35 @@
         "M4L_BACKEND_PROGRESS_READ": "google-sheets",
         "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
         "M4L_BACKEND_SYSTEM_SETTINGS": "google-sheets",
-        "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/"
+        "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/",
+        "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true"
       },
       "r2_buckets": [
         {
           "binding": "MEDIA_BUCKET",
           "bucket_name": "maktab4lifemedia"
         }
+      ],
+      "ratelimits": [
+        {
+          "name": "AUTH_LOGIN_RATE_LIMITER",
+          "namespace_id": "100101",
+          "simple": {
+            "limit": 5,
+            "period": 60
+          }
+        }
       ]
     }
-  }
+  },
+  "ratelimits": [
+    {
+      "name": "AUTH_LOGIN_RATE_LIMITER",
+      "namespace_id": "100100",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ]
 }
