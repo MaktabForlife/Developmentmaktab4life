@@ -436,9 +436,18 @@
   };
   window.showManageAdmins = showManageAdmins;
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", syncAccess, { once: true });
-  } else {
-    syncAccess();
-  }
+ function initialiseManageAdmins() {
+  bindHandlers();
+  syncAccess();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener(
+    "DOMContentLoaded",
+    initialiseManageAdmins,
+    { once: true }
+  );
+} else {
+  initialiseManageAdmins();
+}
 })();
