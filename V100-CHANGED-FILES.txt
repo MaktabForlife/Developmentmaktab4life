@@ -1,0 +1,23 @@
+M4L V100.0 changed-files package
+
+Frontend / Pages
+- admin/index.html
+- student/index.html
+- js/m4l-auth.js
+- version.json
+- js/version.json
+
+Cloudflare Worker
+- backend/package.json
+- backend/wrangler.jsonc
+- backend/src/lib/auth.js
+- backend/src/routes/auth-google-sheets.js
+- backend/src/worker.js
+
+Tests
+- backend/tests/auth.test.mjs
+- backend/tests/router.test.mjs
+
+Documentation
+- V100-RELEASE-NOTES.md
+- V100-CHANGED-FILES.txt

@@ -1,4 +1,4 @@
-/* M4L v87.2 - Auth / PIN / API module
+/* M4L V100.0 - Auth / PIN / API module
    Load after /app.js and before the window load event fires.
    This is a classic script, not type=module, so functions remain globally available
    for the existing app while we split gradually.
@@ -168,6 +168,19 @@ function maybeAutoSubmitPin(groupId) {
 }
 
 
+function invalidateActiveSession() {
+  localStorage.removeItem("maktab_token");
+  localStorage.removeItem("maktab_user_type");
+  state.token = "";
+  state.userType = "";
+
+  setError("Your session is no longer valid. Please log in again.");
+
+  window.setTimeout(() => {
+    location.reload();
+  }, 80);
+}
+
 async function apiPost(path, body = {}, token = "") {
   const headers = {
     "Content-Type": "application/json"
@@ -183,7 +196,27 @@ async function apiPost(path, body = {}, token = "") {
     body: JSON.stringify(body)
   });
 
-  return response.json();
+  let result;
+
+  try {
+    result = await response.json();
+  } catch (error) {
+    result = {
+      success: false,
+      error: "The server returned an invalid response."
+    };
+  }
+
+  if (token && response.status === 401) {
+    invalidateActiveSession();
+    return {
+      ...result,
+      success: false,
+      sessionInvalidated: true
+    };
+  }
+
+  return result;
 }
 
 /* =========================
@@ -355,7 +388,11 @@ async function submitLogin() {
     });
 
     if (!result.success) {
-      setError("Incorrect PIN. Re-enter PIN or contact web admin to reset PIN.");
+      const message = result.code === "AUTH_RATE_LIMITED"
+        ? (result.error || "Too many login attempts. Please wait one minute and try again.")
+        : "Incorrect PIN. Re-enter PIN or contact web admin to reset PIN.";
+
+      setError(message);
       clearPinValue("login-pin");
       focusFirstPinDigit("login-pin");
       return;
@@ -420,6 +457,7 @@ function goHome() {
 
 window.M4LAuth = {
   apiPost,
+  invalidateActiveSession,
   setError,
   setupPinDigitBoxes,
   getPinValue,
