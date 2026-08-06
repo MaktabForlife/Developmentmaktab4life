@@ -1,4 +1,4 @@
-/* M4L V100.3 - ADMIN-only Admin account management. */
+/* M4L V100.3.2 - ADMIN-only Admin account management. */
 (function () {
   "use strict";
 
@@ -76,12 +76,18 @@
       if (action === "mode") return setMode(actionEl.dataset.mode || "register");
       if (action === "register") return registerAdmin();
       if (action === "load") return loadAdmins(true);
-      if (action === "select") return selectAdmin(actionEl.dataset.adminid || "");
+      if (action === "select") {
+        return selectAdmin(
+          actionEl.dataset.uniqueid || "",
+          actionEl.dataset.adminid || ""
+        );
+      }
       if (action === "back-list") return backToList();
       if (action === "save") return saveAdmin();
       if (action === "reset-pin") return resetAdminPin();
       if (action === "copy-link") return copyText(actionEl.dataset.loginUrl || "");
       if (action === "register-another") {
+        manageAdminsState.submitting = false;
         manageAdminsState.registeredAdmin = null;
         render();
       }
@@ -128,7 +134,7 @@
           <div class="student-link-box student-icon-field">
             <span class="student-link-text">${escapeHtml(loginUrl)}</span>
             <button type="button" class="student-copy-icon-btn" data-manage-admin-action="copy-link" data-login-url="${escapeAttribute(loginUrl)}" aria-label="Copy admin login link" title="Copy link">
-              <img class="student-copy-icon" src="/icons/copy.svg?v=100.3.0" alt="" aria-hidden="true" />
+              <img class="student-copy-icon" src="/icons/copy.svg?v=100.3.2" alt="" aria-hidden="true" />
             </button>
           </div>
           <p class="student-admin-help">The new admin creates and confirms a four-digit PIN when opening this link.</p>
@@ -192,7 +198,7 @@
     }
 
     return admins.map((admin) => `
-      <button type="button" class="student-search-card managed-admin-row" data-manage-admin-action="select" data-adminid="${escapeAttribute(admin.adminid)}">
+      <button type="button" class="student-search-card managed-admin-row" data-manage-admin-action="select" data-adminid="${escapeAttribute(admin.adminid)}" data-uniqueid="${escapeAttribute(admin.uniqueid)}">
         <span class="managed-admin-role">${escapeHtml(admin.role)}</span>
         <span class="student-search-main">
           <strong>${escapeHtml(admin.username)}${admin.isSelf ? " (You)" : ""}</strong>
@@ -250,7 +256,7 @@
       <div class="student-link-box student-icon-field">
         <span class="student-link-text">${escapeHtml(buildAdminLoginUrl(admin.uniqueid))}</span>
         <button type="button" class="student-copy-icon-btn" data-manage-admin-action="copy-link" data-login-url="${escapeAttribute(buildAdminLoginUrl(admin.uniqueid))}" aria-label="Copy admin login link" title="Copy link">
-          <img class="student-copy-icon" src="/icons/copy.svg?v=100.3.0" alt="" aria-hidden="true" />
+          <img class="student-copy-icon" src="/icons/copy.svg?v=100.3.2" alt="" aria-hidden="true" />
         </button>
       </div>
       <div id="manage-admins-feedback" class="student-admin-feedback"></div>
@@ -270,6 +276,7 @@
     try {
       const result = await apiPost("/api/admin/register-admin", { username, role, assignedgroup }, state.token);
       if (!result.success) throw new Error(result.error || "Unable to register admin");
+      manageAdminsState.submitting = false;
       manageAdminsState.registeredAdmin = result.admin;
       manageAdminsState.admins = [];
       manageAdminsState.filteredAdmins = [];
@@ -314,8 +321,16 @@
     if (list) list.innerHTML = renderAdminList();
   }
 
-  function selectAdmin(adminid) {
-    manageAdminsState.selectedAdmin = manageAdminsState.admins.find(admin => admin.adminid === adminid) || null;
+  function selectAdmin(uniqueid, adminid) {
+    const stableUniqueId = String(uniqueid || "").trim();
+    const fallbackAdminId = String(adminid || "").trim();
+
+    manageAdminsState.selectedAdmin = manageAdminsState.admins.find(admin => (
+      stableUniqueId && String(admin.uniqueid || "").trim() === stableUniqueId
+    )) || manageAdminsState.admins.find(admin => (
+      !stableUniqueId && fallbackAdminId && admin.adminid === fallbackAdminId
+    )) || null;
+
     render();
   }
 
@@ -328,7 +343,11 @@
     const admin = manageAdminsState.selectedAdmin;
     if (!admin || manageAdminsState.submitting) return;
 
-    const payload = { adminid: admin.adminid, username: value("admin-edit-name") };
+    const payload = {
+      adminid: admin.adminid,
+      uniqueid: admin.uniqueid,
+      username: value("admin-edit-name")
+    };
     if (!payload.username) return setFeedback("Admin name cannot be empty.", true);
 
     if (!admin.isSelf) {
@@ -363,7 +382,10 @@
     manageAdminsState.submitting = true;
     render();
     try {
-      const result = await apiPost("/api/admin/reset-admin-pin", { adminid: admin.adminid }, state.token);
+      const result = await apiPost("/api/admin/reset-admin-pin", {
+        adminid: admin.adminid,
+        uniqueid: admin.uniqueid
+      }, state.token);
       if (!result.success) throw new Error(result.error || "Unable to reset PIN");
       const updated = { ...admin, pinsetup: false };
       replaceAdmin(updated);
@@ -436,18 +458,18 @@
   };
   window.showManageAdmins = showManageAdmins;
 
- function initialiseManageAdmins() {
-  bindHandlers();
-  syncAccess();
-}
+  function initialiseManageAdmins() {
+    bindHandlers();
+    syncAccess();
+  }
 
-if (document.readyState === "loading") {
-  document.addEventListener(
-    "DOMContentLoaded",
-    initialiseManageAdmins,
-    { once: true }
-  );
-} else {
-  initialiseManageAdmins();
-}
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      initialiseManageAdmins,
+      { once: true }
+    );
+  } else {
+    initialiseManageAdmins();
+  }
 })();

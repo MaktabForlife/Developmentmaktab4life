@@ -1,0 +1,17 @@
+M4L V100.3.2 changed files
+
+Deployment files:
+- backend/src/routes/admin-account-management.js
+- backend/package.json
+- admin/index.html
+- js/m4l-manage-admins.js
+- version.json
+- js/version.json
+
+Updated tests:
+- backend/tests/admin-account-management.test.mjs
+- backend/tests/admin-management-ui.test.mjs
+
+Documentation:
+- V100.3.2-RELEASE-NOTES.md
+- V100.3.2-CHANGED-FILES.txt

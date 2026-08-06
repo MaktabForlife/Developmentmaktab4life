@@ -15,7 +15,7 @@ const rows = [
   ["ADMIN1", "Main Admin", "MAIN-LINK", true, adminOneHash, "ADMIN", "ALL", true, "", ""],
   ["ADMIN2", "Senior User", "SENIOR-LINK", true, adminTwoHash, "SENIOR", "2", true, "", ""]
 ];
-const systemConfigRows = [["NextAdminNumber", 3]];
+const systemConfigRows = [["NextAdminNumber", 1]];
 const reads = [];
 const writes = [];
 
@@ -127,6 +127,17 @@ try {
   assert.equal(forbiddenSearch.response.status, 403);
   assert.equal(forbiddenSearch.data.error, "Forbidden");
 
+  const duplicateName = await post("/api/admin/register-admin", {
+    username: "  MAIN   admin ",
+    role: "TEACHER",
+    assignedgroup: "4"
+  }, adminToken);
+  assert.equal(duplicateName.response.status, 409);
+  assert.equal(duplicateName.data.code, "DUPLICATE_ADMIN_NAME");
+  assert.equal(duplicateName.data.match.adminid, "ADMIN1");
+  assert.equal(rows.length, 3);
+  assert.equal(systemConfigRows[0][1], 1);
+
   const registered = await post("/api/admin/register-admin", {
     username: "Teacher Three",
     role: "TEACHER",
@@ -144,6 +155,7 @@ try {
   const newAdminId = registered.data.admin.adminid;
   const updated = await post("/api/admin/update-admin", {
     adminid: newAdminId,
+    uniqueid: registered.data.admin.uniqueid,
     username: "Senior Three",
     role: "SENIOR",
     assignedgroup: "ALL",
@@ -174,7 +186,10 @@ try {
   assert.equal(selfPinReset.response.status, 409);
   assert.equal(selfPinReset.data.code, "SELF_PIN_RESET_BLOCKED");
 
-  const resetOther = await post("/api/admin/reset-admin-pin", { adminid: "ADMIN2" }, adminToken);
+  const resetOther = await post("/api/admin/reset-admin-pin", {
+    adminid: "ADMIN2",
+    uniqueid: "SENIOR-LINK"
+  }, adminToken);
   assert.equal(resetOther.response.status, 200);
   assert.equal(rows[2][3], false);
   assert.equal(rows[2][4], "");

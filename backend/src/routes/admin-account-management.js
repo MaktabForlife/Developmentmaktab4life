@@ -30,7 +30,8 @@ export async function searchAdminsGoogleSheetsEndpoint(request, env) {
   return json(buildAdminSearchResponse(rows, {
     query,
     listAll,
-    currentAdminId: permission.user.adminid
+    currentAdminId: permission.user.adminid,
+    currentAdminRow: permission.user.authrow
   }));
 }
 
@@ -56,7 +57,25 @@ export async function registerAdminGoogleSheetsEndpoint(request, env) {
   }
 
   const rows = await readAdminRows(env);
-  const adminIdResult = await reserveAdminId(env);
+  const duplicate = findAdminByUsername(rows, username);
+
+  if (duplicate) {
+    return json({
+      success: false,
+      duplicate: true,
+      code: "DUPLICATE_ADMIN_NAME",
+      error: `An AdminRecords account named "${duplicate.username}" already exists.`,
+      match: {
+        adminid: duplicate.adminid,
+        username: duplicate.username,
+        role: duplicate.role,
+        assignedgroup: duplicate.assignedgroup,
+        active: duplicate.active
+      }
+    }, 409);
+  }
+
+  const adminIdResult = await reserveAdminId(env, rows);
 
   if (!adminIdResult.ok) {
     return json({ success: false, error: adminIdResult.error }, 503);
@@ -102,9 +121,10 @@ export async function updateAdminGoogleSheetsEndpoint(request, env) {
 
   const body = await request.json();
   const adminid = clean(body.adminid);
+  const uniqueid = clean(body.uniqueid);
 
-  if (!adminid) {
-    return json({ success: false, error: "Missing adminid" }, 400);
+  if (!adminid && !uniqueid) {
+    return json({ success: false, error: "Missing admin account identifier" }, 400);
   }
 
   if (body.username !== undefined && !clean(body.username)) {
@@ -125,13 +145,13 @@ export async function updateAdminGoogleSheetsEndpoint(request, env) {
   }
 
   const rows = await readAdminRows(env);
-  const target = findAdminById(rows, adminid);
+  const target = findAdminTarget(rows, { adminid, uniqueid });
 
   if (!target) {
     return json({ success: false, error: "Admin account not found" }, 404);
   }
 
-  const isSelf = target.adminid === String(permission.user.adminid || "");
+  const isSelf = isSameAdmin(target, permission.user);
   const nextRole = requestedRole === undefined ? target.role : requestedRole;
   const nextActive = body.active === undefined ? target.active : body.active;
   const nextAssignedGroup = body.assignedgroup === undefined
@@ -150,7 +170,7 @@ export async function updateAdminGoogleSheetsEndpoint(request, env) {
     target.role === "ADMIN" &&
     target.active === true &&
     (nextRole !== "ADMIN" || nextActive !== true) &&
-    countOtherActiveAdmins(rows, target.adminid) === 0
+    countOtherActiveAdmins(rows, target.row) === 0
   ) {
     return json({
       success: false,
@@ -193,19 +213,20 @@ export async function resetAdminPinGoogleSheetsEndpoint(request, env) {
 
   const body = await request.json();
   const adminid = clean(body.adminid);
+  const uniqueid = clean(body.uniqueid);
 
-  if (!adminid) {
-    return json({ success: false, error: "Missing adminid" }, 400);
+  if (!adminid && !uniqueid) {
+    return json({ success: false, error: "Missing admin account identifier" }, 400);
   }
 
   const rows = await readAdminRows(env);
-  const target = findAdminById(rows, adminid);
+  const target = findAdminTarget(rows, { adminid, uniqueid });
 
   if (!target) {
     return json({ success: false, error: "Admin account not found" }, 404);
   }
 
-  if (target.adminid === String(permission.user.adminid || "")) {
+  if (isSameAdmin(target, permission.user)) {
     return json({
       success: false,
       error: "You cannot reset your own PIN from the Admin management screen.",
@@ -227,6 +248,7 @@ export function buildAdminSearchResponse(rows = [], options = {}) {
   const query = normalizeSearch(options.query);
   const listAll = options.listAll === true;
   const currentAdminId = clean(options.currentAdminId);
+  const currentAdminRow = Number(options.currentAdminRow);
   const admins = [];
 
   rows.slice(1).forEach((row, index) => {
@@ -246,7 +268,11 @@ export function buildAdminSearchResponse(rows = [], options = {}) {
       active: admin.active,
       createdate: admin.createdate,
       lastlogin: admin.lastlogin,
-      isSelf: admin.adminid === currentAdminId
+      isSelf: (
+        Number.isInteger(currentAdminRow) && currentAdminRow >= 2
+          ? admin.row === currentAdminRow
+          : admin.adminid === currentAdminId
+      )
     });
   });
 
@@ -263,12 +289,44 @@ async function readAdminRows(env) {
   return readGoogleSheetValues(env, FULL_SHEET_RANGE);
 }
 
-function findAdminById(rows, adminid) {
+function findAdminTarget(rows, identifiers = {}) {
+  const uniqueid = clean(identifiers.uniqueid);
+  const adminid = clean(identifiers.adminid);
+
+  if (uniqueid) {
+    for (let index = 1; index < rows.length; index += 1) {
+      const admin = mapAdminRow(rows[index], index + 1);
+      if (admin.uniqueid === uniqueid) return admin;
+    }
+    return null;
+  }
+
+  if (adminid) {
+    for (let index = 1; index < rows.length; index += 1) {
+      const admin = mapAdminRow(rows[index], index + 1);
+      if (admin.adminid === adminid) return admin;
+    }
+  }
+
+  return null;
+}
+
+function findAdminByUsername(rows, username) {
+  const normalizedUsername = normalizeIdentity(username);
+  if (!normalizedUsername) return null;
+
   for (let index = 1; index < rows.length; index += 1) {
     const admin = mapAdminRow(rows[index], index + 1);
-    if (admin.adminid === adminid) return admin;
+    if (normalizeIdentity(admin.username) === normalizedUsername) return admin;
   }
+
   return null;
+}
+
+function isSameAdmin(admin, user) {
+  const authrow = Number(user && user.authrow);
+  if (Number.isInteger(authrow) && authrow >= 2) return admin.row === authrow;
+  return admin.adminid === clean(user && user.adminid);
 }
 
 function mapAdminRow(row, sheetRow) {
@@ -286,16 +344,16 @@ function mapAdminRow(row, sheetRow) {
   };
 }
 
-function countOtherActiveAdmins(rows, excludedAdminId) {
+function countOtherActiveAdmins(rows, excludedSheetRow) {
   return rows.slice(1).map((row, index) => mapAdminRow(row, index + 2)).filter(admin => (
     admin.adminid &&
-    admin.adminid !== excludedAdminId &&
+    admin.row !== excludedSheetRow &&
     admin.active === true &&
     admin.role === "ADMIN"
   )).length;
 }
 
-async function reserveAdminId(env) {
+async function reserveAdminId(env, adminRows = []) {
   const rows = await readGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!A:B`);
   const rowIndex = rows.findIndex(row => clean(row?.[0]) === "NextAdminNumber");
 
@@ -309,8 +367,20 @@ async function reserveAdminId(env) {
     return { ok: false, error: "NextAdminNumber is invalid" };
   }
 
-  await updateGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!B${rowIndex + 1}`, [[current + 1]]);
-  return { ok: true, adminid: `ADMIN${current}` };
+  const existingIds = new Set(
+    adminRows.slice(1).map(row => clean(row?.[0]).toUpperCase()).filter(Boolean)
+  );
+  let candidate = current;
+
+  while (existingIds.has(`ADMIN${candidate}`)) {
+    candidate += 1;
+    if (candidate > 999999999) {
+      return { ok: false, error: "Unable to allocate a unique AdminID" };
+    }
+  }
+
+  await updateGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!B${rowIndex + 1}`, [[candidate + 1]]);
+  return { ok: true, adminid: `ADMIN${candidate}` };
 }
 
 function generateUniqueId(rows) {
@@ -350,6 +420,10 @@ function normalizeBoolean(value) {
 
 function normalizeSearch(value) {
   return clean(value).toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeIdentity(value) {
+  return normalizeSearch(value);
 }
 
 function clean(value) {
