@@ -8,6 +8,12 @@ import {
   studentLoginGoogleSheetsEndpoint
 } from "./routes/auth-google-sheets.js";
 import {
+  registerAdminGoogleSheetsEndpoint,
+  resetAdminPinGoogleSheetsEndpoint,
+  searchAdminsGoogleSheetsEndpoint,
+  updateAdminGoogleSheetsEndpoint
+} from "./routes/admin-account-management.js";
+import {
   attendanceReportGoogleSheetsEndpoint,
   attendanceStudentsGoogleSheetsEndpoint,
   submitAbsentAttendanceGoogleSheetsEndpoint
@@ -97,6 +103,11 @@ const ROUTES = new Map([
   ["/api/admin/setup-pin", googleSheetsRoute("auth", setupAdminPinGoogleSheetsEndpoint)],
   ["/api/admin/login", googleSheetsRoute("auth", adminLoginGoogleSheetsEndpoint)],
   ["/api/admin/reset-pin", googleSheetsRoute("auth", resetStudentPinGoogleSheetsEndpoint)],
+
+  ["/api/admin/admins/search", googleSheetsRoute("admin-management-read", searchAdminsGoogleSheetsEndpoint)],
+  ["/api/admin/register-admin", googleSheetsRoute("admin-management-write", registerAdminGoogleSheetsEndpoint)],
+  ["/api/admin/update-admin", googleSheetsRoute("admin-management-update", updateAdminGoogleSheetsEndpoint)],
+  ["/api/admin/reset-admin-pin", googleSheetsRoute("admin-management-update", resetAdminPinGoogleSheetsEndpoint)],
 
   ["/api/check-student", googleSheetsRoute("auth", checkStudentGoogleSheetsEndpoint)],
   ["/api/setup-pin", googleSheetsRoute("auth", setupStudentPinGoogleSheetsEndpoint)],

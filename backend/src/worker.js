@@ -1,4 +1,4 @@
-/* M4L V100.0 - Environment-controlled backend routing foundation.
+/* M4L V100.3 - Environment-controlled backend routing foundation.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "100.0"
+          version: "100.3"
         });
       }
 

@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "100.0.0",
+  "version": "100.3.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -12,6 +12,8 @@
     "test:resources": "node tests/resources.test.mjs",
     "test:routes": "node tests/router.test.mjs",
     "test:auth": "node tests/auth.test.mjs",
+    "test:admin-management": "node tests/admin-account-management.test.mjs",
+    "test:admin-management-ui": "node tests/admin-management-ui.test.mjs",
     "test:attendance": "node tests/attendance.test.mjs",
     "test:curriculum": "node tests/curriculum.test.mjs",
     "test:curriculum-write": "node tests/curriculum-write.test.mjs",

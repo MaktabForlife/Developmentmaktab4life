@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=99.1">
+<link rel="stylesheet" href="/styles.css?v=100.3.0">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -165,6 +165,13 @@
 
       <div class="list-stack">
         <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
+        <button
+          id="open-manage-admins-btn"
+          class="list-btn hidden"
+          data-manage-admin-action="open"
+          type="button"
+          aria-hidden="true"
+        >Admins</button>
         <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
         <button class="list-btn" onclick="showWeeklyPlanner()">Weekly Planner</button>
         <button class="list-btn" onclick="showAdminResources()">Library</button>
@@ -289,6 +296,17 @@
     <p class="helper-text">Loading progress...</p>
   </div>
 </section>
+    <!-- MANAGE ADMINS -->
+    <section id="manage-admins-screen" class="screen admin-theme student-admin-screen" aria-labelledby="manage-admins-title">
+      <div class="student-admin-modern-header">
+        <h2 id="manage-admins-title">Manage Admins</h2>
+        <button type="button" class="small-btn" data-manage-admin-action="close">Back</button>
+      </div>
+      <div id="manage-admins-content">
+        <p class="helper-text">Loading admin management...</p>
+      </div>
+    </section>
+
     <!-- MANAGE STUDENTS -->
     <section id="manage-students-screen" class="screen admin-theme student-admin-screen">
       <div class="student-admin-modern-header">
@@ -1248,11 +1266,12 @@
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
-<script src="/js/m4l-admin-academics.js?v=55"></script>
+<script src="/js/m4l-admin-academics.js?v=100.3.0"></script>
 <script src="/js/m4l-system-settings.js?v=98.12"></script>
   <script src="/js/m4l-resources.js?v=99.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
 <script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
+<script src="/js/m4l-manage-admins.js?v=100.3.0"></script>
 </body>
 </html>

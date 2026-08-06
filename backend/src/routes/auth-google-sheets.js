@@ -52,6 +52,7 @@ export async function setupAdminPinGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
   const uniqueid = body.uniqueid;
   const pin = body.pin;
+  const pinConfirmation = body.pinConfirmation;
 
   if (!uniqueid) {
     return json({ success: false, error: "Missing uniqueid" }, 400);
@@ -59,6 +60,10 @@ export async function setupAdminPinGoogleSheetsEndpoint(request, env) {
 
   if (!isValidFourDigitPin(pin)) {
     return invalidPinResponse();
+  }
+
+  if (!isValidFourDigitPin(pinConfirmation) || pinConfirmation !== pin) {
+    return invalidPinConfirmationResponse();
   }
 
   const rows = await readAuthenticationSheet(env, ADMIN_RECORDS_SHEET);
@@ -84,12 +89,25 @@ export async function setupAdminPinGoogleSheetsEndpoint(request, env) {
   const pinhash = await createSaltedPinHash(pin, env.PIN_SECRET);
   await updateAdminPinFields(env, admin.row, true, pinhash);
 
-  return json({
-    success: true,
+  const token = await createSessionToken({
+    type: "admin",
     adminid: admin.adminid,
     username: admin.username,
     role: admin.role,
-    assignedgroup: admin.assignedgroup
+    assignedgroup: admin.assignedgroup,
+    authrow: admin.row,
+    credentialHash: pinhash
+  }, env);
+
+  return json({
+    success: true,
+    message: "Admin PIN created and login successful",
+    token,
+    adminid: admin.adminid,
+    username: admin.username,
+    role: admin.role,
+    assignedgroup: admin.assignedgroup,
+    admin: publicAdmin(admin, false)
   });
 }
 
@@ -191,6 +209,7 @@ export async function setupStudentPinGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
   const uniqueid = body.uniqueid;
   const pin = body.pin;
+  const pinConfirmation = body.pinConfirmation;
 
   if (!uniqueid) {
     return json({ success: false, error: "Missing uniqueid" }, 400);
@@ -198,6 +217,10 @@ export async function setupStudentPinGoogleSheetsEndpoint(request, env) {
 
   if (!isValidFourDigitPin(pin)) {
     return invalidPinResponse();
+  }
+
+  if (!isValidFourDigitPin(pinConfirmation) || pinConfirmation !== pin) {
+    return invalidPinConfirmationResponse();
   }
 
   const rows = await readAuthenticationSheet(env, STUDENT_RECORDS_SHEET);
@@ -223,10 +246,22 @@ export async function setupStudentPinGoogleSheetsEndpoint(request, env) {
   const pinhash = await createSaltedPinHash(pin, env.PIN_SECRET);
   await updateStudentPinFields(env, student.row, true, pinhash);
 
+  const token = await createSessionToken({
+    type: "student",
+    studentid: student.studentid,
+    username: student.username,
+    classgroup: student.classgroup,
+    authrow: student.row,
+    credentialHash: pinhash
+  }, env);
+
   return json({
     success: true,
+    message: "PIN created and login successful",
+    token,
     studentid: student.studentid,
-    username: student.username
+    username: student.username,
+    student: publicStudent(student, false)
   });
 }
 
@@ -410,7 +445,7 @@ function findStudentByUniqueId(rows, uniqueid) {
         uniqueid: getValue(row, 3),
         pinsetup: normalizeBooleanCell(getValue(row, 4)),
         pinhash: getValue(row, 5),
-        classgroup: getValue(row, 6),
+        classgroup: String(getValue(row, 6) || "").trim(),
         lastlogin: getValue(row, 8),
         failedattempts: getValue(row, 9),
         active: normalizeBooleanCell(getValue(row, 10))
@@ -435,8 +470,8 @@ function findAdminByUniqueId(rows, uniqueid) {
         uniqueid: getValue(row, 2),
         pinsetup: normalizeBooleanCell(getValue(row, 3)),
         pinhash: getValue(row, 4),
-        role: getValue(row, 5),
-        assignedgroup: getValue(row, 6),
+        role: String(getValue(row, 5) || "").trim().toUpperCase(),
+        assignedgroup: String(getValue(row, 6) || "").trim(),
         active: normalizeBooleanCell(getValue(row, 7)),
         createdate: getValue(row, 8),
         lastlogin: getValue(row, 9)
@@ -479,6 +514,14 @@ function publicAdmin(admin, includePinSetup) {
 
 function invalidPinResponse() {
   return json({ success: false, error: "PIN must be 4 digits" }, 400);
+}
+
+function invalidPinConfirmationResponse() {
+  return json({
+    success: false,
+    error: "PIN confirmation must match the 4-digit PIN",
+    code: "PIN_CONFIRMATION_MISMATCH"
+  }, 400);
 }
 
 function pinAlreadyConfigured(account) {

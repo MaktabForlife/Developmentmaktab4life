@@ -1,0 +1,29 @@
+M4L V100.3 — changed/new files
+
+Frontend
+- admin/index.html
+- styles.css
+- css/m4l-20-manage-admins.css (new)
+- js/m4l-admin-academics.js
+- js/m4l-manage-admins.js (new)
+- version.json
+- js/version.json
+
+Worker
+- backend/package.json
+- backend/wrangler.jsonc
+- backend/src/worker.js
+- backend/src/router.js
+- backend/src/lib/auth.js
+- backend/src/lib/backend-routing.js
+- backend/src/routes/auth-google-sheets.js
+- backend/src/routes/admin-account-management.js (new)
+
+Tests
+- backend/tests/auth.test.mjs
+- backend/tests/router.test.mjs
+- backend/tests/admin-account-management.test.mjs (new)
+- backend/tests/admin-management-ui.test.mjs (new)
+
+Delete separately
+- backend/src/routes/auth.js

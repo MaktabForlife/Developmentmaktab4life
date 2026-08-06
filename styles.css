@@ -1,3 +1,7 @@
+/* V100.3 Admin account management UI loader.
+   Adds the ADMIN-only AdminRecords register/modify screen.
+*/
+
 /* 96.5.1 shared x-close/Home controls and Attendance/Progress UI polish
 
    95.3.1 Weekly Planner preview styles
@@ -75,3 +79,4 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-17-teaching-panel.css?v=98.0");
 @import url("/css/m4l-18-system-settings.css?v=98.12");
 @import url("/css/m4l-19-pdf-split-view.css?v=99.1");
+@import url("/css/m4l-20-manage-admins.css?v=100.3.0");

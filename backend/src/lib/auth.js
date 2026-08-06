@@ -120,6 +120,29 @@ export async function requireAdminOrSenior(request, env) {
   };
 }
 
+export async function requireSystemAdmin(request, env) {
+  const authUser = await getAuthUser(request, env);
+
+  if (!authUser || authUser.type !== "admin") {
+    return {
+      ok: false,
+      response: json({ success: false, error: "Unauthorized" }, 401)
+    };
+  }
+
+  if (authUser.role !== "ADMIN") {
+    return {
+      ok: false,
+      response: json({ success: false, error: "Forbidden" }, 403)
+    };
+  }
+
+  return {
+    ok: true,
+    user: authUser
+  };
+}
+
 export async function getAuthUser(request, env) {
   const auth = request.headers.get("Authorization");
 
@@ -340,17 +363,20 @@ async function validateCredentialBoundSession(payload, env) {
   let expectedId;
   let pinSetupColumn;
   let pinHashColumn;
+  let activeColumn;
 
   if (payload.type === "student") {
-    range = `StudentRecords!A${payload.authrow}:F${payload.authrow}`;
-    expectedId = String(payload.studentid || "");
+    range = `StudentRecords!A${payload.authrow}:K${payload.authrow}`;
+    expectedId = String(payload.studentid || "").trim();
     pinSetupColumn = 4;
     pinHashColumn = 5;
+    activeColumn = 10;
   } else if (payload.type === "admin") {
-    range = `AdminRecords!A${payload.authrow}:E${payload.authrow}`;
-    expectedId = String(payload.adminid || "");
+    range = `AdminRecords!A${payload.authrow}:J${payload.authrow}`;
+    expectedId = String(payload.adminid || "").trim();
     pinSetupColumn = 3;
     pinHashColumn = 4;
+    activeColumn = 7;
   } else {
     return null;
   }
@@ -359,8 +385,9 @@ async function validateCredentialBoundSession(payload, env) {
   const row = Array.isArray(rows[0]) ? rows[0] : [];
 
   if (
-    String(row[0] || "") !== expectedId ||
-    !normalizeBooleanCell(row[pinSetupColumn])
+    String(row[0] || "").trim() !== expectedId ||
+    !normalizeBooleanCell(row[pinSetupColumn]) ||
+    !normalizeBooleanCell(row[activeColumn])
   ) {
     return null;
   }
@@ -372,7 +399,43 @@ async function validateCredentialBoundSession(payload, env) {
   }
 
   const currentVersion = await createCredentialVersion(currentHash, env.SESSION_SECRET);
-  return constantTimeEqual(payload.cv, currentVersion) ? payload : null;
+
+  if (!constantTimeEqual(payload.cv, currentVersion)) {
+    return null;
+  }
+
+  if (payload.type === "student") {
+    const currentClassGroup = String(row[6] || "").trim();
+    const tokenClassGroup = String(payload.classgroup || "").trim();
+
+    return currentClassGroup === tokenClassGroup
+      ? { ...payload, classgroup: currentClassGroup }
+      : null;
+  }
+
+  const currentRole = normalizeAdminRole(row[5]);
+  const tokenRole = normalizeAdminRole(payload.role);
+  const currentAssignedGroup = String(row[6] || "").trim();
+  const tokenAssignedGroup = String(payload.assignedgroup || "").trim();
+
+  if (
+    !currentRole ||
+    currentRole !== tokenRole ||
+    currentAssignedGroup !== tokenAssignedGroup
+  ) {
+    return null;
+  }
+
+  return {
+    ...payload,
+    role: currentRole,
+    assignedgroup: currentAssignedGroup
+  };
+}
+
+function normalizeAdminRole(value) {
+  const role = String(value || "").trim().toUpperCase();
+  return ["ADMIN", "SENIOR", "TEACHER"].includes(role) ? role : "";
 }
 
 function requiresCredentialBoundSessions(env) {

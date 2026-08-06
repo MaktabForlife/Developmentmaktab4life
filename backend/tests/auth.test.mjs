@@ -113,12 +113,12 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "AdminRecords!A:ZZ") return response({ values: adminRows });
 
-    const studentCredentialRange = /^StudentRecords!A(\d+):F\1$/.exec(range);
+    const studentCredentialRange = /^StudentRecords!A(\d+):K\1$/.exec(range);
     if (studentCredentialRange) {
       return response({ values: [studentRows[Number(studentCredentialRange[1]) - 1] || []] });
     }
 
-    const adminCredentialRange = /^AdminRecords!A(\d+):E\1$/.exec(range);
+    const adminCredentialRange = /^AdminRecords!A(\d+):J\1$/.exec(range);
     if (adminCredentialRange) {
       return response({ values: [adminRows[Number(adminCredentialRange[1]) - 1] || []] });
     }
@@ -257,15 +257,58 @@ try {
   assert.equal(isSaltedPinHash(adminRows[1][4]), true, "Legacy admin hash should migrate after login");
   assert.equal((await verifyPin("4321", adminRows[1][4], pinSecret)).valid, true);
 
+  const validAdminRequest = () => new Request("https://worker.test/api/admin/protected", {
+    headers: { Authorization: `Bearer ${adminLogin.data.token}` }
+  });
+  const validStudentRequest = () => new Request("https://worker.test/api/student/protected", {
+    headers: { Authorization: `Bearer ${studentLogin.data.token}` }
+  });
+
+  assert.equal((await getAuthUser(validAdminRequest(), directEnv)).adminid, "ADMIN1");
+  adminRows[1][7] = false;
+  assert.equal(await getAuthUser(validAdminRequest(), directEnv), null, "Inactive admins must lose access immediately");
+  adminRows[1][7] = true;
+  adminRows[1][5] = "TEACHER";
+  assert.equal(await getAuthUser(validAdminRequest(), directEnv), null, "Admin role changes must invalidate the old session");
+  adminRows[1][5] = "ADMIN";
+  adminRows[1][6] = "2";
+  assert.equal(await getAuthUser(validAdminRequest(), directEnv), null, "Admin assigned-group changes must invalidate the old session");
+  adminRows[1][6] = "ALL";
+
+  assert.equal((await getAuthUser(validStudentRequest(), directEnv)).studentid, "ST1");
+  studentRows[1][10] = false;
+  assert.equal(await getAuthUser(validStudentRequest(), directEnv), null, "Inactive students must lose access immediately");
+  studentRows[1][10] = true;
+  studentRows[1][6] = "9";
+  assert.equal(await getAuthUser(validStudentRequest(), directEnv), null, "Student group changes must invalidate the old session");
+  studentRows[1][6] = "2";
+
+  const studentWritesBeforeMismatch = batchUpdates.length;
+  const studentConfirmationMismatch = await post("/api/setup-pin", {
+    uniqueid: "STUDENT-SETUP",
+    pin: "2468",
+    pinConfirmation: "1357"
+  }, directEnv);
+  assert.equal(studentConfirmationMismatch.response.status, 400);
+  assert.equal(studentConfirmationMismatch.data.code, "PIN_CONFIRMATION_MISMATCH");
+  assert.equal(batchUpdates.length, studentWritesBeforeMismatch);
+
   const studentSetup = await post("/api/setup-pin", {
     uniqueid: "STUDENT-SETUP",
-    pin: "2468"
+    pin: "2468",
+    pinConfirmation: "2468"
   }, directEnv);
-  assert.deepEqual(studentSetup.data, {
-    success: true,
+  assert.equal(studentSetup.response.status, 200);
+  assert.equal(studentSetup.data.success, true);
+  assert.equal(studentSetup.data.message, "PIN created and login successful");
+  assert.equal(studentSetup.data.studentid, "ST2");
+  assert.equal(studentSetup.data.username, "Student Two");
+  assert.deepEqual(studentSetup.data.student, {
     studentid: "ST2",
-    username: "Student Two"
+    username: "Student Two",
+    classgroup: "3"
   });
+  assert.equal(typeof studentSetup.data.token, "string");
   const expectedStudentSetupHash = studentRows[2][5];
   assert.equal(isSaltedPinHash(expectedStudentSetupHash), true);
   assert.equal((await verifyPin("2468", expectedStudentSetupHash, pinSecret)).valid, true);
@@ -283,6 +326,15 @@ try {
   ]);
   assert.equal(studentRows[2][4], true);
   assert.equal(studentRows[2][9], 0);
+  const studentSetupSession = await verifySessionToken(studentSetup.data.token, directEnv);
+  assert.equal(studentSetupSession.type, "student");
+  assert.equal(studentSetupSession.studentid, "ST2");
+  assert.equal(studentSetupSession.authrow, 3);
+  assert.equal(typeof studentSetupSession.cv, "string");
+  const studentSetupAuth = await getAuthUser(new Request("https://worker.test/api/tasks/student", {
+    headers: { Authorization: `Bearer ${studentSetup.data.token}` }
+  }), directEnv);
+  assert.equal(studentSetupAuth.studentid, "ST2");
 
   const setupStudentLogin = await post("/api/login", {
     uniqueid: "STUDENT-SETUP",
@@ -290,17 +342,35 @@ try {
   }, directEnv);
   assert.equal(setupStudentLogin.data.success, true);
 
-  const adminSetup = await post("/api/admin/setup-pin", {
+  const adminWritesBeforeMissingConfirmation = updates.length;
+  const adminMissingConfirmation = await post("/api/admin/setup-pin", {
     uniqueid: "ADMIN-SETUP",
     pin: "8642"
   }, directEnv);
-  assert.deepEqual(adminSetup.data, {
-    success: true,
+  assert.equal(adminMissingConfirmation.response.status, 400);
+  assert.equal(adminMissingConfirmation.data.code, "PIN_CONFIRMATION_MISMATCH");
+  assert.equal(updates.length, adminWritesBeforeMissingConfirmation);
+
+  const adminSetup = await post("/api/admin/setup-pin", {
+    uniqueid: "ADMIN-SETUP",
+    pin: "8642",
+    pinConfirmation: "8642"
+  }, directEnv);
+  assert.equal(adminSetup.response.status, 200);
+  assert.equal(adminSetup.data.success, true);
+  assert.equal(adminSetup.data.message, "Admin PIN created and login successful");
+  assert.equal(adminSetup.data.adminid, "ADMIN2");
+  assert.equal(adminSetup.data.username, "Senior Two");
+  assert.equal(adminSetup.data.role, "SENIOR");
+  assert.equal(adminSetup.data.assignedgroup, "2");
+  assert.deepEqual(adminSetup.data.admin, {
     adminid: "ADMIN2",
     username: "Senior Two",
+    uniqueid: "ADMIN-SETUP",
     role: "SENIOR",
     assignedgroup: "2"
   });
+  assert.equal(typeof adminSetup.data.token, "string");
   const expectedAdminSetupHash = adminRows[2][4];
   assert.equal(isSaltedPinHash(expectedAdminSetupHash), true);
   assert.equal((await verifyPin("8642", expectedAdminSetupHash, pinSecret)).valid, true);
@@ -313,11 +383,21 @@ try {
     }
   });
   assert.equal(adminRows[2][3], true);
+  const adminSetupSession = await verifySessionToken(adminSetup.data.token, directEnv);
+  assert.equal(adminSetupSession.type, "admin");
+  assert.equal(adminSetupSession.adminid, "ADMIN2");
+  assert.equal(adminSetupSession.authrow, 3);
+  assert.equal(typeof adminSetupSession.cv, "string");
+  const adminSetupAuth = await getAuthUser(new Request("https://worker.test/api/admin/students", {
+    headers: { Authorization: `Bearer ${adminSetup.data.token}` }
+  }), directEnv);
+  assert.equal(adminSetupAuth.adminid, "ADMIN2");
 
   const studentWritesBeforeOverwrite = batchUpdates.length;
   const blockedStudentOverwrite = await post("/api/setup-pin", {
     uniqueid: "STUDENT-SETUP",
-    pin: "1111"
+    pin: "1111",
+    pinConfirmation: "1111"
   }, directEnv);
   assert.equal(blockedStudentOverwrite.response.status, 409);
   assert.equal(blockedStudentOverwrite.data.code, "PIN_ALREADY_SET");
@@ -326,7 +406,8 @@ try {
   const adminWritesBeforeOverwrite = updates.length;
   const blockedAdminOverwrite = await post("/api/admin/setup-pin", {
     uniqueid: "ADMIN-SETUP",
-    pin: "1111"
+    pin: "1111",
+    pinConfirmation: "1111"
   }, directEnv);
   assert.equal(blockedAdminOverwrite.response.status, 409);
   assert.equal(blockedAdminOverwrite.data.code, "PIN_ALREADY_SET");
@@ -388,11 +469,12 @@ try {
   assert.equal(forbiddenReset.response.status, 403);
   assert.equal(forbiddenReset.data.error, "Forbidden");
   assert.equal(reads.length, readCountBeforeForbiddenReset + 1);
-  assert.equal(reads.at(-1), "AdminRecords!A5:E5");
+  assert.equal(reads.at(-1), "AdminRecords!A5:J5");
 
   const invalidPin = await post("/api/setup-pin", {
     uniqueid: "STUDENT-SETUP",
-    pin: "12ab"
+    pin: "12ab",
+    pinConfirmation: "12ab"
   }, directEnv);
   assert.equal(invalidPin.response.status, 400);
   assert.equal(invalidPin.data.error, "PIN must be 4 digits");

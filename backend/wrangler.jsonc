@@ -25,7 +25,10 @@
     "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
     "M4L_BACKEND_SYSTEM_SETTINGS": "google-sheets",
     "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/",
-    "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true"
+    "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true",
+    "M4L_BACKEND_ADMIN_MANAGEMENT_READ": "google-sheets",
+    "M4L_BACKEND_ADMIN_MANAGEMENT_WRITE": "google-sheets",
+    "M4L_BACKEND_ADMIN_MANAGEMENT_UPDATE": "google-sheets"
   },
   "r2_buckets": [
     {
@@ -58,7 +61,10 @@
         "M4L_BACKEND_PROGRESS_WRITE": "google-sheets",
         "M4L_BACKEND_SYSTEM_SETTINGS": "google-sheets",
         "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/",
-        "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true"
+        "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true",
+        "M4L_BACKEND_ADMIN_MANAGEMENT_READ": "google-sheets",
+        "M4L_BACKEND_ADMIN_MANAGEMENT_WRITE": "google-sheets",
+        "M4L_BACKEND_ADMIN_MANAGEMENT_UPDATE": "google-sheets"
       },
       "r2_buckets": [
         {

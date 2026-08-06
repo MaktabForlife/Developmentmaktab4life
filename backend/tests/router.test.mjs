@@ -26,6 +26,10 @@ const expectedPaths = [
   "/api/admin/setup-pin",
   "/api/admin/login",
   "/api/admin/reset-pin",
+  "/api/admin/admins/search",
+  "/api/admin/register-admin",
+  "/api/admin/update-admin",
+  "/api/admin/reset-admin-pin",
   "/api/check-student",
   "/api/setup-pin",
   "/api/login",
@@ -63,7 +67,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "100.0"
+  version: "100.3"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {
@@ -86,6 +90,9 @@ const retiredAppsScriptRoutes = [
   ["student-management-read", "M4L_BACKEND_STUDENT_MANAGEMENT_READ", "/api/admin/students/search"],
   ["student-management-write", "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE", "/api/admin/register-student"],
   ["student-management-update", "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE", "/api/admin/update-student"],
+  ["admin-management-read", "M4L_BACKEND_ADMIN_MANAGEMENT_READ", "/api/admin/admins/search"],
+  ["admin-management-write", "M4L_BACKEND_ADMIN_MANAGEMENT_WRITE", "/api/admin/register-admin"],
+  ["admin-management-update", "M4L_BACKEND_ADMIN_MANAGEMENT_UPDATE", "/api/admin/update-admin"],
   ["curriculum-read", "M4L_BACKEND_CURRICULUM_READ", "/api/admin/subjects/list"],
   ["curriculum-write", "M4L_BACKEND_CURRICULUM_WRITE", "/api/admin/subjects/create"],
   ["curriculum-resources-read", "M4L_BACKEND_CURRICULUM_RESOURCES_READ", "/api/admin/subject-resources/list"],

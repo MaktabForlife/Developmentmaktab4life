@@ -1,0 +1,8 @@
+Delete this retired, unreferenced file from the repository:
+
+backend/src/routes/auth.js
+
+Do NOT delete:
+- backend/src/lib/auth.js
+- backend/src/routes/auth-google-sheets.js
+- backend/src/routes/admin-account-management.js
