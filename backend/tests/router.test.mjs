@@ -73,7 +73,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "100.4"
+  version: "100.5"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {
@@ -85,47 +85,6 @@ assert.equal(preflight.headers.get("Access-Control-Allow-Origin"), "*");
 const notFound = await worker.fetch(new Request("https://worker.test/not-a-route"), {});
 assert.equal(notFound.status, 404);
 assert.deepEqual(await notFound.json(), { success: false, error: "Not found" });
-
-const retiredAppsScriptRoutes = [
-  ["auth", "M4L_BACKEND_AUTH", "/api/check-student"],
-  ["attendance-read", "M4L_BACKEND_ATTENDANCE_READ", "/api/attendance/students"],
-  ["attendance-write", "M4L_BACKEND_ATTENDANCE_WRITE", "/api/attendance/submit-absent"],
-  ["resources", "M4L_BACKEND_RESOURCES", "/api/resources/list"],
-  ["timetable-read", "M4L_BACKEND_TIMETABLE_READ", "/api/timetable/get"],
-  ["timetable-write", "M4L_BACKEND_TIMETABLE_WRITE", "/api/admin/timetable/update-zoom"],
-  ["student-management-read", "M4L_BACKEND_STUDENT_MANAGEMENT_READ", "/api/admin/students/search"],
-  ["student-management-write", "M4L_BACKEND_STUDENT_MANAGEMENT_WRITE", "/api/admin/register-student"],
-  ["student-management-update", "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE", "/api/admin/update-student"],
-  ["admin-management-read", "M4L_BACKEND_ADMIN_MANAGEMENT_READ", "/api/admin/admins/search"],
-  ["admin-management-write", "M4L_BACKEND_ADMIN_MANAGEMENT_WRITE", "/api/admin/register-admin"],
-  ["admin-management-update", "M4L_BACKEND_ADMIN_MANAGEMENT_UPDATE", "/api/admin/update-admin"],
-  ["curriculum-read", "M4L_BACKEND_CURRICULUM_READ", "/api/admin/subjects/list"],
-  ["curriculum-write", "M4L_BACKEND_CURRICULUM_WRITE", "/api/admin/subjects/create"],
-  ["curriculum-resources-read", "M4L_BACKEND_CURRICULUM_RESOURCES_READ", "/api/admin/subject-resources/list"],
-  ["curriculum-resources-write", "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE", "/api/admin/subject-resources/create"],
-  ["task-assignment-read", "M4L_BACKEND_TASK_ASSIGNMENT_READ", "/api/admin/students/assignment-options"],
-  ["task-assignment-write", "M4L_BACKEND_TASK_ASSIGNMENT_WRITE", "/api/admin/tasks/assign"],
-  ["progress-read", "M4L_BACKEND_PROGRESS_READ", "/api/tasks/student"],
-  ["progress-write", "M4L_BACKEND_PROGRESS_WRITE", "/api/tasks/update-complete"]
-];
-
-for (const [feature, envVar, path] of retiredAppsScriptRoutes) {
-  const rejected = await worker.fetch(new Request(`https://worker.test${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}"
-  }), {
-    [envVar]: "apps-script"
-  });
-  const rejectedData = await rejected.json();
-
-  assert.equal(rejected.status, 503, `${feature} must reject the retired Apps Script backend`);
-  assert.equal(rejected.headers.get("X-M4L-Feature"), feature);
-  assert.equal(rejected.headers.get("X-M4L-Backend"), "apps-script");
-  assert.equal(rejected.headers.get("X-M4L-Backend-Source"), envVar);
-  assert.equal(rejectedData.error, "Backend routing configuration error");
-  assert.match(rejectedData.detail, /apps-script is not enabled/);
-}
 
 const routingUnauthorized = await worker.fetch(new Request(
   "https://worker.test/api/admin/backend-routing",
@@ -146,7 +105,7 @@ assert.equal(systemSettingsUnauthorized.headers.get("X-M4L-Feature"), "system-se
 assert.equal(systemSettingsUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   systemSettingsUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_SYSTEM_SETTINGS"
+  "fixed"
 );
 
 const timetableWriteUnauthorized = await worker.fetch(new Request(
@@ -164,7 +123,7 @@ assert.equal(timetableWriteUnauthorized.headers.get("X-M4L-Feature"), "timetable
 assert.equal(timetableWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   timetableWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_TIMETABLE_WRITE"
+  "fixed"
 );
 
 const attendanceReadUnauthorized = await worker.fetch(new Request(
@@ -224,7 +183,7 @@ assert.equal(curriculumWriteUnauthorized.headers.get("X-M4L-Feature"), "curricul
 assert.equal(curriculumWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   curriculumWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_CURRICULUM_WRITE"
+  "fixed"
 );
 
 const curriculumResourcesReadUnauthorized = await worker.fetch(new Request(
@@ -287,7 +246,7 @@ assert.equal(
 assert.equal(studentManagementReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   studentManagementReadUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_STUDENT_MANAGEMENT_READ"
+  "fixed"
 );
 
 const duplicateReadUnauthorized = await worker.fetch(new Request(
@@ -322,7 +281,7 @@ assert.equal(
 assert.equal(studentManagementUpdateUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   studentManagementUpdateUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"
+  "fixed"
 );
 
 const taskAssignmentReadUnauthorized = await worker.fetch(new Request(
@@ -343,7 +302,7 @@ assert.equal(
 assert.equal(taskAssignmentReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   taskAssignmentReadUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_TASK_ASSIGNMENT_READ"
+  "fixed"
 );
 
 const progressReadUnauthorized = await worker.fetch(new Request(
@@ -361,7 +320,7 @@ assert.equal(progressReadUnauthorized.headers.get("X-M4L-Feature"), "progress-re
 assert.equal(progressReadUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   progressReadUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_PROGRESS_READ"
+  "fixed"
 );
 
 const progressWriteUnauthorized = await worker.fetch(new Request(
@@ -379,7 +338,7 @@ assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Feature"), "progress-w
 assert.equal(progressWriteUnauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 assert.equal(
   progressWriteUnauthorized.headers.get("X-M4L-Backend-Source"),
-  "M4L_BACKEND_PROGRESS_WRITE"
+  "fixed"
 );
 
 console.log("Worker router tests passed.");

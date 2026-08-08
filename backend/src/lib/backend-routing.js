@@ -2,43 +2,49 @@ export const BACKEND_APPS_SCRIPT = "apps-script";
 export const BACKEND_GOOGLE_SHEETS = "google-sheets";
 export const BACKEND_WORKER = "worker";
 
+/*
+ * V100.5 final backend ownership.
+ *
+ * The V98 migration switches are retired. Backend ownership is now fixed in
+ * code so stale or accidentally re-created M4L_BACKEND_* selector variables
+ * cannot change routing:
+ * - application data routes -> Google Sheets
+ * - Weekly Planner PNG-to-Drive bridge -> Apps Script
+ * - Worker-native services -> Worker
+ *
+ * M4L_BACKEND_ROUTING_LOGS remains an optional diagnostics/logging toggle; it
+ * is not a backend selector.
+ */
 const FEATURE_DEFINITIONS = Object.freeze({
-  // V98.13 retires the routed Apps Script fallbacks after production parity
-  // verification. These features now reject every backend except direct
-  // Google Sheets, even if an old environment value requests Apps Script.
-  auth: defineGoogleSheetsOnlyFeature("M4L_BACKEND_AUTH"),
-  "attendance-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ATTENDANCE_READ"),
-  "attendance-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ATTENDANCE_WRITE"),
-  resources: defineGoogleSheetsOnlyFeature("M4L_BACKEND_RESOURCES"),
-  "resource-management": defineGoogleSheetsOnlyFeature("M4L_BACKEND_RESOURCE_MANAGEMENT"),
-  "drive-library": defineFeature("", BACKEND_WORKER, [BACKEND_WORKER]),
-  "timetable-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TIMETABLE_READ"),
-  "timetable-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TIMETABLE_WRITE"),
-  "student-management-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_READ"),
-  "student-management-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_WRITE"),
-  "student-management-update": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE"),
-  "admin-management-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ADMIN_MANAGEMENT_READ"),
-  "admin-management-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ADMIN_MANAGEMENT_WRITE"),
-  "admin-management-update": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ADMIN_MANAGEMENT_UPDATE"),
-  "curriculum-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_READ"),
-  "curriculum-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_WRITE"),
-  "curriculum-resources-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_RESOURCES_READ"),
-  "curriculum-resources-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_CURRICULUM_RESOURCES_WRITE"),
-  "task-assignment-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TASK_ASSIGNMENT_READ"),
-  "task-assignment-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TASK_ASSIGNMENT_WRITE"),
-  "progress-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_PROGRESS_READ"),
-  "progress-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_PROGRESS_WRITE"),
-  "system-settings": defineGoogleSheetsOnlyFeature("M4L_BACKEND_SYSTEM_SETTINGS"),
-  "weekly-planner": defineGoogleSheetsOnlyFeature("M4L_BACKEND_WEEKLY_PLANNER"),
-  "weekly-planner-drive": defineFeature(
-    "M4L_BACKEND_WEEKLY_PLANNER_DRIVE",
-    BACKEND_APPS_SCRIPT,
-    [BACKEND_APPS_SCRIPT]
-  ),
-  routing: defineFeature("", BACKEND_WORKER, [BACKEND_WORKER])
+  auth: defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "attendance-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "attendance-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  resources: defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "resource-management": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "drive-library": defineFixedFeature(BACKEND_WORKER),
+  "timetable-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "timetable-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "student-management-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "student-management-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "student-management-update": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "admin-management-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "admin-management-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "admin-management-update": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "curriculum-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "curriculum-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "curriculum-resources-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "curriculum-resources-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "task-assignment-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "task-assignment-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "progress-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "progress-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "system-settings": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "weekly-planner": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "weekly-planner-drive": defineFixedFeature(BACKEND_APPS_SCRIPT),
+  routing: defineFixedFeature(BACKEND_WORKER)
 });
 
-export function getBackendSelection(env = {}, feature) {
+export function getBackendSelection(_env = {}, feature) {
   const definition = FEATURE_DEFINITIONS[feature];
 
   if (!definition) {
@@ -48,53 +54,22 @@ export function getBackendSelection(env = {}, feature) {
       backend: "",
       requestedBackend: "",
       source: "unknown-feature",
+      envVar: "",
+      defaultBackend: "",
+      availableBackends: [],
       error: `Unknown backend feature: ${feature}`
-    };
-  }
-
-  const rawValue = definition.envVar ? String(env?.[definition.envVar] || "").trim() : "";
-  const requestedBackend = rawValue
-    ? normalizeBackendName(rawValue)
-    : definition.defaultBackend;
-  const source = rawValue ? definition.envVar : "default";
-
-  if (!requestedBackend) {
-    return {
-      valid: false,
-      feature,
-      backend: "",
-      requestedBackend: rawValue,
-      source,
-      envVar: definition.envVar,
-      defaultBackend: definition.defaultBackend,
-      availableBackends: definition.availableBackends.slice(),
-      error: `Invalid backend value for ${definition.envVar}: ${rawValue}`
-    };
-  }
-
-  if (!definition.availableBackends.includes(requestedBackend)) {
-    return {
-      valid: false,
-      feature,
-      backend: requestedBackend,
-      requestedBackend,
-      source,
-      envVar: definition.envVar,
-      defaultBackend: definition.defaultBackend,
-      availableBackends: definition.availableBackends.slice(),
-      error: `${requestedBackend} is not enabled for ${feature}`
     };
   }
 
   return {
     valid: true,
     feature,
-    backend: requestedBackend,
-    requestedBackend,
-    source,
-    envVar: definition.envVar,
-    defaultBackend: definition.defaultBackend,
-    availableBackends: definition.availableBackends.slice()
+    backend: definition.backend,
+    requestedBackend: definition.backend,
+    source: "fixed",
+    envVar: "",
+    defaultBackend: definition.backend,
+    availableBackends: [definition.backend]
   };
 }
 
@@ -127,32 +102,6 @@ export function shouldLogBackendRouting(env = {}) {
   return ["1", "true", "yes", "on"].includes(value);
 }
 
-export function normalizeBackendName(value) {
-  const normalized = String(value || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
-
-  if (["apps-script", "appsscript", "legacy"].includes(normalized)) {
-    return BACKEND_APPS_SCRIPT;
-  }
-
-  if (["google-sheets", "googlesheets", "sheets", "direct"].includes(normalized)) {
-    return BACKEND_GOOGLE_SHEETS;
-  }
-
-  if (normalized === BACKEND_WORKER) {
-    return BACKEND_WORKER;
-  }
-
-  return "";
-}
-
-function defineFeature(envVar, defaultBackend, availableBackends) {
-  return Object.freeze({
-    envVar,
-    defaultBackend,
-    availableBackends: Object.freeze(availableBackends.slice())
-  });
-}
-
-function defineGoogleSheetsOnlyFeature(envVar) {
-  return defineFeature(envVar, BACKEND_GOOGLE_SHEETS, [BACKEND_GOOGLE_SHEETS]);
+function defineFixedFeature(backend) {
+  return Object.freeze({ backend });
 }

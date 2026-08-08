@@ -100,7 +100,7 @@ try {
   assert.equal(subjects.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     subjects.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_CURRICULUM_READ"
+    "fixed"
   );
   assert.deepEqual(subjects.data, {
     success: true,
@@ -153,7 +153,7 @@ try {
   assert.equal(resources.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     resources.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_CURRICULUM_RESOURCES_READ"
+    "fixed"
   );
   assert.equal(resources.data.subjectid, "SUB1");
   assert.deepEqual(

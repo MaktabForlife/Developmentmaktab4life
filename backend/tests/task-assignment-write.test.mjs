@@ -166,7 +166,7 @@ try {
   assert.equal(explicit.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     explicit.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_TASK_ASSIGNMENT_WRITE"
+    "fixed"
   );
   assert.deepEqual(explicit.data, {
     success: true,

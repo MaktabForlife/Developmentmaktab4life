@@ -1,3 +1,12 @@
+M4L V100.5
+
+No repository files are deleted in this revision.
+
+Cloudflare dashboard housekeeping (manual, after Worker deployment):
+- Delete the retired M4L_BACKEND_* selector variables listed in RELEASE-NOTES.md / CHANGED-FILES.txt.
+- Do NOT delete APPS_SCRIPT_URL.
+- M4L_BACKEND_ROUTING_LOGS is optional and may remain if routing logs are intentionally enabled.
+
 M4L V100.4.4
 
 No new files are deleted in this revision.

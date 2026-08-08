@@ -156,7 +156,7 @@ try {
     assert.equal(result.status, 200);
     assert.equal(result.headers.get("X-M4L-Feature"), "resources");
     assert.equal(result.headers.get("X-M4L-Backend"), "google-sheets");
-    assert.equal(result.headers.get("X-M4L-Backend-Source"), "M4L_BACKEND_RESOURCES");
+    assert.equal(result.headers.get("X-M4L-Backend-Source"), "fixed");
     assert.equal(data.count, 1, "Student resource reads must enforce the current account group");
     assert.equal(data.studentid, "STUDENT1");
     assert.equal(data.classgroup, "1");

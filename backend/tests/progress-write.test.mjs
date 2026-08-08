@@ -139,7 +139,7 @@ try {
   assert.equal(studentComplete.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     studentComplete.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_PROGRESS_WRITE"
+    "fixed"
   );
   assert.equal(studentComplete.data.success, true);
   assert.equal(studentComplete.data.updatedCount, 2);

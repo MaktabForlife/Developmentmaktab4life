@@ -552,7 +552,7 @@ function columnNumber(column) {
 function assertRoutingHeaders(responseObject) {
   assert.equal(responseObject.headers.get("X-M4L-Feature"), "auth");
   assert.equal(responseObject.headers.get("X-M4L-Backend"), "google-sheets");
-  assert.equal(responseObject.headers.get("X-M4L-Backend-Source"), "M4L_BACKEND_AUTH");
+  assert.equal(responseObject.headers.get("X-M4L-Backend-Source"), "fixed");
 }
 
 async function post(path, body, env, token = "") {

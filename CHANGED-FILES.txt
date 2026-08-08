@@ -1,3 +1,78 @@
+M4L V100.5
+
+Runtime files changed
+---------------------
+Cloudflare Worker:
+- backend/src/lib/backend-routing.js
+- backend/src/worker.js
+- backend/wrangler.jsonc
+- backend/package.json
+
+Version metadata:
+- version.json
+- js/version.json
+
+Tests changed
+-------------
+- backend/tests/admin-management-ui.test.mjs
+- backend/tests/attendance.test.mjs
+- backend/tests/auth.test.mjs
+- backend/tests/backend-routing.test.mjs
+- backend/tests/curriculum-write.test.mjs
+- backend/tests/curriculum.test.mjs
+- backend/tests/progress-read.test.mjs
+- backend/tests/progress-write.test.mjs
+- backend/tests/resources.test.mjs
+- backend/tests/router.test.mjs
+- backend/tests/student-management.test.mjs
+- backend/tests/student-registration.test.mjs
+- backend/tests/system-settings.test.mjs
+- backend/tests/task-assignment-write.test.mjs
+- backend/tests/timetable.test.mjs
+
+What changed
+------------
+- Retired the old M4L_BACKEND_* backend-selector mechanism.
+- Backend ownership is now fixed in code: Google Sheets for application data, Apps Script only for Weekly Planner PNG-to-Drive, and Worker for Worker-native services.
+- Removed the retired M4L_BACKEND_* selector values from both production and development Wrangler vars.
+- Stale selector variables left temporarily in the Cloudflare dashboard are ignored by the Worker, making manual dashboard cleanup safe after deployment.
+- APPS_SCRIPT_URL remains because the Weekly Planner PNG-to-Drive bridge still calls the bound Apps Script web app.
+- M4L_BACKEND_ROUTING_LOGS remains an optional logging toggle and is not a backend selector.
+- apps-script/code.gs was audited and requires no change: saveWeeklyPlannerPreviewToDrive remains the only callable doPost action.
+- Worker health/package/version metadata updated to V100.5.
+- All 23 backend regression test files pass.
+- Wrangler dry-run was not run because Wrangler is not installed in this environment.
+
+Manual Cloudflare cleanup after Worker deployment
+-------------------------------------------------
+Delete these selector variables from both development and production if present:
+- M4L_BACKEND_AUTH
+- M4L_BACKEND_ATTENDANCE_READ
+- M4L_BACKEND_ATTENDANCE_WRITE
+- M4L_BACKEND_RESOURCES
+- M4L_BACKEND_RESOURCE_MANAGEMENT
+- M4L_BACKEND_TIMETABLE_READ
+- M4L_BACKEND_TIMETABLE_WRITE
+- M4L_BACKEND_STUDENT_MANAGEMENT_READ
+- M4L_BACKEND_STUDENT_MANAGEMENT_WRITE
+- M4L_BACKEND_STUDENT_MANAGEMENT_UPDATE
+- M4L_BACKEND_ADMIN_MANAGEMENT_READ
+- M4L_BACKEND_ADMIN_MANAGEMENT_WRITE
+- M4L_BACKEND_ADMIN_MANAGEMENT_UPDATE
+- M4L_BACKEND_CURRICULUM_READ
+- M4L_BACKEND_CURRICULUM_WRITE
+- M4L_BACKEND_CURRICULUM_RESOURCES_READ
+- M4L_BACKEND_CURRICULUM_RESOURCES_WRITE
+- M4L_BACKEND_TASK_ASSIGNMENT_READ
+- M4L_BACKEND_TASK_ASSIGNMENT_WRITE
+- M4L_BACKEND_PROGRESS_READ
+- M4L_BACKEND_PROGRESS_WRITE
+- M4L_BACKEND_SYSTEM_SETTINGS
+- M4L_BACKEND_WEEKLY_PLANNER
+- M4L_BACKEND_WEEKLY_PLANNER_DRIVE
+
+Do not remove APPS_SCRIPT_URL. Keep M4L_BACKEND_ROUTING_LOGS only if backend route logging is intentionally enabled.
+
 M4L V100.4.4
 
 Runtime files changed

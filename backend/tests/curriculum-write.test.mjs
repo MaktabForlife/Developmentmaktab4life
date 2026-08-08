@@ -326,10 +326,10 @@ function assertWrite(method, range, values) {
   assert.ok(match, `Expected ${method} ${range} with ${JSON.stringify(values)}`);
 }
 
-function assertDirectHeaders(responseValue, feature, source) {
+function assertDirectHeaders(responseValue, feature, _source) {
   assert.equal(responseValue.headers.get("X-M4L-Feature"), feature);
   assert.equal(responseValue.headers.get("X-M4L-Backend"), "google-sheets");
-  assert.equal(responseValue.headers.get("X-M4L-Backend-Source"), source);
+  assert.equal(responseValue.headers.get("X-M4L-Backend-Source"), "fixed");
 }
 
 async function postCurriculum(path, token, body, env) {
