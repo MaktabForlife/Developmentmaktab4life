@@ -1,4 +1,23 @@
-# M4L V100.4 — Private Google Drive Library Management
+# M4L V100.4.1 — Private Drive PDF.js compatibility
+
+## Problem
+V100.4 correctly created a short-lived, authenticated M4L Worker URL for a private Google Drive PDF. However, `js/m4l-resources.js` special-cased that signed Worker URL and supplied it directly to PDF.js. The established M4L PDF flow normally converts absolute URLs to the same-origin `/pdf-file/<encoded-url>` Pages route. Sending the new cross-origin Worker URL directly to PDF.js caused the PDF viewer to fail while the bypass/direct-open route still worked.
+
+## Fix
+- Restored the established rule: every absolute PDF URL, including signed private Drive URLs, is passed through `/pdf-file/<encoded-url>` before PDF.js loads it.
+- Extended `functions/pdf-file/[encoded].js` to allow only signed private Drive delivery URLs on the two approved M4L backend hosts:
+  - `devrebootworker.maktab4life.workers.dev`
+  - `api.rebootyourmaktab.maktabhelper.app`
+- The Pages proxy will not proxy arbitrary Worker URLs or arbitrary M4L API routes. It requires the exact `/api/library/drive/file/<fileId>` path and an `access` token.
+- Range headers continue to be forwarded, preserving PDF.js partial loading/seek behavior.
+- Private Drive PDF responses use `Cache-Control: private, no-store, max-age=0` instead of the public cache policy used for public PDF sources.
+- Cache-bumped `m4l-resources.js` to `100.4.1` in Admin and Student HTML.
+
+## Deployment
+This revision is a Cloudflare Pages/frontend patch. The V100.4 Worker does not need to be redeployed.
+
+## Validation
+23 backend/integration test files passed, including the new private Drive PDF proxy test.# M4L V100.4 — Private Google Drive Library Management
 
 ## Scope
 
