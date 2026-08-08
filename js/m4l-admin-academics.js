@@ -41,6 +41,10 @@ function prepareAdminAcademicsScreen() {
   if (window.M4LManageAdmins && typeof window.M4LManageAdmins.syncAccess === "function") {
     window.M4LManageAdmins.syncAccess();
   }
+
+  if (window.M4LManageResources && typeof window.M4LManageResources.syncAccess === "function") {
+    window.M4LManageResources.syncAccess();
+  }
 }
 
 /* =========================

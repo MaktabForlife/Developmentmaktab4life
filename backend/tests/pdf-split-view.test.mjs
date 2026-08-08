@@ -36,7 +36,7 @@ assert.match(resources, /viewerFrame\.src = viewerUrl;/);
 assert.match(teachingPanel, /M4LPdfSplitView\?\.suspendForTeachingPanel/);
 assert.match(shell, /\["pdf-viewer-frame", "pdf-viewer-frame-secondary"\]/);
 assert.match(shell, /M4LPdfSplitView\?\.reset/);
-assert.match(adminHtml, /m4l-resources\.js\?v=99\.1/);
+assert.match(adminHtml, /m4l-resources\.js\?v=100\.4\.0/);
 assert.match(adminHtml, /m4l-teaching-panel\.js\?v=99\.1/);
 
 console.log("PDF split-view V99.1 structure and integration checks passed.");

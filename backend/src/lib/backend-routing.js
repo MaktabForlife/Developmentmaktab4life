@@ -10,6 +10,8 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "attendance-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ATTENDANCE_READ"),
   "attendance-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_ATTENDANCE_WRITE"),
   resources: defineGoogleSheetsOnlyFeature("M4L_BACKEND_RESOURCES"),
+  "resource-management": defineGoogleSheetsOnlyFeature("M4L_BACKEND_RESOURCE_MANAGEMENT"),
+  "drive-library": defineFeature("", BACKEND_WORKER, [BACKEND_WORKER]),
   "timetable-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TIMETABLE_READ"),
   "timetable-write": defineGoogleSheetsOnlyFeature("M4L_BACKEND_TIMETABLE_WRITE"),
   "student-management-read": defineGoogleSheetsOnlyFeature("M4L_BACKEND_STUDENT_MANAGEMENT_READ"),

@@ -112,10 +112,17 @@ export async function getResourcesGoogleSheetsEndpoint(request, env) {
     }
   }));
 
-  // The existing Worker-to-Apps-Script route deliberately sends an empty data
-  // object. Keep that behaviour during migration so both backends return the
-  // same authenticated Library catalogue.
-  return json(buildResourcesResponse(sheets));
+  // V100.4: the current credential-bound account record is authoritative.
+  // Students receive only resources for ALL/their current group, while Admin
+  // users retain the complete Library catalogue.
+  const options = authUser.type === "student"
+    ? {
+        studentid: authUser.studentid,
+        classgroup: authUser.classgroup
+      }
+    : {};
+
+  return json(buildResourcesResponse(sheets, options));
 }
 
 export function buildResourcesResponse(sheets = {}, options = {}) {

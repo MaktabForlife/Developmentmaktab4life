@@ -1,4 +1,7 @@
-/* M4L v99.1 - Large-screen split PDF viewer
+/* M4L v100.4 - Private Google Drive Library access
+   Resolves private Drive-backed resource rows to short-lived Worker delivery URLs.
+
+   M4L v99.1 - Large-screen split PDF viewer
    Adds an admin/teacher-only second PDF.js pane at 1024px and wider.
    Reuses the existing PDF Library drawer, preserves independent PDF.js state,
    and coordinates split mode with the Teaching Panel.
@@ -114,8 +117,47 @@ function resetStudentResourceSelection() {
   libraryResourceSequence = 0;
 }
 
-const LIBRARY_CACHE_KEY = "resources:list:v1";
+const LIBRARY_CACHE_KEY = "resources:list:v2";
 const LIBRARY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isPrivateDriveResourceLink(link) {
+  const value = String(link || "").trim();
+  if (!value) return false;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    return /^\/api\/library\/drive\/file\/[A-Za-z0-9_-]+$/.test(url.pathname);
+  } catch (error) {
+    return false;
+  }
+}
+
+async function resolveLibraryResourceLink(resource) {
+  if (!resource || !resource.link || !isPrivateDriveResourceLink(resource.link)) {
+    return resource ? String(resource.link || "").trim() : "";
+  }
+
+  const result = await apiPost("/api/library/drive/access", {
+    resourceType: resource.type,
+    resourceId: getExistingResourceId(resource.source) || resource.source?.resourceid || ""
+  }, state.token);
+
+  if (!result.success || !result.url) {
+    throw new Error(result.error || "Unable to open the private Drive resource.");
+  }
+
+  return String(result.url);
+}
+
+function invalidateLibraryResourceCache() {
+  libraryResourceSessionReady = false;
+  resetStudentResourceSelection();
+  studentResourceSubjects = [];
+  if (window.M4LCache && typeof window.M4LCache.remove === "function") {
+    window.M4LCache.remove(LIBRARY_CACHE_KEY, { scope: "shared" });
+  }
+  return true;
+}
 
 async function showStudentResources(options = {}) {
   studentResourceViewMode = "student";
@@ -248,12 +290,25 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
       allowStale: true
     });
 
-    if (cached && !forceRefresh && (!cached.stale || navigator.onLine === false)) {
+    if (cached && !forceRefresh) {
       applyResult(cached.data);
+
+      // V100.4: keep the fast cached render, but revalidate once per app session
+      // whenever the device is online so newly added Drive resources do not wait
+      // for the seven-day offline cache TTL.
+      if (navigator.onLine !== false) {
+        window.M4LCache.fetchAndStore(LIBRARY_CACHE_KEY, fetchFresh, {
+          scope: "shared",
+          ttl: LIBRARY_CACHE_TTL_MS,
+          onUpdate: fresh => applyResult(fresh)
+        }).catch(error => {
+          console.warn("The Library background refresh failed; cached resources were retained.", error);
+        });
+      }
       return;
     }
 
-    if (!cached || (cached.stale && !forceRefresh) || (forceRefresh && !libraryResourceSessionReady)) {
+    if (!cached || forceRefresh) {
       setDomHtml(container, `<p class="helper-text">Loading resources...</p>`);
     }
 
@@ -1000,7 +1055,7 @@ function bindResourceUiHandlers() {
   return true;
 }
 
-function openLibraryResourceById(resourceId) {
+async function openLibraryResourceById(resourceId) {
   const resource = libraryResourceMap.get(String(resourceId || ""));
 
   if (!resource) {
@@ -1013,11 +1068,18 @@ function openLibraryResourceById(resourceId) {
     return false;
   }
 
-  if (resource.type === "AUDIO" || resource.type === "VIDEO") {
-    return openInlineResourcePreview(resource.previewId, resource.id, resource.link, resource.type, resource.title);
-  }
+  try {
+    const accessLink = await resolveLibraryResourceLink(resource);
 
-  return openStudentResourceLink(resource.link, resource.type, resource.title, resource.id);
+    if (resource.type === "AUDIO" || resource.type === "VIDEO") {
+      return openInlineResourcePreview(resource.previewId, resource.id, accessLink, resource.type, resource.title);
+    }
+
+    return openStudentResourceLink(accessLink, resource.type, resource.title, resource.id);
+  } catch (error) {
+    alert(error.message || "Unable to open this resource.");
+    return false;
+  }
 }
 
 function openInlineResourcePreview(playerId, resourceId, link, type, title = "Resource") {
@@ -1311,6 +1373,9 @@ function getPdfViewerFileParam(link) {
   }
 
   if (cleanLink.startsWith("http://") || cleanLink.startsWith("https://")) {
+    if (isPrivateDriveResourceLink(cleanLink) && cleanLink.includes("access=")) {
+      return encodeURIComponent(cleanLink);
+    }
     return `/pdf-file/${base64UrlEncode(cleanLink)}`;
   }
 
@@ -1575,47 +1640,61 @@ function renderPdfLibraryNavigation() {
   }).join("");
 }
 
-function loadPrimaryPdfResource(resource) {
-  const viewerUrl = getPdfViewerUrl(resource && resource.link);
-  const viewerFrame = getDomElement("pdf-viewer-frame");
-  if (!resource || !viewerUrl || !viewerFrame) return false;
+async function loadPrimaryPdfResource(resource) {
+  if (!resource) return false;
 
-  currentPdfResourceId = resource.id;
-  currentPdfDirectLink = resource.link;
-  currentPdfTitle = resource.title || "PDF Viewer";
-  window.M4LTeachingPanel?.prepareForPdf?.({
-    resourceId: resource.id,
-    title: currentPdfTitle
-  });
-  setDomText("pdf-viewer-title", currentPdfTitle);
-  viewerFrame.src = viewerUrl;
-  updatePdfSplitPaneLabels();
-  renderPdfLibraryNavigation();
-  closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
-  return true;
+  try {
+    const accessLink = await resolveLibraryResourceLink(resource);
+    const viewerUrl = getPdfViewerUrl(accessLink);
+    const viewerFrame = getDomElement("pdf-viewer-frame");
+    if (!viewerUrl || !viewerFrame) return false;
+
+    currentPdfResourceId = resource.id;
+    currentPdfDirectLink = accessLink;
+    currentPdfTitle = resource.title || "PDF Viewer";
+    window.M4LTeachingPanel?.prepareForPdf?.({
+      resourceId: resource.id,
+      title: currentPdfTitle
+    });
+    setDomText("pdf-viewer-title", currentPdfTitle);
+    viewerFrame.src = viewerUrl;
+    updatePdfSplitPaneLabels();
+    renderPdfLibraryNavigation();
+    closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
+    return true;
+  } catch (error) {
+    alert(error.message || "Unable to open this PDF.");
+    return false;
+  }
 }
 
-function loadSecondaryPdfResource(resource) {
+async function loadSecondaryPdfResource(resource) {
   if (!resource || !isPdfLibraryResource(resource) || !canUsePdfSplitView()) return false;
 
-  const viewerUrl = getPdfViewerUrl(resource.link);
-  const viewerFrame = getDomElement("pdf-viewer-frame-secondary");
-  if (!viewerUrl || !viewerFrame) return false;
+  try {
+    const accessLink = await resolveLibraryResourceLink(resource);
+    const viewerUrl = getPdfViewerUrl(accessLink);
+    const viewerFrame = getDomElement("pdf-viewer-frame-secondary");
+    if (!viewerUrl || !viewerFrame) return false;
 
-  window.M4LTeachingPanel?.close?.();
-  pdfSplitState.secondaryResourceId = resource.id;
-  pdfSplitState.secondaryDirectLink = resource.link;
-  pdfSplitState.secondaryTitle = resource.title || "PDF B";
-  pdfSplitState.selectingSecondary = false;
-  pdfSplitState.enabled = true;
-  viewerFrame.src = viewerUrl;
+    window.M4LTeachingPanel?.close?.();
+    pdfSplitState.secondaryResourceId = resource.id;
+    pdfSplitState.secondaryDirectLink = accessLink;
+    pdfSplitState.secondaryTitle = resource.title || "PDF B";
+    pdfSplitState.selectingSecondary = false;
+    pdfSplitState.enabled = true;
+    viewerFrame.src = viewerUrl;
 
-  closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
-  renderPdfLibraryNavigation();
-  return true;
+    closePdfLibraryDrawer({ cancelSplitSelection: false, rerender: false });
+    renderPdfLibraryNavigation();
+    return true;
+  } catch (error) {
+    alert(error.message || "Unable to open the second PDF.");
+    return false;
+  }
 }
 
-function openPdfLibraryResource(resourceId) {
+async function openPdfLibraryResource(resourceId) {
   const resource = libraryResourceMap.get(String(resourceId || ""));
   if (!resource || !isPdfLibraryResource(resource)) return false;
 
@@ -1626,7 +1705,7 @@ function openPdfLibraryResource(resourceId) {
   return loadPrimaryPdfResource(resource);
 }
 
-function stepPdfLibrary(direction) {
+async function stepPdfLibrary(direction) {
   const index = getCurrentPdfLibraryIndex();
   const nextIndex = index + Number(direction || 0);
   if (index < 0 || nextIndex < 0 || nextIndex >= currentPdfLibraryItems.length) return false;
@@ -2133,7 +2212,8 @@ window.M4LResources = {
   getResourceName: typeof getResourceName === "function" ? getResourceName : undefined,
   getResourceType: typeof getResourceType === "function" ? getResourceType : undefined,
   getResourceFormat: typeof getResourceFormat === "function" ? getResourceFormat : undefined,
-  getResourceLink: typeof getResourceLink === "function" ? getResourceLink : undefined
+  getResourceLink: typeof getResourceLink === "function" ? getResourceLink : undefined,
+  invalidateCache: typeof invalidateLibraryResourceCache === "function" ? invalidateLibraryResourceCache : undefined
 };
 
 window.M4LPdfSplitView = Object.freeze({
