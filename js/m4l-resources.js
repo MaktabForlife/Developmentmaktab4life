@@ -1,4 +1,7 @@
-/* M4L v100.4 - Private Google Drive Library access
+/* M4L v100.4.1 - Private Drive PDF.js compatibility
+   Routes signed M4L Drive PDF URLs through the existing same-origin /pdf-file proxy.
+
+   M4L v100.4 - Private Google Drive Library access
    Resolves private Drive-backed resource rows to short-lived Worker delivery URLs.
 
    M4L v99.1 - Large-screen split PDF viewer
@@ -1373,9 +1376,8 @@ function getPdfViewerFileParam(link) {
   }
 
   if (cleanLink.startsWith("http://") || cleanLink.startsWith("https://")) {
-    if (isPrivateDriveResourceLink(cleanLink) && cleanLink.includes("access=")) {
-      return encodeURIComponent(cleanLink);
-    }
+    // V100.4.1: PDF.js must load absolute PDFs through the same-origin Pages
+    // proxy. This includes short-lived private Drive Worker URLs.
     return `/pdf-file/${base64UrlEncode(cleanLink)}`;
   }
 

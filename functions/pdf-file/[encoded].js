@@ -26,12 +26,14 @@ export async function onRequestGet(context) {
   }
 
   const hostname = targetUrl.hostname.toLowerCase();
+  const isPrivateM4LDriveUrl = isAllowedPrivateM4LDriveUrl(targetUrl);
 
   const allowed =
     hostname.endsWith(".r2.dev") ||
     hostname === "drive.google.com" ||
     hostname === "docs.google.com" ||
-    hostname === "lh3.googleusercontent.com";
+    hostname === "lh3.googleusercontent.com" ||
+    isPrivateM4LDriveUrl;
 
   if (!allowed) {
     return new Response("PDF host not allowed", { status: 403 });
@@ -56,7 +58,10 @@ export async function onRequestGet(context) {
   responseHeaders.set("Content-Type", "application/pdf");
   responseHeaders.set("Content-Disposition", "inline; filename=\"resource.pdf\"");
   responseHeaders.set("Access-Control-Allow-Origin", "*");
-  responseHeaders.set("Cache-Control", "public, max-age=3600");
+  responseHeaders.set(
+    "Cache-Control",
+    isPrivateM4LDriveUrl ? "private, no-store, max-age=0" : "public, max-age=3600"
+  );
   responseHeaders.set("Accept-Ranges", "bytes");
 
   return new Response(upstreamResponse.body, {
@@ -79,6 +84,23 @@ function base64UrlDecode(input) {
   const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
 
   return new TextDecoder().decode(bytes);
+}
+
+const PRIVATE_M4L_DRIVE_HOSTS = new Set([
+  "devrebootworker.maktab4life.workers.dev",
+  "api.rebootyourmaktab.maktabhelper.app"
+]);
+
+function isAllowedPrivateM4LDriveUrl(url) {
+  if (!url || !PRIVATE_M4L_DRIVE_HOSTS.has(url.hostname.toLowerCase())) {
+    return false;
+  }
+
+  if (!/^\/api\/library\/drive\/file\/[A-Za-z0-9_-]+$/.test(url.pathname)) {
+    return false;
+  }
+
+  return !!url.searchParams.get("access");
 }
 
 function normaliseGoogleDriveUrl(url) {

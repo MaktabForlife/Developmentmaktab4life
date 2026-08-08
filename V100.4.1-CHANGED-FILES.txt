@@ -1,0 +1,16 @@
+M4L V100.4.1 - changed files only
+
+Deploy to Cloudflare Pages / repository frontend:
+- admin/index.html
+- student/index.html
+- js/m4l-resources.js
+- functions/pdf-file/[encoded].js
+- version.json
+- js/version.json
+
+Test files (repository only; not runtime-required):
+- backend/tests/pdf-private-drive-proxy.test.mjs
+- backend/tests/pdf-split-view.test.mjs
+- backend/tests/resource-management-ui.test.mjs
+
+No Cloudflare Worker source/config changes are required for V100.4.1.
