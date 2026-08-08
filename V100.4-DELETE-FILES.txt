@@ -1,5 +1,0 @@
-Keep this retired file deleted:
-
-backend/src/routes/auth.js
-
-It was retired before V100.4 and must not be restored when applying an older full-repository archive.
