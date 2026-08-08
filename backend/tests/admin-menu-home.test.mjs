@@ -14,6 +14,9 @@ const landing = landingMatch[1];
 
 assert.match(landing, /id="admin-academics"/);
 assert.match(landing, /admin-menu-icon-grid/);
+assert.match(landing, /data-cover-home-nav="home"/);
+assert.match(landing, /data-cover-home-role="admin"/);
+assert.match(landing, />Home</);
 assert.match(landing, />Student Records</);
 assert.match(landing, />Admin Records</);
 assert.match(landing, />Resources</);
@@ -22,20 +25,24 @@ assert.doesNotMatch(landing, /class="list-stack"/);
 assert.doesNotMatch(landing, />Curriculum</);
 assert.doesNotMatch(landing, />Weekly Planner</);
 assert.doesNotMatch(landing, />Tasks</);
-assert.match(landing, /studentrecords\.svg\?v=100\.7/);
-assert.match(landing, /admin\.svg\?v=100\.7/);
-assert.match(landing, /resources\.svg\?v=100\.7/);
-assert.match(landing, /systemsettings\.svg\?v=100\.7/);
+assert.match(landing, /studentrecords\.svg\?v=100\.7\.1/);
+assert.match(landing, /admin\.svg\?v=100\.7\.1/);
+assert.match(landing, /resources\.svg\?v=100\.7\.1/);
+assert.match(landing, /systemsettings\.svg\?v=100\.7\.1/);
 
 assert.match(adminHtml, /id="admin-system-menu"[\s\S]*?>Zoom Link<[\s\S]*?>System Settings</);
-assert.match(adminHtml, /id="system-settings-screen"[\s\S]*?data-header-target="admin-system-menu"/);
-assert.match(adminHtml, /id="admin-timetable-admin-screen"[\s\S]*?showScreen\('admin-system-menu'\)/);
+assert.match(adminHtml, /id="system-settings-screen"[\s\S]*?data-header-target="admin-academics"/);
+assert.match(adminHtml, /id="admin-timetable-admin-screen"[\s\S]*?app-icon-xclose[\s\S]*?data-header-target="admin-academics"|id="admin-timetable-admin-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);
+assert.doesNotMatch(adminHtml, /id="admin-system-menu"[\s\S]*?<button[^>]*>Back<\/button>[\s\S]*?<!-- ADMIN SYSTEM SETTINGS -->/);
+assert.match(adminHtml, /id="manage-resources-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);
+assert.match(adminHtml, /id="manage-admins-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);
+assert.match(adminHtml, /id="manage-students-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);
 
 assert.match(academicsJs, /function showAdminSystemMenu\(\)/);
 assert.match(academicsJs, /getAdminAcademicsRole\(\) === "ADMIN"/);
 assert.match(academicsJs, /data-admin-menu-admin-only/);
 assert.match(homeCss, /\.admin-menu-icon-grid/);
-assert.match(homeCss, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+assert.match(homeCss, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 assert.match(shellJs, /"admin-system-menu"/);
 
 assert.equal(existsSync(new URL("../../icons/studentrecords.svg", import.meta.url)), true);

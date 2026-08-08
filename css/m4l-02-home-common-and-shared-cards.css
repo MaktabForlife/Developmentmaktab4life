@@ -29,7 +29,7 @@ Home cover-sheet app icons - V95.0
   grid-column: 2;
 }
 
-/* V100.7 Admin navigation landing pages reuse the Home app-icon language. */
+/* V100.7.1 Admin navigation landing pages reuse the Home app-icon language. */
 .admin-menu-icons-section {
   margin: 0 auto;
 }
@@ -42,6 +42,10 @@ Home cover-sheet app icons - V95.0
 
 .admin-menu-icon-grid {
   max-width: 320px;
+}
+
+.admin-menu-icon-grid > :last-child:nth-child(2n + 1) {
+  grid-column: 1 / -1;
 }
 
 .admin-system-icon-grid {
@@ -135,8 +139,12 @@ Home cover-sheet app icons - V95.0
   }
 
   .admin-menu-icon-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-width: 620px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    max-width: 760px;
+  }
+
+  .admin-menu-icon-grid > :last-child:nth-child(2n + 1) {
+    grid-column: auto;
   }
 
   .admin-system-icon-grid {

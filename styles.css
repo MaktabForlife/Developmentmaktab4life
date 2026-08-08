@@ -1,4 +1,6 @@
-/* V100.7 Admin menu app-icon landing page.
+/* V100.7.1 Admin menu Home tile and x-close navigation.
+
+   V100.7 Admin menu app-icon landing page.
 
    V100.4.2 Scrollable Google Drive resource picker and MP4 compatibility.
 
@@ -67,7 +69,7 @@ v91.7.4 - CSS split phase 1 loader
 */
 
 @import url("/css/m4l-01-foundation-auth-userband.css?v=96.5");
-@import url("/css/m4l-02-home-common-and-shared-cards.css?v=100.7");
+@import url("/css/m4l-02-home-common-and-shared-cards.css?v=100.7.1");
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
 @import url("/css/m4l-04-library-resources.css?v=96.5");
 @import url("/css/m4l-05-home-timetable.css?v=91.5");

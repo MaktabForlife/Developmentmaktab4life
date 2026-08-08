@@ -1,3 +1,16 @@
+# V100.7.1 — Admin Home tile and x-close navigation
+
+- Adds a Home tile to the Admin landing page that returns to the main app Home.
+- Changes the top-level Admin child-screen Back buttons to x-close icons.
+- Every new x-close returns directly to the Admin tile landing page.
+- Keeps internal workflow actions such as Back to List unchanged.
+- Uses the supplied monitor-and-cog artwork for `systemsettings.svg`.
+- Expands the large-screen Admin landing grid to five tiles in one row.
+
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+
+---
+
 # V100.7 — Admin menu tile landing page
 
 ## Scope

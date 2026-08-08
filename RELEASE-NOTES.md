@@ -1,3 +1,19 @@
+V100.7.1
+
+# Admin Home tile and x-close navigation
+
+The Admin landing page now includes a Home tile for returning to the main app
+Home. Top-level Back controls in Student Records, Admin Records, Resources,
+System Settings and Zoom Link are now x-close icons that return directly to the
+Admin tile landing page. Internal form navigation such as Back to List is
+unchanged.
+
+The System Settings tile now uses the supplied monitor-and-cog SVG artwork.
+
+This frontend-only package is cumulative from V100.6 and supersedes V100.7.
+
+---
+
 V100.7
 
 # Admin menu tile landing page
