@@ -1,4 +1,4 @@
-/* M4L v96.4 - Environment-controlled backend routing foundation.
+/* M4L V100.5 - Fixed backend ownership; retired migration selectors removed.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "2.1"
+          version: "100.5"
         });
       }
 
@@ -29,10 +29,11 @@ export default {
 
       return json({ success: false, error: "Not found" }, 404);
     } catch (err) {
+      // Deliberately return no exception detail. Authentication requests may contain
+      // sensitive values, so request bodies, PINs and hashes are never echoed or logged.
       return json({
         success: false,
-        error: "Worker error",
-        detail: err && err.message ? err.message : String(err)
+        error: "Worker error"
       }, 500);
     }
   }

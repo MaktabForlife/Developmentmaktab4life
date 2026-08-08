@@ -131,7 +131,7 @@ try {
   assert.equal(studentsResult.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     studentsResult.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_ATTENDANCE_READ"
+    "fixed"
   );
   assert.equal(studentsResult.data.classgroup, "1", "Teachers must be restricted to their group");
   assert.deepEqual(
@@ -206,7 +206,7 @@ try {
   assert.equal(submitResult.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     submitResult.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_ATTENDANCE_WRITE"
+    "fixed"
   );
   assert.equal(submitResult.data.success, true);
   assert.equal(submitResult.data.absentCount, 1);

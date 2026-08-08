@@ -113,7 +113,7 @@ try {
   assert.equal(initial.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     initial.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_SYSTEM_SETTINGS"
+    "fixed"
   );
   assert.deepEqual(initial.data, {
     success: true,

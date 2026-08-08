@@ -153,7 +153,7 @@ try {
   assert.equal(studentTasks.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     studentTasks.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_PROGRESS_READ"
+    "fixed"
   );
   assert.equal(studentTasks.data.studentid, "ST1", "Students must only receive their own tasks");
   assert.equal(studentTasks.data.count, 2);

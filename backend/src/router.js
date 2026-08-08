@@ -8,6 +8,12 @@ import {
   studentLoginGoogleSheetsEndpoint
 } from "./routes/auth-google-sheets.js";
 import {
+  registerAdminGoogleSheetsEndpoint,
+  resetAdminPinGoogleSheetsEndpoint,
+  searchAdminsGoogleSheetsEndpoint,
+  updateAdminGoogleSheetsEndpoint
+} from "./routes/admin-account-management.js";
+import {
   attendanceReportGoogleSheetsEndpoint,
   attendanceStudentsGoogleSheetsEndpoint,
   submitAbsentAttendanceGoogleSheetsEndpoint
@@ -37,6 +43,15 @@ import {
   updateTimetableZoomLinkGoogleSheetsEndpoint
 } from "./routes/timetable.js";
 import { getResourcesGoogleSheetsEndpoint } from "./routes/resources.js";
+import {
+  browseDriveFolderEndpoint,
+  createDriveFileAccessEndpoint,
+  createDriveResourceEndpoint,
+  getResourceManagementOptionsEndpoint,
+  listManagedResourcesEndpoint,
+  streamDriveFileEndpoint,
+  updateDriveResourceEndpoint
+} from "./routes/drive-library.js";
 import {
   createSubjectGoogleSheetsEndpoint,
   createSubjectResourceGoogleSheetsEndpoint,
@@ -74,6 +89,12 @@ const ROUTES = new Map([
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
+  ["/api/admin/resources/options", googleSheetsRoute("resource-management", getResourceManagementOptionsEndpoint)],
+  ["/api/admin/resources/create", googleSheetsRoute("resource-management", createDriveResourceEndpoint)],
+  ["/api/admin/resources/manage-list", googleSheetsRoute("resource-management", listManagedResourcesEndpoint)],
+  ["/api/admin/resources/update", googleSheetsRoute("resource-management", updateDriveResourceEndpoint)],
+  ["/api/admin/drive/browse", workerRoute("drive-library", browseDriveFolderEndpoint)],
+  ["/api/library/drive/access", workerRoute("drive-library", createDriveFileAccessEndpoint)],
 
   ["/api/timetable/get", googleSheetsRoute("timetable-read", getTimetableGoogleSheetsEndpoint)],
   ["/api/student/timetable/get", googleSheetsRoute("timetable-read", getTimetableGoogleSheetsEndpoint)],
@@ -97,6 +118,11 @@ const ROUTES = new Map([
   ["/api/admin/setup-pin", googleSheetsRoute("auth", setupAdminPinGoogleSheetsEndpoint)],
   ["/api/admin/login", googleSheetsRoute("auth", adminLoginGoogleSheetsEndpoint)],
   ["/api/admin/reset-pin", googleSheetsRoute("auth", resetStudentPinGoogleSheetsEndpoint)],
+
+  ["/api/admin/admins/search", googleSheetsRoute("admin-management-read", searchAdminsGoogleSheetsEndpoint)],
+  ["/api/admin/register-admin", googleSheetsRoute("admin-management-write", registerAdminGoogleSheetsEndpoint)],
+  ["/api/admin/update-admin", googleSheetsRoute("admin-management-update", updateAdminGoogleSheetsEndpoint)],
+  ["/api/admin/reset-admin-pin", googleSheetsRoute("admin-management-update", resetAdminPinGoogleSheetsEndpoint)],
 
   ["/api/check-student", googleSheetsRoute("auth", checkStudentGoogleSheetsEndpoint)],
   ["/api/setup-pin", googleSheetsRoute("auth", setupStudentPinGoogleSheetsEndpoint)],
@@ -136,7 +162,17 @@ const ROUTES = new Map([
 
 export function routeRequest(request, env, pathname) {
   const route = ROUTES.get(pathname);
-  return route ? executeRoute(route, request, env, pathname) : null;
+  if (route) return executeRoute(route, request, env, pathname);
+
+  const driveFileMatch = /^\/api\/library\/drive\/file\/([A-Za-z0-9_-]+)$/.exec(pathname);
+  if (driveFileMatch) {
+    const dynamicRoute = workerRoute("drive-library", (dynamicRequest, dynamicEnv) => (
+      streamDriveFileEndpoint(dynamicRequest, dynamicEnv, driveFileMatch[1])
+    ));
+    return executeRoute(dynamicRoute, request, env, pathname);
+  }
+
+  return null;
 }
 
 export const ROUTE_PATHS = Object.freeze(Array.from(ROUTES.keys()));

@@ -1,0 +1,230 @@
+/* M4L V100.4.2 - Scrollable Google Drive picker and MP4 compatibility. */
+
+#manage-resources-content {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 0.75rem 0 2rem;
+}
+
+.manage-resource-home-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.manage-resource-home-card {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 92px;
+  padding: 1rem;
+  text-align: left;
+  border: 2px solid var(--surface-track);
+  border-radius: 16px;
+  background: var(--surface-card);
+  color: var(--text);
+}
+
+.manage-resource-home-card strong {
+  font-size: 1rem;
+}
+
+.manage-resource-home-card span {
+  font-size: 0.86rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.manage-resource-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.manage-resource-toolbar strong {
+  text-align: center;
+  color: var(--text);
+}
+
+.manage-resource-form-card,
+.manage-resource-filter-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.manage-resource-form-card input,
+.manage-resource-form-card select,
+.manage-resource-filter-card input,
+.manage-resource-filter-card select {
+  width: 100%;
+}
+
+.manage-resource-drive-button {
+  width: 100%;
+  min-height: 52px;
+  border: 2px dashed var(--surface-track);
+  border-radius: 14px;
+  background: var(--surface-app);
+  color: var(--text);
+}
+
+.manage-resource-selected-file {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 2px solid var(--surface-track);
+  border-radius: 14px;
+  background: var(--surface-app);
+}
+
+.manage-resource-selected-file div,
+.manage-drive-item span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.manage-resource-selected-file strong,
+.manage-drive-item strong {
+  overflow-wrap: anywhere;
+}
+
+.manage-resource-selected-file small,
+.manage-drive-item small {
+  font-size: 0.78rem;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.manage-resource-readonly-value {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border: 2px solid var(--surface-track);
+  border-radius: 12px;
+  background: var(--disabled);
+  color: var(--text);
+}
+
+.manage-resource-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.manage-resource-filter-grid label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.manage-resource-filter-grid span {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.managed-resource-list,
+.manage-drive-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.manage-drive-list {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 0.15rem;
+}
+
+.managed-resource-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.managed-resource-type {
+  min-width: 72px;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-track);
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.manage-drive-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem;
+  border-radius: 12px;
+  background: var(--surface-card);
+  border: 2px solid var(--surface-track);
+}
+
+.manage-drive-breadcrumbs button {
+  padding: 0.3rem 0.45rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.manage-drive-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.8rem;
+  text-align: left;
+  border: 2px solid var(--surface-track);
+  border-radius: 14px;
+  background: var(--surface-card);
+  color: var(--text);
+}
+
+.manage-drive-item.is-folder {
+  background: var(--surface-app);
+}
+
+.manage-drive-item.is-disabled {
+  opacity: 0.48;
+}
+
+.manage-drive-icon {
+  font-size: 1.35rem;
+}
+
+.manage-resource-result-card {
+  text-align: center;
+}
+
+@media (min-width: 700px) {
+  .manage-resource-home-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .manage-resource-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .managed-resource-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .managed-resource-type {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}

@@ -173,7 +173,7 @@ try {
   assert.equal(studentResult.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     studentResult.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_TIMETABLE_READ"
+    "fixed"
   );
   assert.equal(studentResult.data.groupno, "1", "Student reads must use the authenticated group");
   assert.equal(studentResult.data.assignedteacher, "ALL");
@@ -229,7 +229,7 @@ try {
   assert.equal(directZoomWrite.response.headers.get("X-M4L-Backend"), "google-sheets");
   assert.equal(
     directZoomWrite.response.headers.get("X-M4L-Backend-Source"),
-    "M4L_BACKEND_TIMETABLE_WRITE"
+    "fixed"
   );
   assert.equal(directZoomWrite.data.success, true);
   assert.equal(directZoomWrite.data.zoomlink, "https://zoom.test/direct");
