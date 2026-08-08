@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "100.6.0",
+  "version": "100.7.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -29,7 +29,8 @@
     "test:pdfjs-annotations": "node tests/pdfjs-annotation-session.test.mjs",
     "test:pdf-split": "node tests/pdf-split-view.test.mjs",
     "test:drive-library": "node tests/drive-library.test.mjs",
-    "test:resource-management-ui": "node tests/resource-management-ui.test.mjs"
+    "test:resource-management-ui": "node tests/resource-management-ui.test.mjs",
+    "test:admin-menu-home": "node tests/admin-menu-home.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.36.0"

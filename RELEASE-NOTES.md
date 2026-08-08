@@ -1,3 +1,30 @@
+V100.7
+
+# Admin menu tile landing page
+
+The Admin navigation item now opens a four-tile landing page using the same
+app-icon card style as the main Home page:
+
+- Student Records
+- Admin Records
+- Resources
+- System Settings
+
+System Settings opens a smaller submenu containing Zoom Link and the existing
+System Settings form. Admin-only controls retain their current visibility and
+Worker-side authorization rules.
+
+This is a frontend-only release. Deploy the files listed in
+`CHANGED-FILES.txt`; no Worker or Apps Script deployment is required.
+
+## Validation
+
+- Admin menu integration regression test added.
+- JavaScript syntax and package JSON checks pass.
+- Existing Admin management UI test updated for the new stylesheet cache key.
+
+---
+
 V100.6
 
 # Worker Settings become the environment source of truth

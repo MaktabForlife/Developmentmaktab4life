@@ -1,3 +1,30 @@
+# V100.7 — Admin menu tile landing page
+
+## Scope
+
+V100.7 replaces the old Admin list dashboard with an app-icon landing page
+that matches the tile style used on the main Home page.
+
+## Behaviour
+
+- The Admin navigation item opens four tiles: Student Records, Admin Records,
+  Resources and System Settings.
+- Student Records opens the existing student register/modify flow.
+- Admin Records and Resources open their existing management flows.
+- System Settings opens a two-tile submenu for Zoom Link and the existing
+  application System Settings form.
+- ADMIN-only visibility and all existing Worker authorization remain intact.
+- The Admin bottom-navigation item remains active on the landing page and its
+  management child screens.
+- Mobile uses a two-column tile grid; medium and large screens show all four
+  landing tiles in one row.
+
+## Deployment
+
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+
+---
+
 # V99.1 — Large-screen split PDF viewer
 
 ## Scope

@@ -1,49 +1,27 @@
-V100.6
+V100.7
 
-M4L Worker Settings source-of-truth correction.
+Admin menu tile landing page.
 
-Deploy/copy these changed files:
+Deploy/copy these changed frontend files:
 
-backend/src/lib/google-service-account-email.js
-  NEW. Expected service-account email guard and safe Admin diagnostics summary.
-
-backend/src/lib/google-drive.js
-  Enforces the configured expected service-account email when present.
-
-backend/src/lib/google-sheets.js
-  Enforces the configured expected service-account email when present.
-
-backend/src/routes/backend-routing.js
-  Adds googleServiceAccount identity status to authenticated Admin routing diagnostics.
-
-backend/wrangler.jsonc
-  Removes all environment-specific application values. Keeps only Worker deployment structure, R2 and rate-limit bindings.
-
-backend/WORKER-SETTINGS.md
-  NEW. Permanent reference for which settings belong in Cloudflare Worker Settings vs Wrangler.
-
-backend/src/worker.js
-  Health version -> 100.6.
-
-backend/package.json
-  Package version -> 100.6.0 and service-account email guard test command added.
-
-backend/tests/google-service-account-email.test.mjs
-  NEW regression tests for missing, matching, mismatching and invalid credential states.
-
-backend/tests/backend-routing.test.mjs
-  Verifies wrangler.jsonc contains no environment-specific application values and still retains required bindings.
-
-backend/tests/router.test.mjs
-  Health-version expectation -> 100.6.
-
+admin/index.html
+styles.css
+css/m4l-02-home-common-and-shared-cards.css
+js/m4l-admin-academics.js
+js/m4l-shell.js
+icons/studentrecords.svg
+icons/systemsettings.svg
 version.json
 js/version.json
-  Version -> 100.6.
 
-Release metadata:
+Release/test metadata:
+
+backend/package.json
+backend/tests/admin-menu-home.test.mjs
+backend/tests/admin-management-ui.test.mjs
 CHANGED-FILES.txt
+CHANGES.md
 RELEASE-NOTES.md
 DELETE-FILES.txt
 
-No frontend UI/runtime file changes are required for V100.6.
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.

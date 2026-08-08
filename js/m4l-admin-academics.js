@@ -1,4 +1,4 @@
-/* M4L V100.3 - Admin Academics / Curriculum module
+/* M4L V100.7 - Admin menu home and Admin Academics / Curriculum module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-attendance.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe
    while the app is split gradually.
@@ -18,21 +18,47 @@ function showAdminAcademics() {
   showScreen("admin-academics");
 }
 
+function getAdminAcademicsRole() {
+  return String(typeof state !== "undefined" && state && state.user ? state.user.role || "" : "")
+    .trim()
+    .toUpperCase();
+}
+
+function syncAdminLandingAccess() {
+  const allowed = getAdminAcademicsRole() === "ADMIN";
+
+  document.querySelectorAll("[data-admin-menu-admin-only]").forEach(button => {
+    button.classList.toggle("hidden", !allowed);
+    button.disabled = !allowed;
+    button.setAttribute("aria-hidden", allowed ? "false" : "true");
+  });
+
+  return allowed;
+}
+
+function showAdminSystemMenu() {
+  if (!syncAdminLandingAccess()) {
+    alert("System Settings are available to ADMIN accounts only.");
+    return false;
+  }
+
+  if (window.M4LSystemSettings && typeof window.M4LSystemSettings.syncAccess === "function") {
+    window.M4LSystemSettings.syncAccess();
+  }
+
+  return showScreen("admin-system-menu");
+}
+
 function prepareAdminAcademicsScreen() {
   const screen = document.getElementById("admin-academics");
   if (!screen) return;
 
   const title = screen.querySelector("h2");
   if (title) {
-    title.innerText = "Add or Modify";
+    title.innerText = "Admin";
   }
 
-  screen.querySelectorAll("button").forEach(button => {
-    const text = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (text === "add / modify students" || text === "add/modify students") {
-      button.textContent = "Students";
-    }
-  });
+  syncAdminLandingAccess();
 
   if (window.M4LSystemSettings && typeof window.M4LSystemSettings.syncAccess === "function") {
     window.M4LSystemSettings.syncAccess();
@@ -462,6 +488,8 @@ async function saveSubjectChanges() {
 window.M4LAdminAcademics = {
   showPlaceholder,
   showAdminAcademics,
+  showAdminSystemMenu,
+  syncAdminLandingAccess,
   prepareAdminAcademicsScreen,
   bindAdminSubjectUiHandlers,
   showSubjectsScreen,

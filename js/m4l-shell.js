@@ -3569,11 +3569,15 @@ function getBottomNavActiveKey(screenId, role) {
 
     if (id.startsWith("manage-student")) return "admin";
 
+    if (["manage-admins-screen", "manage-resources-screen", "system-settings-screen"].includes(id)) {
+      return "admin";
+    }
+
     if (id === "placeholder-screen") {
       return "admin";
     }
 
-    if (["admin-academics", "subjects-screen"].includes(id)) {
+    if (["admin-academics", "admin-system-menu", "subjects-screen"].includes(id)) {
       return "admin";
     }
 
