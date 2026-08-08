@@ -1,7 +1,9 @@
-/* M4L v96.1 - Reusable direct Google Sheets client.
+/* M4L V100.6 - Reusable direct Google Sheets client.
    Keeps service-account authentication, token caching and generic Sheets value
    operations independent from feature-specific Worker routes.
 */
+
+import { assertGoogleServiceAccountEmailMatches } from "./google-service-account-email.js";
 
 let accessTokenCache = {
   key: "",
@@ -107,6 +109,8 @@ function getGoogleServiceAccountConfig(env) {
   if (!config.client_email || !config.private_key) {
     throw new Error("Google service-account credential is incomplete");
   }
+
+  assertGoogleServiceAccountEmailMatches(env, config.client_email);
 
   const tokenUri = String(config.token_uri || "https://oauth2.googleapis.com/token").trim();
   const allowedTokenUris = new Set([

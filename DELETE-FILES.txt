@@ -1,19 +1,5 @@
-M4L V100.5
+V100.6
 
-No repository files are deleted in this revision.
+No repository files need to be deleted.
 
-Cloudflare dashboard housekeeping (manual, after Worker deployment):
-- Delete the retired M4L_BACKEND_* selector variables listed in RELEASE-NOTES.md / CHANGED-FILES.txt.
-- Do NOT delete APPS_SCRIPT_URL.
-- M4L_BACKEND_ROUTING_LOGS is optional and may remain if routing logs are intentionally enabled.
-
-M4L V100.4.4
-
-No new files are deleted in this revision.
-
-M4L V100.4.3
-
-No new files are deleted in this revision.
-
-Keep this previously retired file deleted:
-- backend/src/routes/auth.js
+Cloudflare Worker Settings are being made authoritative for environment-specific values. Do not delete the live Worker variables listed in backend/WORKER-SETTINGS.md; those values are now required there because they are no longer supplied by wrangler.jsonc.
