@@ -26,7 +26,8 @@ assert.match(manageJs, /data-resource-id=/);
 assert.match(resourcesJs, /\/api\/library\/drive\/access/);
 assert.match(resourcesJs, /resolveLibraryResourceLink/);
 assert.match(resourcesJs, /invalidateLibraryResourceCache/);
-assert.match(styles, /m4l-21-manage-resources\.css\?v=100\.4\.0/);
+assert.match(styles, /m4l-21-manage-resources\.css\?v=100\.4\.2/);
+assert.match(css, /\.manage-drive-list\s*\{[\s\S]*max-height:\s*min\(58vh, 520px\)[\s\S]*overflow-y:\s*auto/);
 assert.match(css, /manage-drive-breadcrumbs/);
 assert.match(css, /managed-resource-row/);
 

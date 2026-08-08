@@ -1,4 +1,4 @@
-/* M4L V100.4 - Private Google Drive Library management. */
+/* M4L V100.4.2 - Scrollable Google Drive picker and MP4 compatibility. */
 
 #manage-resources-content {
   display: grid;
@@ -131,6 +131,14 @@
 .manage-drive-list {
   display: grid;
   gap: 0.65rem;
+}
+
+.manage-drive-list {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 0.15rem;
 }
 
 .managed-resource-row {

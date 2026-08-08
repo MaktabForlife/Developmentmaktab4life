@@ -90,7 +90,8 @@ const studentThreeToken = await createSessionToken({
 const driveItems = new Map([
   ["ROOT123", { id: "ROOT123", name: "M4L Resources", mimeType: "application/vnd.google-apps.folder", parents: [], trashed: false }],
   ["FOLDER1", { id: "FOLDER1", name: "Fiqh", mimeType: "application/vnd.google-apps.folder", parents: ["ROOT123"], trashed: false }],
-  ["FILE123", { id: "FILE123", name: "Fiqh Lesson 1.pdf", mimeType: "application/pdf", size: "26", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }]
+  ["FILE123", { id: "FILE123", name: "Fiqh Lesson 1.pdf", mimeType: "application/pdf", size: "26", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }],
+  ["FILEMP4", { id: "FILEMP4", name: "Fiqh Lesson Video.mp4", mimeType: "application/octet-stream", size: "1024", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }]
 ]);
 
 const originalFetch = globalThis.fetch;
@@ -121,8 +122,13 @@ try {
 
   const browseFolder = await post("/api/admin/drive/browse", { folderId: "FOLDER1" }, adminToken);
   assert.equal(browseFolder.response.status, 200);
-  assert.equal(browseFolder.data.items[0].id, "FILE123");
-  assert.deepEqual(browseFolder.data.items[0].supportedTypes, ["EBOOK", "PRINTABLE"]);
+  const pdfItem = browseFolder.data.items.find(item => item.id === "FILE123");
+  const mp4Item = browseFolder.data.items.find(item => item.id === "FILEMP4");
+  assert.ok(pdfItem);
+  assert.ok(mp4Item);
+  assert.deepEqual(pdfItem.supportedTypes, ["EBOOK", "PRINTABLE"]);
+  assert.deepEqual(mp4Item.supportedTypes, ["VIDEO"]);
+  assert.equal(mp4Item.format, "MP4");
 
   const options = await post("/api/admin/resources/options", {}, adminToken);
   assert.equal(options.response.status, 200);

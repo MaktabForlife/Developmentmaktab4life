@@ -63,7 +63,9 @@ const RESOURCE_CONFIGS = Object.freeze({
     nameHeaders: ["VideoName", "ResourceName"],
     formatHeaders: ["VideoFormat", "Format"],
     linkHeaders: ["VideoLink", "ResourceLink", "Link"],
-    acceptedMimePrefixes: ["video/"]
+    acceptedMimePrefixes: ["video/"],
+    acceptedMimeTypes: ["application/mp4"],
+    acceptedExtensions: ["mp4", "m4v", "mov", "webm"]
   }),
   OTHER: resourceConfig({
     type: "OTHER",
@@ -480,6 +482,7 @@ function resourceConfig(config) {
   return Object.freeze({
     acceptedMimeTypes: [],
     acceptedMimePrefixes: [],
+    acceptedExtensions: [],
     ...config,
     subjectIdHeaders: ["SubjectId", "SubjectID"],
     subjectNameHeaders: ["SubjectName", "Subject"],
@@ -806,7 +809,16 @@ function validateFileForResourceType(file, config) {
   const mimeType = clean(file.mimeType).toLowerCase();
   const exact = config.acceptedMimeTypes.includes(mimeType);
   const prefix = config.acceptedMimePrefixes.some(value => mimeType.startsWith(value));
-  return exact || prefix
+  const extension = getFileExtension(file.name);
+  const genericMimeType = !mimeType || [
+    "application/octet-stream",
+    "binary/octet-stream",
+    "application/binary",
+    "application/x-download"
+  ].includes(mimeType);
+  const extensionFallback = genericMimeType && config.acceptedExtensions.includes(extension);
+
+  return exact || prefix || extensionFallback
     ? { ok: true }
     : { ok: false, error: `${file.name || "This file"} is not supported as ${config.label}.` };
 }
@@ -893,6 +905,11 @@ function getRootFolderId(env) {
   if (!id) throw new Error("Missing M4L_GOOGLE_DRIVE_ROOT_FOLDER_ID Worker variable");
   if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error("M4L_GOOGLE_DRIVE_ROOT_FOLDER_ID is invalid");
   return id;
+}
+
+function getFileExtension(name) {
+  const match = /\.([A-Za-z0-9]{1,12})$/.exec(clean(name));
+  return match ? match[1].toLowerCase() : "";
 }
 
 function deriveFileFormat(name, mimeType) {

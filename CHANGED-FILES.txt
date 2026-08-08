@@ -1,16 +1,36 @@
-M4L V100.4.1 - changed files only
+M4L V100.4.2
 
-Deploy to Cloudflare Pages / repository frontend:
+Runtime files changed
+---------------------
+Worker:
+- backend/src/routes/drive-library.js
+
+Cloudflare Pages / frontend:
 - admin/index.html
 - student/index.html
-- js/m4l-resources.js
-- functions/pdf-file/[encoded].js
+- styles.css
+- css/m4l-21-manage-resources.css
 - version.json
 - js/version.json
 
-Test files (repository only; not runtime-required):
-- backend/tests/pdf-private-drive-proxy.test.mjs
-- backend/tests/pdf-split-view.test.mjs
+Tests changed
+-------------
+- backend/tests/drive-library.test.mjs
 - backend/tests/resource-management-ui.test.mjs
 
-No Cloudflare Worker source/config changes are required for V100.4.1.
+What changed
+------------
+- Google Drive folder/file picker now has its own vertical scroll area.
+- Breadcrumb navigation remains outside the scrolling list and stays visible.
+- Video files continue to accept normal Drive video/* MIME types.
+- Added application/mp4 support.
+- Added a narrow filename-extension fallback for MP4/M4V/MOV/WEBM only when Google Drive reports a generic binary MIME type.
+
+M4L V100.4.1
+-------------
+- Restored private Drive PDF loading through the established /pdf-file/<encoded-url> PDF.js path.
+- Added approved M4L Worker hosts to the private PDF proxy allowlist.
+
+M4L V100.4
+-----------
+- Added private Google Drive-backed Library management and delivery.

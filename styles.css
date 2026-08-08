@@ -1,4 +1,6 @@
-/* V100.4 Private Google Drive Library management UI loader.
+/* V100.4.2 Scrollable Google Drive resource picker and MP4 compatibility.
+
+   V100.4 Private Google Drive Library management UI loader.
    Adds the ADMIN-only Drive folder browser and resource add/modify screens.
 
    V100.3 Admin account management UI loader.
@@ -83,4 +85,4 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-18-system-settings.css?v=98.12");
 @import url("/css/m4l-19-pdf-split-view.css?v=99.1");
 @import url("/css/m4l-20-manage-admins.css?v=100.3.0");
-@import url("/css/m4l-21-manage-resources.css?v=100.4.0");
+@import url("/css/m4l-21-manage-resources.css?v=100.4.2");
