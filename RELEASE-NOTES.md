@@ -1,3 +1,17 @@
+V100.7.2
+
+# Highlighted Admin Home tile
+
+The Admin landing page now has separate Home and Admin Home tiles. Home returns
+to the main app Home, while Admin Home represents the current Admin landing page
+and uses the same lavender active-state highlight as the main app Home tile.
+
+The six Admin tiles display in one row on medium and large screens. This
+frontend-only package is cumulative from V100.6 and supersedes V100.7 and
+V100.7.1.
+
+---
+
 V100.7.1
 
 # Admin Home tile and x-close navigation

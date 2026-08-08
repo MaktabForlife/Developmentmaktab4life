@@ -1,3 +1,15 @@
+# V100.7.2 — Highlighted Admin Home tile
+
+- Adds a separate Admin Home tile to the Admin landing page.
+- Highlights Admin Home with the same active lavender tile treatment used by
+  the main app Home page.
+- Keeps the normal Home tile as the route back to the main app Home.
+- Shows all six Admin landing tiles in one row on medium and large screens.
+
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+
+---
+
 # V100.7.1 — Admin Home tile and x-close navigation
 
 - Adds a Home tile to the Admin landing page that returns to the main app Home.

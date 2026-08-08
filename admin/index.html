@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=100.7.1">
+<link rel="stylesheet" href="/styles.css?v=100.7.2">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -179,10 +179,24 @@
           </button>
 
           <button
+            class="home-cover-icon-btn is-home-active"
+            type="button"
+            onclick="showAdminAcademics()"
+            aria-current="page"
+            aria-label="Admin Home"
+            style="--cover-home-icon: url('/icons/home.svg?v=100.7.2')"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Admin Home</span>
+          </button>
+
+          <button
             class="home-cover-icon-btn"
             type="button"
             onclick="showManageStudents()"
-            style="--cover-home-icon: url('/icons/studentrecords.svg?v=100.7.1')"
+            style="--cover-home-icon: url('/icons/studentrecords.svg?v=100.7.2')"
             aria-label="Open Student Records"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
@@ -197,7 +211,7 @@
             data-manage-admin-action="open"
             type="button"
             aria-hidden="true"
-            style="--cover-home-icon: url('/icons/admin.svg?v=100.7.1')"
+            style="--cover-home-icon: url('/icons/admin.svg?v=100.7.2')"
             aria-label="Open Admin Records"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
@@ -212,7 +226,7 @@
             data-manage-resource-action="open"
             type="button"
             aria-hidden="true"
-            style="--cover-home-icon: url('/icons/resources.svg?v=100.7.1')"
+            style="--cover-home-icon: url('/icons/resources.svg?v=100.7.2')"
             aria-label="Open Resources"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
@@ -228,7 +242,7 @@
             onclick="showAdminSystemMenu()"
             type="button"
             aria-hidden="true"
-            style="--cover-home-icon: url('/icons/systemsettings.svg?v=100.7.1')"
+            style="--cover-home-icon: url('/icons/systemsettings.svg?v=100.7.2')"
             aria-label="Open System Settings menu"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
@@ -263,7 +277,7 @@
             class="home-cover-icon-btn"
             type="button"
             onclick="showAdminZoomLinkAdmin()"
-            style="--cover-home-icon: url('/icons/zoom.svg?v=100.7.1')"
+            style="--cover-home-icon: url('/icons/zoom.svg?v=100.7.2')"
             aria-label="Open Zoom Link settings"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
@@ -278,7 +292,7 @@
             data-system-settings-action="open"
             type="button"
             aria-hidden="true"
-            style="--cover-home-icon: url('/icons/systemsettings.svg?v=100.7.1')"
+            style="--cover-home-icon: url('/icons/systemsettings.svg?v=100.7.2')"
             aria-label="Open application System Settings"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
@@ -1388,13 +1402,13 @@
 <script src="/app.js?v=94.1"></script>
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=100.2"></script>
-<script src="/js/m4l-shell.js?v=100.7.1"></script>
+<script src="/js/m4l-shell.js?v=100.7.2"></script>
   <script src="/js/m4l-timetable.js?v=97.1.5.5"></script>
   <script src="/js/m4l-weekly-planner.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
-<script src="/js/m4l-admin-academics.js?v=100.7.1"></script>
+<script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
 <script src="/js/m4l-system-settings.js?v=98.12"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>

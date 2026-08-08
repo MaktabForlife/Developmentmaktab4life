@@ -1,7 +1,7 @@
-V100.7.1
+V100.7.2
 
-Admin menu Home tile and x-close navigation. This package is cumulative and
-can be applied directly to V100.6; it supersedes V100.7.
+Highlighted Admin Home tile. This package is cumulative and can be applied
+directly to V100.6; it supersedes V100.7 and V100.7.1.
 
 Deploy/copy these changed frontend files:
 
