@@ -1,4 +1,4 @@
-/* M4L V100.4 - Private Google Drive-backed Library management and delivery. */
+/* M4L V100.4.3 - ModuleList-backed Library management options. */
 import { getAuthUser, requireSystemAdmin } from "../lib/auth.js";
 import {
   appendGoogleSheetValues,
@@ -15,6 +15,7 @@ import {
 import { json } from "../lib/http.js";
 
 const SUBJECT_LIST_SHEET = "SubjectList";
+const MODULE_LIST_SHEET = "ModuleList";
 const TASK_LIST_SHEET = "TaskList";
 const FULL_RANGE = "A:ZZ";
 const DEFAULT_ACCESS_TTL_SECONDS = 60 * 60;
@@ -143,8 +144,9 @@ export async function getResourceManagementOptionsEndpoint(request, env) {
   const permission = await requireSystemAdmin(request, env);
   if (!permission.ok) return permission.response;
 
-  const [subjectRows, taskRows] = await Promise.all([
+  const [subjectRows, moduleRows, taskRows] = await Promise.all([
     readGoogleSheetValues(env, `${SUBJECT_LIST_SHEET}!${FULL_RANGE}`),
+    readGoogleSheetValues(env, `${MODULE_LIST_SHEET}!${FULL_RANGE}`),
     readGoogleSheetValues(env, `${TASK_LIST_SHEET}!${FULL_RANGE}`)
   ]);
 
@@ -154,7 +156,7 @@ export async function getResourceManagementOptionsEndpoint(request, env) {
       type: config.type,
       label: config.label
     })),
-    subjects: buildResourceOptions(subjectRows, taskRows)
+    subjects: buildResourceOptions(subjectRows, moduleRows, taskRows)
   });
 }
 
@@ -528,11 +530,12 @@ async function validateResourcePayload(env, payload, options = {}) {
   if (!payload.groupNo) return { ok: false, error: "Group is required" };
   if (options.requireFile && !payload.fileId) return { ok: false, error: "Select a Google Drive file" };
 
-  const [subjectRows, taskRows] = await Promise.all([
+  const [subjectRows, moduleRows, taskRows] = await Promise.all([
     readGoogleSheetValues(env, `${SUBJECT_LIST_SHEET}!${FULL_RANGE}`),
+    readGoogleSheetValues(env, `${MODULE_LIST_SHEET}!${FULL_RANGE}`),
     readGoogleSheetValues(env, `${TASK_LIST_SHEET}!${FULL_RANGE}`)
   ]);
-  const subjects = buildResourceOptions(subjectRows, taskRows);
+  const subjects = buildResourceOptions(subjectRows, moduleRows, taskRows);
   const subject = subjects.find(item => item.subjectid === payload.subjectId);
   if (!subject) return { ok: false, error: "Selected subject was not found" };
 
@@ -557,14 +560,14 @@ async function validateResourcePayload(env, payload, options = {}) {
   return { ok: true, subject, module, task };
 }
 
-function buildResourceOptions(subjectRows = [], taskRows = []) {
+function buildResourceOptions(subjectRows = [], moduleRows = [], taskRows = []) {
   const subjects = [];
   const subjectMap = new Map();
   const subjectHeaders = buildHeaderMap(subjectRows[0] || []);
   const subjectColumns = {
     id: findColumn(subjectHeaders, ["SubjectId", "SubjectID"]),
     name: findColumn(subjectHeaders, ["SubjectName", "Subject"]),
-    active: findColumn(subjectHeaders, ["Active"])
+    active: findColumn(subjectHeaders, ["Active", "Status"])
   };
 
   subjectRows.slice(1).forEach(row => {
@@ -584,6 +587,41 @@ function buildResourceOptions(subjectRows = [], taskRows = []) {
     subjects.push(subject);
   });
 
+  // ModuleList is authoritative for the Library module picker.
+  // TaskList may attach tasks to these modules, but it must not invent modules.
+  const moduleHeaders = buildHeaderMap(moduleRows[0] || []);
+  const moduleColumns = {
+    id: findColumn(moduleHeaders, ["ModuleId", "ModuleID"]),
+    subjectId: findColumn(moduleHeaders, ["SubjectId", "SubjectID"]),
+    name: findColumn(moduleHeaders, ["ModuleName", "Module"]),
+    sortOrder: findColumn(moduleHeaders, ["Sort Order", "SortOrder", "ModuleSortOrder"]),
+    active: findColumn(moduleHeaders, ["Active", "Status"])
+  };
+
+  moduleRows.slice(1).forEach(row => {
+    const moduleid = clean(getCell(row, moduleColumns.id));
+    const subjectid = clean(getCell(row, moduleColumns.subjectId));
+    const modulename = clean(getCell(row, moduleColumns.name));
+    const active = moduleColumns.active < 0 || isActive(getCell(row, moduleColumns.active));
+    const subject = subjectMap.get(subjectid);
+    if (!subject || !moduleid || !active) return;
+
+    const rawSortOrder = moduleColumns.sortOrder < 0 ? "" : getCell(row, moduleColumns.sortOrder);
+    const numericSortOrder = Number(rawSortOrder);
+    const module = {
+      modulekey: moduleid,
+      moduleid,
+      modulename: modulename || moduleid,
+      sortorder: Number.isFinite(numericSortOrder) && String(rawSortOrder).trim() !== ""
+        ? numericSortOrder
+        : Number.MAX_SAFE_INTEGER,
+      tasks: []
+    };
+
+    subject._moduleMap.set(moduleid, module);
+    subject.modules.push(module);
+  });
+
   const taskHeaders = buildHeaderMap(taskRows[0] || []);
   const taskColumns = {
     id: findColumn(taskHeaders, ["TaskId", "TaskID"]),
@@ -591,7 +629,7 @@ function buildResourceOptions(subjectRows = [], taskRows = []) {
     name: findColumn(taskHeaders, ["TaskName", "Task"]),
     moduleId: findColumn(taskHeaders, ["ModuleId", "ModuleID", "ModuletID"]),
     moduleName: findColumn(taskHeaders, ["ModuleName", "Module"]),
-    active: findColumn(taskHeaders, ["Active"])
+    active: findColumn(taskHeaders, ["Active", "Status"])
   };
 
   taskRows.slice(1).forEach(row => {
@@ -611,22 +649,25 @@ function buildResourceOptions(subjectRows = [], taskRows = []) {
       return;
     }
 
-    const moduleKey = moduleid || `NAME:${normalizeMatch(modulename)}`;
-    if (!subject._moduleMap.has(moduleKey)) {
-      const module = {
-        modulekey: moduleKey,
-        moduleid,
-        modulename: modulename || moduleid,
-        tasks: []
-      };
-      subject._moduleMap.set(moduleKey, module);
-      subject.modules.push(module);
+    let module = moduleid ? subject._moduleMap.get(moduleid) : null;
+
+    // Legacy TaskList rows may contain only ModuleName. Match that name to an
+    // existing active ModuleList row, but never create a module from TaskList.
+    if (!module && !moduleid && modulename) {
+      const normalizedModuleName = normalizeMatch(modulename);
+      module = subject.modules.find(item => normalizeMatch(item.modulename) === normalizedModuleName) || null;
     }
-    subject._moduleMap.get(moduleKey).tasks.push(task);
+
+    if (!module) return;
+    module.tasks.push(task);
   });
 
   subjects.forEach(subject => {
-    subject.modules.sort((a, b) => compareText(a.modulename, b.modulename));
+    subject.modules.sort((a, b) => {
+      if (a.sortorder !== b.sortorder) return a.sortorder - b.sortorder;
+      const idCompare = compareText(a.moduleid, b.moduleid);
+      return idCompare || compareText(a.modulename, b.modulename);
+    });
     subject.modules.forEach(module => module.tasks.sort((a, b) => compareText(a.taskname, b.taskname)));
     subject.unassignedTasks.sort((a, b) => compareText(a.taskname, b.taskname));
     delete subject._moduleMap;

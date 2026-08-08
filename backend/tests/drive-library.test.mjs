@@ -18,7 +18,19 @@ const studentRows = [[
 ["STUDENT4", "Group Four", "", "STUDENT4LINK", true, studentFourHash, "4", "", "", 0, true],
 ["STUDENT3", "Group Three", "", "STUDENT3LINK", true, studentThreeHash, "3", "", "", 0, true]];
 const subjectRows = [["SubjectID", "SubjectName", "Active", "CreatedDate"], ["SUB1", "Fiqh", true, ""]];
-const taskRows = [["TaskID", "SubjectID", "TaskName", "ModuleID", "ModuleName", "Active"], ["TASK1", "SUB1", "Lesson 1", "MOD1", "Module 1", true]];
+const moduleRows = [
+  ["ModuleID", "SubjectID", "SubjectName", "ModuleName", "Sort Order", "Active"],
+  ["MOD2", "SUB1", "Fiqh", "Module Two", 2, true],
+  ["MOD1", "SUB1", "Fiqh", "Module One from ModuleList", 1, true],
+  ["MOD3", "SUB1", "Fiqh", "Module Three No Tasks", 3, true],
+  ["MODX", "SUB1", "Fiqh", "Inactive Module", 0, false]
+];
+const taskRows = [
+  ["TaskID", "SubjectID", "TaskName", "ModuleID", "ModuleName", "Active"],
+  ["TASK1", "SUB1", "Lesson 1", "MOD1", "Wrong TaskList Module Name", true],
+  ["TASK2", "SUB1", "Lesson 2", "MOD2", "Wrong TaskList Module Two", true],
+  ["TASKX", "SUB1", "Inactive module task", "MODX", "Inactive Module", true]
+];
 const ebookRows = [[
   "eBookId", "eBookName", "SubjectId", "SubjectName", "ModuleId", "ModuleName",
   "TaskId", "GroupNo", "ebookFormat", "eBookLink", "Active", "Date"
@@ -31,6 +43,7 @@ const sheets = new Map([
   ["AdminRecords!A:ZZ", adminRows],
   ["StudentRecords!A:ZZ", studentRows],
   ["SubjectList!A:ZZ", subjectRows],
+  ["ModuleList!A:ZZ", moduleRows],
   ["TaskList!A:ZZ", taskRows],
   ["eBooks!A:ZZ", ebookRows],
   ["Printable!A:ZZ", printableRows],
@@ -133,8 +146,15 @@ try {
   const options = await post("/api/admin/resources/options", {}, adminToken);
   assert.equal(options.response.status, 200);
   assert.equal(options.data.subjects[0].subjectname, "Fiqh");
-  assert.equal(options.data.subjects[0].modules[0].moduleid, "MOD1");
+  assert.deepEqual(
+    options.data.subjects[0].modules.map(module => module.moduleid),
+    ["MOD1", "MOD2", "MOD3"]
+  );
+  assert.equal(options.data.subjects[0].modules[0].modulename, "Module One from ModuleList");
   assert.equal(options.data.subjects[0].modules[0].tasks[0].taskid, "TASK1");
+  assert.equal(options.data.subjects[0].modules[1].tasks[0].taskid, "TASK2");
+  assert.equal(options.data.subjects[0].modules[2].tasks.length, 0);
+  assert.equal(options.data.subjects[0].modules.some(module => module.moduleid === "MODX"), false);
 
   const created = await post("/api/admin/resources/create", {
     resourceType: "EBOOK",

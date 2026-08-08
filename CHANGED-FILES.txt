@@ -1,3 +1,27 @@
+M4L V100.4.3
+
+Runtime files changed
+---------------------
+Worker:
+- backend/src/routes/drive-library.js
+
+Version metadata:
+- version.json
+- js/version.json
+
+Tests changed
+-------------
+- backend/tests/drive-library.test.mjs
+
+What changed
+------------
+- Library module choices are now read from ModuleList, not inferred from TaskList.
+- ModuleID, ModuleName, SubjectID, Active and Sort Order come from ModuleList.
+- TaskList is used only to attach active tasks to existing active modules.
+- Active ModuleList modules with zero tasks still appear in the Library resource form.
+- Inactive ModuleList modules are excluded.
+- Legacy tasks with ModuleName but no ModuleID may match an existing ModuleList module by name; TaskList never creates a module.
+
 M4L V100.4.2
 
 Runtime files changed

@@ -1,3 +1,37 @@
+M4L V100.4.3
+
+# ModuleList-backed Library module selection
+
+## Changes
+
+- Corrected the Add / Modify Library module dropdown.
+- `ModuleList` is now the authoritative source for modules.
+- Module ordering follows `Sort Order` / `SortOrder` / `ModuleSortOrder` from ModuleList.
+- Module names come from ModuleList even when TaskList contains duplicated or stale module names.
+- Active modules with no tasks are still selectable for resources.
+- TaskList supplies tasks only; it cannot create new module choices.
+- Tasks that point to inactive or nonexistent ModuleList modules are not offered under a false module.
+
+## Deployment
+
+This is a Worker/backend correction.
+
+1. Deploy `backend/src/routes/drive-library.js` to the development Worker.
+2. Deploy `version.json` and `js/version.json` with the normal Pages release metadata.
+3. Reopen Add Resource and select a Subject.
+4. Confirm its Module dropdown matches the active rows in ModuleList and follows ModuleList sort order.
+5. Confirm Task is filtered to the selected module.
+
+## Validation
+
+- `backend/src/routes/drive-library.js` JavaScript syntax check passed.
+- Drive Library endpoint regression test passed against a complete V100.4.2 development tree.
+- Test confirms ModuleList name/order wins over conflicting TaskList module metadata.
+- Test confirms a module with zero tasks remains visible.
+- Test confirms inactive ModuleList modules are excluded.
+
+---
+
 M4L V100.4.2
 
 # Google Drive picker scrolling and video compatibility
