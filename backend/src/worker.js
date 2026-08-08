@@ -1,4 +1,4 @@
-/* M4L V100.5 - Fixed backend ownership; retired migration selectors removed.
+/* M4L V100.6 - Worker Settings own environment configuration.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "100.5"
+          version: "100.6"
         });
       }
 

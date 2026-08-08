@@ -1,12 +1,13 @@
 {
   "name": "rebootworker",
-  "version": "100.5.0",
+  "version": "100.6.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env=\"\" --keep-vars",
     "deploy:development": "wrangler deploy --env development --keep-vars",
     "test:backend-routing": "node tests/backend-routing.test.mjs",
+    "test:google-service-account-email": "node tests/google-service-account-email.test.mjs",
     "test:apps-script-cleanup": "node tests/apps-script-cleanup.test.mjs",
     "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:resources": "node tests/resources.test.mjs",

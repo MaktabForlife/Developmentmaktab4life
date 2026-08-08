@@ -1,6 +1,8 @@
-/* M4L V100.4 - Private Google Drive read client.
+/* M4L V100.6 - Private Google Drive read client.
    Uses the existing service-account credential with drive.readonly scope.
 */
+
+import { assertGoogleServiceAccountEmailMatches } from "./google-service-account-email.js";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
@@ -156,6 +158,8 @@ function getGoogleServiceAccountConfig(env) {
   if (!config.client_email || !config.private_key) {
     throw new Error("Google service-account credential is incomplete");
   }
+
+  assertGoogleServiceAccountEmailMatches(env, config.client_email);
 
   const tokenUri = String(config.token_uri || "https://oauth2.googleapis.com/token").trim();
   const allowedTokenUris = new Set([

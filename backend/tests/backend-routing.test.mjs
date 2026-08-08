@@ -109,27 +109,40 @@ const wranglerConfig = JSON.parse(readFileSync(
   "utf8"
 ));
 
-for (const selector of LEGACY_SELECTORS) {
-  assert.equal(wranglerConfig.vars[selector], undefined, `Production must not define retired ${selector}`);
+const ENVIRONMENT_VALUES = [
+  "APPS_SCRIPT_URL",
+  "GOOGLE_SPREADSHEET_ID",
+  "M4L_DRIVE_ACCESS_TTL_SECONDS",
+  "M4L_GOOGLE_DRIVE_ROOT_FOLDER_ID",
+  "M4L_GOOGLE_SERVICE_ACCOUNT_EMAIL",
+  "M4L_STUDENT_LOGIN_BASE",
+  "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS"
+];
+
+assert.equal(
+  Object.prototype.hasOwnProperty.call(wranglerConfig, "vars"),
+  false,
+  "Production environment values must live in Cloudflare Worker Settings, not wrangler.jsonc"
+);
+assert.equal(
+  Object.prototype.hasOwnProperty.call(wranglerConfig.env.development, "vars"),
+  false,
+  "Development environment values must live in Cloudflare Worker Settings, not wrangler.jsonc"
+);
+
+const wranglerText = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+for (const variable of [...LEGACY_SELECTORS, ...ENVIRONMENT_VALUES]) {
   assert.equal(
-    wranglerConfig.env.development.vars[selector],
-    undefined,
-    `Development must not define retired ${selector}`
+    wranglerText.includes(`"${variable}"`),
+    false,
+    `wrangler.jsonc must not contain environment variable ${variable}`
   );
 }
 
-assert.ok(wranglerConfig.vars.APPS_SCRIPT_URL, "Production Weekly Planner Drive bridge still needs Apps Script");
-assert.ok(
-  wranglerConfig.env.development.vars.APPS_SCRIPT_URL,
-  "Development Weekly Planner Drive bridge still needs Apps Script"
-);
-assert.equal(
-  wranglerConfig.vars.M4L_STUDENT_LOGIN_BASE,
-  "https://rebootyourmaktab.maktabhelper.app/student/"
-);
-assert.equal(
-  wranglerConfig.env.development.vars.M4L_STUDENT_LOGIN_BASE,
-  "https://developmentmaktab4life.pages.dev/student/"
-);
+assert.equal(wranglerConfig.keep_vars, true, "Deployments must preserve Worker Settings variables");
+assert.equal(wranglerConfig.r2_buckets[0].binding, "MEDIA_BUCKET");
+assert.equal(wranglerConfig.env.development.r2_buckets[0].binding, "MEDIA_BUCKET");
+assert.equal(wranglerConfig.ratelimits[0].name, "AUTH_LOGIN_RATE_LIMITER");
+assert.equal(wranglerConfig.env.development.ratelimits[0].name, "AUTH_LOGIN_RATE_LIMITER");
 
 console.log("Backend fixed-routing ownership tests passed.");

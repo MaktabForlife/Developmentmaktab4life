@@ -3,13 +3,6 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-06-01",
   "keep_vars": true,
-  "vars": {
-    "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwwmDx0WuJWTj0gLRUnE3yC7v6gUrc8muEjENJJZ872taaRKxUFSjCGFOtsfelu2fcW/exec",
-    "GOOGLE_SPREADSHEET_ID": "1KyYroAEEsDOZxvfNGb5hGKmaIevbq3U-UQ7at-sg6-g",
-    "M4L_DRIVE_ACCESS_TTL_SECONDS": "3600",
-    "M4L_STUDENT_LOGIN_BASE": "https://rebootyourmaktab.maktabhelper.app/student/",
-    "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true"
-  },
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
@@ -19,13 +12,6 @@
   "env": {
     "development": {
       "name": "devrebootworker",
-      "vars": {
-        "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbw_-aTpK8XpXaS8Px8RO_J46P6_Wh8zHYYv3uyBiRihW6oFGVKb1IAHWhUQEDToLKby/exec",
-        "GOOGLE_SPREADSHEET_ID": "1jXheppMeAEKdL8GUybExpvSK6YLRw5QeTnSZ1pWNktQ",
-        "M4L_DRIVE_ACCESS_TTL_SECONDS": "3600",
-        "M4L_STUDENT_LOGIN_BASE": "https://developmentmaktab4life.pages.dev/student/",
-        "M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS": "true"
-      },
       "r2_buckets": [
         {
           "binding": "MEDIA_BUCKET",
