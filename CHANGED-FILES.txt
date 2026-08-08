@@ -1,3 +1,25 @@
+M4L V100.4.4
+
+Runtime files changed
+---------------------
+Cloudflare Pages / frontend:
+- admin/index.html
+- js/m4l-manage-resources.js
+- version.json
+- js/version.json
+
+Tests changed
+-------------
+- backend/tests/resource-management-ui.test.mjs
+
+What changed
+------------
+- Removed the optional Task selector from Add Resource and Modify Resource.
+- Removed the visible Format field from Add Resource and Modify Resource.
+- TaskId remains an existing sheet column for compatibility but the Library management UI no longer sends a Task selection.
+- Resource format remains automatically derived from the selected Drive file by the Worker and may continue to be stored in the existing format column.
+- No Worker deployment is required for this revision.
+
 M4L V100.4.3
 
 Runtime files changed

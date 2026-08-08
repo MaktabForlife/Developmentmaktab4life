@@ -1,3 +1,4 @@
+/* M4L V100.4.4 - Library resource form cleanup. */
 /* M4L V100.4 - ADMIN-only private Google Drive Library management UI. */
 (function () {
   "use strict";
@@ -38,7 +39,6 @@
       name: "",
       subjectId: "",
       moduleId: "",
-      taskId: "",
       groupNo: "ALL",
       active: true
     };
@@ -162,20 +162,13 @@
       if (target.id === "manage-resource-subject") {
         stateModel.form.subjectId = String(target.value || "");
         stateModel.form.moduleId = "";
-        stateModel.form.taskId = "";
         render();
         return;
       }
 
       if (target.id === "manage-resource-module") {
         stateModel.form.moduleId = String(target.value || "");
-        stateModel.form.taskId = "";
         render();
-        return;
-      }
-
-      if (target.id === "manage-resource-task") {
-        stateModel.form.taskId = String(target.value || "");
         return;
       }
 
@@ -310,7 +303,6 @@
       name: resource.name || "",
       subjectId: resource.subjectid || "",
       moduleId: findModuleSelectionKey(resource.subjectid, resource.moduleid, resource.modulename),
-      taskId: resource.taskid || "",
       groupNo: resource.groupno || "ALL",
       active: resource.active !== false
     };
@@ -457,7 +449,6 @@
       name: stateModel.form.name.trim(),
       subjectId: stateModel.form.subjectId,
       moduleKey: stateModel.form.moduleId,
-      taskId: stateModel.form.taskId,
       groupNo: stateModel.form.groupNo.trim() || "ALL",
       active: stateModel.form.active
     };
@@ -474,10 +465,8 @@
   function syncFormFromDom() {
     const name = document.getElementById("manage-resource-name");
     const group = document.getElementById("manage-resource-group");
-    const task = document.getElementById("manage-resource-task");
     if (name) stateModel.form.name = String(name.value || "");
     if (group) stateModel.form.groupNo = String(group.value || "");
-    if (task) stateModel.form.taskId = String(task.value || "");
   }
 
   function render() {
@@ -526,8 +515,6 @@
     }
 
     const subject = getSelectedSubject();
-    const module = getSelectedModule(subject);
-    const tasks = module ? module.tasks : (subject ? subject.unassignedTasks : []);
     const file = stateModel.form.file;
     const selectedFileMarkup = file ? `
       <div class="manage-resource-selected-file">
@@ -575,17 +562,10 @@
           }).join("")}
         </select>
 
-        <label class="student-admin-label" for="manage-resource-task">Task — optional</label>
-        <select id="manage-resource-task" ${subject ? "" : "disabled"}>
-          <option value="">No task</option>
-          ${tasks.map(item => `<option value="${escapeAttribute(item.taskid)}" ${stateModel.form.taskId === item.taskid ? "selected" : ""}>${escapeHtml(item.taskname)}</option>`).join("")}
-        </select>
 
         <label class="student-admin-label" for="manage-resource-group">Available to</label>
         <input id="manage-resource-group" type="text" value="${escapeAttribute(stateModel.form.groupNo)}" autocomplete="off" placeholder="ALL or group number" />
 
-        <label class="student-admin-label">Format</label>
-        <div class="manage-resource-readonly-value">${escapeHtml(file && file.format ? file.format : (stateModel.selectedResource?.format || "Select a file"))}</div>
 
         <div class="student-admin-label">Status</div>
         <div class="student-edit-status-radio-group">

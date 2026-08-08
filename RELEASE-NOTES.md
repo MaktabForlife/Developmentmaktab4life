@@ -1,3 +1,32 @@
+M4L V100.4.4
+
+# Library resource form cleanup
+
+## Changes
+
+- Removed **Task** from Add / Modify Resource because the live Library is organised and opened by Subject and Module; TaskId is not used for Library navigation or access control.
+- Removed the visible **Format** field because format is derived automatically from the Google Drive file and is not an Admin-managed value.
+- Existing resource-sheet columns are unchanged. TaskId can remain blank, and format can continue to be populated automatically in the background.
+- The selected Drive file card may still identify the file type as part of the file summary; there is no separate Format form field.
+
+## Deployment
+
+This is a Pages/frontend-only revision.
+
+1. Deploy `admin/index.html`.
+2. Deploy `js/m4l-manage-resources.js`.
+3. Deploy `version.json` and `js/version.json`.
+4. Hard-refresh/reopen the Admin app.
+5. Confirm Add Resource and Modify Resource show Resource type, Drive file, Resource name, Subject, Module, Available to, and Status — with no Task or Format field.
+
+## Validation
+
+- `js/m4l-manage-resources.js` JavaScript syntax check passed.
+- Resource management UI integration test passed.
+- Test explicitly checks that the Task selector and Format form field are absent.
+
+---
+
 M4L V100.4.3
 
 # ModuleList-backed Library module selection
