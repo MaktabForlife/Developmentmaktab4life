@@ -94,6 +94,12 @@ const adminToken = await makeSessionToken({
   username: "Admin User",
   role: "ADMIN"
 }, sessionSecret);
+const seniorToken = await makeSessionToken({
+  type: "admin",
+  adminid: "SENIOR1",
+  username: "Senior User",
+  role: "SENIOR"
+}, sessionSecret);
 const teacherToken = await makeSessionToken({
   type: "admin",
   adminid: "TEACHER1",
@@ -299,6 +305,52 @@ try {
     appends.at(-1).payload.values.map(row => [row[0], row[2]]),
     [["STASK502", "TASK2"]]
   );
+
+  const allGroupsRegistration = await postAdmin(
+    "/api/admin/register-student",
+    adminToken,
+    {
+      username: "Visiting Student",
+      whatsapp6: "444444",
+      classgroup: 0
+    },
+    directEnv
+  );
+  assert.equal(allGroupsRegistration.response.status, 200);
+  assert.equal(allGroupsRegistration.data.success, true);
+  assert.equal(allGroupsRegistration.data.classgroup, "0", "Numeric Group 0 must be preserved as ALL access");
+
+  const writesBeforeSeniorAllGroupsAttempt = updates.length + appends.length;
+  const seniorAllGroupsAttempt = await postAdmin(
+    "/api/admin/register-student",
+    seniorToken,
+    {
+      username: "Senior ALL Attempt",
+      whatsapp6: "666666",
+      classgroup: "0"
+    },
+    directEnv
+  );
+  assert.equal(seniorAllGroupsAttempt.response.status, 403);
+  assert.equal(seniorAllGroupsAttempt.data.error, "Only an Admin can assign Group 0 (ALL) access");
+  assert.equal(
+    updates.length + appends.length,
+    writesBeforeSeniorAllGroupsAttempt,
+    "A Senior Group 0 registration attempt must not write data"
+  );
+
+  const invalidGroup = await postAdmin(
+    "/api/admin/register-student",
+    adminToken,
+    {
+      username: "Invalid Group",
+      whatsapp6: "777777",
+      classgroup: "1.5"
+    },
+    directEnv
+  );
+  assert.equal(invalidGroup.response.status, 400);
+  assert.equal(invalidGroup.data.error, "classgroup must be 0 (ALL) or a positive whole number");
 
   missingSheetName = "StudentRecords";
   const missingStudents = await postAdmin(

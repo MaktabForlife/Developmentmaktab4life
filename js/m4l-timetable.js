@@ -18,7 +18,8 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v1";
+// V100.8 cache namespace: invalidates pre-Group-0 timetable responses.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v2";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -157,21 +158,52 @@ function normalizeTimetableKey(value) {
 }
 
 function normalizeTimetableCachePart(value) {
-  return normalizeTimetableKey(value || "ALL") || "all";
+  const resolved = value === null || value === undefined || value === ""
+    ? "ALL"
+    : value;
+  return normalizeTimetableKey(resolved) || "all";
 }
 
 function getTimetableRequestOptions(options = {}) {
+  const requestedGroup = options.groupNo === null || options.groupNo === undefined || options.groupNo === ""
+    ? "ALL"
+    : options.groupNo;
+  const requestedTeacher = options.assignedTeacher === null || options.assignedTeacher === undefined || options.assignedTeacher === ""
+    ? "ALL"
+    : options.assignedTeacher;
+
   return {
-    groupNo: normalizeTimetableText(options.groupNo || "ALL") || "ALL",
-    assignedTeacher: normalizeTimetableText(options.assignedTeacher || "ALL") || "ALL"
+    groupNo: normalizeTimetableText(requestedGroup) || "ALL",
+    assignedTeacher: normalizeTimetableText(requestedTeacher) || "ALL"
   };
+}
+
+function getTimetableViewerCachePart() {
+  const appState = typeof state === "object" && state ? state : {};
+  const user = appState.user || {};
+  const portal = normalizeTimetableCachePart(
+    appState.userType || appState.portalType || "unknown"
+  );
+  const userId = normalizeTimetableCachePart(
+    user.studentid || user.StudentID || user.adminid || user.AdminID || "unknown"
+  );
+  const accountGroup = normalizeTimetableCachePart(
+    user.classgroup ??
+    user.ClassGroup ??
+    user.assignedgroup ??
+    user.AssignedGroup ??
+    "ALL"
+  );
+
+  return `${portal}_${userId}_${accountGroup}`;
 }
 
 function getTimetableCacheKey(options = {}) {
   const requestOptions = getTimetableRequestOptions(options);
+  const viewerKey = getTimetableViewerCachePart();
   const groupKey = normalizeTimetableCachePart(requestOptions.groupNo);
   const teacherKey = normalizeTimetableCachePart(requestOptions.assignedTeacher);
-  return `${TIMETABLE_CACHE_PREFIX}_${groupKey}_${teacherKey}`;
+  return `${TIMETABLE_CACHE_PREFIX}_${viewerKey}_${groupKey}_${teacherKey}`;
 }
 
 function readTimetableCache(cacheKey, options = {}) {

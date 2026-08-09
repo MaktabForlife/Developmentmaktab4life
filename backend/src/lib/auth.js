@@ -405,8 +405,8 @@ async function validateCredentialBoundSession(payload, env) {
   }
 
   if (payload.type === "student") {
-    const currentClassGroup = String(row[6] || "").trim();
-    const tokenClassGroup = String(payload.classgroup || "").trim();
+    const currentClassGroup = String(row[6] ?? "").trim();
+    const tokenClassGroup = String(payload.classgroup ?? "").trim();
 
     return currentClassGroup === tokenClassGroup
       ? { ...payload, classgroup: currentClassGroup }
@@ -415,8 +415,8 @@ async function validateCredentialBoundSession(payload, env) {
 
   const currentRole = normalizeAdminRole(row[5]);
   const tokenRole = normalizeAdminRole(payload.role);
-  const currentAssignedGroup = String(row[6] || "").trim();
-  const tokenAssignedGroup = String(payload.assignedgroup || "").trim();
+  const currentAssignedGroup = String(row[6] ?? "").trim();
+  const tokenAssignedGroup = String(payload.assignedgroup ?? "").trim();
 
   if (
     !currentRole ||

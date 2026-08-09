@@ -232,7 +232,16 @@ async function getTimetableRequestContext(request, env) {
   let assignedTeacher = clean(body.assignedTeacher || body.teacher || "ALL");
 
   if (authUser.type === "student") {
-    groupNo = clean(authUser.classgroup || groupNo || "ALL");
+    const studentGroup = clean(
+      authUser.classgroup === null || authUser.classgroup === undefined
+        ? groupNo || "ALL"
+        : authUser.classgroup
+    );
+
+    // V100.8: translate only an authenticated student's ClassGroup 0 to the
+    // timetable ALL scope. TimeTable GroupNo 0 and Admin AssignedGroup 0 keep
+    // their literal meanings and never become general all-groups grants.
+    groupNo = studentGroup === "0" ? "ALL" : studentGroup || "ALL";
     assignedTeacher = "ALL";
   }
 

@@ -25,6 +25,54 @@ const manageStudentsState = {
   studentSaveSubmitting: false
 };
 
+const ALL_GROUPS_STUDENT_VALUE = "0";
+const ALL_GROUPS_STUDENT_LABEL = "ALL (Group 0)";
+
+function getManagedStudentGroupValue(value, fallback = String(DEFAULT_STUDENT_GROUP)) {
+  if (value === null || value === undefined) return fallback;
+
+  const normalized = String(value).trim();
+  return normalized || fallback;
+}
+
+function getManagedStudentRecordGroup(student) {
+  const source = student || {};
+
+  for (const key of ["classgroup", "ClassGroup", "group", "Group"]) {
+    if (source[key] !== null && source[key] !== undefined && String(source[key]).trim() !== "") {
+      return String(source[key]).trim();
+    }
+  }
+
+  return String(DEFAULT_STUDENT_GROUP);
+}
+
+function getManagedStudentGroupLabel(value) {
+  const group = getManagedStudentGroupValue(value);
+  return group === ALL_GROUPS_STUDENT_VALUE
+    ? ALL_GROUPS_STUDENT_LABEL
+    : `Group ${group}`;
+}
+
+function canCurrentUserAssignAllGroupsStudent() {
+  const user = typeof state === "object" && state && state.user ? state.user : {};
+  return String(user.role || user.Role || "").trim().toUpperCase() === "ADMIN";
+}
+
+function validateManagedStudentGroupForCurrentUser(classgroup) {
+  if (!/^(0|[1-9]\d*)$/.test(classgroup)) {
+    alert("Group must be 0 (ALL) or a positive whole number.");
+    return false;
+  }
+
+  if (classgroup === ALL_GROUPS_STUDENT_VALUE && !canCurrentUserAssignAllGroupsStudent()) {
+    alert("Only an Admin can assign Group 0 (ALL) access.");
+    return false;
+  }
+
+  return true;
+}
+
 
 let manageStudentsGlobalClickBound = false;
 let managedStudentSaveLastTriggeredAt = 0;
@@ -350,8 +398,9 @@ function renderRegisterStudentPanel() {
       <label class="student-admin-label" for="student-register-whatsapp">WhatsApp Number</label>
       <input id="student-register-whatsapp" type="tel" inputmode="tel" placeholder="WhatsApp number" autocomplete="off" />
 
-      <label class="student-admin-label" for="student-register-group">Group</label>
-      <input id="student-register-group" type="number" inputmode="numeric" min="1" value="${DEFAULT_STUDENT_GROUP}" />
+      <label class="student-admin-label" for="student-register-group">Group (0 = ALL)</label>
+      <input id="student-register-group" type="number" inputmode="numeric" min="0" step="1" value="${DEFAULT_STUDENT_GROUP}" />
+      <p class="student-admin-help">Group 0 means ALL timetable and resource groups. Only an Admin can grant this access.</p>
     </div>
 
     <div class="student-admin-card">
@@ -549,6 +598,10 @@ async function submitRegisterStudent(confirmDuplicate) {
     return;
   }
 
+  if (!validateManagedStudentGroupForCurrentUser(classgroup)) {
+    return;
+  }
+
   if (assignmentMode === "selected" && selectedModules.length === 0) {
     alert("Select at least one subject/module, or choose Assign all active subjects and modules.");
     return;
@@ -580,7 +633,7 @@ async function submitRegisterStudent(confirmDuplicate) {
     setDomText("student-register-feedback", "Possible duplicate found.");
 
     const duplicateText = (result.matches || [])
-      .map(match => `${match.username || "Student"} · Group ${match.classgroup || "-"} · WhatsApp ${match.whatsapp6 || "-"}`)
+      .map(match => `${match.username || "Student"} · ${getManagedStudentGroupLabel(match.classgroup)} · WhatsApp ${match.whatsapp6 || "-"}`)
       .join("\n");
 
     const proceed = confirm(
@@ -760,13 +813,14 @@ async function loadManagedStudentList(forceRefresh) {
 
 function getManagedStudentDisplayGroup(student) {
   const rawGroup = String(student && student.classgroup !== undefined ? student.classgroup : "").trim();
-  const groupNumber = Number(rawGroup);
-  const isGroupZero = rawGroup === "0" || groupNumber === 0;
+  const isGroupZero = rawGroup === ALL_GROUPS_STUDENT_VALUE;
   const isInactive = !(student && student.active === true);
 
-  if (isInactive || isGroupZero) {
+  if (isInactive) {
     return "inactive";
   }
+
+  if (isGroupZero) return ALL_GROUPS_STUDENT_LABEL;
 
   return rawGroup || String(DEFAULT_STUDENT_GROUP);
 }
@@ -1013,15 +1067,17 @@ function renderSelectedStudentEditor() {
 
       <div class="student-edit-two-column-row">
         <div class="student-edit-field-half">
-          <label class="student-admin-label" for="student-edit-group">Group</label>
+          <label class="student-admin-label" for="student-edit-group">Group (0 = ALL)</label>
           <input
             id="student-edit-group"
             class="student-prefilled-input"
             type="number"
             inputmode="numeric"
             min="0"
-            value="${escapeAttribute(student.classgroup || DEFAULT_STUDENT_GROUP)}"
+            step="1"
+            value="${escapeAttribute(getManagedStudentGroupValue(student.classgroup))}"
           />
+          <small class="student-admin-help">0 = ALL timetable and resource groups</small>
         </div>
 
         <div class="student-edit-field-half">
@@ -1094,7 +1150,7 @@ function openManagedStudentSaveDialog(student) {
   const normalized = normalizeManagedStudent(student);
   setDomText("student-edit-save-name", normalized.username || "Student");
   setDomText("student-edit-save-whatsapp", normalized.whatsapp6 || "999999");
-  setDomText("student-edit-save-group", normalized.classgroup || String(DEFAULT_STUDENT_GROUP));
+  setDomText("student-edit-save-group", getManagedStudentGroupLabel(normalized.classgroup));
   setDomText("student-edit-save-status", normalized.active === true ? "Active" : "Inactive");
 
   if (typeof dialog.showModal === "function") {
@@ -1154,6 +1210,24 @@ async function saveManagedStudentChanges() {
 
   if (!username) {
     alert("Name cannot be empty.");
+    return;
+  }
+
+  const currentGroup = getManagedStudentGroupValue(student.classgroup);
+  const grantsAllGroupsAccess = classgroup === ALL_GROUPS_STUDENT_VALUE &&
+    active === true &&
+    (currentGroup !== ALL_GROUPS_STUDENT_VALUE || student.active !== true);
+
+  if (!/^(0|[1-9]\d*)$/.test(classgroup)) {
+    alert("Group must be 0 (ALL) or a positive whole number.");
+    return;
+  }
+
+  if (
+    ((classgroup === ALL_GROUPS_STUDENT_VALUE && currentGroup !== ALL_GROUPS_STUDENT_VALUE) || grantsAllGroupsAccess) &&
+    !canCurrentUserAssignAllGroupsStudent()
+  ) {
+    alert("Only an Admin can assign Group 0 (ALL) access.");
     return;
   }
 
@@ -1330,7 +1404,7 @@ function normalizeManagedStudent(student) {
     whatsapp6: String(student.whatsapp6 || student.WhatsAppLast6 || student.whatsappLast6 || "").trim(),
     uniqueid: student.uniqueid || student.UniqueID || student.uniqueId || "",
     loginUrl: student.loginUrl || student.LoginUrl || student.loginurl || "",
-    classgroup: String(student.classgroup || student.ClassGroup || student.group || student.Group || DEFAULT_STUDENT_GROUP).trim(),
+    classgroup: getManagedStudentRecordGroup(student),
     active: student.active === true || String(student.active).toLowerCase() === "true",
     assignment: student.assignment || null
   };

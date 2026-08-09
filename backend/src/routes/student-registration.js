@@ -26,7 +26,11 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
   const username = clean(body.username);
   const whatsapp6 = normalizeWhatsapp6(body.whatsapp6);
-  const classgroup = clean(body.classgroup || "1");
+  const classgroup = clean(
+    body.classgroup === null || body.classgroup === undefined
+      ? "1"
+      : body.classgroup
+  );
   const confirmDuplicate = body.confirmDuplicate === true;
   const assignmentMode = body.assignmentMode === "selected" ? "selected" : "all";
   const selectedModules = Array.isArray(body.selectedModules) ? body.selectedModules : [];
@@ -37,6 +41,20 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
 
   if (!classgroup) {
     return json({ success: false, error: "Missing classgroup" }, 400);
+  }
+
+  if (!isValidStudentClassGroup(classgroup)) {
+    return json({
+      success: false,
+      error: "classgroup must be 0 (ALL) or a positive whole number"
+    }, 400);
+  }
+
+  if (classgroup === "0" && !isFullAdmin(permission.user)) {
+    return json({
+      success: false,
+      error: "Only an Admin can assign Group 0 (ALL) access"
+    }, 403);
   }
 
   // Manual subject/module assignment is temporarily disabled in the frontend.
@@ -510,4 +528,12 @@ function isMissingSheetError(error, sheetName) {
 
 function clean(value) {
   return String(value === undefined || value === null ? "" : value).trim();
+}
+
+function isValidStudentClassGroup(value) {
+  return /^(0|[1-9]\d*)$/.test(clean(value));
+}
+
+function isFullAdmin(user) {
+  return clean(user && user.role).toUpperCase() === "ADMIN";
 }
