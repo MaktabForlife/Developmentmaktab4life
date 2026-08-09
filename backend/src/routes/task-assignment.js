@@ -11,7 +11,6 @@ const STUDENT_TASKS_SHEET = "StudentTasks";
 const TASK_LIST_SHEET = "TaskList";
 const SYSTEM_CONFIG_SHEET = "SystemConfig";
 const FULL_SHEET_RANGE = "A:ZZ";
-const STUDENT_TASKS_APPEND_RANGE = `${STUDENT_TASKS_SHEET}!A:J`;
 
 export async function assignTasksGoogleSheetsEndpoint(request, env) {
   const permission = await requireAdminOrSenior(request, env);
@@ -21,14 +20,21 @@ export async function assignTasksGoogleSheetsEndpoint(request, env) {
   }
 
   const body = await request.json();
+  const assignmentMode = clean(body.assignmentMode).toLowerCase();
   const options = {
-    assignedBy: clean(permission.user.adminid),
+    assignedBy: clean(
+      permission.user.adminid ||
+      permission.user.username ||
+      permission.user.uniqueid
+    ),
     taskids: Array.isArray(body.taskids) ? body.taskids.map(String) : [],
     studentids: Array.isArray(body.studentids) ? body.studentids.map(String) : [],
     classgroup: clean(body.classgroup),
     assignAllStudents: body.assignAllStudents === true,
+    assignAllTasks: body.assignAllTasks === true || assignmentMode === "all",
     assignAllTasksForSubject: body.assignAllTasksForSubject === true,
-    subjectid: clean(body.subjectid)
+    subjectid: clean(body.subjectid),
+    selectedModules: normalizeSelectedModules(body.selectedModules)
   };
 
   if (!options.assignedBy) {
@@ -40,26 +46,36 @@ export async function assignTasksGoogleSheetsEndpoint(request, env) {
 }
 
 async function assignTasksToStudents(env, options) {
-  let finalTaskIds = options.taskids.map(clean).filter(Boolean);
-  let finalStudentIds = options.studentids.map(clean).filter(Boolean);
+  let finalTaskIds = uniqueCleanValues(options.taskids);
+  let finalStudentIds = uniqueCleanValues(options.studentids);
   let taskRows;
   let studentRows;
 
-  if (options.assignAllTasksForSubject) {
-    if (!options.subjectid) {
-      return {
-        success: false,
-        error: "Missing subjectid for assignAllTasksForSubject"
-      };
-    }
-
+  if (
+    options.assignAllTasks ||
+    options.selectedModules.length > 0 ||
+    options.assignAllTasksForSubject
+  ) {
     taskRows = await readTaskAssignmentSheet(env, TASK_LIST_SHEET);
 
     if (taskRows === null) {
       return missingSheetResult(TASK_LIST_SHEET);
     }
 
-    finalTaskIds = getActiveTaskIdsBySubject(taskRows, options.subjectid);
+    if (options.assignAllTasks) {
+      finalTaskIds = getActiveTaskIds(taskRows);
+    } else if (options.selectedModules.length > 0) {
+      finalTaskIds = getActiveTaskIdsByModules(taskRows, options.selectedModules);
+    } else {
+      if (!options.subjectid) {
+        return {
+          success: false,
+          error: "Missing subjectid for assignAllTasksForSubject"
+        };
+      }
+
+      finalTaskIds = getActiveTaskIdsBySubject(taskRows, options.subjectid);
+    }
   }
 
   if (options.assignAllStudents || options.classgroup) {
@@ -76,7 +92,7 @@ async function assignTasksToStudents(env, options) {
   }
 
   if (finalTaskIds.length === 0) {
-    return { success: false, error: "No tasks selected" };
+    return { success: false, error: "No active tasks selected" };
   }
 
   if (finalStudentIds.length === 0) {
@@ -105,9 +121,41 @@ async function assignTasksToStudents(env, options) {
     return missingSheetResult(STUDENT_TASKS_SHEET);
   }
 
+  const studentTaskHeaders = studentTaskRows[0] || [];
+  const studentTaskHeaderMap = buildHeaderMap(studentTaskHeaders);
+  const studentTaskColumns = {
+    id: findColumn(studentTaskHeaderMap, ["StudentTaskID", "StudentTaskId", "studenttaskid"]),
+    studentid: findColumn(studentTaskHeaderMap, ["StudentID", "StudentId", "studentid"]),
+    taskid: findColumn(studentTaskHeaderMap, ["TaskID", "TaskId", "taskid"])
+  };
+
+  if (
+    studentTaskHeaders.length === 0 ||
+    studentTaskColumns.id === -1 ||
+    studentTaskColumns.studentid === -1 ||
+    studentTaskColumns.taskid === -1
+  ) {
+    return {
+      success: false,
+      error: "StudentTasks sheet is missing StudentTaskID, StudentID or TaskID"
+    };
+  }
+
   const validTasks = getTaskMapByIds(taskRows, finalTaskIds);
   const validStudents = getStudentMapByIds(studentRows, finalStudentIds);
-  const existingAssignments = getExistingStudentTaskPairs(studentTaskRows);
+
+  if (validTasks.size === 0) {
+    return { success: false, error: "No active tasks selected" };
+  }
+
+  if (validStudents.size === 0) {
+    return { success: false, error: "Selected student is inactive or not found" };
+  }
+
+  const existingAssignments = getExistingStudentTaskPairs(
+    studentTaskRows,
+    studentTaskColumns
+  );
   const assignedDate = new Date().toISOString();
   const assignments = [];
   let skippedDuplicate = 0;
@@ -149,25 +197,32 @@ async function assignTasksToStudents(env, options) {
       return { success: false, error: idResult.error };
     }
 
-    const rowsToAdd = assignments.map((assignment, index) => [
-      idResult.ids[index],
-      assignment.studentid,
-      assignment.task.taskid,
-      assignment.task.subjectid,
-      "",
-      "",
-      "",
-      "",
-      options.assignedBy,
-      assignment.assignedDate
-    ]);
+    const rowsToAdd = assignments.map((assignment, index) => (
+      buildStudentTaskRow(
+        studentTaskHeaders,
+        studentTaskHeaderMap,
+        {
+          studenttaskid: idResult.ids[index],
+          studentid: assignment.studentid,
+          task: assignment.task,
+          assignedBy: options.assignedBy,
+          assignedDate: assignment.assignedDate
+        }
+      )
+    ));
 
-    await appendGoogleSheetValues(env, STUDENT_TASKS_APPEND_RANGE, rowsToAdd);
+    await appendGoogleSheetValues(
+      env,
+      `${STUDENT_TASKS_SHEET}!A:${columnIndexToA1(studentTaskHeaders.length - 1)}`,
+      rowsToAdd
+    );
   }
 
   return {
     success: true,
-    message: "Task assignment completed",
+    message: assignments.length > 0
+      ? "Task assignment completed"
+      : "All selected tasks were already assigned",
     assignedCount: assignments.length,
     skippedDuplicate,
     skippedInvalidTask,
@@ -175,84 +230,134 @@ async function assignTasksToStudents(env, options) {
   };
 }
 
+function normalizeSelectedModules(value) {
+  if (!Array.isArray(value)) return [];
+
+  const unique = new Map();
+
+  value.forEach(item => {
+    const source = item || {};
+    const subjectid = clean(source.subjectid || source.SubjectID || source.subjectId);
+    const moduleid = clean(source.moduleid || source.ModuleID || source.moduleId) || "NO_MODULE";
+
+    if (!subjectid) return;
+
+    unique.set(`${subjectid}|${moduleid}`, { subjectid, moduleid });
+  });
+
+  return Array.from(unique.values());
+}
+
+function getActiveTaskIds(rows) {
+  return readActiveTasks(rows).map(task => task.taskid);
+}
+
 function getActiveTaskIdsBySubject(rows, subjectid) {
-  const taskIds = [];
+  const requestedSubject = clean(subjectid);
+
+  return readActiveTasks(rows)
+    .filter(task => task.subjectid === requestedSubject)
+    .map(task => task.taskid);
+}
+
+function getActiveTaskIdsByModules(rows, selectedModules) {
+  const selectedKeys = new Set(
+    selectedModules.map(item => `${item.subjectid}|${item.moduleid || "NO_MODULE"}`)
+  );
+
+  return readActiveTasks(rows)
+    .filter(task => selectedKeys.has(`${task.subjectid}|${task.moduleid || "NO_MODULE"}`))
+    .map(task => task.taskid);
+}
+
+function readActiveTasks(rows) {
+  const headerMap = buildHeaderMap(rows[0] || []);
+  const tasks = [];
 
   rows.slice(1).forEach(row => {
-    const rowSubjectId = clean(getValue(row, 1));
-    const active = getValue(row, 7);
+    const task = readTask(row, headerMap);
 
-    if (rowSubjectId === subjectid && active === true) {
-      taskIds.push(clean(getValue(row, 0)));
+    if (task.taskid && task.subjectid && isActiveValue(task.active)) {
+      tasks.push(task);
     }
   });
 
-  return taskIds;
+  return tasks;
+}
+
+function readTask(row, headerMap) {
+  const taskid = clean(getCell(row, headerMap, ["TaskID", "TaskId", "taskid"]));
+
+  return {
+    taskid,
+    subjectid: clean(getCell(row, headerMap, ["SubjectID", "SubjectId", "subjectid"])),
+    subjectname: clean(getCell(row, headerMap, ["SubjectName", "Subject", "subjectname"])),
+    moduleid: clean(getCell(row, headerMap, ["ModuleID", "ModuleId", "moduleid", "ModuletID"])),
+    modulename: clean(getCell(row, headerMap, ["ModuleName", "Module", "modulename"])),
+    taskname: clean(getCell(row, headerMap, ["TaskName", "Task", "taskname"], taskid)),
+    active: getCell(row, headerMap, ["Active", "Status", "active"], true)
+  };
 }
 
 function getActiveStudentIdsByGroup(rows, classgroup) {
   const requestedGroup = clean(classgroup || "ALL");
+  const headerMap = buildHeaderMap(rows[0] || []);
   const studentIds = [];
 
   rows.slice(1).forEach(row => {
-    const active = getValue(row, 10);
-    const rowGroup = clean(getValue(row, 6));
+    const active = getCell(row, headerMap, ["Active", "Status", "active"], true);
+    const rowGroup = clean(getCell(row, headerMap, ["ClassGroup", "Group", "classgroup"]));
+    const studentid = clean(getCell(row, headerMap, ["StudentID", "StudentId", "studentid"]));
 
-    if (active !== true) return;
+    if (!studentid || !isActiveValue(active)) return;
     if (requestedGroup !== "ALL" && rowGroup !== requestedGroup) return;
 
-    studentIds.push(clean(getValue(row, 0)));
+    studentIds.push(studentid);
   });
 
   return studentIds;
 }
 
 function getTaskMapByIds(rows, taskIds) {
-  const wanted = new Set(taskIds.map(clean));
+  const wanted = new Set(uniqueCleanValues(taskIds));
   const map = new Map();
 
-  rows.slice(1).forEach(row => {
-    const taskid = clean(getValue(row, 0));
-    const active = getValue(row, 7);
-
-    if (!wanted.has(taskid) || active !== true) return;
-
-    map.set(taskid, {
-      taskid,
-      subjectid: getValue(row, 1),
-      taskname: getValue(row, 2)
-    });
+  readActiveTasks(rows).forEach(task => {
+    if (wanted.has(task.taskid)) {
+      map.set(task.taskid, task);
+    }
   });
 
   return map;
 }
 
 function getStudentMapByIds(rows, studentIds) {
-  const wanted = new Set(studentIds.map(clean));
+  const wanted = new Set(uniqueCleanValues(studentIds));
+  const headerMap = buildHeaderMap(rows[0] || []);
   const map = new Map();
 
   rows.slice(1).forEach(row => {
-    const studentid = clean(getValue(row, 0));
-    const active = getValue(row, 10);
+    const studentid = clean(getCell(row, headerMap, ["StudentID", "StudentId", "studentid"]));
+    const active = getCell(row, headerMap, ["Active", "Status", "active"], true);
 
-    if (!wanted.has(studentid) || active !== true) return;
+    if (!wanted.has(studentid) || !isActiveValue(active)) return;
 
     map.set(studentid, {
       studentid,
-      username: getValue(row, 1),
-      classgroup: getValue(row, 6)
+      username: getCell(row, headerMap, ["Username", "Name", "username"]),
+      classgroup: getCell(row, headerMap, ["ClassGroup", "Group", "classgroup"])
     });
   });
 
   return map;
 }
 
-function getExistingStudentTaskPairs(rows) {
+function getExistingStudentTaskPairs(rows, columns) {
   const pairs = new Set();
 
   rows.slice(1).forEach(row => {
-    const studentid = clean(getValue(row, 1));
-    const taskid = clean(getValue(row, 2));
+    const studentid = clean(getValue(row, columns.studentid));
+    const taskid = clean(getValue(row, columns.taskid));
 
     if (studentid && taskid) {
       pairs.add(`${studentid}|${taskid}`);
@@ -262,6 +367,28 @@ function getExistingStudentTaskPairs(rows) {
   return pairs;
 }
 
+function buildStudentTaskRow(headers, headerMap, options) {
+  const row = new Array(headers.length).fill("");
+  const task = options.task;
+
+  setCell(row, headerMap, ["StudentTaskID", "StudentTaskId", "studenttaskid"], options.studenttaskid);
+  setCell(row, headerMap, ["StudentID", "StudentId", "studentid"], options.studentid);
+  setCell(row, headerMap, ["TaskID", "TaskId", "taskid"], task.taskid);
+  setCell(row, headerMap, ["SubjectID", "SubjectId", "subjectid"], task.subjectid);
+  setCell(row, headerMap, ["SubjectName", "Subject", "subjectname"], task.subjectname);
+  setCell(row, headerMap, ["ModuleID", "ModuleId", "moduleid", "ModuletID"], task.moduleid);
+  setCell(row, headerMap, ["ModuleName", "Module", "modulename"], task.modulename);
+  setCell(row, headerMap, ["TaskName", "Task", "taskname"], task.taskname);
+  setCell(row, headerMap, ["CompleteStatus", "Complete", "Completed", "completestatus"], "");
+  setCell(row, headerMap, ["CompleteDate", "CompletedDate", "completedate"], "");
+  setCell(row, headerMap, ["VerifyStatus", "Verified", "verifystatus"], "");
+  setCell(row, headerMap, ["VerifyDate", "VerifiedDate", "verifydate"], "");
+  setCell(row, headerMap, ["AssignedBy", "assignedby"], options.assignedBy);
+  setCell(row, headerMap, ["AssignedDate", "assigneddate"], options.assignedDate);
+
+  return row;
+}
+
 async function reserveStudentTaskIds(env, count) {
   const rows = await readTaskAssignmentSheet(env, SYSTEM_CONFIG_SHEET);
 
@@ -269,18 +396,28 @@ async function reserveStudentTaskIds(env, count) {
     return { ok: false, error: "SystemConfig sheet not found" };
   }
 
-  const rowIndex = rows.findIndex(row => clean(getValue(row, 0)) === "NextStudentTaskNumber");
+  const headerMap = buildHeaderMap(rows[0] || []);
+  const configNameColumn = findColumn(headerMap, ["Config", "Key", "Setting", "Name"]);
+  const configValueColumn = findColumn(headerMap, ["Value", "ConfigValue", "SettingValue"]);
+  const nameColumn = configNameColumn === -1 ? 0 : configNameColumn;
+  const valueColumn = configValueColumn === -1 ? 1 : configValueColumn;
+  const rowIndex = rows.findIndex(row => clean(getValue(row, nameColumn)) === "NextStudentTaskNumber");
 
   if (rowIndex === -1) {
     return { ok: false, error: "NextStudentTaskNumber not found" };
   }
 
-  const current = Number(getValue(rows[rowIndex], 1));
+  const current = Number(getValue(rows[rowIndex], valueColumn));
+
+  if (!Number.isInteger(current) || current < 1) {
+    return { ok: false, error: "NextStudentTaskNumber is invalid" };
+  }
+
   const ids = Array.from({ length: count }, (_, index) => `STASK${current + index}`);
 
   await updateGoogleSheetValues(
     env,
-    `${SYSTEM_CONFIG_SHEET}!B${rowIndex + 1}`,
+    `${SYSTEM_CONFIG_SHEET}!${columnIndexToA1(valueColumn)}${rowIndex + 1}`,
     [[current + count]]
   );
 
@@ -301,6 +438,75 @@ async function readTaskAssignmentSheet(env, sheetName) {
 
 function missingSheetResult(sheetName) {
   return { success: false, error: `${sheetName} sheet not found` };
+}
+
+function buildHeaderMap(headers) {
+  const map = {};
+
+  headers.forEach((header, index) => {
+    const key = normalizeHeader(header);
+
+    if (key && map[key] === undefined) {
+      map[key] = index;
+    }
+  });
+
+  return map;
+}
+
+function findColumn(headerMap, names) {
+  for (const name of names) {
+    const index = headerMap[normalizeHeader(name)];
+
+    if (index !== undefined) return index;
+  }
+
+  return -1;
+}
+
+function getCell(row, headerMap, names, fallback = "") {
+  const column = findColumn(headerMap, names);
+
+  if (column === -1) return fallback;
+
+  const value = Array.isArray(row) ? row[column] : undefined;
+  return value === undefined || value === null ? fallback : value;
+}
+
+function setCell(row, headerMap, names, value) {
+  const column = findColumn(headerMap, names);
+
+  if (column !== -1) {
+    row[column] = value;
+  }
+}
+
+function isActiveValue(value) {
+  if (value === undefined || value === null || value === "") return true;
+  if (value === true) return true;
+
+  return ["true", "1", "yes", "active"].includes(clean(value).toLowerCase());
+}
+
+function uniqueCleanValues(values) {
+  return Array.from(new Set((values || []).map(clean).filter(Boolean)));
+}
+
+function columnIndexToA1(index) {
+  let value = Number(index) + 1;
+  let label = "";
+
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    label = String.fromCharCode(65 + remainder) + label;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return label;
+}
+
+function normalizeHeader(value) {
+  return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function isMissingSheetError(error, sheetName) {

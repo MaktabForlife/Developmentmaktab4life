@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "100.8",
+  "version": "100.9",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -20,6 +20,7 @@
     "test:curriculum-write": "node tests/curriculum-write.test.mjs",
     "test:student-management": "node tests/student-management.test.mjs",
     "test:student-registration": "node tests/student-registration.test.mjs",
+    "test:student-task-assignment-ui": "node tests/student-task-assignment-ui.test.mjs",
     "test:task-assignment-write": "node tests/task-assignment-write.test.mjs",
     "test:progress-read": "node tests/progress-read.test.mjs",
     "test:progress-write": "node tests/progress-write.test.mjs",

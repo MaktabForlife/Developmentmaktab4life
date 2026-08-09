@@ -1,39 +1,31 @@
-V100.8
+V100.9
 
-Apply this package to V100.7.2.
+Apply this package to V100.8.
 
 Deploy these Worker/backend source files first:
 
-backend/src/lib/auth.js
-backend/src/routes/auth-google-sheets.js
-backend/src/routes/drive-library.js
-backend/src/routes/resources.js
-backend/src/routes/student-management.js
 backend/src/routes/student-registration.js
-backend/src/routes/timetable.js
+backend/src/routes/task-assignment.js
 backend/src/worker.js
 
 Deploy these frontend files second:
 
 admin/index.html
-student/index.html
-index.html
 js/m4l-manage-students.js
-js/m4l-shell.js
-js/m4l-timetable.js
+css/m4l-07-manage-students.css
+styles.css
 version.json
 js/version.json
 
 Release/test metadata:
 
 backend/package.json
-backend/tests/drive-library.test.mjs
+backend/tests/admin-management-ui.test.mjs
 backend/tests/group-zero-access.test.mjs
-backend/tests/resources.test.mjs
 backend/tests/router.test.mjs
-backend/tests/student-management.test.mjs
 backend/tests/student-registration.test.mjs
-backend/tests/timetable.test.mjs
+backend/tests/student-task-assignment-ui.test.mjs
+backend/tests/task-assignment-write.test.mjs
 CHANGED-FILES.txt
 CHANGES.md
 RELEASE-NOTES.md

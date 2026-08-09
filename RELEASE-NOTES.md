@@ -1,3 +1,24 @@
+V100.9
+
+# Separate student registration and task assignment
+
+Student registration now creates the account and personal login link without
+assigning curriculum tasks. Student Records includes a separate **Assign
+Tasks** tab where an Admin or Senior can select a registered active student and
+then choose all active tasks or particular subjects and modules.
+
+Before writing, the Worker checks every selected `(StudentID, TaskID)` pair
+already present in `StudentTasks`. Duplicate assignments are skipped, and a
+duplicate-only retry does not reserve new IDs or append rows.
+
+Group 0 students no longer receive tasks merely because they were registered.
+They may still be assigned tasks deliberately through the manual assignment
+screen. No Google Sheets schema or Apps Script deployment is required.
+
+Deploy the Worker/backend first and the Admin frontend second.
+
+---
+
 V100.8
 
 # Active Student Group 0 sees ALL groups

@@ -29,7 +29,7 @@ for (const html of [adminHtml, studentHtml, rootHtml]) {
   assert.match(html, /m4l-shell\.js\?v=100\.8/);
   assert.match(html, /m4l-timetable\.js\?v=100\.8/);
 }
-assert.match(adminHtml, /m4l-manage-students\.js\?v=100\.8/);
+assert.match(adminHtml, /m4l-manage-students\.js\?v=100\.9/);
 
 // V100.8 changes access to timetable/resources only. Group 0 remains outside
 // Attendance and Progress monitoring exactly as agreed.

@@ -1,3 +1,53 @@
+# V100.9 — Separate registration and selective task assignment
+
+## Scope
+
+V100.9 separates student account creation from curriculum task assignment.
+Registering a student now creates the `StudentRecords` account and personal
+login link only. Tasks are assigned afterwards from a dedicated Admin UI.
+
+## Behaviour
+
+- Registration no longer reads `TaskList` or `StudentTasks`, reserves
+  `StudentTaskID` values, or creates task-assignment rows.
+- Student Records now has three modes: Register, Assign Tasks and Modify.
+- Assign Tasks first selects an existing registered student, then offers:
+  - all active tasks; or
+  - selected subjects and modules, including whole-subject selection.
+- Only active students may receive new task assignments. Group 0 students are
+  no longer assigned tasks automatically, but may still receive a deliberate
+  manual assignment.
+- The backend resolves the selected subject/module combinations to active
+  `TaskList` rows and validates the selected student against
+  `StudentRecords`.
+- Existing `(StudentID, TaskID)` pairs are checked before any IDs are reserved.
+  Repeating an assignment skips duplicates and does not append duplicate rows.
+- New `StudentTasks` rows are built from the live sheet headers, preserving the
+  full subject, module, task and assignment metadata layout.
+- Existing explicit task, subject/group and bulk-assignment request shapes
+  remain supported for backward compatibility.
+- ADMIN and SENIOR task-assignment permissions are unchanged; TEACHER accounts
+  remain blocked by the Worker.
+
+## Deployment
+
+Deploy the Worker/backend files first, followed by the Admin frontend files.
+No Apps Script deployment, Google Sheets schema change or data migration is
+required.
+
+## Validation
+
+- Confirmed registration writes only `StudentRecords` and its student-number
+  counter, even if legacy assignment fields are submitted.
+- Confirmed all-task, selected-module, Group 0 manual and duplicate-only retry
+  flows.
+- Confirmed duplicate-only retries do not reserve IDs or append rows.
+- Confirmed inactive students and TEACHER accounts cannot assign tasks.
+- Added UI/source integration coverage for the separate workflow and cache
+  versions.
+
+---
+
 # V100.8 — Active Student Group 0 sees ALL groups
 
 ## Scope
