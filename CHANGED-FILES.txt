@@ -1,28 +1,43 @@
-V100.7.2
+V100.8
 
-Highlighted Admin Home tile. This package is cumulative and can be applied
-directly to V100.6; it supersedes V100.7 and V100.7.1.
+Apply this package to V100.7.2.
 
-Deploy/copy these changed frontend files:
+Deploy these Worker/backend source files first:
+
+backend/src/lib/auth.js
+backend/src/routes/auth-google-sheets.js
+backend/src/routes/drive-library.js
+backend/src/routes/resources.js
+backend/src/routes/student-management.js
+backend/src/routes/student-registration.js
+backend/src/routes/timetable.js
+backend/src/worker.js
+
+Deploy these frontend files second:
 
 admin/index.html
-styles.css
-css/m4l-02-home-common-and-shared-cards.css
-js/m4l-admin-academics.js
+student/index.html
+index.html
+js/m4l-manage-students.js
 js/m4l-shell.js
-icons/studentrecords.svg
-icons/systemsettings.svg
+js/m4l-timetable.js
 version.json
 js/version.json
 
 Release/test metadata:
 
 backend/package.json
-backend/tests/admin-menu-home.test.mjs
-backend/tests/admin-management-ui.test.mjs
+backend/tests/drive-library.test.mjs
+backend/tests/group-zero-access.test.mjs
+backend/tests/resources.test.mjs
+backend/tests/router.test.mjs
+backend/tests/student-management.test.mjs
+backend/tests/student-registration.test.mjs
+backend/tests/timetable.test.mjs
 CHANGED-FILES.txt
 CHANGES.md
 RELEASE-NOTES.md
 DELETE-FILES.txt
 
-Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+No Apps Script deployment, Google Sheets schema change or file deletion is
+required.

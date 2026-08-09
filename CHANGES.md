@@ -1,3 +1,52 @@
+# V100.8 — Active Student Group 0 sees ALL groups
+
+## Scope
+
+V100.8 gives an active student whose `StudentRecords.ClassGroup` is `0`
+read access to every timetable and resource group. Group 0 remains excluded
+from Attendance and Progress monitoring.
+
+## Behaviour
+
+- Student Group 0 receives every active Library resource, including protected
+  Google Drive resources after the direct-file authorization check.
+- Student Group 0 receives the complete timetable once through a student-only
+  translation to the existing `ALL` timetable scope.
+- `TimeTable.GroupNo = 0`, resource `GroupNo = 0`, and
+  `AdminRecords.AssignedGroup = 0` retain their literal meanings and do not
+  replace `ALL`.
+- The Admin student-management UI consistently labels the special value as
+  `ALL (Group 0)` and accepts `0` as a deliberate group value.
+- Only an `ADMIN` may newly assign Group 0; `SENIOR` users retain normal
+  student-management access but cannot grant the all-groups designation.
+- Student authentication and session binding preserve numeric zero values.
+- The student profile displays `ALL (Group 0)` rather than presenting Group 0
+  as inactive.
+- Timetable cache namespace `v2` invalidates old Group 0 results, and the cache
+  key now includes the authenticated account identity and group.
+- Existing Attendance and Progress Group 0 exclusions are unchanged.
+
+## Deployment
+
+Deploy the Worker/backend changes first, then the frontend files. No Apps
+Script deployment or Google Sheets schema change is required. Existing
+StudentRecords Group 0 data must already have the intended `Active` value.
+
+## Validation
+
+- Added catalogue, protected-file, timetable, assignment-role, UI-label and
+  cache-isolation coverage for Group 0.
+- Confirmed a teacher with `AdminRecords.AssignedGroup = 0` remains restricted
+  to literal Group 0/ALL timetable rows.
+- Confirmed normal students cannot view a resource whose row has
+  `GroupNo = 0` merely because Student Group 0 is now an access wildcard.
+- All 26 test files present in the supplied V100.7.2 repository pass. The
+  supplied baseline does not contain `pdfjs-annotation-session.test.mjs`, even
+  though its pre-existing package script still references that file; V100.8
+  does not change PDF.js behaviour or that baseline omission.
+
+---
+
 # V100.7.2 — Highlighted Admin Home tile
 
 - Adds a separate Admin Home tile to the Admin landing page.

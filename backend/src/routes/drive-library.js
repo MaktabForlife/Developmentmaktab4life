@@ -981,7 +981,15 @@ function normalizeSize(value) {
 
 function groupMatches(rowGroup, studentGroup) {
   const rowValue = normalizeMatch(rowGroup);
-  return !rowValue || rowValue === "all" || !studentGroup || rowValue === normalizeMatch(studentGroup);
+  const studentValue = normalizeMatch(studentGroup);
+
+  // Keep direct/private file authorization aligned with catalogue filtering.
+  // Resource GroupNo 0 remains literal and does not replace resource-side ALL.
+  return studentValue === "0" ||
+    !rowValue ||
+    rowValue === "all" ||
+    !studentValue ||
+    rowValue === studentValue;
 }
 
 function buildHeaderMap(headers) {

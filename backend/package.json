@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "100.7.2",
+  "version": "100.8",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -30,7 +30,8 @@
     "test:pdf-split": "node tests/pdf-split-view.test.mjs",
     "test:drive-library": "node tests/drive-library.test.mjs",
     "test:resource-management-ui": "node tests/resource-management-ui.test.mjs",
-    "test:admin-menu-home": "node tests/admin-menu-home.test.mjs"
+    "test:admin-menu-home": "node tests/admin-menu-home.test.mjs",
+    "test:group-zero-access": "node tests/group-zero-access.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.36.0"

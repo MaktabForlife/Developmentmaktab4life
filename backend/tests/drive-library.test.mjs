@@ -7,6 +7,7 @@ const sessionSecret = "drive-library-session-secret";
 const adminHash = await createSaltedPinHash("1234", pinSecret);
 const studentFourHash = await createSaltedPinHash("2222", pinSecret);
 const studentThreeHash = await createSaltedPinHash("3333", pinSecret);
+const studentAllGroupsHash = await createSaltedPinHash("4444", pinSecret);
 const adminRows = [[
   "AdminID", "Username", "UniqueID", "PinSetup", "PinHash", "Role",
   "AssignedGroup", "Active", "CreateDate", "LastLogin"
@@ -16,7 +17,8 @@ const studentRows = [[
   "ClassGroup", "CreatedDate", "LastLogin", "TaskCount", "Active"
 ],
 ["STUDENT4", "Group Four", "", "STUDENT4LINK", true, studentFourHash, "4", "", "", 0, true],
-["STUDENT3", "Group Three", "", "STUDENT3LINK", true, studentThreeHash, "3", "", "", 0, true]];
+["STUDENT3", "Group Three", "", "STUDENT3LINK", true, studentThreeHash, "3", "", "", 0, true],
+["STUDENT0", "ALL Groups", "", "STUDENT0LINK", true, studentAllGroupsHash, 0, "", "", 0, true]];
 const subjectRows = [["SubjectID", "SubjectName", "Active", "CreatedDate"], ["SUB1", "Fiqh", true, ""]];
 const moduleRows = [
   ["ModuleID", "SubjectID", "SubjectName", "ModuleName", "Sort Order", "Active"],
@@ -98,6 +100,14 @@ const studentThreeToken = await createSessionToken({
   classgroup: "3",
   authrow: 3,
   credentialHash: studentThreeHash
+}, env);
+const studentAllGroupsToken = await createSessionToken({
+  type: "student",
+  studentid: "STUDENT0",
+  username: "ALL Groups",
+  classgroup: "0",
+  authrow: 4,
+  credentialHash: studentAllGroupsHash
 }, env);
 
 const driveItems = new Map([
@@ -229,6 +239,11 @@ try {
   assert.equal(groupThreeList.response.status, 200);
   assert.equal(groupThreeList.data.count, 0);
 
+  const allGroupsList = await post("/api/resources/list", {}, studentAllGroupsToken);
+  assert.equal(allGroupsList.response.status, 200);
+  assert.equal(allGroupsList.data.classgroup, "0");
+  assert.equal(allGroupsList.data.count, 1, "Student Group 0 must list a Group 4 resource");
+
   const groupFourAccess = await post("/api/library/drive/access", {
     resourceType: "EBOOK",
     resourceId: "EBOOK1"
@@ -241,6 +256,12 @@ try {
   }, studentThreeToken);
   assert.equal(groupThreeAccess.response.status, 403);
   assert.equal(groupThreeAccess.data.error, "Resource is not available to this group");
+
+  const allGroupsAccess = await post("/api/library/drive/access", {
+    resourceType: "EBOOK",
+    resourceId: "EBOOK1"
+  }, studentAllGroupsToken);
+  assert.equal(allGroupsAccess.response.status, 200, "Student Group 0 must pass private Drive authorization");
 
   const updated = await post("/api/admin/resources/update", {
     resourceType: "EBOOK",

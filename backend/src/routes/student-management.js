@@ -22,7 +22,7 @@ export async function checkStudentDuplicateGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
   const username = body.username;
   const whatsapp6 = normalizeWhatsapp6(body.whatsapp6);
-  const classgroup = body.classgroup;
+  const classgroup = clean(body.classgroup);
 
   if (!username) {
     return json({ success: false, error: "Missing username" }, 400);
@@ -30,6 +30,13 @@ export async function checkStudentDuplicateGoogleSheetsEndpoint(request, env) {
 
   if (!classgroup) {
     return json({ success: false, error: "Missing classgroup" }, 400);
+  }
+
+  if (!isValidStudentClassGroup(classgroup)) {
+    return json({
+      success: false,
+      error: "classgroup must be 0 (ALL) or a positive whole number"
+    }, 400);
   }
 
   const rows = await readStudentManagementSheet(env, STUDENT_RECORDS_SHEET);
@@ -105,8 +112,19 @@ export async function updateStudentGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Username cannot be empty" }, 400);
   }
 
-  if (body.classgroup !== undefined && String(body.classgroup).trim() === "") {
+  const requestedClassGroup = body.classgroup === undefined
+    ? null
+    : clean(body.classgroup);
+
+  if (requestedClassGroup !== null && !requestedClassGroup) {
     return json({ success: false, error: "classgroup cannot be empty" }, 400);
+  }
+
+  if (requestedClassGroup !== null && !isValidStudentClassGroup(requestedClassGroup)) {
+    return json({
+      success: false,
+      error: "classgroup must be 0 (ALL) or a positive whole number"
+    }, 400);
   }
 
   if (body.active !== undefined && typeof body.active !== "boolean") {
@@ -153,6 +171,27 @@ export async function updateStudentGoogleSheetsEndpoint(request, env) {
   const sheetRow = rowIndex + 2;
   const updates = [];
   const updatedValues = {};
+  const currentClassGroup = clean(getValue(studentRow, columns.classgroup));
+  const currentActive = normalizeBooleanCell(getValue(studentRow, columns.active));
+  const resultingClassGroup = requestedClassGroup === null
+    ? currentClassGroup
+    : requestedClassGroup;
+  const resultingActive = body.active === undefined
+    ? currentActive
+    : body.active;
+  const grantsAllGroupsAccess = resultingClassGroup === "0" &&
+    resultingActive === true &&
+    (currentClassGroup !== "0" || currentActive !== true);
+
+  if (
+    ((requestedClassGroup === "0" && currentClassGroup !== "0") || grantsAllGroupsAccess) &&
+    !isFullAdmin(permission.user)
+  ) {
+    return json({
+      success: false,
+      error: "Only an Admin can assign Group 0 (ALL) access"
+    }, 403);
+  }
 
   if (body.username !== undefined) {
     updatedValues.username = String(body.username).trim();
@@ -165,7 +204,7 @@ export async function updateStudentGoogleSheetsEndpoint(request, env) {
   }
 
   if (body.classgroup !== undefined) {
-    updatedValues.classgroup = String(body.classgroup).trim();
+    updatedValues.classgroup = requestedClassGroup;
     updates.push(singleCellUpdate(columns.classgroup, sheetRow, updatedValues.classgroup));
   }
 
@@ -715,4 +754,12 @@ function isMissingSheetError(error, sheetName) {
 
 function clean(value) {
   return String(value === undefined || value === null ? "" : value).trim();
+}
+
+function isValidStudentClassGroup(value) {
+  return /^(0|[1-9]\d*)$/.test(clean(value));
+}
+
+function isFullAdmin(user) {
+  return clean(user && user.role).toUpperCase() === "ADMIN";
 }

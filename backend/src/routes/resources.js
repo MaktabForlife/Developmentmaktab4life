@@ -324,7 +324,16 @@ function compareText(a, b) {
 
 function groupMatches(rowGroup, studentGroup) {
   const rowValue = normalizeMatch(rowGroup);
-  return !rowValue || rowValue === "all" || !studentGroup || rowValue === normalizeMatch(studentGroup);
+  const studentValue = normalizeMatch(studentGroup);
+
+  // V100.8: StudentRecords ClassGroup 0 is the student-side ALL-groups
+  // designation. Resource rows still use the explicit ALL value when the
+  // resource is intended for every student.
+  return studentValue === "0" ||
+    !rowValue ||
+    rowValue === "all" ||
+    !studentValue ||
+    rowValue === studentValue;
 }
 
 function makeGroup(config) {

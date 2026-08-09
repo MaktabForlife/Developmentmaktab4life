@@ -2181,6 +2181,25 @@ function getCurrentUserName() {
   ).trim();
 }
 
+function getCurrentStudentGroupValue(user = state.user || {}) {
+  for (const key of ["classgroup", "ClassGroup", "group", "Group"]) {
+    if (user[key] !== null && user[key] !== undefined && String(user[key]).trim() !== "") {
+      return String(user[key]).trim();
+    }
+  }
+
+  return "";
+}
+
+function getCurrentStudentGroupLabel(user = state.user || {}) {
+  const group = getCurrentStudentGroupValue(user);
+
+  if (!group) return "";
+  if (group === "0") return "ALL (Group 0)";
+
+  return `Group ${group}`;
+}
+
 function getCurrentUserLevelText() {
   const user = state.user || {};
   const role = String(user.role || user.Role || "").trim();
@@ -2189,15 +2208,9 @@ function getCurrentUserLevelText() {
     return role || "Admin";
   }
 
-  const group = String(
-    user.classgroup ||
-    user.ClassGroup ||
-    user.group ||
-    user.Group ||
-    ""
-  ).trim();
+  const groupLabel = getCurrentStudentGroupLabel(user);
 
-  return group ? `Student · Group ${group}` : "Student";
+  return groupLabel ? `Student · ${groupLabel}` : "Student";
 }
 
 function getCurrentUserRoleLabel() {
@@ -2213,16 +2226,7 @@ function getCurrentUserRoleLabel() {
 }
 
 function getCurrentUserGroupLabel() {
-  const user = state.user || {};
-  const group = String(
-    user.classgroup ||
-    user.ClassGroup ||
-    user.group ||
-    user.Group ||
-    ""
-  ).trim();
-
-  return group ? `Group ${group}` : "";
+  return getCurrentStudentGroupLabel(state.user || {});
 }
 
 function getUserBandProfileMarkup(username, role) {

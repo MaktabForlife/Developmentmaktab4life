@@ -1,3 +1,29 @@
+V100.8
+
+# Active Student Group 0 sees ALL groups
+
+An active student assigned `ClassGroup = 0` can now view the complete
+timetable and all active Library resources. Direct access to protected Google
+Drive resources enforces the same rule, so catalogue visibility and file
+authorization remain aligned.
+
+The Admin student-management UI displays this assignment as `ALL (Group 0)`.
+Only an ADMIN can newly grant it. Attendance and Progress continue to exclude
+Group 0 students as agreed.
+
+Content records continue to use `ALL` for a global audience. Group 0 does not
+replace `ALL` in TimeTable rows, Resource rows, or AdminRecords teacher
+assignments.
+
+Deploy the Worker/backend first and the frontend second. No Apps Script or
+Google Sheets schema deployment is required.
+
+All 26 tests present in the supplied repository pass. Its existing
+`test:pdfjs-annotations` package entry references a test file absent from the
+supplied V100.7.2 archive; this unrelated baseline omission remains unchanged.
+
+---
+
 V100.7.2
 
 # Highlighted Admin Home tile

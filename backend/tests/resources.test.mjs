@@ -67,6 +67,47 @@ assert.equal(
 assert.equal(transformed.other.subjects[0].subjectname, "Unassigned Subject");
 assert.equal(transformed.other.subjects[0].modules[0].modulename, "General");
 
+const allGroupsStudentResources = buildResourcesResponse({
+  eBooks: {
+    rows: [
+      headers,
+      ["E1", "Group One", "S1", "Quran", "M1", "Basics", "T1", "1", "PDF", "One", "https://example.test/one", true, "2026-07-01"],
+      ["E2", "Group Two", "S1", "Quran", "M1", "Basics", "T2", "2", "PDF", "Two", "https://example.test/two", true, "2026-07-02"],
+      ["E3", "Global", "S1", "Quran", "M1", "Basics", "T3", "ALL", "PDF", "All", "https://example.test/all", true, "2026-07-03"],
+      ["E4", "Group Zero Only", "S1", "Quran", "M1", "Basics", "T4", "0", "PDF", "Zero", "https://example.test/zero", true, "2026-07-04"]
+    ]
+  }
+}, {
+  studentid: "STUDENT0",
+  classgroup: "0"
+});
+
+assert.equal(allGroupsStudentResources.count, 4, "Student Group 0 must receive every active resource group");
+assert.deepEqual(
+  allGroupsStudentResources.ebooks.subjects[0].modules[0].resources.map(resource => resource.name),
+  ["Global", "Group One", "Group Two", "Group Zero Only"]
+);
+
+const normalStudentResources = buildResourcesResponse({
+  eBooks: {
+    rows: [
+      headers,
+      ["E1", "Group One", "S1", "Quran", "M1", "Basics", "T1", "1", "PDF", "One", "https://example.test/one", true, "2026-07-01"],
+      ["E3", "Global", "S1", "Quran", "M1", "Basics", "T3", "ALL", "PDF", "All", "https://example.test/all", true, "2026-07-03"],
+      ["E4", "Group Zero Only", "S1", "Quran", "M1", "Basics", "T4", "0", "PDF", "Zero", "https://example.test/zero", true, "2026-07-04"]
+    ]
+  }
+}, {
+  studentid: "STUDENT1",
+  classgroup: "1"
+});
+
+assert.deepEqual(
+  normalStudentResources.ebooks.subjects[0].modules[0].resources.map(resource => resource.name),
+  ["Global", "Group One"],
+  "Resource GroupNo 0 must remain literal rather than replacing ALL"
+);
+
 const keyPair = await crypto.subtle.generateKey(
   {
     name: "RSASSA-PKCS1-v1_5",
@@ -95,6 +136,11 @@ const token = await makeSessionToken({
   type: "student",
   studentid: "STUDENT1",
   classgroup: "1"
+}, sessionSecret);
+const allGroupsToken = await makeSessionToken({
+  type: "student",
+  studentid: "STUDENT0",
+  classgroup: "0"
 }, sessionSecret);
 const originalFetch = globalThis.fetch;
 const sheetRanges = [];
@@ -163,6 +209,27 @@ try {
     assert.equal(data.ebooks.subjects[0].modules[0].resources[0].name, "Group One");
     assert.equal(data.printables.warning, "Missing sheet: Printable");
   }
+
+  const allGroupsResult = await worker.fetch(new Request(
+    "https://worker.test/api/student/resources/list",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${allGroupsToken}`
+      },
+      body: JSON.stringify({ classgroup: "1" })
+    }
+  ), directEnv);
+  const allGroupsData = await allGroupsResult.json();
+
+  assert.equal(allGroupsResult.status, 200);
+  assert.equal(allGroupsData.classgroup, "0", "The authenticated Group 0 must override the request body");
+  assert.equal(allGroupsData.count, 2);
+  assert.deepEqual(
+    allGroupsData.ebooks.subjects[0].modules[0].resources.map(resource => resource.name),
+    ["Group One", "Group Two"]
+  );
 
   assert.deepEqual(
     new Set(sheetRanges),

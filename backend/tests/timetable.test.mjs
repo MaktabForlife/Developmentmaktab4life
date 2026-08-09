@@ -17,7 +17,8 @@ const timetableRows = [
   ["S2", "SUB2", "Fiqh", "Tuesday", "10:00", "", "1", "Teacher A"],
   ["S3", "SUB3", "Hadith", "Wednesday", "11:00", "", "1", "Teacher C"],
   ["S4", "SUB4", "History", "Thursday", "12:00", "", "2", "Teacher B"],
-  ["S5", "SUB5", "", "Friday", "13:00", "", "1", "Teacher A"]
+  ["S5", "SUB5", "", "Friday", "13:00", "", "1", "Teacher A"],
+  ["S6", "SUB6", "Review", "Friday", "14:00", "", "0", "Teacher Z"]
 ];
 
 const transformed = buildTimetableResponse(timetableRows, {
@@ -107,11 +108,22 @@ const studentToken = await makeSessionToken({
   studentid: "STUDENT1",
   classgroup: "1"
 }, sessionSecret);
+const allGroupsStudentToken = await makeSessionToken({
+  type: "student",
+  studentid: "STUDENT0",
+  classgroup: "0"
+}, sessionSecret);
 const teacherToken = await makeSessionToken({
   type: "admin",
   username: "Teacher A",
   role: "TEACHER",
   assignedgroup: "1"
+}, sessionSecret);
+const groupZeroTeacherToken = await makeSessionToken({
+  type: "admin",
+  username: "Teacher Z",
+  role: "TEACHER",
+  assignedgroup: "0"
 }, sessionSecret);
 const seniorToken = await makeSessionToken({
   type: "admin",
@@ -182,6 +194,20 @@ try {
     ["S1", "S2", "S3"]
   );
 
+  const allGroupsStudentResult = await postTimetable(
+    "/api/student/timetable/get",
+    allGroupsStudentToken,
+    { groupNo: "1", assignedTeacher: "Teacher A" },
+    directEnv
+  );
+  assert.equal(allGroupsStudentResult.data.groupno, "ALL");
+  assert.equal(allGroupsStudentResult.data.assignedteacher, "ALL");
+  assert.deepEqual(
+    allGroupsStudentResult.data.sessions.map(session => session.sessionid),
+    ["S1", "S2", "S3", "S4", "S6"],
+    "Student Group 0 must receive every valid timetable group once"
+  );
+
   const teacherResult = await postTimetable(
     "/api/admin/timetable/get",
     teacherToken,
@@ -197,6 +223,20 @@ try {
   assert.deepEqual(
     teacherResult.data.sessions.map(session => session.sessionid),
     ["S1", "S2"]
+  );
+
+  const groupZeroTeacherResult = await postTimetable(
+    "/api/admin/timetable/get",
+    groupZeroTeacherToken,
+    { groupNo: "ALL", assignedTeacher: "ALL" },
+    directEnv
+  );
+  assert.equal(groupZeroTeacherResult.data.groupno, "0");
+  assert.equal(groupZeroTeacherResult.data.assignedteacher, "Teacher Z");
+  assert.deepEqual(
+    groupZeroTeacherResult.data.sessions.map(session => session.sessionid),
+    ["S1", "S6"],
+    "AdminRecords AssignedGroup 0 must remain literal rather than becoming ALL"
   );
 
   missingSheet = true;
