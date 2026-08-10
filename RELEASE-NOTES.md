@@ -1,3 +1,28 @@
+V101
+
+# Stable large-screen Weekly Planner editing
+
+- Mobile Weekly Planner editing is unchanged: tap one preview day, edit it in
+  the focused dialog, save, then move to the next day.
+- Tablet and desktop now use a permanent inline editor instead of expanding the
+  mobile dialog into four cards.
+- All four day cards remain visible. Each card shows its date and synchronized
+  group selector in its header and has its own Save button.
+- A day Save submits the complete four-day planner so the other three days are
+  preserved, but it does not rebuild the inline editor, close it, change mode,
+  move focus, or jump the page.
+- Weekly Feedback is also editable and saveable in the large-screen workspace.
+- Submitted and downloaded PNG files now use the authenticated teacher, week
+  commencing date and actual submission date, for example:
+  `MI-Hajira - 10 Aug - submitted 8 Aug.png`.
+- Weekly Planner JavaScript/CSS cache versions and application/Worker metadata
+  are bumped to `101`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare-setting change is required.
+
+---
+
 V100.10.5
 
 # Safer oversight disclosures and readable mobile details

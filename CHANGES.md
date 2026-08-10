@@ -1,3 +1,21 @@
+# V101 — Stable large-screen Weekly Planner editing
+
+- Separates mobile and large-screen Weekly Planner editing paths.
+- Retains the existing tap-a-day modal editor below 768px.
+- Adds a persistent inline 2×2 tablet and four-column desktop day editor.
+- Places the date and synchronized group control inside every inline day header.
+- Adds a local Save button to each day and to Weekly Feedback.
+- Saves the complete planner without rerendering the large-screen editor, so
+  focus, scroll position, editing mode and all four days are preserved.
+- Renames submitted/downloaded PNG files as
+  `Teacher-Name - Week-Date - submitted Submission-Date.png`.
+- Bumps application, Worker and Weekly Planner asset metadata to `101`.
+
+No spreadsheet schema, Apps Script or Cloudflare configuration change is
+required.
+
+---
+
 # V100.10.5 — Oversight Zoom safety and readability
 
 - Removes Zoom actions from `ADMIN`/`SENIOR` subject and module headings.

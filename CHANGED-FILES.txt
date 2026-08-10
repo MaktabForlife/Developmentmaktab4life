@@ -1,19 +1,18 @@
-V100.10.5
+V101
 
 Backend / Worker
 - backend/src/worker.js
 - backend/package.json
-- backend/tests/timetable-teacher-ui.test.mjs
 - backend/tests/router.test.mjs
-- backend/tests/group-zero-access.test.mjs
+- backend/tests/timetable-teacher-ui.test.mjs
 - backend/tests/admin-management-ui.test.mjs
 - backend/tests/student-task-assignment-ui.test.mjs
 
 Frontend
-- js/m4l-timetable.js
-- css/m4l-05-home-timetable.css
+- js/m4l-weekly-planner.js
+- js/tests/weekly-planner.test.mjs
+- css/m4l-15-weekly-planner.css
 - styles.css
-- js/styles.css
 - admin/index.html
 - student/index.html
 - index.html
@@ -30,9 +29,8 @@ Deployment order
 1. Worker/backend
 2. Frontend
 
-ADMIN/SENIOR headings are disclosure controls only and cannot open Zoom.
-Each linked assignment exposes a separate underlined Zoom text action.
-Oversight text uses only dark active and light-grey muted colours.
-Mobile oversight detail text and spacing are enlarged for readability.
-Do not delete the legacy TimeTable sheet or its global Zoom-link route yet.
-No Apps Script deployment or new Worker setting is required.
+Mobile Weekly Planner editing remains the same.
+Tablet/desktop Weekly Planner editing is permanently inline and stable.
+Each day Save preserves and submits all four days without rerendering the editor.
+Submitted PNG filenames include teacher, week commencing and submission dates.
+No Apps Script, spreadsheet, Worker binding or Cloudflare-setting change is required.

@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import vm from "node:vm";
 
-const source = await fs.readFile(new URL("../m4l-weekly-planner.js", import.meta.url), "utf8");
+const [source, plannerCss, adminHtml] = await Promise.all([
+  fs.readFile(new URL("../m4l-weekly-planner.js", import.meta.url), "utf8"),
+  fs.readFile(new URL("../../css/m4l-15-weekly-planner.css", import.meta.url), "utf8"),
+  fs.readFile(new URL("../../admin/index.html", import.meta.url), "utf8")
+]);
+
+assert.match(adminHtml, /id="weekly-planner-day-editor"/, "The mobile tap-a-day dialog must remain available");
+assert.match(adminHtml, /id="weekly-planner-inline-editor"/, "A separate large-screen editor must be present");
+assert.match(adminHtml, /id="weekly-planner-inline-rail"/);
+assert.match(plannerCss, /V101 stable large-screen inline editor/);
+assert.match(plannerCss, /@media \(min-width: 768px\)[\s\S]*\.weekly-planner-inline-editor\s*\{[\s\S]*display: block/);
+assert.match(plannerCss, /@media \(min-width: 1180px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
 const saveLabel = { textContent: "Save & Preview" };
 const saveButton = makeElement();
 saveButton.querySelector = selector => {
@@ -14,6 +25,7 @@ const elements = new Map([
   ["weekly-planner-group", makeElement()],
   ["weekly-planner-feedback", makeElement()],
   ["weekly-planner-rail", makeElement()],
+  ["weekly-planner-inline-rail", makeElement()],
   ["weekly-planner-dots", makeElement()],
   ["weekly-planner-groups", makeElement()],
   ["weekly-planner-message", makeElement()],
@@ -84,6 +96,25 @@ const context = {
           updatedDate: "2026-07-19T10:00:00.000Z"
         },
         previousPlanner: null
+      };
+    }
+    if (path.endsWith("/save")) {
+      return {
+        success: true,
+        teacher: {
+          teacherId: body.teacherId,
+          teacherName: "Test Teacher",
+          role: "TEACHER",
+          assignedGroup: body.groupNo
+        },
+        week: plannerWeekMeta(body.weekStart),
+        planner: {
+          plannerId: `WP-${body.teacherId}-${body.weekStart}`,
+          groupNo: body.groupNo,
+          plannerData: body.plannerData,
+          feedback: body.feedback,
+          updatedDate: "2026-08-08T10:00:00.000Z"
+        }
       };
     }
     throw new Error(`Unexpected API call: ${path}`);
@@ -176,7 +207,36 @@ await planner.copyToCurrentUser(saveButton);
 assert.equal(elements.get("weekly-planner-teacher").value, "ADMIN1");
 assert.equal(planner.canEdit(), true, "A copied planner must switch back to the logged-in owner");
 assert.equal(planner.hasUnsavedChanges(), true, "A copied plan must be saved explicitly");
-assert.equal(saveLabel.textContent, "Save & Preview");
+assert.equal(saveLabel.textContent, "Save");
+
+assert.match(
+  elements.get("weekly-planner-inline-rail").innerHTML,
+  /data-weekly-planner-save-day="0"/,
+  "Large-screen markup should provide an independent Save control for each day"
+);
+assert.match(
+  elements.get("weekly-planner-inline-rail").innerHTML,
+  /data-weekly-planner-day-date="0"[\s\S]*data-weekly-planner-day-group="0"/,
+  "Each inline day header should contain its date and group controls"
+);
+
+const inlineMarkupBeforeSave = elements.get("weekly-planner-inline-rail").innerHTML;
+const daySaveLabel = { textContent: "Save" };
+const daySaveButton = makeElement();
+daySaveButton.querySelector = selector => selector === "[data-weekly-planner-save-label]" ? daySaveLabel : null;
+assert.equal(await planner.saveDay(0, daySaveButton), true);
+assert.equal(
+  elements.get("weekly-planner-inline-rail").innerHTML,
+  inlineMarkupBeforeSave,
+  "Saving one day must not rebuild or jump the large-screen editor"
+);
+const daySaveCall = apiCalls.findLast(call => call.path.endsWith("/save"));
+assert.equal(daySaveCall.body.plannerData.days.length, 4, "A day Save must preserve and submit all four days");
+
+assert.equal(
+  planner.buildImageFileName("MI Hajira", "2026-08-10", new Date("2026-08-08T12:00:00")),
+  "MI-Hajira - 10 Aug - submitted 8 Aug.png"
+);
 
 console.log("Weekly Planner frontend data and session-cache tests passed.");
 
