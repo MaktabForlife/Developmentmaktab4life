@@ -76,6 +76,8 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
     teacherId: context.teacherId,
     allGroupsStudent: context.allGroupsStudent,
     viewerAdminId: context.viewerAdminId,
+    viewerRole: context.viewerRole,
+    teacherOnly: context.teacherOnly,
     showGroupLabels: context.showGroupLabels
   }));
 }
@@ -88,6 +90,7 @@ export function buildTimetableResponse(rows = [], options = {}) {
     options.teacherId ?? options.adminId ?? options.assignedTeacher ?? options.teacher ?? "ALL"
   ) || "ALL";
   const viewerAdminId = clean(options.viewerAdminId);
+  const viewerRole = clean(options.viewerRole).toUpperCase();
   const baseResponse = {
     success: true,
     sessions: [],
@@ -98,6 +101,8 @@ export function buildTimetableResponse(rows = [], options = {}) {
     teacherid: requestedTeacherId,
     assignedteacher: requestedTeacherId,
     vieweradminid: viewerAdminId,
+    viewerrole: viewerRole,
+    teacheronly: options.teacherOnly === true,
     viewerhasassignments: false,
     showgrouplabels: options.showGroupLabels === true || requestedGroup.toUpperCase() === "ALL",
     warnings: [],
@@ -291,6 +296,8 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
     groupNo: "ALL",
     teacherId: "ALL",
     viewerAdminId: auth.user.adminid || "",
+    viewerRole: auth.user.role || "",
+    teacherOnly: false,
     showGroupLabels: true
   });
 
@@ -316,6 +323,10 @@ async function getTimetableRequestContext(request, env) {
     body.teacherId ?? body.adminId ?? body.assignedTeacher ?? body.teacher ?? "ALL"
   ) || "ALL";
   let allGroupsStudent = false;
+  const viewerRole = authUser.type === "admin"
+    ? clean(authUser.role).toUpperCase()
+    : "";
+  const teacherOnly = authUser.type === "admin" && viewerRole === "TEACHER";
 
   if (authUser.type === "student") {
     const studentGroup = clean(
@@ -332,8 +343,15 @@ async function getTimetableRequestContext(request, env) {
     teacherId = "ALL";
   }
 
-  // TeacherAssign is authoritative for teaching scope. AdminRecords role and
-  // AssignedGroup do not filter the main Admin timetable.
+  if (teacherOnly) {
+    // A TEACHER account sees only sessions assigned to its stable AdminID.
+    // Request-body teacher/group filters cannot expand this scope.
+    groupNo = "ALL";
+    teacherId = clean(authUser.adminid) || "__MISSING_TEACHER_ID__";
+  }
+
+  // TeacherAssign is authoritative for teaching scope. ADMIN and SENIOR retain
+  // full oversight; AdminRecords AssignedGroup never grants or restricts it.
   return {
     ok: true,
     authUser,
@@ -341,7 +359,9 @@ async function getTimetableRequestContext(request, env) {
     teacherId,
     allGroupsStudent,
     viewerAdminId: authUser.type === "admin" ? clean(authUser.adminid) : "",
-    showGroupLabels: allGroupsStudent || (
+    viewerRole,
+    teacherOnly,
+    showGroupLabels: teacherOnly || allGroupsStudent || (
       authUser.type === "admin" && normalizeMatch(groupNo) === "all"
     )
   };

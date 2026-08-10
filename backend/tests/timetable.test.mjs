@@ -166,6 +166,13 @@ const teachingAdminToken = await makeSessionToken({
   role: "ADMIN",
   assignedgroup: "ALL"
 }, sessionSecret);
+const teacherToken = await makeSessionToken({
+  type: "admin",
+  adminid: "ADMIN2",
+  username: "Teacher B",
+  role: "TEACHER",
+  assignedgroup: "1"
+}, sessionSecret);
 const oversightAdminToken = await makeSessionToken({
   type: "admin",
   adminid: "ADMIN9",
@@ -263,6 +270,23 @@ try {
   assert.equal(teachingAdminResult.data.vieweradminid, "ADMIN1");
   assert.equal(teachingAdminResult.data.viewerhasassignments, true);
   assert.equal(teachingAdminResult.data.count, 8, "Teaching admins must receive the complete timetable for visual greying");
+
+  const teacherOnlyResult = await postTimetable(
+    "/api/admin/timetable/get",
+    teacherToken,
+    { groupNo: "1", teacherId: "ADMIN1" },
+    directEnv
+  );
+  assert.equal(teacherOnlyResult.data.groupno, "ALL");
+  assert.equal(teacherOnlyResult.data.teacherid, "ADMIN2");
+  assert.equal(teacherOnlyResult.data.viewerrole, "TEACHER");
+  assert.equal(teacherOnlyResult.data.teacheronly, true);
+  assert.equal(teacherOnlyResult.data.showgrouplabels, true);
+  assert.deepEqual(
+    teacherOnlyResult.data.sessions.map(session => session.sessionid),
+    ["TA2", "TA6", "TA9"],
+    "A TEACHER request must be restricted to the authenticated AdminID across its assigned groups"
+  );
 
   const oversightResult = await postTimetable(
     "/api/admin/timetable/get",

@@ -1,3 +1,22 @@
+V100.10.1
+
+# Teacher-only timetable scope and compact assignment grid
+
+- `TEACHER` accounts see only sessions assigned to their authenticated
+  `AdminID`, regardless of request-body group or teacher filters.
+- `ADMIN` and `SENIOR` retain the complete oversight timetable.
+- A subject shared by several groups is displayed once, with compact
+  `Group — Teacher` rows beneath it in group-number order.
+- Shared Zoom links remain on the subject. Different per-group Zoom links move
+  safely to their matching group row.
+- Greyed timetable text is now explicitly light grey.
+- Cache and frontend asset versions are bumped for immediate delivery.
+
+Deploy the Worker/backend before the frontend. No workbook, Apps Script or
+Worker-setting change is required.
+
+---
+
 V100.10
 
 # Teacher-aware TeacherAssign timetable

@@ -1,4 +1,4 @@
-/* M4L v100.10 TeacherAssign timetable, stable teacher IDs and session Zoom links.
+/* M4L v100.10.1 teacher-only scope and compact grouped TeacherAssign timetable.
 
 v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
@@ -18,9 +18,9 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// V100.10 cache namespace: invalidates legacy TimeTable responses that do not
-// include resolved teacher IDs, teacher names or per-session Zoom links.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v3";
+// V100.10.1 cache namespace: prevents a TEACHER account from receiving a
+// previously cached full-board response and delivers the grouped layout cleanly.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v4";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -436,63 +436,158 @@ function shouldMergeTimetableRow(model, time) {
   return true;
 }
 
+function isTimetableEntryMuted(entry, options = {}) {
+  const teacherId = normalizeTimetableText(entry && entry.teacherid);
+
+  return options.dimOtherTeachers === true && (
+    !teacherId || normalizeTimetableKey(teacherId) !== normalizeTimetableKey(options.viewerAdminId)
+  );
+}
+
+function compareTimetableAssignmentGroups(left, right) {
+  const leftGroup = normalizeTimetableText(left && left.groupno || "ALL") || "ALL";
+  const rightGroup = normalizeTimetableText(right && right.groupno || "ALL") || "ALL";
+  const leftNumber = Number(leftGroup);
+  const rightNumber = Number(rightGroup);
+  const leftIsNumber = Number.isFinite(leftNumber) && leftGroup !== "";
+  const rightIsNumber = Number.isFinite(rightNumber) && rightGroup !== "";
+
+  if (leftIsNumber && rightIsNumber) return leftNumber - rightNumber;
+  if (leftIsNumber) return -1;
+  if (rightIsNumber) return 1;
+  if (normalizeTimetableKey(leftGroup) === "all") return 1;
+  if (normalizeTimetableKey(rightGroup) === "all") return -1;
+  return leftGroup.localeCompare(rightGroup, undefined, { numeric: true, sensitivity: "base" });
+}
+
+function groupTimetableEntriesBySubject(entries) {
+  const groups = [];
+  const matches = new Map();
+
+  (entries || []).forEach(entry => {
+    const subjectName = normalizeTimetableText(entry && entry.subjectname);
+    const subjectKey = normalizeTimetableKey(subjectName);
+
+    if (!subjectName || !subjectKey) return;
+
+    if (!matches.has(subjectKey)) {
+      const group = { subjectname: subjectName, entries: [] };
+      matches.set(subjectKey, group);
+      groups.push(group);
+    }
+
+    matches.get(subjectKey).entries.push(entry);
+  });
+
+  groups.forEach(group => group.entries.sort(compareTimetableAssignmentGroups));
+  return groups;
+}
+
+function getSharedTimetableZoomLink(entries) {
+  const links = (entries || []).map(entry => normalizeTimetableText(entry && entry.zoomlink));
+
+  if (!links.length || !links[0]) return "";
+  return links.every(link => normalizeTimetableKey(link) === normalizeTimetableKey(links[0]))
+    ? links[0]
+    : "";
+}
+
+function renderTimetableZoomButton(label, link, className, title) {
+  return `
+    <button
+      type="button"
+      class="${className}"
+      data-timetable-action="open-zoom"
+      data-zoom-link="${escapeForAttribute(link)}"
+      title="${escapeForAttribute(title)}"
+    >${escapeHtml(label)}</button>
+  `;
+}
+
 function renderTimetableSubjectEntries(entries, options = {}) {
   if (!Array.isArray(entries) || !entries.length) {
     return "";
   }
 
-  return entries.map(entry => {
-    const subjectName = normalizeTimetableText(entry && entry.subjectname);
-
-    if (!subjectName) {
-      return "";
-    }
-
-    const teacherName = normalizeTimetableText(entry.teachername) || "Teacher not assigned";
-    const teacherId = normalizeTimetableText(entry.teacherid);
-    const groupNo = normalizeTimetableText(entry.groupno || "ALL") || "ALL";
-    const showGroupLabel = options.showGroupLabels === true;
-    const groupLabel = normalizeTimetableKey(groupNo) === "all"
-      ? "All groups"
-      : `Group ${groupNo}`;
-    const subjectLabel = showGroupLabel ? `${groupLabel} · ${subjectName}` : subjectName;
-    const perSessionZoomLink = normalizeTimetableText(entry.zoomlink);
-    const canOpenSessionZoom = Boolean(perSessionZoomLink);
-    const shouldMute = options.dimOtherTeachers === true && (
-      !teacherId || normalizeTimetableKey(teacherId) !== normalizeTimetableKey(options.viewerAdminId)
-    );
+  return groupTimetableEntriesBySubject(entries).map(subjectGroup => {
+    const subjectEntries = subjectGroup.entries;
+    const sharedZoomLink = getSharedTimetableZoomLink(subjectEntries);
+    const allMuted = subjectEntries.every(entry => isTimetableEntryMuted(entry, options));
+    const hasConflict = subjectEntries.some(entry => entry.assignmentconflict === true);
+    const hasUnassigned = subjectEntries.some(entry => entry.teacherassigned !== true);
+    const sessionIds = subjectEntries.map(entry => normalizeTimetableText(entry.sessionid)).filter(Boolean);
+    const teacherIds = subjectEntries.map(entry => normalizeTimetableText(entry.teacherid)).filter(Boolean);
+    const showAssignmentGroups = options.showGroupLabels === true || subjectEntries.length > 1;
     const sessionClasses = [
       "m4l-timetable-session",
-      shouldMute ? "m4l-timetable-session--muted" : "",
-      entry.assignmentconflict === true ? "m4l-timetable-session--conflict" : "",
-      entry.teacherassigned === true ? "" : "m4l-timetable-session--unassigned"
+      "m4l-timetable-session--grouped",
+      allMuted ? "m4l-timetable-session--muted" : "",
+      hasConflict ? "m4l-timetable-session--conflict" : "",
+      hasUnassigned ? "m4l-timetable-session--unassigned" : ""
     ].filter(Boolean).join(" ");
-    const subjectClass = canOpenSessionZoom
+    const subjectClass = sharedZoomLink
       ? "m4l-timetable-subject timetable-subject timetable-subject-link"
       : "m4l-timetable-subject timetable-subject";
-    const subjectMarkup = canOpenSessionZoom
-      ? `
-        <button
-          type="button"
-          class="${subjectClass}"
-          data-timetable-action="open-zoom"
-          data-zoom-link="${escapeForAttribute(perSessionZoomLink)}"
-          title="Open session Zoom link"
-        >${escapeHtml(subjectLabel)}</button>
-      `
-      : `<span class="${subjectClass}">${escapeHtml(subjectLabel)}</span>`;
+    const subjectMarkup = sharedZoomLink
+      ? renderTimetableZoomButton(
+        subjectGroup.subjectname,
+        sharedZoomLink,
+        subjectClass,
+        "Open session Zoom link"
+      )
+      : `<span class="${subjectClass}">${escapeHtml(subjectGroup.subjectname)}</span>`;
+    const assignmentsMarkup = subjectEntries.map(entry => {
+      const teacherName = normalizeTimetableText(entry.teachername) || "Teacher not assigned";
+      const teacherId = normalizeTimetableText(entry.teacherid);
+      const groupNo = normalizeTimetableText(entry.groupno || "ALL") || "ALL";
+      const groupLabel = normalizeTimetableKey(groupNo) === "all"
+        ? "All groups"
+        : `Group ${groupNo}`;
+      const entryZoomLink = normalizeTimetableText(entry.zoomlink);
+      const entryMuted = isTimetableEntryMuted(entry, options);
+      const assignmentClasses = [
+        "m4l-timetable-assignment",
+        showAssignmentGroups ? "m4l-timetable-assignment--with-group" : "",
+        entryMuted ? "m4l-timetable-assignment--muted" : "",
+        entry.teacherassigned === true ? "" : "m4l-timetable-assignment--unassigned",
+        entry.assignmentconflict === true ? "m4l-timetable-assignment--conflict" : ""
+      ].filter(Boolean).join(" ");
+      const groupMarkup = showAssignmentGroups
+        ? entryZoomLink && !sharedZoomLink
+          ? renderTimetableZoomButton(
+            groupLabel,
+            entryZoomLink,
+            "m4l-timetable-group m4l-timetable-group-link",
+            `Open ${groupLabel} Zoom link`
+          )
+          : `<span class="m4l-timetable-group">${escapeHtml(groupLabel)}</span>`
+        : "";
+
+      return `
+        <div
+          class="${assignmentClasses}"
+          data-timetable-session-id="${escapeForAttribute(entry.sessionid || "")}"
+          data-timetable-teacher-id="${escapeForAttribute(teacherId)}"
+        >
+          ${groupMarkup}
+          <span class="m4l-timetable-teacher">${escapeHtml(teacherName)}</span>
+          ${entry.assignmentconflict === true
+            ? `<span class="m4l-timetable-conflict-label">Check assignment</span>`
+            : ""}
+        </div>
+      `;
+    }).join("");
 
     return `
       <div
         class="${sessionClasses}"
-        data-timetable-session-id="${escapeForAttribute(entry.sessionid || "")}"
-        data-timetable-teacher-id="${escapeForAttribute(teacherId)}"
+        data-timetable-session-id="${escapeForAttribute(sessionIds.join(","))}"
+        data-timetable-teacher-id="${escapeForAttribute(teacherIds.join(","))}"
       >
         ${subjectMarkup}
-        <span class="m4l-timetable-teacher">${escapeHtml(teacherName)}</span>
-        ${entry.assignmentconflict === true
-          ? `<span class="m4l-timetable-conflict-label">Check assignment</span>`
-          : ""}
+        <div class="m4l-timetable-assignments">
+          ${assignmentsMarkup}
+        </div>
       </div>
     `;
   }).join("");

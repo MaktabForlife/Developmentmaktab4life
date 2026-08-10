@@ -1,11 +1,11 @@
-V100.10
+V100.10.1
 
 Backend / Worker
 - backend/src/routes/timetable.js
 - backend/src/worker.js
 - backend/package.json
 - backend/tests/timetable.test.mjs
-- backend/tests/timetable-teacher-ui.test.mjs (new)
+- backend/tests/timetable-teacher-ui.test.mjs
 - backend/tests/router.test.mjs
 - backend/tests/group-zero-access.test.mjs
 - backend/tests/admin-management-ui.test.mjs
@@ -13,7 +13,6 @@ Backend / Worker
 
 Frontend
 - js/m4l-timetable.js
-- js/m4l-weekly-planner.js
 - css/m4l-05-home-timetable.css
 - styles.css
 - js/styles.css

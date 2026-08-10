@@ -1,3 +1,26 @@
+# V100.10.1 — Teacher-only scope and compact timetable rows
+
+## Behaviour
+
+- An authenticated account whose current `AdminRecords.Role` is `TEACHER` now
+  receives only `TeacherAssign` sessions matching its stable `AdminID`.
+- `ADMIN` and `SENIOR` retain the complete oversight timetable. An oversight
+  account with no assigned sessions continues to see the full board normally.
+- Repeated same-cell subjects render once, followed by numerically sorted
+  `Group — Teacher` assignment rows.
+- If grouped assignments share one session Zoom link, the subject opens it. If
+  group links differ, each linked group label opens its own meeting.
+- Muted subjects and assignments use an explicit light-grey text colour.
+- Timetable cache namespace `v4` prevents a TEACHER account from receiving a
+  previously cached full-board response.
+
+## Deployment
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+Google Sheets schema or Worker-setting change is required.
+
+---
+
 # V100.10 — Teacher-aware TeacherAssign timetable
 
 ## Scope
