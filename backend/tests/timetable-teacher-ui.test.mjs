@@ -10,12 +10,14 @@ const admin = await readFile(new URL("../../admin/index.html", import.meta.url),
 const student = await readFile(new URL("../../student/index.html", import.meta.url), "utf8");
 const root = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 
-assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v6"/);
+assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v7"/);
 assert.match(timetable, /teacherId: normalizeTimetableText\(resolvedTeacherId\)/);
 assert.match(timetable, /teachername: teacherName/);
 assert.match(timetable, /data-timetable-teacher-id=/);
 assert.match(timetable, /m4l-timetable-teacher/);
-assert.match(timetable, /groupTimetableEntriesBySubject/);
+assert.match(timetable, /groupTimetableEntriesBySubjectModule/);
+assert.match(timetable, /getTimetableSubjectModuleLabel/);
+assert.match(timetable, /displayname: getTimetableSubjectModuleLabel\(entry\)/);
 assert.match(timetable, /m4l-timetable-assignment--with-group/);
 assert.match(timetable, /m4l-timetable-details-summary/);
 assert.match(timetable, /getTimetableModuleLabel/);
@@ -23,6 +25,12 @@ assert.match(timetable, /return moduleName;/);
 assert.doesNotMatch(timetable, /if \(moduleNo/);
 assert.match(timetable, /getSharedTimetableZoomLink/);
 assert.match(timetable, /Open \$\{scopeLabel\} Zoom link/);
+assert.match(timetable, /alwaysDiscloseAssignments: oversightView/);
+assert.match(timetable, /showAssignmentZoomActions: oversightView/);
+assert.match(timetable, /isOversightTimetableRole/);
+assert.match(timetable, /renderTimetableDayLayout/);
+assert.match(timetable, /m4l-timetable-responsive--oversight/);
+assert.match(timetable, /m4l-timetable-layout--days/);
 assert.match(timetable, /m4l-timetable-session--muted/);
 assert.match(timetable, /dimOtherTeachers: timetableResult\?\.viewerhasassignments === true/);
 assert.match(timetable, /const sharedZoomLink = getSharedTimetableZoomLink\(subjectEntries\)/);
@@ -37,16 +45,21 @@ assert.match(timetableCss, /\.m4l-timetable-assignment--muted/);
 assert.match(timetableCss, /\.m4l-timetable-assignment--with-group/);
 assert.match(timetableCss, /\.m4l-timetable-details-summary/);
 assert.match(timetableCss, /\.m4l-timetable-details\[open\]/);
+assert.match(timetableCss, /\.m4l-timetable-layout--days/);
+assert.match(timetableCss, /@media \(max-width: 899px\)/);
+assert.match(timetableCss, /grid-auto-columns: 100%/);
+assert.match(timetableCss, /scroll-snap-type: x mandatory/);
 assert.match(timetableCss, /color: #aeb3b0/);
 assert.doesNotMatch(timetableCss, /\.m4l-timetable-session--muted\s*\{[^}]*background:/);
 assert.doesNotMatch(timetableCss, /\.m4l-timetable-assignment--muted\s*\{[^}]*background:/);
 assert.match(timetableCss, /\.m4l-timetable-teacher/);
 assert.match(timetableCss, /button\.m4l-timetable-subject/);
-assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.3/);
+assert.match(timetableCss, /button\.m4l-timetable-assignment-zoom/);
+assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.4/);
 
 for (const html of [admin, student, root]) {
-  assert.match(html, /m4l-timetable\.js\?v=100\.10\.3/);
-  assert.match(html, /styles\.css\?v=100\.10\.3/);
+  assert.match(html, /m4l-timetable\.js\?v=100\.10\.4/);
+  assert.match(html, /styles\.css\?v=100\.10\.4/);
 }
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=100\.10/);
@@ -86,23 +99,8 @@ renderContext.window.M4LTimetable.renderTimetable(renderTarget, {
   showgrouplabels: true,
   sessions: [
     {
-      sessionid: "TA2",
-      subjectname: "Quran",
-      dayofweek: "Mon",
-      starttime: "05:45",
-      groupno: "2",
-      teacherid: "ADMIN2",
-      teachername: "Teacher B",
-      teacherassigned: true,
-      zoomlink: "https://zoom.test/group-2"
-    },
-    {
       sessionid: "TA1",
       subjectname: "Quran",
-      moduleid: "MOD1",
-      modulename: "Part-1",
-      moduleno: "1",
-      moduleassigned: true,
       dayofweek: "Mon",
       starttime: "05:45",
       groupno: "1",
@@ -112,8 +110,42 @@ renderContext.window.M4LTimetable.renderTimetable(renderTarget, {
       zoomlink: "https://zoom.test/group-1"
     },
     {
+      sessionid: "TA4",
+      subjectname: "Quran",
+      moduleid: "MOD1",
+      modulename: "Part-1",
+      moduleno: "1",
+      moduleassigned: true,
+      dayofweek: "Mon",
+      starttime: "05:45",
+      groupno: "4",
+      teacherid: "ADMIN4",
+      teachername: "Teacher D",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/group-4"
+    },
+    {
+      sessionid: "TA2",
+      subjectname: "Quran",
+      moduleid: "MOD2",
+      modulename: "Part-2",
+      moduleno: "2",
+      moduleassigned: true,
+      dayofweek: "Mon",
+      starttime: "05:45",
+      groupno: "2",
+      teacherid: "ADMIN2",
+      teachername: "Teacher B",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/group-2"
+    },
+    {
       sessionid: "TA3",
       subjectname: "Quran",
+      moduleid: "MOD2",
+      modulename: "Part-2",
+      moduleno: "2",
+      moduleassigned: true,
       dayofweek: "Mon",
       starttime: "05:45",
       groupno: "3",
@@ -126,21 +158,26 @@ renderContext.window.M4LTimetable.renderTimetable(renderTarget, {
 }, { showGroupLabels: true });
 
 assert.equal(
-  (renderTarget.innerHTML.match(/>Quran<\/span>/g) || []).length,
+  (renderTarget.innerHTML.match(/>Quran<\/button>/g) || []).length,
   1,
-  "A repeated subject must render once per timetable cell"
+  "An unmoduled subject must have its own row"
 );
 assert.ok(
-  renderTarget.innerHTML.indexOf("Group 1") < renderTarget.innerHTML.indexOf("Group 2"),
-  "Grouped assignments must sort by group number"
+  renderTarget.innerHTML.indexOf(">Quran</button>") < renderTarget.innerHTML.indexOf(">Quran Part-1</button>") &&
+    renderTarget.innerHTML.indexOf(">Quran Part-1</button>") < renderTarget.innerHTML.indexOf(">Quran Part-2</span>"),
+  "Subject-module rows must order the subject first and then modules by module number"
 );
 assert.match(renderTarget.innerHTML, /m4l-timetable-assignment--muted/);
-assert.match(renderTarget.innerHTML, /<details class="m4l-timetable-details">/);
-assert.match(renderTarget.innerHTML, />3 groups</);
-assert.match(renderTarget.innerHTML, /Open Group 1 · Part-1 Zoom link/);
+assert.match(renderTarget.innerHTML, /<details class="m4l-timetable-details m4l-timetable-details--inline">/);
+assert.match(renderTarget.innerHTML, /Show groups, teachers and Zoom links for Quran Part-2/);
+assert.doesNotMatch(renderTarget.innerHTML, />[0-9]+ groups</);
 assert.match(renderTarget.innerHTML, /Open Group 2 Zoom link/);
 assert.match(renderTarget.innerHTML, /Open Group 3 Zoom link/);
-assert.doesNotMatch(renderTarget.innerHTML, /title="Open session Zoom link"/);
+assert.equal(
+  (renderTarget.innerHTML.match(/title="Open session Zoom link"/g) || []).length,
+  2,
+  "Single-assignment Quran and Quran Part-1 rows keep their subject Zoom links"
+);
 
 const allGroupTarget = { innerHTML: "" };
 renderContext.window.M4LTimetable.renderTimetable(allGroupTarget, {
@@ -162,7 +199,7 @@ renderContext.window.M4LTimetable.renderTimetable(allGroupTarget, {
 
 assert.doesNotMatch(allGroupTarget.innerHTML, /All groups/i);
 assert.doesNotMatch(allGroupTarget.innerHTML, /m4l-timetable-details-summary/);
-assert.match(allGroupTarget.innerHTML, />Hanafi</);
+assert.match(allGroupTarget.innerHTML, />Fiqh Hanafi</);
 assert.doesNotMatch(allGroupTarget.innerHTML, /Module 1/i);
 assert.match(allGroupTarget.innerHTML, /Teacher A/);
 
@@ -189,9 +226,10 @@ renderContext.window.M4LTimetable.renderTimetable(singleGroupStudentTarget, {
 
 assert.doesNotMatch(singleGroupStudentTarget.innerHTML, /m4l-timetable-details-summary/);
 assert.doesNotMatch(singleGroupStudentTarget.innerHTML, /Group 4/);
-assert.match(singleGroupStudentTarget.innerHTML, />Part-1</);
+assert.match(singleGroupStudentTarget.innerHTML, />Quran Part-1</);
 assert.match(singleGroupStudentTarget.innerHTML, />MI Hajira</);
 assert.match(singleGroupStudentTarget.innerHTML, /title="Open session Zoom link"/);
+assert.doesNotMatch(singleGroupStudentTarget.innerHTML, /m4l-timetable-layout--days/);
 
 const sharedLinkTarget = { innerHTML: "" };
 renderContext.window.M4LTimetable.renderTimetable(sharedLinkTarget, {
@@ -223,5 +261,84 @@ renderContext.window.M4LTimetable.renderTimetable(sharedLinkTarget, {
 
 assert.match(sharedLinkTarget.innerHTML, /title="Open session Zoom link"/);
 assert.match(sharedLinkTarget.innerHTML, /data-zoom-link="https:\/\/zoom\.test\/shared"/);
+
+const oversightTarget = { innerHTML: "" };
+renderContext.window.M4LTimetable.renderTimetable(oversightTarget, {
+  viewerrole: "SENIOR",
+  vieweradminid: "ADMIN9",
+  viewerhasassignments: false,
+  showgrouplabels: true,
+  sessions: [
+    {
+      sessionid: "OS1",
+      subjectname: "Quran",
+      dayofweek: "Mon",
+      starttime: "05:45",
+      groupno: "1",
+      teacherid: "ADMIN1",
+      teachername: "Teacher A",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/oversight-1"
+    },
+    {
+      sessionid: "OS2",
+      subjectname: "Quran",
+      moduleid: "MOD2",
+      modulename: "Part-2",
+      moduleno: "2",
+      moduleassigned: true,
+      dayofweek: "Mon",
+      starttime: "05:45",
+      groupno: "2",
+      teacherid: "ADMIN2",
+      teachername: "Teacher B",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/oversight-2"
+    },
+    {
+      sessionid: "OS3",
+      subjectname: "Surahs",
+      dayofweek: "Tue",
+      starttime: "06:15",
+      groupno: "ALL",
+      teacherid: "ADMIN3",
+      teachername: "Teacher C",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/oversight-3"
+    }
+  ]
+});
+
+assert.match(oversightTarget.innerHTML, /m4l-timetable-responsive--oversight/);
+assert.match(oversightTarget.innerHTML, /m4l-timetable-layout--week/);
+assert.match(oversightTarget.innerHTML, /m4l-timetable-layout--days/);
+assert.equal(
+  (oversightTarget.innerHTML.match(/class="m4l-timetable-day-panel"/g) || []).length,
+  2,
+  "SENIOR mobile oversight must render one horizontally swipeable panel per day"
+);
+assert.match(oversightTarget.innerHTML, /Swipe horizontally for more days/);
+assert.match(oversightTarget.innerHTML, /Show groups, teachers and Zoom links for Quran Part-2/);
+assert.match(oversightTarget.innerHTML, /Open Group 2 Zoom link/);
+assert.match(oversightTarget.innerHTML, /Open Surahs Zoom link/);
+assert.match(oversightTarget.innerHTML, />Zoom<\/button>/);
+
+const teacherTarget = { innerHTML: "" };
+renderContext.window.M4LTimetable.renderTimetable(teacherTarget, {
+  viewerrole: "TEACHER",
+  sessions: [{
+    sessionid: "TEACHER1",
+    subjectname: "Quran",
+    dayofweek: "Mon",
+    starttime: "05:45",
+    groupno: "1",
+    teacherid: "ADMIN1",
+    teachername: "Teacher A",
+    teacherassigned: true
+  }]
+});
+
+assert.match(teacherTarget.innerHTML, /m4l-timetable-layout--week/);
+assert.doesNotMatch(teacherTarget.innerHTML, /m4l-timetable-layout--days/);
 
 console.log("Teacher-aware timetable UI and cache-delivery tests passed.");

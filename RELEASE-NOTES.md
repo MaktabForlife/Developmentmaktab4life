@@ -1,3 +1,35 @@
+V100.10.4
+
+# Responsive oversight days and subject-module rows
+
+- Timetable rows are now grouped by `Subject + ModuleName`. A session can
+  therefore show separate compact rows such as `Quran`, `Quran Part-1` and
+  `Quran Part-2`.
+- The module number remains available for stable ordering but is not displayed.
+  Subject-only rows sort before that subject's modules.
+- Inline disclosure chevrons now sit beside the subject/module title. Opening a
+  disclosure reveals the matching groups, teachers and exact per-assignment
+  Zoom actions.
+- `ADMIN` and `SENIOR` accounts use a day-by-day layout below `900px`. Each day
+  is a horizontally swipeable panel and its session list follows the page's
+  normal vertical scroll.
+- At `900px` and above, `ADMIN` and `SENIOR` retain the complete weekly grid
+  with the same compact subject/module disclosures.
+- Students and `TEACHER` accounts retain their filtered weekly grid at every
+  screen size. A single-group student sees the subject/module title and teacher
+  directly without a redundant group label or dropdown.
+- Multiple subjects at one time render as separate rows in both layouts.
+- Other-teacher sessions retain the normal background and use light-grey text
+  only.
+- The timetable cache namespace is bumped to `v7`; release, JavaScript and CSS
+  asset versions are bumped to `100.10.4`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare-setting change is required. Do not delete the legacy
+`TimeTable` sheet yet because it still owns the global Zoom link.
+
+---
+
 V100.10.3
 
 # Module-name-only display and unambiguous Zoom routing

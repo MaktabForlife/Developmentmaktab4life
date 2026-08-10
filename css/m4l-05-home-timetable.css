@@ -424,7 +424,7 @@
   }
 }
 
-/* Timetable board - V100.10.2 module-aware sessions and shared disclosures */
+/* Timetable board - V100.10.4 subject-module rows and responsive oversight days */
 .m4l-timetable-scroll {
   width: 100%;
   max-width: 100%;
@@ -617,7 +617,7 @@ button.m4l-timetable-subject {
 }
 
 .m4l-timetable-details-summary {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   min-height: 22px;
   display: inline-flex;
@@ -625,17 +625,22 @@ button.m4l-timetable-subject {
   justify-content: center;
   gap: 5px;
   margin: 0 auto;
-  padding: 3px 7px;
+  padding: 0;
   color: var(--text-muted);
-  background: var(--surface-soft);
-  border-radius: 999px;
+  background: transparent;
+  border-radius: 0;
   cursor: pointer;
-  font-size: clamp(0.5rem, 1.9vw, 0.68rem);
-  font-weight: 600;
+  font-size: inherit;
+  font-weight: inherit;
   line-height: 1.1;
   list-style: none;
   text-align: center;
   white-space: normal;
+}
+
+.m4l-timetable-details-summary .m4l-timetable-subject {
+  width: auto;
+  flex: 0 1 auto;
 }
 
 .m4l-timetable-details-summary::-webkit-details-marker {
@@ -677,6 +682,14 @@ button.m4l-timetable-subject {
 
 .m4l-timetable-assignment--with-group {
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+}
+
+.m4l-timetable-assignment--with-zoom:not(.m4l-timetable-assignment--with-group) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.m4l-timetable-assignment--with-group.m4l-timetable-assignment--with-zoom {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) auto;
 }
 
 .m4l-timetable-group,
@@ -722,6 +735,24 @@ button.m4l-timetable-group {
   text-underline-offset: 2px;
 }
 
+button.m4l-timetable-assignment-zoom {
+  min-width: 0;
+  min-height: 0;
+  padding: 2px 4px;
+  color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: clamp(0.5rem, 1.8vw, 0.68rem);
+  font-weight: 600;
+  line-height: 1.1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .m4l-timetable-session--muted {
   color: #aeb3b0;
 }
@@ -731,7 +762,8 @@ button.m4l-timetable-group {
 .m4l-timetable-session--muted .m4l-timetable-group,
 .m4l-timetable-session--muted .m4l-timetable-teacher,
 .m4l-timetable-assignment--muted .m4l-timetable-group,
-.m4l-timetable-assignment--muted .m4l-timetable-teacher {
+.m4l-timetable-assignment--muted .m4l-timetable-teacher,
+.m4l-timetable-assignment--muted .m4l-timetable-assignment-zoom {
   color: #aeb3b0;
 }
 
@@ -798,6 +830,98 @@ button.m4l-timetable-group {
 #admin-home .zoom-link-button {
   display: none;
   margin-bottom: 0;
+}
+
+.m4l-timetable-layout--days {
+  display: none;
+}
+
+.m4l-timetable-day-panel,
+.m4l-timetable-day-sessions,
+.m4l-timetable-day-subjects {
+  min-width: 0;
+}
+
+.m4l-timetable-day-panel {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  padding: 10px;
+  background: var(--surface-soft);
+  border-radius: 18px;
+}
+
+.m4l-timetable-day-title {
+  width: 100%;
+  margin: 0 0 8px;
+}
+
+.m4l-timetable-day-sessions {
+  display: grid;
+}
+
+.m4l-timetable-day-session {
+  display: grid;
+  grid-template-columns: minmax(44px, 64px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--primary);
+}
+
+.m4l-timetable-day-session:last-child {
+  border-bottom: 0;
+}
+
+.m4l-timetable-day-time {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  color: var(--text-strong);
+  font-size: clamp(0.78rem, 3.4vw, 0.98rem);
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.m4l-timetable-day-subjects {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-card);
+}
+
+.m4l-timetable-day-subjects .m4l-timetable-session {
+  padding: 7px 5px;
+}
+
+.m4l-timetable-day-empty {
+  margin: 8px 0;
+  text-align: center;
+}
+
+@media (max-width: 899px) {
+  .m4l-timetable-responsive--oversight > .m4l-timetable-layout--week {
+    display: none;
+  }
+
+  .m4l-timetable-responsive--oversight > .m4l-timetable-layout--days {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    touch-action: pan-x pan-y;
+    border-radius: 18px;
+    scrollbar-width: thin;
+  }
 }
 
 

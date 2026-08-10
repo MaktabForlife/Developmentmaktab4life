@@ -1,3 +1,23 @@
+# V100.10.4 — Responsive oversight timetable
+
+- Groups timetable assignments by subject plus validated module name, producing
+  separate ordered rows such as `Quran`, `Quran Part-1` and `Quran Part-2`.
+- Moves disclosure chevrons inline with each subject/module title.
+- Gives every disclosed assignment its exact group, teacher and Zoom action.
+- Adds a native horizontally swipeable day view for `ADMIN` and `SENIOR` below
+  `900px`, with session times listed vertically inside each day.
+- Retains the complete weekly grid for oversight accounts on larger screens and
+  for filtered Student/Teacher accounts at every size.
+- Preserves Group 0 access boundaries, teacher-only filtering, text-only
+  greying, blank-link safety and the legacy global Zoom source.
+- Bumps the timetable cache namespace to `v7` and release/asset metadata to
+  `100.10.4`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+spreadsheet or Cloudflare-setting change is required.
+
+---
+
 # V100.10.3 — Module-name-only labels and exact Zoom selection
 
 - Removes module numbers and the word `Module` from the displayed timetable;

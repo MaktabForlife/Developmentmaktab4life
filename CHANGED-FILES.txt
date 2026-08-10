@@ -1,7 +1,6 @@
-V100.10.3
+V100.10.4
 
 Backend / Worker
-- backend/src/routes/timetable.js
 - backend/src/worker.js
 - backend/package.json
 - backend/tests/timetable-teacher-ui.test.mjs
@@ -31,9 +30,10 @@ Deployment order
 1. Worker/backend
 2. Frontend
 
-ModuleID and ModuleNo remain part of the data model but are no longer displayed.
-Single-group students see module and teacher details directly; dropdowns require multiple groups.
+Subject and validated module names form separate compact timetable rows.
+ADMIN/SENIOR use swipeable day panels below 900px and the weekly grid above it.
+Students and TEACHER accounts retain their filtered weekly grid at every size.
+Inline disclosures reveal exact group, teacher and per-assignment Zoom actions.
 Other-teacher sessions use light-grey text without grey background shading.
-Different Zoom links in one visible slot remain attached to their exact group/module row.
 Do not delete the legacy TimeTable sheet or its global Zoom-link route yet.
 No Apps Script deployment or new Worker setting is required.
