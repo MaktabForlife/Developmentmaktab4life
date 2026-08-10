@@ -1,3 +1,16 @@
+# V101.1.1 — Unified large-screen Weekly Planner page width
+
+- Caps `.weekly-planner-global-panel` at 1400px only from the 1180px desktop
+  breakpoint upward.
+- Aligns the complete top section with the existing 1400px inline editor.
+- Leaves medium and mobile widths untouched.
+- Bumps release and Weekly Planner cache metadata to `101.1.1`.
+
+No data model, spreadsheet, Apps Script or Cloudflare configuration change is
+required.
+
+---
+
 # V101.1 — Weekly Planner editable preview layout
 
 - Replaces the large-screen editor styling with an editable HTML replica of the

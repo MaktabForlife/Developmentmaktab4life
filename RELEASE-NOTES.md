@@ -1,3 +1,20 @@
+V101.1.1
+
+# Unified large-screen Weekly Planner page width
+
+- On screens from 1180px upward, the complete Weekly Planner top section is
+  capped at the same 1400px width as the editable planner body.
+- The title, action toolbar and teacher/month/week/group header now align with
+  the day panels so the editor reads visually as one page.
+- Medium and mobile layouts are unchanged.
+- Application, Worker and Weekly Planner CSS cache metadata are bumped to
+  `101.1.1`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script, Worker binding or Cloudflare-setting change is required.
+
+---
+
 V101.1
 
 # Weekly Planner editable preview layout

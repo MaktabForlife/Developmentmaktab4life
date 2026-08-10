@@ -1,4 +1,4 @@
-V101.1
+V101.1.1
 
 Backend / Worker
 - backend/src/worker.js
@@ -29,8 +29,6 @@ Deployment order
 1. Worker/backend
 2. Frontend
 
-Mobile Weekly Planner editing remains the same.
-Tablet/desktop editing now matches the familiar 2×2 submitted preview layout.
-Teacher, month, week and group appear once in the shared editor header.
-Each day Save preserves and submits all four days without rerendering the editor.
+Large-screen top section now matches the 1400px editable planner body width.
+Medium and mobile layouts remain unchanged.
 No Apps Script, spreadsheet, Worker binding or Cloudflare-setting change is required.

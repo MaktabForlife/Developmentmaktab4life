@@ -17,6 +17,11 @@ assert.match(plannerCss, /V101\.1 editable preview replica/);
 assert.match(plannerCss, /@media \(min-width: 768px\)[\s\S]*\.weekly-planner-inline-editor\s*\{[\s\S]*display: block/);
 assert.match(plannerCss, /\.weekly-planner-inline-rail\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 assert.match(plannerCss, /\.weekly-planner-inline-period-row\s*\{[\s\S]*grid-template-columns:/);
+assert.match(
+  plannerCss,
+  /V101\.1\.1:[\s\S]*@media \(min-width: 1180px\)[\s\S]*#weekly-planner-screen \.weekly-planner-global-panel\s*\{[\s\S]*width: min\(100%, 1400px\)/,
+  "Large-screen header width should match the 1400px editable planner body"
+);
 const saveLabel = { textContent: "Save & Preview" };
 const saveButton = makeElement();
 saveButton.querySelector = selector => {

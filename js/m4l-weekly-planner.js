@@ -1,4 +1,4 @@
-/* M4L V101.1 Weekly Planner
+/* M4L V101.1.1 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Mobile keeps the tap-a-day modal editor.
    - Tablet and desktop use a stable four-day inline editor with local Save controls.
