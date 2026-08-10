@@ -1,10 +1,9 @@
-V100.10.2
+V100.10.3
 
 Backend / Worker
 - backend/src/routes/timetable.js
 - backend/src/worker.js
 - backend/package.json
-- backend/tests/timetable.test.mjs
 - backend/tests/timetable-teacher-ui.test.mjs
 - backend/tests/router.test.mjs
 - backend/tests/group-zero-access.test.mjs
@@ -32,7 +31,9 @@ Deployment order
 1. Worker/backend
 2. Frontend
 
-TeacherAssign now uses optional ModuleID, ModuleName and ModuleNo columns.
-ModuleList must remain present for stable module resolution.
+ModuleID and ModuleNo remain part of the data model but are no longer displayed.
+Single-group students see module and teacher details directly; dropdowns require multiple groups.
+Other-teacher sessions use light-grey text without grey background shading.
+Different Zoom links in one visible slot remain attached to their exact group/module row.
 Do not delete the legacy TimeTable sheet or its global Zoom-link route yet.
 No Apps Script deployment or new Worker setting is required.

@@ -1,3 +1,25 @@
+# V100.10.3 — Module-name-only labels and exact Zoom selection
+
+- Removes module numbers and the word `Module` from the displayed timetable;
+  only the validated module name is shown.
+- Shows a single-group student's module name and teacher directly, without a
+  redundant group dropdown; disclosures appear only for multiple groups.
+- Removes background shading from other-teacher sessions so only their text is
+  light grey.
+- Retains ModuleID/ModuleNo in backend data for identity and ordering.
+- Confirms three Zoom-link cases in frontend tests:
+  - one shared link makes the subject clickable;
+  - different group links keep the subject non-clickable and make each exact
+    group/module scope clickable;
+  - `ALL` sessions continue to omit the group label.
+- Bumps the timetable cache namespace to `v6` and release metadata to
+  `100.10.3`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+spreadsheet or Worker-setting change is required.
+
+---
+
 # V100.10.2 — Module-aware timetable and compact disclosures
 
 ## Data model

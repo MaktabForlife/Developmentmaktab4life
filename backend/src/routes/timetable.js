@@ -567,7 +567,7 @@ function resolveModuleAssignment({ moduleId, moduleName, moduleNo, subjectId, mo
 
   return {
     moduleid: module.moduleid,
-    modulename: clean(module.modulename) || clean(moduleName) || module.moduleid,
+    modulename: clean(module.modulename) || clean(moduleName),
     moduleno: clean(module.moduleno) || clean(moduleNo),
     moduleassigned: true,
     modulestatus: "assigned",

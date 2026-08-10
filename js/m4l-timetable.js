@@ -1,4 +1,4 @@
-/* M4L v100.10.2 module-aware TeacherAssign timetable with compact disclosures.
+/* M4L v100.10.3 module-name display and per-assignment Zoom routing.
 
 v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
@@ -18,9 +18,9 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// V100.10.2 cache namespace delivers module metadata, session Zoom links and
-// the shared desktop/mobile disclosure layout without reusing older responses.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v5";
+// V100.10.3 cache namespace delivers module-name-only labels and preserves
+// exact per-assignment Zoom routing when a visible slot has different links.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v6";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -496,21 +496,16 @@ function isAllTimetableGroup(groupNo) {
 function getTimetableModuleLabel(entry) {
   if (!entry || entry.moduleassigned !== true) return "";
 
-  const moduleNo = normalizeTimetableText(entry.moduleno);
   const moduleName = normalizeTimetableText(entry.modulename);
-
-  if (moduleNo && moduleName) return `Module ${moduleNo}: ${moduleName}`;
-  if (moduleNo) return `Module ${moduleNo}`;
-  if (moduleName) return `Module: ${moduleName}`;
-  return "";
+  return moduleName;
 }
 
-function getTimetableAssignmentScopeLabel(entry) {
+function getTimetableAssignmentScopeLabel(entry, options = {}) {
   const groupNo = normalizeTimetableText(entry && entry.groupno || "ALL") || "ALL";
   const moduleLabel = getTimetableModuleLabel(entry);
   const parts = [];
 
-  if (!isAllTimetableGroup(groupNo)) {
+  if (!isAllTimetableGroup(groupNo) && options.includeGroupLabel === true) {
     parts.push(`Group ${groupNo}`);
   }
 
@@ -589,6 +584,11 @@ function renderTimetableSubjectEntries(entries, options = {}) {
     const sessionIds = subjectEntries.map(entry => normalizeTimetableText(entry.sessionid)).filter(Boolean);
     const teacherIds = subjectEntries.map(entry => normalizeTimetableText(entry.teacherid)).filter(Boolean);
     const hasNumberedGroups = subjectEntries.some(entry => !isAllTimetableGroup(entry && entry.groupno));
+    const distinctGroups = new Set(subjectEntries.map(entry => (
+      normalizeTimetableKey(entry && entry.groupno || "ALL") || "all"
+    )));
+    const hasMultipleGroups = distinctGroups.size > 1;
+    const includeGroupLabels = options.showGroupLabels === true || hasMultipleGroups;
     const sessionClasses = [
       "m4l-timetable-session",
       "m4l-timetable-session--grouped",
@@ -610,7 +610,7 @@ function renderTimetableSubjectEntries(entries, options = {}) {
     const assignmentsMarkup = subjectEntries.map(entry => {
       const teacherName = normalizeTimetableText(entry.teachername) || "Teacher not assigned";
       const teacherId = normalizeTimetableText(entry.teacherid);
-      const scopeLabel = getTimetableAssignmentScopeLabel(entry);
+      const scopeLabel = getTimetableAssignmentScopeLabel(entry, { includeGroupLabel: includeGroupLabels });
       const entryZoomLink = normalizeTimetableText(entry.zoomlink);
       const entryMuted = isTimetableEntryMuted(entry, options);
       const assignmentClasses = [
@@ -650,7 +650,7 @@ function renderTimetableSubjectEntries(entries, options = {}) {
         ${assignmentsMarkup}
       </div>
     `;
-    const assignmentsDisplay = hasNumberedGroups
+    const assignmentsDisplay = hasNumberedGroups && hasMultipleGroups
       ? `
         <details class="m4l-timetable-details">
           <summary

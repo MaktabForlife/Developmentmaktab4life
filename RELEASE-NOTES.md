@@ -1,3 +1,34 @@
+V100.10.3
+
+# Module-name-only display and unambiguous Zoom routing
+
+- Timetable assignment rows now show only the module name. For example,
+  `Group 4 · Part-1` replaces `Group 4 · Module 1: Part-1`.
+- A normal student with one applicable group sees the module name and teacher
+  directly on the card, without a redundant group dropdown or group label.
+- Group disclosures are reserved for subject slots containing assignments for
+  more than one group. Group 0 and oversight views can therefore inspect each
+  applicable teacher/link without crowding the timetable.
+- Sessions taught by another teacher retain the normal card background and use
+  light-grey text only; no grey background shading is applied.
+- ModuleID and ModuleNo remain available in the API for stable identity and
+  sorting, but the module number is not rendered.
+- A visible subject slot with one shared non-empty Zoom link keeps the subject
+  clickable.
+- If the grouped TeacherAssign rows contain different links, the subject is
+  deliberately not clickable. Each linked group/module row opens its own exact
+  Zoom meeting from inside the disclosure.
+- A blank link remains non-clickable and cannot inherit another group's link.
+- Teacher-only filtering means a TEACHER viewing one assigned row can still
+  open that row's link directly from the subject.
+- Timetable cache namespace is bumped to `v6`, and release/JavaScript asset
+  versions are bumped to `100.10.3`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare setting change is required.
+
+---
+
 V100.10.2
 
 # Module-aware timetable and shared compact disclosure layout

@@ -724,7 +724,6 @@ button.m4l-timetable-group {
 
 .m4l-timetable-session--muted {
   color: #aeb3b0;
-  background: rgba(var(--black-rgb), 0.045);
 }
 
 .m4l-timetable-session--muted .m4l-timetable-subject,
@@ -738,7 +737,6 @@ button.m4l-timetable-group {
 
 .m4l-timetable-assignment--muted {
   color: #aeb3b0;
-  background: rgba(var(--black-rgb), 0.035);
 }
 
 .m4l-timetable-assignment--unassigned .m4l-timetable-teacher {
