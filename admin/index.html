@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=101">
+<link rel="stylesheet" href="/styles.css?v=101.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -679,7 +679,7 @@
     </section>
 
 
-    <!-- WEEKLY PLANNER - V101 -->
+    <!-- WEEKLY PLANNER - V101.1 -->
     <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
       <div class="weekly-planner-global-panel">
         <div class="weekly-planner-live-title-row">
@@ -727,7 +727,12 @@
         </section>
 
         <section class="weekly-planner-controls" aria-label="Planner details">
-          <label class="weekly-planner-field weekly-planner-field--teacher"><span>Name</span><select id="weekly-planner-teacher"></select></label>
+          <div class="weekly-planner-edit-preview-title" aria-hidden="true">
+            <strong>UMM ABBAD ACADEMY</strong>
+            <span>REBOOT YOUR MAKTAB WEEKLY PLANNER</span>
+          </div>
+          <label class="weekly-planner-field weekly-planner-field--teacher"><span>Name of Muallima</span><select id="weekly-planner-teacher"></select></label>
+          <div class="weekly-planner-field weekly-planner-field--month"><span>Month</span><output id="weekly-planner-month"></output></div>
           <label class="weekly-planner-field weekly-planner-field--week"><span>Week commencing</span><input id="weekly-planner-week" type="date" /></label>
           <label class="weekly-planner-field weekly-planner-field--group"><span>Group</span><input id="weekly-planner-group" type="text" list="weekly-planner-groups" placeholder="Group" /><datalist id="weekly-planner-groups"></datalist></label>
         </section>
@@ -751,7 +756,7 @@
       </div>
 
       <section id="weekly-planner-inline-editor" class="weekly-planner-inline-editor" aria-label="Edit weekly planner">
-        <p class="weekly-planner-inline-intro">Edit the four days directly. Each Save stores the complete week without closing or rebuilding the editor.</p>
+        <p class="weekly-planner-inline-intro">Edit directly in the same layout as the submitted planner. Each Save stores the complete week without closing the editor.</p>
         <div id="weekly-planner-inline-rail" class="weekly-planner-inline-rail">
           <p class="helper-text">Loading weekly planner...</p>
         </div>
@@ -1411,7 +1416,7 @@
 <script src="/js/m4l-auth.js?v=100.2"></script>
 <script src="/js/m4l-shell.js?v=100.8"></script>
   <script src="/js/m4l-timetable.js?v=100.10.5"></script>
-  <script src="/js/m4l-weekly-planner.js?v=101"></script>
+  <script src="/js/m4l-weekly-planner.js?v=101.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>

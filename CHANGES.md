@@ -1,3 +1,20 @@
+# V101.1 — Weekly Planner editable preview layout
+
+- Replaces the large-screen editor styling with an editable HTML replica of the
+  generated planner preview.
+- Consolidates teacher, month, week and group into one shared header.
+- Restores the preview's 2×2 day arrangement on all screens from 768px upward.
+- Adds preview-style period labels and content columns while retaining proper
+  form controls, keyboard focus indicators and independent Save buttons.
+- Synchronizes the editor's writing font and ink colour with preview settings.
+- Keeps the V101 non-rerendering save path and the existing mobile editor.
+- Bumps release and Weekly Planner cache metadata to `101.1`.
+
+No backend data model, spreadsheet, Apps Script or Cloudflare configuration
+change is required.
+
+---
+
 # V101 — Stable large-screen Weekly Planner editing
 
 - Separates mobile and large-screen Weekly Planner editing paths.

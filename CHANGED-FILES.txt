@@ -1,4 +1,4 @@
-V101
+V101.1
 
 Backend / Worker
 - backend/src/worker.js
@@ -30,7 +30,7 @@ Deployment order
 2. Frontend
 
 Mobile Weekly Planner editing remains the same.
-Tablet/desktop Weekly Planner editing is permanently inline and stable.
+Tablet/desktop editing now matches the familiar 2×2 submitted preview layout.
+Teacher, month, week and group appear once in the shared editor header.
 Each day Save preserves and submits all four days without rerendering the editor.
-Submitted PNG filenames include teacher, week commencing and submission dates.
 No Apps Script, spreadsheet, Worker binding or Cloudflare-setting change is required.

@@ -11,9 +11,12 @@ const [source, plannerCss, adminHtml] = await Promise.all([
 assert.match(adminHtml, /id="weekly-planner-day-editor"/, "The mobile tap-a-day dialog must remain available");
 assert.match(adminHtml, /id="weekly-planner-inline-editor"/, "A separate large-screen editor must be present");
 assert.match(adminHtml, /id="weekly-planner-inline-rail"/);
-assert.match(plannerCss, /V101 stable large-screen inline editor/);
+assert.match(adminHtml, /UMM ABBAD ACADEMY/);
+assert.match(adminHtml, /id="weekly-planner-month"/);
+assert.match(plannerCss, /V101\.1 editable preview replica/);
 assert.match(plannerCss, /@media \(min-width: 768px\)[\s\S]*\.weekly-planner-inline-editor\s*\{[\s\S]*display: block/);
-assert.match(plannerCss, /@media \(min-width: 1180px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+assert.match(plannerCss, /\.weekly-planner-inline-rail\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+assert.match(plannerCss, /\.weekly-planner-inline-period-row\s*\{[\s\S]*grid-template-columns:/);
 const saveLabel = { textContent: "Save & Preview" };
 const saveButton = makeElement();
 saveButton.querySelector = selector => {
@@ -23,6 +26,7 @@ const elements = new Map([
   ["weekly-planner-teacher", makeElement()],
   ["weekly-planner-week", makeElement()],
   ["weekly-planner-group", makeElement()],
+  ["weekly-planner-month", makeElement()],
   ["weekly-planner-feedback", makeElement()],
   ["weekly-planner-rail", makeElement()],
   ["weekly-planner-inline-rail", makeElement()],
@@ -216,9 +220,15 @@ assert.match(
 );
 assert.match(
   elements.get("weekly-planner-inline-rail").innerHTML,
-  /data-weekly-planner-day-date="0"[\s\S]*data-weekly-planner-day-group="0"/,
-  "Each inline day header should contain its date and group controls"
+  /weekly-planner-inline-period-label[\s\S]*Period One[\s\S]*weekly-planner-inline-period-content/,
+  "Inline periods should match the preview's label-left and content-right layout"
 );
+assert.doesNotMatch(
+  elements.get("weekly-planner-inline-rail").innerHTML,
+  /data-weekly-planner-day-(?:date|group)/,
+  "Week and group should appear once in the shared preview-style header"
+);
+assert.equal(elements.get("weekly-planner-month").textContent, "July 2026");
 
 const inlineMarkupBeforeSave = elements.get("weekly-planner-inline-rail").innerHTML;
 const daySaveLabel = { textContent: "Save" };

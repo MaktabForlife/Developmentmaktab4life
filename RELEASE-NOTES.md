@@ -1,3 +1,26 @@
+V101.1
+
+# Weekly Planner editable preview layout
+
+- The tablet/desktop editor now closely follows the familiar submitted planner
+  preview instead of presenting a separate application-style card design.
+- The teacher, month, week commencing date and group appear once in the shared
+  preview-style header. The month updates automatically from the selected week.
+- Monday to Thursday use the same 2×2 arrangement as the generated image.
+- Each day uses a cream heading, period labels in the left column and editable
+  subject/activity content in the right column.
+- The editor follows the selected preview font and ink colour.
+- Weekly Feedback remains full width below the four days.
+- Independent day Save controls and the non-jumping full-week save behaviour
+  introduced in V101 are retained.
+- The mobile preview and tap-a-day dialog flow are unchanged.
+- Application, Worker and Weekly Planner asset metadata are bumped to `101.1`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script, Worker binding or Cloudflare-setting change is required.
+
+---
+
 V101
 
 # Stable large-screen Weekly Planner editing

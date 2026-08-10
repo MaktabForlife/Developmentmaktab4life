@@ -1,4 +1,4 @@
-/* M4L V101 Weekly Planner
+/* M4L V101.1 Weekly Planner
    - Four equal, swipeable cards: Monday to Thursday.
    - Mobile keeps the tap-a-day modal editor.
    - Tablet and desktop use a stable four-day inline editor with local Save controls.
@@ -181,6 +181,7 @@ function bindWeeklyPlannerEvents() {
     groupInput.addEventListener("input", () => {
       if (!weeklyPlannerState.canEdit) return;
       weeklyPlannerState.dirty = true;
+      clearWeeklyPlannerInlineSaveStatuses();
     });
   }
 
@@ -189,7 +190,6 @@ function bindWeeklyPlannerEvents() {
       editorRail.addEventListener("scroll", scheduleWeeklyPlannerDotUpdate, { passive: true });
     }
     editorRail.addEventListener("input", handleWeeklyPlannerCardInput);
-    editorRail.addEventListener("change", handleWeeklyPlannerCardChange);
     editorRail.addEventListener("click", handleWeeklyPlannerCardClick);
   });
 
@@ -614,6 +614,9 @@ function renderWeeklyPlannerCards() {
     inlineRail.innerHTML = getWeeklyPlannerCardsMarkup(plannerData, true);
   }
 
+  syncWeeklyPlannerInlineHeader();
+  applyWeeklyPlannerInlinePreviewStyle();
+
   const plannerEditorSections = [...plannerData.days, { label: "Weekly Feedback" }];
 
   if (dots) {
@@ -641,8 +644,6 @@ function getWeeklyPlannerCardsMarkup(plannerData, inline) {
     ? ""
     : " readonly aria-readonly=\"true\"";
   const hiddenEditControls = weeklyPlannerState.canEdit ? "" : " hidden";
-  const groupInput = document.getElementById("weekly-planner-group");
-  const groupNo = String(groupInput?.value || weeklyPlannerState.planner?.groupNo || "").trim();
 
   return plannerData.days.map((day, dayIndex) => {
     const periods = day.periods;
@@ -650,20 +651,9 @@ function getWeeklyPlannerCardsMarkup(plannerData, inline) {
       <article class="weekly-planner-day-card${inline ? " weekly-planner-inline-day-card" : ""}" data-weekly-planner-day="${dayIndex}" aria-label="${weeklyPlannerEscapeAttribute(day.label)} planner">
         <header class="weekly-planner-day-heading${inline ? " weekly-planner-inline-day-heading" : ""}">
           <h3>${weeklyPlannerEscapeHtml(day.label)}</h3>
-          ${inline ? `
-            <div class="weekly-planner-inline-meta">
-              <label class="weekly-planner-inline-meta-field">
-                <span>Date</span>
-                <input type="date" value="${weeklyPlannerEscapeAttribute(day.date)}" data-weekly-planner-day-date="${dayIndex}" ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""} />
-              </label>
-              <label class="weekly-planner-inline-meta-field weekly-planner-inline-group-field">
-                <span>Group</span>
-                <input type="text" value="${weeklyPlannerEscapeAttribute(groupNo)}" list="weekly-planner-groups" placeholder="Group" data-weekly-planner-day-group="${dayIndex}" ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""} />
-              </label>
-            </div>
-          ` : `<span class="weekly-planner-day-date">${weeklyPlannerEscapeHtml(formatWeeklyPlannerDisplayDate(day.date))}</span>`}
+          ${inline ? "" : `<span class="weekly-planner-day-date">${weeklyPlannerEscapeHtml(formatWeeklyPlannerDisplayDate(day.date))}</span>`}
         </header>
-        ${periods.map((period, periodIndex) => renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periods.length)).join("")}
+        ${periods.map((period, periodIndex) => renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periods.length, inline)).join("")}
         <div class="weekly-planner-add-period-wrap"${hiddenEditControls}>
           <button class="weekly-planner-add-period" type="button" data-weekly-planner-add-period="${dayIndex}">Add period</button>
         </div>
@@ -704,55 +694,51 @@ function getWeeklyPlannerCardsMarkup(plannerData, inline) {
     `;
 }
 
-function renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periodCount) {
+function renderWeeklyPlannerPeriod(dayIndex, periodIndex, period, periodCount, inline = false) {
   const removeDisabled = periodCount <= 1 ? " disabled" : "";
   const prefilledClass = period.prefilled && period.entries?.length ? " is-prefilled" : "";
+  const inputMarkup = `
+    <input
+      class="weekly-planner-period-subject"
+      type="text"
+      value="${weeklyPlannerEscapeAttribute(period.subject)}"
+      data-weekly-planner-field="subject"
+      placeholder="Subject ${periodIndex + 1}"
+      aria-label="Subject ${periodIndex + 1}"
+      ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""}
+    />
+    <textarea
+      class="weekly-planner-period-entries${prefilledClass}"
+      data-weekly-planner-field="entries"
+      rows="3"
+      placeholder="Enter each activity on a new line"
+      aria-label="Activities for subject ${periodIndex + 1}"
+      ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""}
+    >${weeklyPlannerEscapeHtml((period.entries || []).join("\n"))}</textarea>
+  `;
+  const removeMarkup = `
+    <button
+      class="weekly-planner-remove-period"
+      type="button"
+      data-weekly-planner-remove-period="${dayIndex}:${periodIndex}"
+      aria-label="Remove ${weeklyPlannerEscapeAttribute(period.label)}"
+      ${removeDisabled}${weeklyPlannerState.canEdit ? "" : " hidden"}
+    >Remove</button>
+  `;
 
   return `
-    <div class="weekly-planner-period-row" data-weekly-planner-period="${periodIndex}">
-      <input
-        class="weekly-planner-period-subject"
-        type="text"
-        value="${weeklyPlannerEscapeAttribute(period.subject)}"
-        data-weekly-planner-field="subject"
-        placeholder="Subject ${periodIndex + 1}"
-        aria-label="Subject ${periodIndex + 1}"
-        ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""}
-      />
-      <textarea
-        class="weekly-planner-period-entries${prefilledClass}"
-        data-weekly-planner-field="entries"
-        rows="3"
-        placeholder="Enter each activity on a new line"
-        aria-label="Activities for subject ${periodIndex + 1}"
-        ${weeklyPlannerState.canEdit ? "" : "readonly aria-readonly=\"true\""}
-      >${weeklyPlannerEscapeHtml((period.entries || []).join("\n"))}</textarea>
-      <button
-        class="weekly-planner-remove-period"
-        type="button"
-        data-weekly-planner-remove-period="${dayIndex}:${periodIndex}"
-        aria-label="Remove ${weeklyPlannerEscapeAttribute(period.label)}"
-        ${removeDisabled}${weeklyPlannerState.canEdit ? "" : " hidden"}
-      >Remove</button>
+    <div class="weekly-planner-period-row${inline ? " weekly-planner-inline-period-row" : ""}" data-weekly-planner-period="${periodIndex}">
+      ${inline ? `
+        <div class="weekly-planner-inline-period-label">${weeklyPlannerEscapeHtml(period.label)}</div>
+        <div class="weekly-planner-inline-period-content">${inputMarkup}</div>
+      ` : inputMarkup}
+      ${removeMarkup}
     </div>
   `;
 }
 
 function handleWeeklyPlannerCardInput(event) {
   if (!weeklyPlannerState.canEdit) return;
-
-  const groupField = event.target.closest("[data-weekly-planner-day-group]");
-  if (groupField) {
-    const groupValue = String(groupField.value || "");
-    const groupInput = document.getElementById("weekly-planner-group");
-    if (groupInput) groupInput.value = groupValue;
-    document.querySelectorAll("[data-weekly-planner-day-group]").forEach(field => {
-      if (field !== groupField && field.value !== groupValue) field.value = groupValue;
-    });
-    weeklyPlannerState.dirty = true;
-    clearWeeklyPlannerInlineSaveStatuses();
-    return;
-  }
 
   const feedbackField = event.target.closest("[data-weekly-planner-feedback-field]");
 
@@ -791,39 +777,6 @@ function handleWeeklyPlannerCardInput(event) {
   } else if (fieldName === "label" || fieldName === "subject") {
     period[fieldName] = String(field.value || "");
   }
-}
-
-function handleWeeklyPlannerCardChange(event) {
-  const dateField = event.target.closest("[data-weekly-planner-day-date]");
-  if (!dateField || !weeklyPlannerState.canEdit) return;
-
-  const dayIndex = Number(dateField.dataset.weeklyPlannerDayDate || 0);
-  const selectedDate = String(dateField.value || "");
-  const currentDate = String(weeklyPlannerState.plannerData?.days?.[dayIndex]?.date || "");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
-    dateField.value = currentDate;
-    return;
-  }
-
-  const selectedWeek = getWeeklyPlannerWeekMeta(selectedDate);
-  const currentWeekStart = String(weeklyPlannerState.week?.weekStart || "");
-  if (selectedWeek.weekStart === currentWeekStart) {
-    dateField.value = addWeeklyPlannerDays(currentWeekStart, dayIndex);
-    return;
-  }
-
-  if (!confirmWeeklyPlannerDiscard()) {
-    dateField.value = currentDate;
-    return;
-  }
-
-  const weekInput = document.getElementById("weekly-planner-week");
-  if (weekInput) weekInput.value = selectedWeek.weekStart;
-  loadWeeklyPlanner({ confirmDiscard: false }).catch(error => {
-    if (weekInput) weekInput.value = currentWeekStart;
-    dateField.value = currentDate;
-    setWeeklyPlannerMessage(error.message || "Unable to load the selected week.", "error");
-  });
 }
 
 function handleWeeklyPlannerCardClick(event) {
@@ -1110,11 +1063,6 @@ function applyWeeklyPlannerAccessMode() {
     groupInput.setAttribute("aria-readonly", weeklyPlannerState.canEdit ? "false" : "true");
   }
 
-  document.querySelectorAll("[data-weekly-planner-day-date], [data-weekly-planner-day-group]").forEach(field => {
-    field.readOnly = !weeklyPlannerState.canEdit;
-    field.setAttribute("aria-readonly", weeklyPlannerState.canEdit ? "false" : "true");
-  });
-
   document.querySelectorAll("[data-weekly-planner-save-day]").forEach(daySaveButton => {
     daySaveButton.hidden = !weeklyPlannerState.canEdit;
   });
@@ -1287,6 +1235,26 @@ function syncWeeklyPlannerPreviewSettingsControls() {
 
   if (fontInput) fontInput.checked = true;
   if (colorInput) colorInput.checked = true;
+  applyWeeklyPlannerInlinePreviewStyle();
+}
+
+function syncWeeklyPlannerInlineHeader() {
+  const monthOutput = document.getElementById("weekly-planner-month");
+  if (!monthOutput) return;
+
+  const weekInput = document.getElementById("weekly-planner-week");
+  const week = weeklyPlannerState.week || getWeeklyPlannerWeekMeta(weekInput?.value || "");
+  monthOutput.textContent = String(week?.month || "");
+}
+
+function applyWeeklyPlannerInlinePreviewStyle() {
+  const surface = document.getElementById("weekly-planner-screen")
+    || document.getElementById("weekly-planner-inline-editor");
+  if (!surface?.style?.setProperty) return;
+
+  const style = getResolvedWeeklyPlannerPreviewStyle(weeklyPlannerState.previewStyle);
+  surface.style.setProperty("--weekly-planner-inline-ink", style.ink);
+  surface.style.setProperty("--weekly-planner-inline-font", style.fontFamily);
 }
 
 async function shareWeeklyPlannerImage(button) {
