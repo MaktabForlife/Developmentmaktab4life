@@ -1,4 +1,4 @@
-/* M4L v92.1 Removed home page icon builder and other quarantiend comments
+/* M4L v100.10 TeacherAssign timetable, stable teacher IDs and session Zoom links.
 
 v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
@@ -18,8 +18,9 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// V100.8 cache namespace: invalidates pre-Group-0 timetable responses.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v2";
+// V100.10 cache namespace: invalidates legacy TimeTable responses that do not
+// include resolved teacher IDs, teacher names or per-session Zoom links.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v3";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -168,13 +169,16 @@ function getTimetableRequestOptions(options = {}) {
   const requestedGroup = options.groupNo === null || options.groupNo === undefined || options.groupNo === ""
     ? "ALL"
     : options.groupNo;
-  const requestedTeacher = options.assignedTeacher === null || options.assignedTeacher === undefined || options.assignedTeacher === ""
+  const requestedTeacherId = options.teacherId === null || options.teacherId === undefined || options.teacherId === ""
+    ? options.assignedTeacher
+    : options.teacherId;
+  const resolvedTeacherId = requestedTeacherId === null || requestedTeacherId === undefined || requestedTeacherId === ""
     ? "ALL"
-    : options.assignedTeacher;
+    : requestedTeacherId;
 
   return {
     groupNo: normalizeTimetableText(requestedGroup) || "ALL",
-    assignedTeacher: normalizeTimetableText(requestedTeacher) || "ALL"
+    teacherId: normalizeTimetableText(resolvedTeacherId) || "ALL"
   };
 }
 
@@ -202,7 +206,7 @@ function getTimetableCacheKey(options = {}) {
   const requestOptions = getTimetableRequestOptions(options);
   const viewerKey = getTimetableViewerCachePart();
   const groupKey = normalizeTimetableCachePart(requestOptions.groupNo);
-  const teacherKey = normalizeTimetableCachePart(requestOptions.assignedTeacher);
+  const teacherKey = normalizeTimetableCachePart(requestOptions.teacherId);
   return `${TIMETABLE_CACHE_PREFIX}_${viewerKey}_${groupKey}_${teacherKey}`;
 }
 
@@ -348,13 +352,26 @@ function buildTimetableModel(rows) {
       cellMap[cellKey] = [];
     }
 
-    const alreadyAdded = cellMap[cellKey].some(item => {
-      return normalizeTimetableKey(item.subjectname) === normalizeTimetableKey(subject);
-    });
+    const sessionId = normalizeTimetableText(row.sessionid || row.sessionId || "");
+    const groupNo = normalizeTimetableText(row.groupno || row.groupNo || row.group || "ALL") || "ALL";
+    const teacherId = normalizeTimetableText(row.teacherid || row.teacherId || row.assignedteacher || "");
+    const teacherName = normalizeTimetableText(row.teachername || row.teacherName || "Teacher not assigned") || "Teacher not assigned";
+    const entryKey = sessionId
+      ? `session:${normalizeTimetableKey(sessionId)}`
+      : [subject, groupNo, teacherId, teacherName].map(normalizeTimetableKey).join("__");
+    const alreadyAdded = cellMap[cellKey].some(item => item.entrykey === entryKey);
 
     if (!alreadyAdded) {
       cellMap[cellKey].push({
+        entrykey: entryKey,
+        sessionid: sessionId,
         subjectname: subject,
+        groupno: groupNo,
+        teacherid: teacherId,
+        teachername: teacherName,
+        teacherassigned: row.teacherassigned === true,
+        assignmentstatus: normalizeTimetableText(row.assignmentstatus || ""),
+        assignmentconflict: row.assignmentconflict === true,
         zoomlink: normalizeTimetableText(row.zoomlink || row.zoomLink || "")
       });
     }
@@ -377,7 +394,12 @@ function getTimetableCellEntries(model, time, day) {
 
 function getTimetableEntriesLabel(entries) {
   return (entries || [])
-    .map(entry => normalizeTimetableText(entry && entry.subjectname))
+    .map(entry => [
+      normalizeTimetableText(entry && entry.subjectname),
+      normalizeTimetableText(entry && entry.groupno),
+      normalizeTimetableText(entry && entry.teacherid),
+      normalizeTimetableText(entry && entry.teachername)
+    ].join("|"))
     .filter(Boolean)
     .join(" / ");
 }
@@ -426,24 +448,53 @@ function renderTimetableSubjectEntries(entries, options = {}) {
       return "";
     }
 
+    const teacherName = normalizeTimetableText(entry.teachername) || "Teacher not assigned";
+    const teacherId = normalizeTimetableText(entry.teacherid);
+    const groupNo = normalizeTimetableText(entry.groupno || "ALL") || "ALL";
+    const showGroupLabel = options.showGroupLabels === true;
+    const groupLabel = normalizeTimetableKey(groupNo) === "all"
+      ? "All groups"
+      : `Group ${groupNo}`;
+    const subjectLabel = showGroupLabel ? `${groupLabel} · ${subjectName}` : subjectName;
     const perSessionZoomLink = normalizeTimetableText(entry.zoomlink);
-    const canOpenSessionZoom = options.usePerSessionZoom === true && perSessionZoomLink;
+    const canOpenSessionZoom = Boolean(perSessionZoomLink);
+    const shouldMute = options.dimOtherTeachers === true && (
+      !teacherId || normalizeTimetableKey(teacherId) !== normalizeTimetableKey(options.viewerAdminId)
+    );
+    const sessionClasses = [
+      "m4l-timetable-session",
+      shouldMute ? "m4l-timetable-session--muted" : "",
+      entry.assignmentconflict === true ? "m4l-timetable-session--conflict" : "",
+      entry.teacherassigned === true ? "" : "m4l-timetable-session--unassigned"
+    ].filter(Boolean).join(" ");
     const subjectClass = canOpenSessionZoom
       ? "m4l-timetable-subject timetable-subject timetable-subject-link"
       : "m4l-timetable-subject timetable-subject";
-
-    if (canOpenSessionZoom) {
-      return `
+    const subjectMarkup = canOpenSessionZoom
+      ? `
         <button
           type="button"
           class="${subjectClass}"
           data-timetable-action="open-zoom"
           data-zoom-link="${escapeForAttribute(perSessionZoomLink)}"
-        >${escapeHtml(subjectName)}</button>
-      `;
-    }
+          title="Open session Zoom link"
+        >${escapeHtml(subjectLabel)}</button>
+      `
+      : `<span class="${subjectClass}">${escapeHtml(subjectLabel)}</span>`;
 
-    return `<span class="${subjectClass}">${escapeHtml(subjectName)}</span>`;
+    return `
+      <div
+        class="${sessionClasses}"
+        data-timetable-session-id="${escapeForAttribute(entry.sessionid || "")}"
+        data-timetable-teacher-id="${escapeForAttribute(teacherId)}"
+      >
+        ${subjectMarkup}
+        <span class="m4l-timetable-teacher">${escapeHtml(teacherName)}</span>
+        ${entry.assignmentconflict === true
+          ? `<span class="m4l-timetable-conflict-label">Check assignment</span>`
+          : ""}
+      </div>
+    `;
   }).join("");
 }
 
@@ -469,6 +520,16 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
   }
 
   const dayCount = Math.max(model.days.length, 1);
+  const renderOptions = {
+    ...options,
+    showGroupLabels: options.showGroupLabels === true || timetableResult?.showgrouplabels === true,
+    viewerAdminId: normalizeTimetableText(
+      timetableResult?.vieweradminid || state?.user?.adminid || ""
+    ),
+    // Confirmed V100.10 rule: admins who teach at least one visible session see
+    // other teachers' sessions greyed. Oversight-only admins see all normally.
+    dimOtherTeachers: timetableResult?.viewerhasassignments === true
+  };
 
   const headerHtml = model.days
     .map(day => `
@@ -497,7 +558,7 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
             role="cell"
             aria-label="${escapeForAttribute(time)} shared subject"
           >
-            ${renderTimetableSubjectEntries(entries, options)}
+            ${renderTimetableSubjectEntries(entries, renderOptions)}
           </div>
         </div>
       `;
@@ -522,7 +583,7 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
           role="cell"
           aria-label="${escapeForAttribute(day)} ${escapeForAttribute(time)}"
         >
-          ${renderTimetableSubjectEntries(entries, options)}
+          ${renderTimetableSubjectEntries(entries, renderOptions)}
         </div>
       `;
     }).join("");
@@ -1002,7 +1063,7 @@ async function saveAdminTimetableZoomLink(button) {
       throw new Error(result.error || "Could not save Zoom link.");
     }
 
-    const cacheKey = getTimetableCacheKey({ groupNo: "ALL", assignedTeacher: "ALL" });
+    const cacheKey = getTimetableCacheKey({ groupNo: "ALL", teacherId: "ALL" });
     setActiveTimetableCache(cacheKey, result);
     writeTimetableCache(cacheKey, result);
 

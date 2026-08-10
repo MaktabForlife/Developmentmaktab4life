@@ -410,7 +410,7 @@ function confirmWeeklyPlannerDiscard() {
 async function fetchWeeklyPlannerTimetable(teacher, groupNo) {
   const options = {
     groupNo: groupNo || teacher.assignedGroup || "ALL",
-    assignedTeacher: teacher.teacherName || "ALL"
+    teacherId: teacher.teacherId || "ALL"
   };
 
   if (window.M4LTimetable && typeof window.M4LTimetable.fetchTimetable === "function") {

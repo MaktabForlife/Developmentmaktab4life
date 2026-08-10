@@ -1,4 +1,4 @@
-/* M4L V100.6 - Worker Settings own environment configuration.
+/* M4L V100.10 - TeacherAssign timetable with stable teacher identity.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "100.9"
+          version: "100.10"
         });
       }
 

@@ -1,3 +1,46 @@
+# V100.10 — Teacher-aware TeacherAssign timetable
+
+## Scope
+
+V100.10 switches timetable session reads to `TeacherAssign`, resolves teachers
+through stable `AdminID` values, displays teacher names for students and admins,
+and adds optional session-specific Zoom links while preserving the separate
+global Zoom action.
+
+## Backend
+
+- Reads `TeacherAssign`, `AdminRecords` and `SubjectList` together.
+- Preserves V100.8 Student Group 0 all-groups behavior without changing literal
+  Group 0/`ALL` meanings in content or Admin records.
+- Returns `teacherid`, `teachername`, assignment status, course fields, viewer
+  teaching state and duplicate-assignment warnings.
+- Uses `SubjectID` and `AdminID` as join keys; displayed names are never identity
+  keys.
+- Keeps the legacy `TimeTable` read/write only for the global Zoom link until
+  the new timetable is verified.
+
+## Frontend
+
+- Shows a teacher below every subject.
+- Shows group labels when the viewer receives multiple groups.
+- Greys other teachers' sessions only when the logged-in AdminID has its own
+  visible assignments. Oversight-only admins see all sessions normally.
+- Makes any subject with a populated session Zoom link clickable.
+- Retains distinct same-time sessions by SessionID instead of deduplicating only
+  by subject name.
+- Weekly Planner timetable filtering now sends stable teacher IDs.
+- Cache namespace and modified asset URLs bumped for safe delivery.
+
+## Verification
+
+- Added backend coverage for stable joins, Group 0, inactive/missing teachers,
+  duplicate conflicts, oversight behavior, session links and global-link
+  separation.
+- Added frontend delivery/behavior checks for teacher labels, greying,
+  session-click links, Weekly Planner IDs and cache versions.
+
+---
+
 # V100.9 — Separate registration and selective task assignment
 
 ## Scope

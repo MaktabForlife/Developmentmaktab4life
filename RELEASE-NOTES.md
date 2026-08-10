@@ -1,3 +1,68 @@
+V100.10
+
+# Teacher-aware TeacherAssign timetable
+
+V100.10 makes `TeacherAssign` the displayed timetable source while retaining
+the legacy `TimeTable` only for the existing global Zoom link during the
+verification period.
+
+## Student timetable
+
+- Students receive `TeacherAssign` sessions for their authenticated group plus
+  rows explicitly marked `ALL`.
+- Active Student Group 0 retains its V100.8 all-groups access and receives every
+  active timetable group without collapsing same-time group sessions.
+- Every session displays the teacher name resolved from
+  `TeacherAssign.AssignedTeacher -> AdminRecords.AdminID`.
+- A populated `TeacherAssign.ZoomLink` is session-specific. The subject becomes
+  clickable and opens that session's Zoom meeting in a new tab.
+- The existing global Join Zoom action remains separate and continues reading
+  the legacy `TimeTable` link during V100.10 verification.
+
+## Admin timetable
+
+- Admin, Senior and Teacher portal users receive the complete relevant board.
+- If the logged-in `AdminID` has at least one visible `TeacherAssign` session,
+  their own sessions remain fully active and other teachers' sessions are
+  greyed while remaining readable.
+- An admin with no `TeacherAssign` rows is treated as oversight-only and sees
+  every session normally, as agreed.
+- Teacher matching never uses displayed names, roles or
+  `AdminRecords.AssignedGroup`.
+
+## Data safety
+
+- Subject names are canonicalised through `SubjectList.SubjectID`; this safely
+  resolves the workbook's `SUBJ8` Akhlaq/Akhlaaq spelling difference.
+- Missing or inactive teacher records show `Teacher not assigned` instead of
+  silently selecting another teacher.
+- If an optional `Active`/`Status` column is later added to `TeacherAssign`,
+  inactive rows are excluded. With the current workbook's absent column, all
+  existing rows are treated as active.
+- Multiple active rows for the same course/group/subject/day/time are retained,
+  flagged in the API response and labelled `Check assignment` in the UI.
+- The current misspelled `CoureName` header remains supported. `CourseID` is
+  also supported when Phase 2 introduces a stable course table.
+
+## Workbook audit
+
+The supplied workbook contains 36 `TeacherAssign` sessions covering 12 base
+slots and Groups 1-4 plus `ALL`. Session IDs and logical assignment keys are
+unique; all teacher IDs resolve to active Admin records; all subject IDs
+resolve; and each numbered group receives 12 sessions. No workbook changes
+were required for V100.10.
+
+## Cache and deployment
+
+- Timetable cache namespace bumped from `v2` to `v3`.
+- Frontend asset versions bumped to `100.10`.
+- Deploy the Worker/backend first and the frontend second.
+- Do not delete `TimeTable` yet. It still owns the global Zoom link during this
+  verification release. Its session rows are no longer the displayed timetable.
+- No Apps Script deployment or new Worker setting is required.
+
+---
+
 V100.9
 
 # Separate student registration and task assignment

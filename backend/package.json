@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "100.9",
+  "version": "100.10",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -26,6 +26,7 @@
     "test:progress-write": "node tests/progress-write.test.mjs",
     "test:system-settings": "node tests/system-settings.test.mjs",
     "test:timetable": "node tests/timetable.test.mjs",
+    "test:timetable-ui": "node tests/timetable-teacher-ui.test.mjs",
     "test:weekly-planner": "node tests/weekly-planner.test.mjs",
     "test:pdfjs-annotations": "node tests/pdfjs-annotation-session.test.mjs",
     "test:pdf-split": "node tests/pdf-split-view.test.mjs",
