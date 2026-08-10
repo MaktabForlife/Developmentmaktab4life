@@ -1,3 +1,317 @@
+# V100.10.5 — Oversight Zoom safety and readability
+
+- Removes Zoom actions from `ADMIN`/`SENIOR` subject and module headings.
+- Keeps disclosure headings dedicated to opening assignment details.
+- Adds a separate underlined `Zoom` action to each linked assignment row.
+- Enforces dark active text and light-grey muted text throughout oversight
+  timetables, including links and disclosure chevrons.
+- Enlarges mobile oversight detail text and spacing for improved legibility.
+- Bumps the timetable cache namespace to `v8` and release/asset metadata to
+  `100.10.5`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+spreadsheet or Cloudflare-setting change is required.
+
+---
+
+# V100.10.4 — Responsive oversight timetable
+
+- Groups timetable assignments by subject plus validated module name, producing
+  separate ordered rows such as `Quran`, `Quran Part-1` and `Quran Part-2`.
+- Moves disclosure chevrons inline with each subject/module title.
+- Gives every disclosed assignment its exact group, teacher and Zoom action.
+- Adds a native horizontally swipeable day view for `ADMIN` and `SENIOR` below
+  `900px`, with session times listed vertically inside each day.
+- Retains the complete weekly grid for oversight accounts on larger screens and
+  for filtered Student/Teacher accounts at every size.
+- Preserves Group 0 access boundaries, teacher-only filtering, text-only
+  greying, blank-link safety and the legacy global Zoom source.
+- Bumps the timetable cache namespace to `v7` and release/asset metadata to
+  `100.10.4`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+spreadsheet or Cloudflare-setting change is required.
+
+---
+
+# V100.10.3 — Module-name-only labels and exact Zoom selection
+
+- Removes module numbers and the word `Module` from the displayed timetable;
+  only the validated module name is shown.
+- Shows a single-group student's module name and teacher directly, without a
+  redundant group dropdown; disclosures appear only for multiple groups.
+- Removes background shading from other-teacher sessions so only their text is
+  light grey.
+- Retains ModuleID/ModuleNo in backend data for identity and ordering.
+- Confirms three Zoom-link cases in frontend tests:
+  - one shared link makes the subject clickable;
+  - different group links keep the subject non-clickable and make each exact
+    group/module scope clickable;
+  - `ALL` sessions continue to omit the group label.
+- Bumps the timetable cache namespace to `v6` and release metadata to
+  `100.10.3`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+spreadsheet or Worker-setting change is required.
+
+---
+
+# V100.10.2 — Module-aware timetable and compact disclosures
+
+## Data model
+
+- Reads `TeacherAssign.ModuleID`, `ModuleName` and `ModuleNo` without requiring
+  an AssignmentType column.
+- Treats a blank ModuleID as a subject-level teaching assignment.
+- Resolves populated ModuleIDs through `ModuleList`, using the ID rather than a
+  typed module name as the relationship key.
+- Returns module status and diagnostic warnings for missing, inactive and
+  subject-mismatched modules.
+- Retains optional `CourseID` support for a future CourseList while preserving
+  the current `CoureName` alias.
+
+## Timetable display
+
+- Uses the same native disclosure interaction on desktop and mobile.
+- Shows numbered-group subjects once, collapsed by default, with group/module
+  and teacher rows revealed on demand.
+- Shows `ALL` sessions as subject plus teacher without an `All groups` label.
+- Displays a validated module as `Module number: Module name` beside its group.
+- Keeps shared Zoom links on the subject and differing links on the matching
+  group/module scope.
+- Preserves TEACHER-only filtering, ADMIN/SENIOR oversight and explicit
+  light-grey styling for other teachers' sessions.
+
+## Validation and delivery
+
+- Adds ModuleList joins and module-warning coverage to backend timetable tests.
+- Adds disclosure, module-label, ALL-label suppression, Zoom-link, cache and
+  responsive-delivery checks to the frontend timetable tests.
+- Bumps the timetable cache namespace to `v5` and all modified asset/version
+  metadata to `100.10.2`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script or
+Worker-setting change is required.
+
+---
+
+# V100.10.1 — Teacher-only scope and compact timetable rows
+
+## Behaviour
+
+- An authenticated account whose current `AdminRecords.Role` is `TEACHER` now
+  receives only `TeacherAssign` sessions matching its stable `AdminID`.
+- `ADMIN` and `SENIOR` retain the complete oversight timetable. An oversight
+  account with no assigned sessions continues to see the full board normally.
+- Repeated same-cell subjects render once, followed by numerically sorted
+  `Group — Teacher` assignment rows.
+- If grouped assignments share one session Zoom link, the subject opens it. If
+  group links differ, each linked group label opens its own meeting.
+- Muted subjects and assignments use an explicit light-grey text colour.
+- Timetable cache namespace `v4` prevents a TEACHER account from receiving a
+  previously cached full-board response.
+
+## Deployment
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+Google Sheets schema or Worker-setting change is required.
+
+---
+
+# V100.10 — Teacher-aware TeacherAssign timetable
+
+## Scope
+
+V100.10 switches timetable session reads to `TeacherAssign`, resolves teachers
+through stable `AdminID` values, displays teacher names for students and admins,
+and adds optional session-specific Zoom links while preserving the separate
+global Zoom action.
+
+## Backend
+
+- Reads `TeacherAssign`, `AdminRecords` and `SubjectList` together.
+- Preserves V100.8 Student Group 0 all-groups behavior without changing literal
+  Group 0/`ALL` meanings in content or Admin records.
+- Returns `teacherid`, `teachername`, assignment status, course fields, viewer
+  teaching state and duplicate-assignment warnings.
+- Uses `SubjectID` and `AdminID` as join keys; displayed names are never identity
+  keys.
+- Keeps the legacy `TimeTable` read/write only for the global Zoom link until
+  the new timetable is verified.
+
+## Frontend
+
+- Shows a teacher below every subject.
+- Shows group labels when the viewer receives multiple groups.
+- Greys other teachers' sessions only when the logged-in AdminID has its own
+  visible assignments. Oversight-only admins see all sessions normally.
+- Makes any subject with a populated session Zoom link clickable.
+- Retains distinct same-time sessions by SessionID instead of deduplicating only
+  by subject name.
+- Weekly Planner timetable filtering now sends stable teacher IDs.
+- Cache namespace and modified asset URLs bumped for safe delivery.
+
+## Verification
+
+- Added backend coverage for stable joins, Group 0, inactive/missing teachers,
+  duplicate conflicts, oversight behavior, session links and global-link
+  separation.
+- Added frontend delivery/behavior checks for teacher labels, greying,
+  session-click links, Weekly Planner IDs and cache versions.
+
+---
+
+# V100.9 — Separate registration and selective task assignment
+
+## Scope
+
+V100.9 separates student account creation from curriculum task assignment.
+Registering a student now creates the `StudentRecords` account and personal
+login link only. Tasks are assigned afterwards from a dedicated Admin UI.
+
+## Behaviour
+
+- Registration no longer reads `TaskList` or `StudentTasks`, reserves
+  `StudentTaskID` values, or creates task-assignment rows.
+- Student Records now has three modes: Register, Assign Tasks and Modify.
+- Assign Tasks first selects an existing registered student, then offers:
+  - all active tasks; or
+  - selected subjects and modules, including whole-subject selection.
+- Only active students may receive new task assignments. Group 0 students are
+  no longer assigned tasks automatically, but may still receive a deliberate
+  manual assignment.
+- The backend resolves the selected subject/module combinations to active
+  `TaskList` rows and validates the selected student against
+  `StudentRecords`.
+- Existing `(StudentID, TaskID)` pairs are checked before any IDs are reserved.
+  Repeating an assignment skips duplicates and does not append duplicate rows.
+- New `StudentTasks` rows are built from the live sheet headers, preserving the
+  full subject, module, task and assignment metadata layout.
+- Existing explicit task, subject/group and bulk-assignment request shapes
+  remain supported for backward compatibility.
+- ADMIN and SENIOR task-assignment permissions are unchanged; TEACHER accounts
+  remain blocked by the Worker.
+
+## Deployment
+
+Deploy the Worker/backend files first, followed by the Admin frontend files.
+No Apps Script deployment, Google Sheets schema change or data migration is
+required.
+
+## Validation
+
+- Confirmed registration writes only `StudentRecords` and its student-number
+  counter, even if legacy assignment fields are submitted.
+- Confirmed all-task, selected-module, Group 0 manual and duplicate-only retry
+  flows.
+- Confirmed duplicate-only retries do not reserve IDs or append rows.
+- Confirmed inactive students and TEACHER accounts cannot assign tasks.
+- Added UI/source integration coverage for the separate workflow and cache
+  versions.
+
+---
+
+# V100.8 — Active Student Group 0 sees ALL groups
+
+## Scope
+
+V100.8 gives an active student whose `StudentRecords.ClassGroup` is `0`
+read access to every timetable and resource group. Group 0 remains excluded
+from Attendance and Progress monitoring.
+
+## Behaviour
+
+- Student Group 0 receives every active Library resource, including protected
+  Google Drive resources after the direct-file authorization check.
+- Student Group 0 receives the complete timetable once through a student-only
+  translation to the existing `ALL` timetable scope.
+- `TimeTable.GroupNo = 0`, resource `GroupNo = 0`, and
+  `AdminRecords.AssignedGroup = 0` retain their literal meanings and do not
+  replace `ALL`.
+- The Admin student-management UI consistently labels the special value as
+  `ALL (Group 0)` and accepts `0` as a deliberate group value.
+- Only an `ADMIN` may newly assign Group 0; `SENIOR` users retain normal
+  student-management access but cannot grant the all-groups designation.
+- Student authentication and session binding preserve numeric zero values.
+- The student profile displays `ALL (Group 0)` rather than presenting Group 0
+  as inactive.
+- Timetable cache namespace `v2` invalidates old Group 0 results, and the cache
+  key now includes the authenticated account identity and group.
+- Existing Attendance and Progress Group 0 exclusions are unchanged.
+
+## Deployment
+
+Deploy the Worker/backend changes first, then the frontend files. No Apps
+Script deployment or Google Sheets schema change is required. Existing
+StudentRecords Group 0 data must already have the intended `Active` value.
+
+## Validation
+
+- Added catalogue, protected-file, timetable, assignment-role, UI-label and
+  cache-isolation coverage for Group 0.
+- Confirmed a teacher with `AdminRecords.AssignedGroup = 0` remains restricted
+  to literal Group 0/ALL timetable rows.
+- Confirmed normal students cannot view a resource whose row has
+  `GroupNo = 0` merely because Student Group 0 is now an access wildcard.
+- All 26 test files present in the supplied V100.7.2 repository pass. The
+  supplied baseline does not contain `pdfjs-annotation-session.test.mjs`, even
+  though its pre-existing package script still references that file; V100.8
+  does not change PDF.js behaviour or that baseline omission.
+
+---
+
+# V100.7.2 — Highlighted Admin Home tile
+
+- Adds a separate Admin Home tile to the Admin landing page.
+- Highlights Admin Home with the same active lavender tile treatment used by
+  the main app Home page.
+- Keeps the normal Home tile as the route back to the main app Home.
+- Shows all six Admin landing tiles in one row on medium and large screens.
+
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+
+---
+
+# V100.7.1 — Admin Home tile and x-close navigation
+
+- Adds a Home tile to the Admin landing page that returns to the main app Home.
+- Changes the top-level Admin child-screen Back buttons to x-close icons.
+- Every new x-close returns directly to the Admin tile landing page.
+- Keeps internal workflow actions such as Back to List unchanged.
+- Uses the supplied monitor-and-cog artwork for `systemsettings.svg`.
+- Expands the large-screen Admin landing grid to five tiles in one row.
+
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+
+---
+
+# V100.7 — Admin menu tile landing page
+
+## Scope
+
+V100.7 replaces the old Admin list dashboard with an app-icon landing page
+that matches the tile style used on the main Home page.
+
+## Behaviour
+
+- The Admin navigation item opens four tiles: Student Records, Admin Records,
+  Resources and System Settings.
+- Student Records opens the existing student register/modify flow.
+- Admin Records and Resources open their existing management flows.
+- System Settings opens a two-tile submenu for Zoom Link and the existing
+  application System Settings form.
+- ADMIN-only visibility and all existing Worker authorization remain intact.
+- The Admin bottom-navigation item remains active on the landing page and its
+  management child screens.
+- Mobile uses a two-column tile grid; medium and large screens show all four
+  landing tiles in one row.
+
+## Deployment
+
+Frontend-only. No Worker, Apps Script or Google Sheets deployment is required.
+
+---
+
 # V99.1 — Large-screen split PDF viewer
 
 ## Scope
