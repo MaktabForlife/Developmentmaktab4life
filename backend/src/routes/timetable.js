@@ -10,11 +10,13 @@ const TEACHER_TIMETABLE_SHEET_NAME = "TeacherAssign";
 const LEGACY_TIMETABLE_SHEET_NAME = "TimeTable";
 const ADMIN_RECORDS_SHEET_NAME = "AdminRecords";
 const SUBJECT_LIST_SHEET_NAME = "SubjectList";
+const MODULE_LIST_SHEET_NAME = "ModuleList";
 const FULL_SHEET_RANGE = "A:ZZ";
 const TEACHER_TIMETABLE_SHEET_RANGE = `${TEACHER_TIMETABLE_SHEET_NAME}!${FULL_SHEET_RANGE}`;
 const LEGACY_TIMETABLE_SHEET_RANGE = `${LEGACY_TIMETABLE_SHEET_NAME}!${FULL_SHEET_RANGE}`;
 const ADMIN_RECORDS_SHEET_RANGE = `${ADMIN_RECORDS_SHEET_NAME}!${FULL_SHEET_RANGE}`;
 const SUBJECT_LIST_SHEET_RANGE = `${SUBJECT_LIST_SHEET_NAME}!${FULL_SHEET_RANGE}`;
+const MODULE_LIST_SHEET_RANGE = `${MODULE_LIST_SHEET_NAME}!${FULL_SHEET_RANGE}`;
 
 export async function getTimetableAppsScriptEndpoint(request, env) {
   const context = await getTimetableRequestContext(request, env);
@@ -49,12 +51,14 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
   let teacherRows;
   let adminRows;
   let subjectRows;
+  let moduleRows;
 
   try {
-    [teacherRows, adminRows, subjectRows] = await Promise.all([
+    [teacherRows, adminRows, subjectRows, moduleRows] = await Promise.all([
       readGoogleSheetValues(env, TEACHER_TIMETABLE_SHEET_RANGE),
       readGoogleSheetValues(env, ADMIN_RECORDS_SHEET_RANGE),
-      readGoogleSheetValues(env, SUBJECT_LIST_SHEET_RANGE)
+      readGoogleSheetValues(env, SUBJECT_LIST_SHEET_RANGE),
+      readGoogleSheetValues(env, MODULE_LIST_SHEET_RANGE)
     ]);
   } catch (error) {
     const missingSheet = getMissingRequiredSheetName(error);
@@ -71,6 +75,7 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
   return json(buildTimetableResponse(teacherRows, {
     adminRows,
     subjectRows,
+    moduleRows,
     legacyRows,
     groupNo: context.groupNo,
     teacherId: context.teacherId,
@@ -118,6 +123,9 @@ export function buildTimetableResponse(rows = [], options = {}) {
     sessionId: findColumn(headerMap, ["SessionID", "SessionId", "Session"]),
     subjectId: findColumn(headerMap, ["SubjectID", "SubjectId"]),
     subjectName: findColumn(headerMap, ["SubjectName", "Subject"]),
+    moduleId: findColumn(headerMap, ["ModuleID", "ModuleId", "Module ID"]),
+    moduleName: findColumn(headerMap, ["ModuleName", "Module Name"]),
+    moduleNo: findColumn(headerMap, ["ModuleNo", "ModuleNumber", "Module Number", "SortOrder", "Sort Order"]),
     day: findColumn(headerMap, ["DayofWeek", "DayOfWeek", "Day", "DayName"]),
     startTime: findColumn(headerMap, ["StartTime", "start time", "Start Time", "Time"]),
     zoomLink: findColumn(headerMap, ["ZoomLink", "Zoom Link", "ClassLink", "MeetingLink"]),
@@ -154,7 +162,9 @@ export function buildTimetableResponse(rows = [], options = {}) {
 
   const adminMap = buildAdminMap(options.adminRows);
   const subjectMap = buildSubjectMap(options.subjectRows);
+  const moduleMap = buildModuleMap(options.moduleRows);
   const sessions = [];
+  const moduleWarnings = [];
 
   rows.slice(1).forEach((row, index) => {
     if (columns.active >= 0 && !normalizeBooleanCell(getCell(row, columns.active))) {
@@ -183,7 +193,23 @@ export function buildTimetableResponse(rows = [], options = {}) {
     const subject = subjectMap.get(normalizeMatch(subjectId));
     const teacher = adminMap.get(normalizeMatch(teacherId));
     const assignment = resolveTeacherAssignment(teacherId, teacher);
+    const moduleId = getCell(row, columns.moduleId);
+    const moduleAssignment = resolveModuleAssignment({
+      moduleId,
+      moduleName: getCell(row, columns.moduleName),
+      moduleNo: getCell(row, columns.moduleNo),
+      subjectId,
+      module: moduleMap.get(normalizeMatch(moduleId))
+    });
     const rowSubjectName = getCell(row, columns.subjectName);
+
+    if (moduleAssignment.warning) {
+      moduleWarnings.push({
+        ...moduleAssignment.warning,
+        sessionid: sessionId,
+        row: index + 2
+      });
+    }
 
     sessions.push({
       row: index + 2,
@@ -191,6 +217,11 @@ export function buildTimetableResponse(rows = [], options = {}) {
       subjectid: subjectId,
       subjectname: clean(subject?.subjectname) || rowSubjectName || subjectId,
       subjectactive: subject ? subject.active : null,
+      moduleid: moduleAssignment.moduleid,
+      modulename: moduleAssignment.modulename,
+      moduleno: moduleAssignment.moduleno,
+      moduleassigned: moduleAssignment.moduleassigned,
+      modulestatus: moduleAssignment.modulestatus,
       dayofweek: dayOfWeek,
       starttime: startTime,
       zoomlink: columns.zoomLink >= 0 ? getCell(row, columns.zoomLink) : "",
@@ -206,7 +237,11 @@ export function buildTimetableResponse(rows = [], options = {}) {
     });
   });
 
-  const warnings = markAssignmentConflicts(sessions);
+  const warnings = [
+    ...moduleWarnings,
+    ...markAssignmentConflicts(sessions),
+    ...markSubjectModuleOverlaps(sessions)
+  ];
   const legacyZoomLink = extractGlobalZoomLink(options.legacyRows);
 
   return {
@@ -261,12 +296,14 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
   let teacherRows;
   let adminRows;
   let subjectRows;
+  let moduleRows;
 
   try {
-    [teacherRows, adminRows, subjectRows] = await Promise.all([
+    [teacherRows, adminRows, subjectRows, moduleRows] = await Promise.all([
       readGoogleSheetValues(env, TEACHER_TIMETABLE_SHEET_RANGE),
       readGoogleSheetValues(env, ADMIN_RECORDS_SHEET_RANGE),
-      readGoogleSheetValues(env, SUBJECT_LIST_SHEET_RANGE)
+      readGoogleSheetValues(env, SUBJECT_LIST_SHEET_RANGE),
+      readGoogleSheetValues(env, MODULE_LIST_SHEET_RANGE)
     ]);
   } catch (error) {
     const missingSheet = getMissingRequiredSheetName(error);
@@ -292,6 +329,7 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
   const timetable = buildTimetableResponse(teacherRows, {
     adminRows,
     subjectRows,
+    moduleRows,
     legacyRows: legacySync.rows,
     groupNo: "ALL",
     teacherId: "ALL",
@@ -427,6 +465,116 @@ function buildSubjectMap(rows = []) {
   return map;
 }
 
+function buildModuleMap(rows = []) {
+  const map = new Map();
+
+  if (!Array.isArray(rows) || rows.length < 2) {
+    return map;
+  }
+
+  const headerMap = buildHeaderMap(rows[0] || []);
+  const idColumn = findColumn(headerMap, ["ModuleID", "Module Id"]);
+  const nameColumn = findColumn(headerMap, ["ModuleName", "Module", "Name"]);
+  const numberColumn = findColumn(headerMap, [
+    "ModuleNo",
+    "ModuleNumber",
+    "Module Number",
+    "SortOrder",
+    "Sort Order"
+  ]);
+  const subjectIdColumn = findColumn(headerMap, ["SubjectID", "Subject Id"]);
+  const activeColumn = findColumn(headerMap, ["Active", "Status"]);
+
+  if (idColumn < 0 || subjectIdColumn < 0) {
+    return map;
+  }
+
+  rows.slice(1).forEach(row => {
+    const moduleid = getCell(row, idColumn);
+    if (!moduleid) return;
+
+    map.set(normalizeMatch(moduleid), {
+      moduleid,
+      modulename: getCell(row, nameColumn),
+      moduleno: getCell(row, numberColumn),
+      subjectid: getCell(row, subjectIdColumn),
+      active: activeColumn < 0 || normalizeBooleanCell(getCell(row, activeColumn))
+    });
+  });
+
+  return map;
+}
+
+function resolveModuleAssignment({ moduleId, moduleName, moduleNo, subjectId, module }) {
+  const resolvedModuleId = clean(moduleId);
+
+  if (!resolvedModuleId) {
+    return {
+      moduleid: "",
+      modulename: "",
+      moduleno: "",
+      moduleassigned: false,
+      modulestatus: "subject-level",
+      warning: null
+    };
+  }
+
+  if (!module) {
+    return {
+      moduleid: resolvedModuleId,
+      modulename: "",
+      moduleno: "",
+      moduleassigned: false,
+      modulestatus: "module-not-found",
+      warning: {
+        code: "MODULE_NOT_FOUND",
+        moduleid: resolvedModuleId,
+        subjectid: clean(subjectId)
+      }
+    };
+  }
+
+  if (module.active !== true) {
+    return {
+      moduleid: module.moduleid,
+      modulename: "",
+      moduleno: "",
+      moduleassigned: false,
+      modulestatus: "module-inactive",
+      warning: {
+        code: "MODULE_INACTIVE",
+        moduleid: module.moduleid,
+        subjectid: clean(subjectId)
+      }
+    };
+  }
+
+  if (normalizeMatch(module.subjectid) !== normalizeMatch(subjectId)) {
+    return {
+      moduleid: module.moduleid,
+      modulename: "",
+      moduleno: "",
+      moduleassigned: false,
+      modulestatus: "module-subject-mismatch",
+      warning: {
+        code: "MODULE_SUBJECT_MISMATCH",
+        moduleid: module.moduleid,
+        subjectid: clean(subjectId),
+        modulesubjectid: module.subjectid
+      }
+    };
+  }
+
+  return {
+    moduleid: module.moduleid,
+    modulename: clean(module.modulename) || clean(moduleName) || module.moduleid,
+    moduleno: clean(module.moduleno) || clean(moduleNo),
+    moduleassigned: true,
+    modulestatus: "assigned",
+    warning: null
+  };
+}
+
 function resolveTeacherAssignment(teacherId, teacher) {
   const resolvedTeacherId = clean(teacherId);
 
@@ -473,6 +621,7 @@ function markAssignmentConflicts(sessions) {
       session.courseid || session.coursename,
       session.groupno,
       session.subjectid,
+      session.moduleid || "__SUBJECT__",
       session.dayofweek,
       session.starttime
     ].map(normalizeMatch).join("|");
@@ -495,6 +644,47 @@ function markAssignmentConflicts(sessions) {
 
     warnings.push({
       code: "MULTIPLE_TEACHER_ASSIGNMENTS",
+      sessionids: group.map(session => session.sessionid),
+      rows: group.map(session => session.row)
+    });
+  });
+
+  return warnings;
+}
+
+function markSubjectModuleOverlaps(sessions) {
+  const matches = new Map();
+
+  sessions.forEach(session => {
+    const logicalKey = [
+      session.courseid || session.coursename,
+      session.groupno,
+      session.subjectid,
+      session.dayofweek,
+      session.starttime
+    ].map(normalizeMatch).join("|");
+
+    if (!matches.has(logicalKey)) {
+      matches.set(logicalKey, []);
+    }
+
+    matches.get(logicalKey).push(session);
+  });
+
+  const warnings = [];
+
+  matches.forEach(group => {
+    const subjectLevel = group.filter(session => !clean(session.moduleid));
+    const moduleLevel = group.filter(session => clean(session.moduleid));
+
+    if (!subjectLevel.length || !moduleLevel.length) return;
+
+    group.forEach(session => {
+      session.assignmentconflict = true;
+    });
+
+    warnings.push({
+      code: "SUBJECT_MODULE_ASSIGNMENT_OVERLAP",
       sessionids: group.map(session => session.sessionid),
       rows: group.map(session => session.row)
     });
@@ -587,7 +777,8 @@ function getMissingRequiredSheetName(error) {
   return [
     TEACHER_TIMETABLE_SHEET_NAME,
     ADMIN_RECORDS_SHEET_NAME,
-    SUBJECT_LIST_SHEET_NAME
+    SUBJECT_LIST_SHEET_NAME,
+    MODULE_LIST_SHEET_NAME
   ].find(sheetName => isMissingSheetError(error, sheetName)) || "";
 }
 

@@ -10,15 +10,18 @@ const admin = await readFile(new URL("../../admin/index.html", import.meta.url),
 const student = await readFile(new URL("../../student/index.html", import.meta.url), "utf8");
 const root = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 
-assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v4"/);
+assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v5"/);
 assert.match(timetable, /teacherId: normalizeTimetableText\(resolvedTeacherId\)/);
 assert.match(timetable, /teachername: teacherName/);
 assert.match(timetable, /data-timetable-teacher-id=/);
 assert.match(timetable, /m4l-timetable-teacher/);
 assert.match(timetable, /groupTimetableEntriesBySubject/);
 assert.match(timetable, /m4l-timetable-assignment--with-group/);
+assert.match(timetable, /m4l-timetable-details-summary/);
+assert.match(timetable, /getTimetableModuleLabel/);
+assert.match(timetable, /if \(moduleNo && moduleName\) return/);
 assert.match(timetable, /getSharedTimetableZoomLink/);
-assert.match(timetable, /Open \$\{groupLabel\} Zoom link/);
+assert.match(timetable, /Open \$\{scopeLabel\} Zoom link/);
 assert.match(timetable, /m4l-timetable-session--muted/);
 assert.match(timetable, /dimOtherTeachers: timetableResult\?\.viewerhasassignments === true/);
 assert.match(timetable, /const sharedZoomLink = getSharedTimetableZoomLink\(subjectEntries\)/);
@@ -31,14 +34,16 @@ assert.doesNotMatch(weeklyPlanner, /assignedTeacher: teacher\.teacherName/);
 assert.match(timetableCss, /\.m4l-timetable-session--muted/);
 assert.match(timetableCss, /\.m4l-timetable-assignment--muted/);
 assert.match(timetableCss, /\.m4l-timetable-assignment--with-group/);
+assert.match(timetableCss, /\.m4l-timetable-details-summary/);
+assert.match(timetableCss, /\.m4l-timetable-details\[open\]/);
 assert.match(timetableCss, /color: #aeb3b0/);
 assert.match(timetableCss, /\.m4l-timetable-teacher/);
 assert.match(timetableCss, /button\.m4l-timetable-subject/);
-assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.1/);
+assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.2/);
 
 for (const html of [admin, student, root]) {
-  assert.match(html, /m4l-timetable\.js\?v=100\.10\.1/);
-  assert.match(html, /styles\.css\?v=100\.10\.1/);
+  assert.match(html, /m4l-timetable\.js\?v=100\.10\.2/);
+  assert.match(html, /styles\.css\?v=100\.10\.2/);
 }
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=100\.10/);
@@ -112,7 +117,32 @@ assert.ok(
   "Grouped assignments must sort by group number"
 );
 assert.match(renderTarget.innerHTML, /m4l-timetable-assignment--muted/);
+assert.match(renderTarget.innerHTML, /<details class="m4l-timetable-details">/);
+assert.match(renderTarget.innerHTML, />2 groups</);
 assert.match(renderTarget.innerHTML, /Open Group 1 Zoom link/);
 assert.match(renderTarget.innerHTML, /Open Group 2 Zoom link/);
+
+const allGroupTarget = { innerHTML: "" };
+renderContext.window.M4LTimetable.renderTimetable(allGroupTarget, {
+  sessions: [{
+    sessionid: "TA3",
+    subjectname: "Fiqh",
+    moduleid: "MOD17",
+    modulename: "Hanafi",
+    moduleno: "1",
+    moduleassigned: true,
+    dayofweek: "Mon",
+    starttime: "06:30",
+    groupno: "ALL",
+    teacherid: "ADMIN1",
+    teachername: "Teacher A",
+    teacherassigned: true
+  }]
+});
+
+assert.doesNotMatch(allGroupTarget.innerHTML, /All groups/i);
+assert.doesNotMatch(allGroupTarget.innerHTML, /m4l-timetable-details-summary/);
+assert.match(allGroupTarget.innerHTML, /Module 1: Hanafi/);
+assert.match(allGroupTarget.innerHTML, /Teacher A/);
 
 console.log("Teacher-aware timetable UI and cache-delivery tests passed.");

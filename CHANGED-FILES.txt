@@ -1,4 +1,4 @@
-V100.10.1
+V100.10.2
 
 Backend / Worker
 - backend/src/routes/timetable.js
@@ -32,5 +32,7 @@ Deployment order
 1. Worker/backend
 2. Frontend
 
+TeacherAssign now uses optional ModuleID, ModuleName and ModuleNo columns.
+ModuleList must remain present for stable module resolution.
 Do not delete the legacy TimeTable sheet or its global Zoom-link route yet.
 No Apps Script deployment or new Worker setting is required.

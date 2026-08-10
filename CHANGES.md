@@ -1,3 +1,42 @@
+# V100.10.2 — Module-aware timetable and compact disclosures
+
+## Data model
+
+- Reads `TeacherAssign.ModuleID`, `ModuleName` and `ModuleNo` without requiring
+  an AssignmentType column.
+- Treats a blank ModuleID as a subject-level teaching assignment.
+- Resolves populated ModuleIDs through `ModuleList`, using the ID rather than a
+  typed module name as the relationship key.
+- Returns module status and diagnostic warnings for missing, inactive and
+  subject-mismatched modules.
+- Retains optional `CourseID` support for a future CourseList while preserving
+  the current `CoureName` alias.
+
+## Timetable display
+
+- Uses the same native disclosure interaction on desktop and mobile.
+- Shows numbered-group subjects once, collapsed by default, with group/module
+  and teacher rows revealed on demand.
+- Shows `ALL` sessions as subject plus teacher without an `All groups` label.
+- Displays a validated module as `Module number: Module name` beside its group.
+- Keeps shared Zoom links on the subject and differing links on the matching
+  group/module scope.
+- Preserves TEACHER-only filtering, ADMIN/SENIOR oversight and explicit
+  light-grey styling for other teachers' sessions.
+
+## Validation and delivery
+
+- Adds ModuleList joins and module-warning coverage to backend timetable tests.
+- Adds disclosure, module-label, ALL-label suppression, Zoom-link, cache and
+  responsive-delivery checks to the frontend timetable tests.
+- Bumps the timetable cache namespace to `v5` and all modified asset/version
+  metadata to `100.10.2`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script or
+Worker-setting change is required.
+
+---
+
 # V100.10.1 — Teacher-only scope and compact timetable rows
 
 ## Behaviour

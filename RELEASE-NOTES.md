@@ -1,3 +1,42 @@
+V100.10.2
+
+# Module-aware timetable and shared compact disclosure layout
+
+- `TeacherAssign.ModuleID` is now optional. A blank value means the teacher is
+  teaching the whole subject; a populated value means the teacher is teaching
+  that module from the subject.
+- Module identity and display data are resolved through
+  `ModuleList.ModuleID`. Canonical module names and `Sort Order` values are
+  returned as `ModuleName` and `ModuleNo` in the timetable response.
+- Missing, inactive or subject-mismatched module IDs do not break the board.
+  The subject remains visible without an unverified module label and the API
+  returns a diagnostic warning.
+- Numbered-group sessions now display the subject once with a compact,
+  collapsed group disclosure. Opening it shows the group, optional module and
+  teacher rows. This same interaction is used on mobile and desktop.
+- `GroupNo = ALL` sessions show the subject and teacher directly. The redundant
+  `All groups` label is no longer displayed.
+- Session-specific `TeacherAssign.ZoomLink` values remain supported. A shared
+  link opens from the subject; differing links remain attached to their exact
+  group/module row.
+- Existing role rules remain intact: `TEACHER` sees only its own timetable;
+  `ADMIN` and `SENIOR` retain oversight access; other-teacher text remains
+  explicitly light grey for an admin who also teaches.
+- Timetable cache namespace is bumped to `v5`, and release/asset versions are
+  bumped to `100.10.2`.
+
+The audited TeacherAssign export contains 36 sessions, four valid module
+assignments after `TA002.ModuleID` was cleared, and four session Zoom links.
+`CourseID` remains an optional supported field for the later CourseList phase;
+the current `CoureName` header remains supported.
+
+Deploy the Worker/backend first and the frontend second. `ModuleList` must
+remain present. No Apps Script deployment or Worker-setting change is needed.
+Do not delete the legacy `TimeTable` yet because it still owns the global Zoom
+link during verification.
+
+---
+
 V100.10.1
 
 # Teacher-only timetable scope and compact assignment grid

@@ -1,4 +1,4 @@
-/* M4L v100.10.1 teacher-only scope and compact grouped TeacherAssign timetable.
+/* M4L v100.10.2 module-aware TeacherAssign timetable with compact disclosures.
 
 v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
@@ -18,9 +18,9 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// V100.10.1 cache namespace: prevents a TEACHER account from receiving a
-// previously cached full-board response and delivers the grouped layout cleanly.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v4";
+// V100.10.2 cache namespace delivers module metadata, session Zoom links and
+// the shared desktop/mobile disclosure layout without reusing older responses.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v5";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -356,9 +356,12 @@ function buildTimetableModel(rows) {
     const groupNo = normalizeTimetableText(row.groupno || row.groupNo || row.group || "ALL") || "ALL";
     const teacherId = normalizeTimetableText(row.teacherid || row.teacherId || row.assignedteacher || "");
     const teacherName = normalizeTimetableText(row.teachername || row.teacherName || "Teacher not assigned") || "Teacher not assigned";
+    const moduleId = normalizeTimetableText(row.moduleid || row.moduleId || "");
+    const moduleName = normalizeTimetableText(row.modulename || row.moduleName || "");
+    const moduleNo = normalizeTimetableText(row.moduleno || row.moduleNo || row.moduleNumber || "");
     const entryKey = sessionId
       ? `session:${normalizeTimetableKey(sessionId)}`
-      : [subject, groupNo, teacherId, teacherName].map(normalizeTimetableKey).join("__");
+      : [subject, moduleId, groupNo, teacherId, teacherName].map(normalizeTimetableKey).join("__");
     const alreadyAdded = cellMap[cellKey].some(item => item.entrykey === entryKey);
 
     if (!alreadyAdded) {
@@ -366,6 +369,11 @@ function buildTimetableModel(rows) {
         entrykey: entryKey,
         sessionid: sessionId,
         subjectname: subject,
+        moduleid: moduleId,
+        modulename: moduleName,
+        moduleno: moduleNo,
+        moduleassigned: row.moduleassigned === true,
+        modulestatus: normalizeTimetableText(row.modulestatus || ""),
         groupno: groupNo,
         teacherid: teacherId,
         teachername: teacherName,
@@ -396,6 +404,9 @@ function getTimetableEntriesLabel(entries) {
   return (entries || [])
     .map(entry => [
       normalizeTimetableText(entry && entry.subjectname),
+      normalizeTimetableText(entry && entry.moduleid),
+      normalizeTimetableText(entry && entry.modulename),
+      normalizeTimetableText(entry && entry.moduleno),
       normalizeTimetableText(entry && entry.groupno),
       normalizeTimetableText(entry && entry.teacherid),
       normalizeTimetableText(entry && entry.teachername)
@@ -452,12 +463,72 @@ function compareTimetableAssignmentGroups(left, right) {
   const leftIsNumber = Number.isFinite(leftNumber) && leftGroup !== "";
   const rightIsNumber = Number.isFinite(rightNumber) && rightGroup !== "";
 
-  if (leftIsNumber && rightIsNumber) return leftNumber - rightNumber;
-  if (leftIsNumber) return -1;
-  if (rightIsNumber) return 1;
-  if (normalizeTimetableKey(leftGroup) === "all") return 1;
-  if (normalizeTimetableKey(rightGroup) === "all") return -1;
-  return leftGroup.localeCompare(rightGroup, undefined, { numeric: true, sensitivity: "base" });
+  let groupCompare = 0;
+
+  if (leftIsNumber && rightIsNumber) groupCompare = leftNumber - rightNumber;
+  else if (leftIsNumber) groupCompare = -1;
+  else if (rightIsNumber) groupCompare = 1;
+  else if (normalizeTimetableKey(leftGroup) === "all") groupCompare = 1;
+  else if (normalizeTimetableKey(rightGroup) === "all") groupCompare = -1;
+  else groupCompare = leftGroup.localeCompare(rightGroup, undefined, { numeric: true, sensitivity: "base" });
+
+  if (groupCompare !== 0) return groupCompare;
+
+  const leftModuleNo = normalizeTimetableText(left && left.moduleno);
+  const rightModuleNo = normalizeTimetableText(right && right.moduleno);
+  const moduleNumberCompare = Number(leftModuleNo) - Number(rightModuleNo);
+
+  if (leftModuleNo && rightModuleNo && Number.isFinite(moduleNumberCompare) && moduleNumberCompare !== 0) {
+    return moduleNumberCompare;
+  }
+
+  return normalizeTimetableText(left && (left.modulename || left.moduleid)).localeCompare(
+    normalizeTimetableText(right && (right.modulename || right.moduleid)),
+    undefined,
+    { numeric: true, sensitivity: "base" }
+  );
+}
+
+function isAllTimetableGroup(groupNo) {
+  return normalizeTimetableKey(groupNo || "ALL") === "all";
+}
+
+function getTimetableModuleLabel(entry) {
+  if (!entry || entry.moduleassigned !== true) return "";
+
+  const moduleNo = normalizeTimetableText(entry.moduleno);
+  const moduleName = normalizeTimetableText(entry.modulename);
+
+  if (moduleNo && moduleName) return `Module ${moduleNo}: ${moduleName}`;
+  if (moduleNo) return `Module ${moduleNo}`;
+  if (moduleName) return `Module: ${moduleName}`;
+  return "";
+}
+
+function getTimetableAssignmentScopeLabel(entry) {
+  const groupNo = normalizeTimetableText(entry && entry.groupno || "ALL") || "ALL";
+  const moduleLabel = getTimetableModuleLabel(entry);
+  const parts = [];
+
+  if (!isAllTimetableGroup(groupNo)) {
+    parts.push(`Group ${groupNo}`);
+  }
+
+  if (moduleLabel) {
+    parts.push(moduleLabel);
+  }
+
+  return parts.join(" · ");
+}
+
+function getTimetableDisclosureLabel(entries) {
+  const numberedEntries = (entries || []).filter(entry => !isAllTimetableGroup(entry && entry.groupno));
+
+  if (numberedEntries.length === 1) {
+    return `Group ${normalizeTimetableText(numberedEntries[0].groupno)}`;
+  }
+
+  return `${numberedEntries.length} groups`;
 }
 
 function groupTimetableEntriesBySubject(entries) {
@@ -517,7 +588,7 @@ function renderTimetableSubjectEntries(entries, options = {}) {
     const hasUnassigned = subjectEntries.some(entry => entry.teacherassigned !== true);
     const sessionIds = subjectEntries.map(entry => normalizeTimetableText(entry.sessionid)).filter(Boolean);
     const teacherIds = subjectEntries.map(entry => normalizeTimetableText(entry.teacherid)).filter(Boolean);
-    const showAssignmentGroups = options.showGroupLabels === true || subjectEntries.length > 1;
+    const hasNumberedGroups = subjectEntries.some(entry => !isAllTimetableGroup(entry && entry.groupno));
     const sessionClasses = [
       "m4l-timetable-session",
       "m4l-timetable-session--grouped",
@@ -539,28 +610,25 @@ function renderTimetableSubjectEntries(entries, options = {}) {
     const assignmentsMarkup = subjectEntries.map(entry => {
       const teacherName = normalizeTimetableText(entry.teachername) || "Teacher not assigned";
       const teacherId = normalizeTimetableText(entry.teacherid);
-      const groupNo = normalizeTimetableText(entry.groupno || "ALL") || "ALL";
-      const groupLabel = normalizeTimetableKey(groupNo) === "all"
-        ? "All groups"
-        : `Group ${groupNo}`;
+      const scopeLabel = getTimetableAssignmentScopeLabel(entry);
       const entryZoomLink = normalizeTimetableText(entry.zoomlink);
       const entryMuted = isTimetableEntryMuted(entry, options);
       const assignmentClasses = [
         "m4l-timetable-assignment",
-        showAssignmentGroups ? "m4l-timetable-assignment--with-group" : "",
+        scopeLabel ? "m4l-timetable-assignment--with-group m4l-timetable-assignment--with-scope" : "",
         entryMuted ? "m4l-timetable-assignment--muted" : "",
         entry.teacherassigned === true ? "" : "m4l-timetable-assignment--unassigned",
         entry.assignmentconflict === true ? "m4l-timetable-assignment--conflict" : ""
       ].filter(Boolean).join(" ");
-      const groupMarkup = showAssignmentGroups
+      const groupMarkup = scopeLabel
         ? entryZoomLink && !sharedZoomLink
           ? renderTimetableZoomButton(
-            groupLabel,
+            scopeLabel,
             entryZoomLink,
-            "m4l-timetable-group m4l-timetable-group-link",
-            `Open ${groupLabel} Zoom link`
+            "m4l-timetable-group m4l-timetable-group-link m4l-timetable-scope",
+            `Open ${scopeLabel} Zoom link`
           )
-          : `<span class="m4l-timetable-group">${escapeHtml(groupLabel)}</span>`
+          : `<span class="m4l-timetable-group m4l-timetable-scope">${escapeHtml(scopeLabel)}</span>`
         : "";
 
       return `
@@ -577,6 +645,25 @@ function renderTimetableSubjectEntries(entries, options = {}) {
         </div>
       `;
     }).join("");
+    const assignmentsBlock = `
+      <div class="m4l-timetable-assignments">
+        ${assignmentsMarkup}
+      </div>
+    `;
+    const assignmentsDisplay = hasNumberedGroups
+      ? `
+        <details class="m4l-timetable-details">
+          <summary
+            class="m4l-timetable-details-summary"
+            aria-label="Show groups and teachers for ${escapeForAttribute(subjectGroup.subjectname)}"
+          >
+            <span>${escapeHtml(getTimetableDisclosureLabel(subjectEntries))}</span>
+            <span class="m4l-timetable-details-chevron" aria-hidden="true"></span>
+          </summary>
+          ${assignmentsBlock}
+        </details>
+      `
+      : assignmentsBlock;
 
     return `
       <div
@@ -585,9 +672,7 @@ function renderTimetableSubjectEntries(entries, options = {}) {
         data-timetable-teacher-id="${escapeForAttribute(teacherIds.join(","))}"
       >
         ${subjectMarkup}
-        <div class="m4l-timetable-assignments">
-          ${assignmentsMarkup}
-        </div>
+        ${assignmentsDisplay}
       </div>
     `;
   }).join("");

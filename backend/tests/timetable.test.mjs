@@ -13,17 +13,20 @@ const teacherRows = [
     "GroupNo",
     "AssignedTeacher",
     "CoureName",
-    "Active"
+    "Active",
+    "ModuleID",
+    "ModuleName",
+    "ModuleNo"
   ],
-  ["TA1", "SUB1", "Quraan", "Mon", "09:00", "https://zoom.test/session-quran", "1", "ADMIN1", "Course A", true],
-  ["TA2", "SUB1", "Quran", "Mon", "09:00", "", "2", "ADMIN2", "Course A", true],
-  ["TA3", "SUB2", "Fiqh", "Tue", "10:00", "", "ALL", "ADMIN1", "Course A", true],
-  ["TA4", "SUB3", "Hadith", "Wed", "11:00", "", "1", "ADMIN3", "Course A", true],
-  ["TA5", "SUB4", "History", "Thur", "12:00", "", "2", "ADMIN404", "Course A", true],
-  ["TA6", "SUB5", "Review", "Fri", "13:00", "", "0", "ADMIN2", "Course A", true],
-  ["TA7", "SUB6", "Inactive row", "Fri", "14:00", "", "1", "ADMIN1", "Course A", false],
-  ["TA8", "SUB2", "Fiqh", "Tue", "10:30", "", "1", "ADMIN1", "Course A", true],
-  ["TA9", "SUB2", "Fiqh", "Tue", "10:30", "", "1", "ADMIN2", "Course A", true]
+  ["TA1", "SUB1", "Quraan", "Mon", "09:00", "https://zoom.test/session-quran", "1", "ADMIN1", "Course A", true, "MOD1", "Entered name", "99"],
+  ["TA2", "SUB1", "Quran", "Mon", "09:00", "", "2", "ADMIN2", "Course A", true, "", "", ""],
+  ["TA3", "SUB2", "Fiqh", "Tue", "10:00", "", "ALL", "ADMIN1", "Course A", true, "MOD404", "Unknown", "4"],
+  ["TA4", "SUB3", "Hadith", "Wed", "11:00", "", "1", "ADMIN3", "Course A", true, "MOD3", "Entered Hadith", "3"],
+  ["TA5", "SUB4", "History", "Thur", "12:00", "", "2", "ADMIN404", "Course A", true, "", "", ""],
+  ["TA6", "SUB5", "Review", "Fri", "13:00", "", "0", "ADMIN2", "Course A", true, "", "", ""],
+  ["TA7", "SUB6", "Inactive row", "Fri", "14:00", "", "1", "ADMIN1", "Course A", false, "", "", ""],
+  ["TA8", "SUB2", "Fiqh", "Tue", "10:30", "", "1", "ADMIN1", "Course A", true, "", "", ""],
+  ["TA9", "SUB2", "Fiqh", "Tue", "10:30", "", "1", "ADMIN2", "Course A", true, "", "", ""]
 ];
 
 const adminRows = [
@@ -43,6 +46,14 @@ const subjectRows = [
   ["SUB6", "Inactive row", true]
 ];
 
+const moduleRows = [
+  ["ModuleID", "ModuleName", "SubjectID", "SubjectName", "Sort Order", "Active"],
+  ["MOD1", "Part-1", "SUB1", "Quran", 1, true],
+  ["MOD2", "Part-2", "SUB1", "Quran", 2, true],
+  ["MOD3", "Hadith foundations", "SUB3", "Hadith", 1, true],
+  ["MOD4", "Inactive module", "SUB2", "Fiqh", 2, false]
+];
+
 const legacyRows = [
   ["SessionID", "SubjectID", "SubjectName", "DayofWeek", "StartTime", "ZoomLink", "GroupNo", "AssignedTeacher"],
   ["S1", "SUB1", "Quran", "Mon", "09:00", "https://zoom.test/global", "ALL", "ALL"]
@@ -51,6 +62,7 @@ const legacyRows = [
 const transformed = buildTimetableResponse(teacherRows, {
   adminRows,
   subjectRows,
+  moduleRows,
   legacyRows,
   groupNo: " 1 ",
   teacherId: "ALL",
@@ -71,16 +83,22 @@ assert.equal(transformed.sessions[0].subjectname, "Quran", "SubjectID must resol
 assert.equal(transformed.sessions[0].teacherid, "ADMIN1");
 assert.equal(transformed.sessions[0].teachername, "Teacher A");
 assert.equal(transformed.sessions[0].zoomlink, "https://zoom.test/session-quran", "TeacherAssign ZoomLink must remain session-specific");
+assert.equal(transformed.sessions[0].moduleid, "MOD1");
+assert.equal(transformed.sessions[0].modulename, "Part-1", "ModuleID must resolve the canonical ModuleList name");
+assert.equal(transformed.sessions[0].moduleno, "1", "ModuleID must resolve the canonical ModuleList order");
+assert.equal(transformed.sessions[0].moduleassigned, true);
 assert.equal(transformed.sessions.find(session => session.sessionid === "TA4").assignmentstatus, "teacher-inactive");
 assert.equal(transformed.sessions.find(session => session.sessionid === "TA4").teachername, "Teacher not assigned");
 assert.equal(transformed.sessions.find(session => session.sessionid === "TA8").assignmentconflict, true);
 assert.equal(transformed.sessions.find(session => session.sessionid === "TA9").assignmentconflict, true);
-assert.equal(transformed.warnings[0].code, "MULTIPLE_TEACHER_ASSIGNMENTS");
+assert.equal(transformed.warnings.some(warning => warning.code === "MODULE_NOT_FOUND"), true);
+assert.equal(transformed.warnings.some(warning => warning.code === "MULTIPLE_TEACHER_ASSIGNMENTS"), true);
 assert.equal(transformed.sessions.some(session => session.sessionid === "TA7"), false, "Inactive TeacherAssign rows must be excluded");
 
 const oversight = buildTimetableResponse(teacherRows, {
   adminRows,
   subjectRows,
+  moduleRows,
   legacyRows,
   groupNo: "ALL",
   viewerAdminId: "ADMIN9",
@@ -92,6 +110,7 @@ assert.equal(oversight.showgrouplabels, true);
 const literalGroupZero = buildTimetableResponse(teacherRows, {
   adminRows,
   subjectRows,
+  moduleRows,
   groupNo: "0"
 });
 assert.deepEqual(
@@ -103,6 +122,7 @@ assert.deepEqual(
 const allGroupsStudent = buildTimetableResponse(teacherRows, {
   adminRows,
   subjectRows,
+  moduleRows,
   groupNo: "ALL",
   allGroupsStudent: true,
   showGroupLabels: true
@@ -220,6 +240,7 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "TeacherAssign!A:ZZ") return response({ values: teacherRows });
     if (range === "AdminRecords!A:ZZ") return response({ values: adminRows });
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
+    if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
     if (range === "TimeTable!A:ZZ") return response({ values: directLegacyRows });
     throw new Error(`Unexpected Sheets range: ${range}`);
   }
@@ -351,6 +372,7 @@ try {
     "TeacherAssign!A:ZZ",
     "AdminRecords!A:ZZ",
     "SubjectList!A:ZZ",
+    "ModuleList!A:ZZ",
     "TimeTable!A:ZZ"
   ]);
   assert.deepEqual(new Set(requestedRanges), requiredRanges);
