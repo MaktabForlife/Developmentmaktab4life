@@ -424,7 +424,7 @@
   }
 }
 
-/* Timetable board - V100.10.4 subject-module rows and responsive oversight days */
+/* Timetable board - V100.10.5 separated oversight Zoom actions and readable details */
 .m4l-timetable-scroll {
   width: 100%;
   max-width: 100%;
@@ -739,7 +739,7 @@ button.m4l-timetable-assignment-zoom {
   min-width: 0;
   min-height: 0;
   padding: 2px 4px;
-  color: var(--primary);
+  color: var(--text-strong);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -751,6 +751,19 @@ button.m4l-timetable-assignment-zoom {
   line-height: 1.1;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.m4l-timetable-responsive--oversight .m4l-timetable-details-summary,
+.m4l-timetable-responsive--oversight .m4l-timetable-subject,
+.m4l-timetable-responsive--oversight .m4l-timetable-group,
+.m4l-timetable-responsive--oversight .m4l-timetable-teacher,
+.m4l-timetable-responsive--oversight .m4l-timetable-assignment-zoom,
+.m4l-timetable-responsive--oversight .m4l-timetable-conflict-label {
+  color: var(--text-strong);
+}
+
+.m4l-timetable-responsive--oversight .m4l-timetable-details-summary {
+  gap: 12px;
 }
 
 .m4l-timetable-session--muted {
@@ -768,6 +781,15 @@ button.m4l-timetable-assignment-zoom {
 }
 
 .m4l-timetable-assignment--muted {
+  color: #aeb3b0;
+}
+
+.m4l-timetable-responsive--oversight .m4l-timetable-session--muted .m4l-timetable-details-summary,
+.m4l-timetable-responsive--oversight .m4l-timetable-session--muted .m4l-timetable-subject,
+.m4l-timetable-responsive--oversight .m4l-timetable-assignment--muted .m4l-timetable-group,
+.m4l-timetable-responsive--oversight .m4l-timetable-assignment--muted .m4l-timetable-teacher,
+.m4l-timetable-responsive--oversight .m4l-timetable-assignment--muted .m4l-timetable-assignment-zoom,
+.m4l-timetable-responsive--oversight .m4l-timetable-assignment--muted .m4l-timetable-conflict-label {
   color: #aeb3b0;
 }
 
@@ -921,6 +943,18 @@ button.m4l-timetable-assignment-zoom {
     touch-action: pan-x pan-y;
     border-radius: 18px;
     scrollbar-width: thin;
+  }
+
+  .m4l-timetable-responsive--oversight .m4l-timetable-group,
+  .m4l-timetable-responsive--oversight .m4l-timetable-teacher,
+  .m4l-timetable-responsive--oversight .m4l-timetable-assignment-zoom {
+    font-size: clamp(0.82rem, 3.6vw, 0.94rem);
+    line-height: 1.25;
+  }
+
+  .m4l-timetable-responsive--oversight .m4l-timetable-assignment {
+    gap: 6px 10px;
+    padding-block: 6px;
   }
 }
 

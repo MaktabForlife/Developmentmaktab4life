@@ -10,7 +10,7 @@ const admin = await readFile(new URL("../../admin/index.html", import.meta.url),
 const student = await readFile(new URL("../../student/index.html", import.meta.url), "utf8");
 const root = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 
-assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v7"/);
+assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v8"/);
 assert.match(timetable, /teacherId: normalizeTimetableText\(resolvedTeacherId\)/);
 assert.match(timetable, /teachername: teacherName/);
 assert.match(timetable, /data-timetable-teacher-id=/);
@@ -27,6 +27,7 @@ assert.match(timetable, /getSharedTimetableZoomLink/);
 assert.match(timetable, /Open \$\{scopeLabel\} Zoom link/);
 assert.match(timetable, /alwaysDiscloseAssignments: oversightView/);
 assert.match(timetable, /showAssignmentZoomActions: oversightView/);
+assert.match(timetable, /allowSubjectZoomActions: !oversightView/);
 assert.match(timetable, /isOversightTimetableRole/);
 assert.match(timetable, /renderTimetableDayLayout/);
 assert.match(timetable, /m4l-timetable-responsive--oversight/);
@@ -55,11 +56,18 @@ assert.doesNotMatch(timetableCss, /\.m4l-timetable-assignment--muted\s*\{[^}]*ba
 assert.match(timetableCss, /\.m4l-timetable-teacher/);
 assert.match(timetableCss, /button\.m4l-timetable-subject/);
 assert.match(timetableCss, /button\.m4l-timetable-assignment-zoom/);
-assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.4/);
+assert.match(timetableCss, /\.m4l-timetable-responsive--oversight \.m4l-timetable-details-summary/);
+assert.match(timetableCss, /gap: 12px/);
+assert.match(timetableCss, /font-size: clamp\(0\.82rem, 3\.6vw, 0\.94rem\)/);
+assert.doesNotMatch(
+  timetableCss,
+  /button\.m4l-timetable-assignment-zoom\s*\{[^}]*color:\s*var\(--primary\)/
+);
+assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.5/);
 
 for (const html of [admin, student, root]) {
-  assert.match(html, /m4l-timetable\.js\?v=100\.10\.4/);
-  assert.match(html, /styles\.css\?v=100\.10\.4/);
+  assert.match(html, /m4l-timetable\.js\?v=100\.10\.5/);
+  assert.match(html, /styles\.css\?v=100\.10\.5/);
 }
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=100\.10/);
@@ -322,6 +330,15 @@ assert.match(oversightTarget.innerHTML, /Show groups, teachers and Zoom links fo
 assert.match(oversightTarget.innerHTML, /Open Group 2 Zoom link/);
 assert.match(oversightTarget.innerHTML, /Open Surahs Zoom link/);
 assert.match(oversightTarget.innerHTML, />Zoom<\/button>/);
+assert.doesNotMatch(oversightTarget.innerHTML, /title="Open session Zoom link"/);
+assert.doesNotMatch(
+  oversightTarget.innerHTML,
+  /<button[^>]*class="m4l-timetable-subject[^>]*>/
+);
+assert.match(
+  oversightTarget.innerHTML,
+  /<span class="m4l-timetable-subject timetable-subject">Quran<\/span>/
+);
 
 const teacherTarget = { innerHTML: "" };
 renderContext.window.M4LTimetable.renderTimetable(teacherTarget, {

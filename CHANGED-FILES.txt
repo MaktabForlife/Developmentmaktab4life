@@ -1,4 +1,4 @@
-V100.10.4
+V100.10.5
 
 Backend / Worker
 - backend/src/worker.js
@@ -30,10 +30,9 @@ Deployment order
 1. Worker/backend
 2. Frontend
 
-Subject and validated module names form separate compact timetable rows.
-ADMIN/SENIOR use swipeable day panels below 900px and the weekly grid above it.
-Students and TEACHER accounts retain their filtered weekly grid at every size.
-Inline disclosures reveal exact group, teacher and per-assignment Zoom actions.
-Other-teacher sessions use light-grey text without grey background shading.
+ADMIN/SENIOR headings are disclosure controls only and cannot open Zoom.
+Each linked assignment exposes a separate underlined Zoom text action.
+Oversight text uses only dark active and light-grey muted colours.
+Mobile oversight detail text and spacing are enlarged for readability.
 Do not delete the legacy TimeTable sheet or its global Zoom-link route yet.
 No Apps Script deployment or new Worker setting is required.

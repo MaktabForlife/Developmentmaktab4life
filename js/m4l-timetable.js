@@ -1,4 +1,4 @@
-/* M4L v100.10.4 responsive oversight timetable and subject-module rows.
+/* M4L v100.10.5 separated oversight Zoom actions and readable detail text.
 
 v98 - Timetable board + V84 Home vertical stack support
    Load after /app.js, /js/m4l-auth.js, and /js/m4l-shell.js.
@@ -18,9 +18,9 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// V100.10.4 cache namespace separates subject-module rows and adds the
-// ADMIN/SENIOR responsive day layout without reusing older rendered data.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v7";
+// V100.10.5 cache namespace removes Zoom actions from ADMIN/SENIOR subject
+// headings and delivers the larger, two-colour oversight detail treatment.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v8";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -624,6 +624,7 @@ function renderTimetableSubjectEntries(entries, options = {}) {
     );
     const includeGroupLabels = options.showGroupLabels === true || hasMultipleGroups ||
       options.alwaysDiscloseAssignments === true;
+    const subjectZoomLink = options.allowSubjectZoomActions === false ? "" : sharedZoomLink;
     const sessionClasses = [
       "m4l-timetable-session",
       "m4l-timetable-session--grouped",
@@ -631,13 +632,13 @@ function renderTimetableSubjectEntries(entries, options = {}) {
       hasConflict ? "m4l-timetable-session--conflict" : "",
       hasUnassigned ? "m4l-timetable-session--unassigned" : ""
     ].filter(Boolean).join(" ");
-    const subjectClass = sharedZoomLink
+    const subjectClass = subjectZoomLink
       ? "m4l-timetable-subject timetable-subject timetable-subject-link"
       : "m4l-timetable-subject timetable-subject";
-    const subjectMarkup = sharedZoomLink
+    const subjectMarkup = subjectZoomLink
       ? renderTimetableZoomButton(
         subjectGroup.displayname,
-        sharedZoomLink,
+        subjectZoomLink,
         subjectClass,
         "Open session Zoom link"
       )
@@ -899,6 +900,7 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     // is opened. Each disclosed assignment keeps its own Zoom action.
     alwaysDiscloseAssignments: oversightView,
     showAssignmentZoomActions: oversightView,
+    allowSubjectZoomActions: !oversightView,
     // Confirmed V100.10 rule: admins who teach at least one visible session see
     // other teachers' sessions in grey text. Oversight-only admins see all normally.
     dimOtherTeachers: timetableResult?.viewerhasassignments === true

@@ -1,3 +1,19 @@
+# V100.10.5 — Oversight Zoom safety and readability
+
+- Removes Zoom actions from `ADMIN`/`SENIOR` subject and module headings.
+- Keeps disclosure headings dedicated to opening assignment details.
+- Adds a separate underlined `Zoom` action to each linked assignment row.
+- Enforces dark active text and light-grey muted text throughout oversight
+  timetables, including links and disclosure chevrons.
+- Enlarges mobile oversight detail text and spacing for improved legibility.
+- Bumps the timetable cache namespace to `v8` and release/asset metadata to
+  `100.10.5`.
+
+Deploy the Worker/backend first, followed by the frontend. No Apps Script,
+spreadsheet or Cloudflare-setting change is required.
+
+---
+
 # V100.10.4 — Responsive oversight timetable
 
 - Groups timetable assignments by subject plus validated module name, producing

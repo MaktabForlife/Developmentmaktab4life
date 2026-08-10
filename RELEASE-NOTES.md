@@ -1,3 +1,27 @@
+V100.10.5
+
+# Safer oversight disclosures and readable mobile details
+
+- `ADMIN` and `SENIOR` subject/module headings are no longer Zoom links. Tapping
+  the heading or adjacent chevron can only open or close its assignment details.
+- Every session link is presented as a separate underlined `Zoom` action inside
+  its exact group/teacher row, preventing accidental meeting launches.
+- Active Admin/Senior timetable text now uses the normal dark text colour,
+  including `Zoom`; other-teacher/muted content uses the existing light grey.
+  No third link colour or grey background shading is used.
+- The inline disclosure gap is increased to separate the title and chevron.
+- Admin/Senior mobile group, teacher and Zoom text is enlarged to a responsive
+  `0.82rem`–`0.94rem` range with increased line height and row spacing.
+- Student and `TEACHER` subject Zoom behaviour remains unchanged because those
+  accounts receive their own filtered timetable.
+- Timetable cache namespace is bumped to `v8`; release, JavaScript and CSS asset
+  versions are bumped to `100.10.5`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare-setting change is required.
+
+---
+
 V100.10.4
 
 # Responsive oversight days and subject-module rows

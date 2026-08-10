@@ -1,4 +1,4 @@
-/* M4L V100.10.4 - responsive oversight timetable and subject-module rows.
+/* M4L V100.10.5 - separated oversight Zoom actions and readable detail text.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "100.10.4"
+          version: "100.10.5"
         });
       }
 
