@@ -1,7 +1,5 @@
-V100.10.5
+V100.6
 
-No repository files or Google Sheet tabs should be deleted in this verification release.
+No repository files need to be deleted.
 
-The legacy TimeTable session data is no longer displayed, but TimeTable still owns the
-global Zoom link and must remain until the TeacherAssign timetable is verified and the
-global link is migrated in a later retirement release.
+Cloudflare Worker Settings are being made authoritative for environment-specific values. Do not delete the live Worker variables listed in backend/WORKER-SETTINGS.md; those values are now required there because they are no longer supplied by wrangler.jsonc.
