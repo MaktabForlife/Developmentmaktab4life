@@ -1,49 +1,38 @@
-V100.6
+V100.10.5
 
-M4L Worker Settings source-of-truth correction.
+Backend / Worker
+- backend/src/worker.js
+- backend/package.json
+- backend/tests/timetable-teacher-ui.test.mjs
+- backend/tests/router.test.mjs
+- backend/tests/group-zero-access.test.mjs
+- backend/tests/admin-management-ui.test.mjs
+- backend/tests/student-task-assignment-ui.test.mjs
 
-Deploy/copy these changed files:
+Frontend
+- js/m4l-timetable.js
+- css/m4l-05-home-timetable.css
+- styles.css
+- js/styles.css
+- admin/index.html
+- student/index.html
+- index.html
 
-backend/src/lib/google-service-account-email.js
-  NEW. Expected service-account email guard and safe Admin diagnostics summary.
+Release metadata
+- version.json
+- js/version.json
+- RELEASE-NOTES.md
+- CHANGES.md
+- CHANGED-FILES.txt
+- DELETE-FILES.txt
 
-backend/src/lib/google-drive.js
-  Enforces the configured expected service-account email when present.
+Deployment order
+1. Worker/backend
+2. Frontend
 
-backend/src/lib/google-sheets.js
-  Enforces the configured expected service-account email when present.
-
-backend/src/routes/backend-routing.js
-  Adds googleServiceAccount identity status to authenticated Admin routing diagnostics.
-
-backend/wrangler.jsonc
-  Removes all environment-specific application values. Keeps only Worker deployment structure, R2 and rate-limit bindings.
-
-backend/WORKER-SETTINGS.md
-  NEW. Permanent reference for which settings belong in Cloudflare Worker Settings vs Wrangler.
-
-backend/src/worker.js
-  Health version -> 100.6.
-
-backend/package.json
-  Package version -> 100.6.0 and service-account email guard test command added.
-
-backend/tests/google-service-account-email.test.mjs
-  NEW regression tests for missing, matching, mismatching and invalid credential states.
-
-backend/tests/backend-routing.test.mjs
-  Verifies wrangler.jsonc contains no environment-specific application values and still retains required bindings.
-
-backend/tests/router.test.mjs
-  Health-version expectation -> 100.6.
-
-version.json
-js/version.json
-  Version -> 100.6.
-
-Release metadata:
-CHANGED-FILES.txt
-RELEASE-NOTES.md
-DELETE-FILES.txt
-
-No frontend UI/runtime file changes are required for V100.6.
+ADMIN/SENIOR headings are disclosure controls only and cannot open Zoom.
+Each linked assignment exposes a separate underlined Zoom text action.
+Oversight text uses only dark active and light-grey muted colours.
+Mobile oversight detail text and spacing are enlarged for readability.
+Do not delete the legacy TimeTable sheet or its global Zoom-link route yet.
+No Apps Script deployment or new Worker setting is required.

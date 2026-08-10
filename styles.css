@@ -1,4 +1,12 @@
-/* V100.4.2 Scrollable Google Drive resource picker and MP4 compatibility.
+/* V100.10.5 separated oversight Zoom actions and readable detail text.
+
+   V100.7.2 highlighted Admin Home tile.
+
+   V100.7.1 Admin menu Home tile and x-close navigation.
+
+   V100.7 Admin menu app-icon landing page.
+
+   V100.4.2 Scrollable Google Drive resource picker and MP4 compatibility.
 
    V100.4 Private Google Drive Library management UI loader.
    Adds the ADMIN-only Drive folder browser and resource add/modify screens.
@@ -65,12 +73,12 @@ v91.7.4 - CSS split phase 1 loader
 */
 
 @import url("/css/m4l-01-foundation-auth-userband.css?v=96.5");
-@import url("/css/m4l-02-home-common-and-shared-cards.css?v=93.5");
+@import url("/css/m4l-02-home-common-and-shared-cards.css?v=100.7.2");
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
 @import url("/css/m4l-04-library-resources.css?v=96.5");
-@import url("/css/m4l-05-home-timetable.css?v=91.5");
+@import url("/css/m4l-05-home-timetable.css?v=100.10.5");
 @import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=97.1.8.3");
-@import url("/css/m4l-07-manage-students.css?v=97.1.5.3");
+@import url("/css/m4l-07-manage-students.css?v=100.9");
 @import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=93.5");
 @import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
 @import url("/css/m4l-10-recorder.css?v=97.1.5.1");
