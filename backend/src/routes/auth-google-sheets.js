@@ -445,7 +445,7 @@ function findStudentByUniqueId(rows, uniqueid) {
         uniqueid: getValue(row, 3),
         pinsetup: normalizeBooleanCell(getValue(row, 4)),
         pinhash: getValue(row, 5),
-        classgroup: String(getValue(row, 6) || "").trim(),
+        classgroup: String(getValue(row, 6) ?? "").trim(),
         lastlogin: getValue(row, 8),
         failedattempts: getValue(row, 9),
         active: normalizeBooleanCell(getValue(row, 10))
@@ -471,7 +471,7 @@ function findAdminByUniqueId(rows, uniqueid) {
         pinsetup: normalizeBooleanCell(getValue(row, 3)),
         pinhash: getValue(row, 4),
         role: String(getValue(row, 5) || "").trim().toUpperCase(),
-        assignedgroup: String(getValue(row, 6) || "").trim(),
+        assignedgroup: String(getValue(row, 6) ?? "").trim(),
         active: normalizeBooleanCell(getValue(row, 7)),
         createdate: getValue(row, 8),
         lastlogin: getValue(row, 9)

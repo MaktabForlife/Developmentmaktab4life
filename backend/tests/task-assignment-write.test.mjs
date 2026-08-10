@@ -10,8 +10,9 @@ const TASK_HEADERS = [
   "PDFLink", "Active", "CreateDate", "ModuleID", "ModuleName", "SubjectName"
 ];
 const STUDENT_TASK_HEADERS = [
-  "StudentTaskID", "StudentID", "TaskID", "SubjectID", "CompleteStatus",
-  "CompleteDate", "VerifyStatus", "VerifyDate", "AssignedBy", "AssignedDate"
+  "StudentTaskID", "StudentID", "TaskID", "SubjectID", "SubjectName",
+  "ModuleID", "ModuleName", "TaskName", "CompleteStatus", "CompleteDate",
+  "VerifyStatus", "VerifyDate", "AssignedBy", "AssignedDate"
 ];
 
 const keyPair = await crypto.subtle.generateKey(
@@ -44,6 +45,12 @@ const adminToken = await makeSessionToken({
   username: "Admin User",
   role: "ADMIN"
 }, sessionSecret);
+const seniorToken = await makeSessionToken({
+  type: "admin",
+  adminid: "SENIOR1",
+  username: "Senior User",
+  role: "SENIOR"
+}, sessionSecret);
 const teacherToken = await makeSessionToken({
   type: "admin",
   adminid: "TEACHER1",
@@ -68,7 +75,8 @@ function resetSheets() {
     ["ST1", "First Student", "111111", "LINK1", true, "", "2", "", "", 0, true, "Admin"],
     ["ST2", "Second Student", "222222", "LINK2", true, "", "2", "", 0, 0, true, "Admin"],
     ["ST3", "Inactive Student", "333333", "LINK3", true, "", "2", "", "", 0, false, "Admin"],
-    ["ST4", "String Active", "444444", "LINK4", true, "", "2", "", "", 0, "TRUE", "Admin"]
+    ["ST4", "String Active", "444444", "LINK4", true, "", "2", "", "", 0, "TRUE", "Admin"],
+    ["ST5", "Group Zero Student", "555555", "LINK5", true, "", "0", "", "", 0, true, "Admin"]
   ];
   taskRows = [
     TASK_HEADERS,
@@ -80,7 +88,7 @@ function resetSheets() {
   ];
   studentTaskRows = [
     STUDENT_TASK_HEADERS,
-    ["STASK1", "ST1", "TASK1", "SUB1", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"]
+    ["STASK1", "ST1", "TASK1", "SUB1", "Aqidah", "MOD1", "Module 1", "First", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"]
   ];
   systemConfigRows = [
     ["OtherSetting", "value"],
@@ -141,7 +149,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (init.method === "POST" && isAppend) {
     appends.push({ range, payload });
 
-    if (range === "StudentTasks!A:J") {
+    if (range === "StudentTasks!A:N") {
       studentTaskRows.push(...payload.values);
     }
 
@@ -185,18 +193,21 @@ try {
     }
   }]);
   assert.equal(appends.length, 1);
-  assert.equal(appends[0].range, "StudentTasks!A:J");
+  assert.equal(appends[0].range, "StudentTasks!A:N");
   assert.deepEqual(
-    appends[0].payload.values.map(row => [row[0], row[1], row[2], row[3], row[8]]),
+    appends[0].payload.values.map(row => [row[0], row[1], row[2], row[3], row[12]]),
     [
       ["STASK100", "ST1", "TASK2", "SUB1", "ADMIN1"],
       ["STASK101", "ST2", "TASK1", "SUB1", "ADMIN1"],
       ["STASK102", "ST2", "TASK2", "SUB1", "ADMIN1"]
     ]
   );
-  assert.ok(appends[0].payload.values.every(row => row.length === 10));
-  assert.ok(appends[0].payload.values.every(row => row[9] === appends[0].payload.values[0][9]));
-  assert.match(appends[0].payload.values[0][9], /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(appends[0].payload.values.every(row => row.length === 14));
+  assert.deepEqual(appends[0].payload.values[0].slice(4, 8), [
+    "Aqidah", "MOD2", "Module 2", "Second"
+  ]);
+  assert.ok(appends[0].payload.values.every(row => row[13] === appends[0].payload.values[0][13]));
+  assert.match(appends[0].payload.values[0][13], /^\d{4}-\d{2}-\d{2}T/);
 
   resetSheets();
   const allStudents = await postAdmin(
@@ -207,14 +218,14 @@ try {
   assert.deepEqual(allStudents.data, {
     success: true,
     message: "Task assignment completed",
-    assignedCount: 2,
+    assignedCount: 4,
     skippedDuplicate: 1,
     skippedInvalidTask: 0,
     skippedInvalidStudent: 0
   });
   assert.deepEqual(
     appends[0].payload.values.map(row => [row[1], row[2]]),
-    [["SYSTEM1", "TASK1"], ["ST2", "TASK1"]]
+    [["SYSTEM1", "TASK1"], ["ST2", "TASK1"], ["ST4", "TASK1"], ["ST5", "TASK1"]]
   );
 
   resetSheets();
@@ -230,24 +241,147 @@ try {
   assert.deepEqual(subjectAndGroup.data, {
     success: true,
     message: "Task assignment completed",
-    assignedCount: 3,
+    assignedCount: 8,
     skippedDuplicate: 1,
     skippedInvalidTask: 0,
     skippedInvalidStudent: 0
   });
   assert.deepEqual(
     appends[0].payload.values.map(row => [row[1], row[2]]),
-    [["ST1", "TASK2"], ["ST2", "TASK1"], ["ST2", "TASK2"]]
+    [
+      ["ST1", "TASK2"], ["ST1", "TASK4"],
+      ["ST2", "TASK1"], ["ST2", "TASK2"], ["ST2", "TASK4"],
+      ["ST4", "TASK1"], ["ST4", "TASK2"], ["ST4", "TASK4"]
+    ]
   );
   assert.equal(
-    appends[0].payload.values.some(row => row[2] === "TASK3" || row[2] === "TASK4"),
+    appends[0].payload.values.some(row => row[2] === "TASK3"),
     false,
-    "The direct handler must preserve Apps Script's strict active === true rule"
+    "Inactive tasks must not be assigned"
+  );
+  assert.equal(
+    appends[0].payload.values.some(row => row[2] === "TASK4"),
+    true,
+    "String TRUE task values must be treated as active"
   );
 
   resetSheets();
+  const allTasksForOneStudent = await postAdmin(
+    adminToken,
+    {
+      studentids: ["ST2"],
+      assignmentMode: "all",
+      assignAllTasks: true
+    },
+    directEnv
+  );
+  assert.deepEqual(allTasksForOneStudent.data, {
+    success: true,
+    message: "Task assignment completed",
+    assignedCount: 4,
+    skippedDuplicate: 0,
+    skippedInvalidTask: 0,
+    skippedInvalidStudent: 0
+  });
+  assert.deepEqual(
+    appends[0].payload.values.map(row => row[2]),
+    ["TASK1", "TASK2", "TASK4", "TASK5"]
+  );
+
+  resetSheets();
+  const selectedModules = await postAdmin(
+    adminToken,
+    {
+      studentids: ["ST1"],
+      assignmentMode: "selected",
+      selectedModules: [
+        { subjectid: "SUB1", moduleid: "MOD1" },
+        { subjectid: "SUB2", moduleid: "MOD5" },
+        { subjectid: "SUB2", moduleid: "MOD5" }
+      ]
+    },
+    directEnv
+  );
+  assert.deepEqual(selectedModules.data, {
+    success: true,
+    message: "Task assignment completed",
+    assignedCount: 1,
+    skippedDuplicate: 1,
+    skippedInvalidTask: 0,
+    skippedInvalidStudent: 0
+  });
+  assert.deepEqual(appends[0].payload.values.map(row => row[2]), ["TASK5"]);
+
+  const writesBeforeDuplicateRetry = updates.length + appends.length;
+  const duplicateRetry = await postAdmin(
+    adminToken,
+    {
+      studentids: ["ST1"],
+      assignmentMode: "selected",
+      selectedModules: [
+        { subjectid: "SUB1", moduleid: "MOD1" },
+        { subjectid: "SUB2", moduleid: "MOD5" }
+      ]
+    },
+    directEnv
+  );
+  assert.deepEqual(duplicateRetry.data, {
+    success: true,
+    message: "All selected tasks were already assigned",
+    assignedCount: 0,
+    skippedDuplicate: 2,
+    skippedInvalidTask: 0,
+    skippedInvalidStudent: 0
+  });
+  assert.equal(
+    updates.length + appends.length,
+    writesBeforeDuplicateRetry,
+    "A duplicate-only retry must not reserve IDs or append rows"
+  );
+
+  resetSheets();
+  const groupZeroManualAssignment = await postAdmin(
+    adminToken,
+    {
+      studentids: ["ST5"],
+      assignmentMode: "selected",
+      selectedModules: [{ subjectid: "SUB1", moduleid: "MOD2" }]
+    },
+    directEnv
+  );
+  assert.equal(groupZeroManualAssignment.data.success, true);
+  assert.equal(groupZeroManualAssignment.data.assignedCount, 1);
+  assert.deepEqual(appends[0].payload.values.map(row => [row[1], row[2]]), [["ST5", "TASK2"]]);
+
+  resetSheets();
+  const inactiveStudent = await postAdmin(
+    adminToken,
+    { studentids: ["ST3"], taskids: ["TASK1"] },
+    directEnv
+  );
+  assert.deepEqual(inactiveStudent.data, {
+    success: false,
+    error: "Selected student is inactive or not found"
+  });
+  assert.equal(updates.length + appends.length, 0);
+
+  resetSheets();
+  const seniorAssignment = await postAdmin(
+    seniorToken,
+    {
+      studentids: ["ST2"],
+      assignmentMode: "selected",
+      selectedModules: [{ subjectid: "SUB2", moduleid: "MOD5" }]
+    },
+    directEnv
+  );
+  assert.equal(seniorAssignment.data.success, true);
+  assert.equal(seniorAssignment.data.assignedCount, 1);
+  assert.equal(appends[0].payload.values[0][12], "SENIOR1");
+
+  resetSheets();
   const noTasks = await postAdmin(adminToken, { studentids: ["ST1"] }, directEnv);
-  assert.deepEqual(noTasks.data, { success: false, error: "No tasks selected" });
+  assert.deepEqual(noTasks.data, { success: false, error: "No active tasks selected" });
   assert.equal(updates.length + appends.length, 0);
 
   resetSheets();

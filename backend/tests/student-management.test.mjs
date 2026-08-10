@@ -94,6 +94,12 @@ const adminToken = await makeSessionToken({
   username: "Admin User",
   role: "ADMIN"
 }, sessionSecret);
+const seniorToken = await makeSessionToken({
+  type: "admin",
+  adminid: "SENIOR1",
+  username: "Senior User",
+  role: "SENIOR"
+}, sessionSecret);
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
 const batchUpdates = [];
@@ -250,6 +256,48 @@ try {
     success: false,
     error: "active must be true or false"
   });
+
+  const allGroupsUpdate = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    { uniqueid: "LINK-AHMAD2", classgroup: 0, active: true },
+    directEnv
+  );
+  assert.equal(allGroupsUpdate.response.status, 200);
+  assert.equal(allGroupsUpdate.data.classgroup, "0", "Numeric Group 0 must be preserved on update");
+  assert.equal(batchUpdates.length, 2);
+
+  const seniorAllGroupsAttempt = await postAdmin(
+    "/api/admin/update-student",
+    seniorToken,
+    { uniqueid: "LINK-AHMAD", classgroup: "0" },
+    directEnv
+  );
+  assert.equal(seniorAllGroupsAttempt.response.status, 403);
+  assert.equal(seniorAllGroupsAttempt.data.error, "Only an Admin can assign Group 0 (ALL) access");
+  assert.equal(batchUpdates.length, 2, "A Senior Group 0 update attempt must not write data");
+
+  const inactiveAllGroupsRow = studentRows.find(row => row[3] === "LINK-AHMAD2");
+  inactiveAllGroupsRow[6] = "0";
+  inactiveAllGroupsRow[10] = false;
+  const seniorReactivationAttempt = await postAdmin(
+    "/api/admin/update-student",
+    seniorToken,
+    { uniqueid: "LINK-AHMAD2", classgroup: "0", active: true },
+    directEnv
+  );
+  assert.equal(seniorReactivationAttempt.response.status, 403);
+  assert.equal(seniorReactivationAttempt.data.error, "Only an Admin can assign Group 0 (ALL) access");
+  assert.equal(batchUpdates.length, 2, "A Senior must not reactivate an inactive Group 0 account");
+
+  const invalidGroup = await postAdmin(
+    "/api/admin/update-student",
+    adminToken,
+    { uniqueid: "LINK-AHMAD", classgroup: "ALL" },
+    directEnv
+  );
+  assert.equal(invalidGroup.response.status, 400);
+  assert.equal(invalidGroup.data.error, "classgroup must be 0 (ALL) or a positive whole number");
 
   const phoneSearch = await postAdmin(
     "/api/admin/search-students",

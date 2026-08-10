@@ -94,6 +94,12 @@ const adminToken = await makeSessionToken({
   username: "Admin User",
   role: "ADMIN"
 }, sessionSecret);
+const seniorToken = await makeSessionToken({
+  type: "admin",
+  adminid: "SENIOR1",
+  username: "Senior User",
+  role: "SENIOR"
+}, sessionSecret);
 const teacherToken = await makeSessionToken({
   type: "admin",
   adminid: "TEACHER1",
@@ -201,18 +207,13 @@ try {
     registered.data.loginUrl,
     `https://development.example.test/student/${registered.data.uniqueid}`
   );
-  assert.deepEqual(registered.data.assignment, {
-    success: true,
-    assignedCount: 2,
-    skippedDuplicate: 0,
-    message: "Student tasks assigned successfully."
-  });
+  assert.equal(registered.data.taskAssignmentPending, true);
+  assert.equal("assignment" in registered.data, false);
 
   assert.deepEqual(updates.map(item => [item.range, item.payload.values]), [
-    ["SystemConfig!B1", [[201]]],
-    ["SystemConfig!B2", [[502]]]
+    ["SystemConfig!B1", [[201]]]
   ]);
-  assert.equal(appends.length, 2);
+  assert.equal(appends.length, 1);
   assert.equal(appends[0].range, "StudentRecords!A:L");
   assert.deepEqual(appends[0].payload.values[0].slice(0, 4), [
     "MAKTAB200",
@@ -232,13 +233,11 @@ try {
   ]);
   assert.match(appends[0].payload.values[0][7], /^\d{4}-\d{2}-\d{2}T/);
 
-  assert.equal(appends[1].range, "StudentTasks!A:N");
-  assert.deepEqual(
-    appends[1].payload.values.map(row => [row[0], row[1], row[2], row[12]]),
-    [
-      ["STASK500", "MAKTAB200", "TASK1", "Admin User"],
-      ["STASK501", "MAKTAB200", "TASK2", "Admin User"]
-    ]
+  assert.equal(systemConfigRows[1][1], 500, "Registration must not reserve StudentTask IDs");
+  assert.equal(
+    appends.some(item => item.range.startsWith("StudentTasks!")),
+    false,
+    "Registration must not create StudentTasks rows"
   );
 
   const writeCountBeforeDuplicate = updates.length + appends.length;
@@ -294,11 +293,54 @@ try {
   assert.equal(confirmed.data.success, true);
   assert.equal(confirmed.data.username, "Ahmad3");
   assert.equal(confirmed.data.studentid, "MAKTAB201");
-  assert.equal(confirmed.data.assignment.assignedCount, 1);
-  assert.deepEqual(
-    appends.at(-1).payload.values.map(row => [row[0], row[2]]),
-    [["STASK502", "TASK2"]]
+  assert.equal(confirmed.data.taskAssignmentPending, true);
+  assert.equal(appends.at(-1).range, "StudentRecords!A:L");
+
+  const allGroupsRegistration = await postAdmin(
+    "/api/admin/register-student",
+    adminToken,
+    {
+      username: "Visiting Student",
+      whatsapp6: "444444",
+      classgroup: 0
+    },
+    directEnv
   );
+  assert.equal(allGroupsRegistration.response.status, 200);
+  assert.equal(allGroupsRegistration.data.success, true);
+  assert.equal(allGroupsRegistration.data.classgroup, "0", "Numeric Group 0 must be preserved as ALL access");
+
+  const writesBeforeSeniorAllGroupsAttempt = updates.length + appends.length;
+  const seniorAllGroupsAttempt = await postAdmin(
+    "/api/admin/register-student",
+    seniorToken,
+    {
+      username: "Senior ALL Attempt",
+      whatsapp6: "666666",
+      classgroup: "0"
+    },
+    directEnv
+  );
+  assert.equal(seniorAllGroupsAttempt.response.status, 403);
+  assert.equal(seniorAllGroupsAttempt.data.error, "Only an Admin can assign Group 0 (ALL) access");
+  assert.equal(
+    updates.length + appends.length,
+    writesBeforeSeniorAllGroupsAttempt,
+    "A Senior Group 0 registration attempt must not write data"
+  );
+
+  const invalidGroup = await postAdmin(
+    "/api/admin/register-student",
+    adminToken,
+    {
+      username: "Invalid Group",
+      whatsapp6: "777777",
+      classgroup: "1.5"
+    },
+    directEnv
+  );
+  assert.equal(invalidGroup.response.status, 400);
+  assert.equal(invalidGroup.data.error, "classgroup must be 0 (ALL) or a positive whole number");
 
   missingSheetName = "StudentRecords";
   const missingStudents = await postAdmin(
@@ -327,9 +369,7 @@ try {
     new Set([
       "StudentRecords!A:ZZ",
       "SystemConfig!A:ZZ",
-      "SystemConfig!A:D",
-      "StudentTasks!A:ZZ",
-      "TaskList!A:ZZ"
+      "SystemConfig!A:D"
     ])
   );
 } finally {

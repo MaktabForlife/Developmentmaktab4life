@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import worker from "../src/worker.js";
 import { buildTimetableResponse } from "../src/routes/timetable.js";
 
-const timetableRows = [
+const teacherRows = [
   [
     "SessionID",
     "SubjectID",
@@ -11,71 +11,138 @@ const timetableRows = [
     "StartTime",
     "ZoomLink",
     "GroupNo",
-    "AssignedTeacher"
+    "AssignedTeacher",
+    "CoureName",
+    "Active",
+    "ModuleID",
+    "ModuleName",
+    "ModuleNo"
   ],
-  ["S1", "SUB1", "Quran", "Monday", "09:00", "https://zoom.test/global", "ALL", "ALL"],
-  ["S2", "SUB2", "Fiqh", "Tuesday", "10:00", "", "1", "Teacher A"],
-  ["S3", "SUB3", "Hadith", "Wednesday", "11:00", "", "1", "Teacher C"],
-  ["S4", "SUB4", "History", "Thursday", "12:00", "", "2", "Teacher B"],
-  ["S5", "SUB5", "", "Friday", "13:00", "", "1", "Teacher A"]
+  ["TA1", "SUB1", "Quraan", "Mon", "09:00", "https://zoom.test/session-quran", "1", "ADMIN1", "Course A", true, "MOD1", "Entered name", "99"],
+  ["TA2", "SUB1", "Quran", "Mon", "09:00", "", "2", "ADMIN2", "Course A", true, "", "", ""],
+  ["TA3", "SUB2", "Fiqh", "Tue", "10:00", "", "ALL", "ADMIN1", "Course A", true, "MOD404", "Unknown", "4"],
+  ["TA4", "SUB3", "Hadith", "Wed", "11:00", "", "1", "ADMIN3", "Course A", true, "MOD3", "Entered Hadith", "3"],
+  ["TA5", "SUB4", "History", "Thur", "12:00", "", "2", "ADMIN404", "Course A", true, "", "", ""],
+  ["TA6", "SUB5", "Review", "Fri", "13:00", "", "0", "ADMIN2", "Course A", true, "", "", ""],
+  ["TA7", "SUB6", "Inactive row", "Fri", "14:00", "", "1", "ADMIN1", "Course A", false, "", "", ""],
+  ["TA8", "SUB2", "Fiqh", "Tue", "10:30", "", "1", "ADMIN1", "Course A", true, "", "", ""],
+  ["TA9", "SUB2", "Fiqh", "Tue", "10:30", "", "1", "ADMIN2", "Course A", true, "", "", ""]
 ];
 
-const transformed = buildTimetableResponse(timetableRows, {
+const adminRows = [
+  ["adminid", "username", "uniqueid", "pinsetup", "pinhash", "role", "assignedgroup", "active"],
+  ["ADMIN1", "Teacher A", "A", true, "hash", "ADMIN", "ALL", true],
+  ["ADMIN2", "Teacher B", "B", true, "hash", "ADMIN", "1", true],
+  ["ADMIN3", "Inactive Teacher", "C", true, "hash", "TEACHER", "1", false]
+];
+
+const subjectRows = [
+  ["SubjectID", "SubjectName", "Active"],
+  ["SUB1", "Quran", true],
+  ["SUB2", "Fiqh", true],
+  ["SUB3", "Hadith", true],
+  ["SUB4", "History", true],
+  ["SUB5", "Review", true],
+  ["SUB6", "Inactive row", true]
+];
+
+const moduleRows = [
+  ["ModuleID", "ModuleName", "SubjectID", "SubjectName", "Sort Order", "Active"],
+  ["MOD1", "Part-1", "SUB1", "Quran", 1, true],
+  ["MOD2", "Part-2", "SUB1", "Quran", 2, true],
+  ["MOD3", "Hadith foundations", "SUB3", "Hadith", 1, true],
+  ["MOD4", "Inactive module", "SUB2", "Fiqh", 2, false]
+];
+
+const legacyRows = [
+  ["SessionID", "SubjectID", "SubjectName", "DayofWeek", "StartTime", "ZoomLink", "GroupNo", "AssignedTeacher"],
+  ["S1", "SUB1", "Quran", "Mon", "09:00", "https://zoom.test/global", "ALL", "ALL"]
+];
+
+const transformed = buildTimetableResponse(teacherRows, {
+  adminRows,
+  subjectRows,
+  moduleRows,
+  legacyRows,
   groupNo: " 1 ",
-  assignedTeacher: "Teacher A"
+  teacherId: "ALL",
+  viewerAdminId: "ADMIN1"
 });
 
-assert.deepEqual(transformed, {
-  success: true,
-  sessions: [
-    {
-      row: 2,
-      sessionid: "S1",
-      subjectid: "SUB1",
-      subjectname: "Quran",
-      dayofweek: "Monday",
-      starttime: "09:00",
-      zoomlink: "https://zoom.test/global",
-      groupno: "ALL",
-      assignedteacher: "ALL"
-    },
-    {
-      row: 3,
-      sessionid: "S2",
-      subjectid: "SUB2",
-      subjectname: "Fiqh",
-      dayofweek: "Tuesday",
-      starttime: "10:00",
-      zoomlink: "",
-      groupno: "1",
-      assignedteacher: "Teacher A"
-    }
-  ],
-  zoomlink: "https://zoom.test/global",
-  groupno: "1",
-  assignedteacher: "Teacher A",
-  count: 2
-});
-
-assert.deepEqual(buildTimetableResponse([]), {
-  success: true,
-  sessions: [],
-  zoomlink: "",
-  count: 0
-});
-
+assert.equal(transformed.success, true);
+assert.equal(transformed.timetablesource, "TeacherAssign");
+assert.equal(transformed.zoomlink, "https://zoom.test/global");
+assert.equal(transformed.zoomsource, "TimeTable");
+assert.equal(transformed.viewerhasassignments, true);
+assert.equal(transformed.showgrouplabels, false);
 assert.deepEqual(
-  buildTimetableResponse([
-    ["SubjectName", "DayofWeek"],
-    ["Quran", "Monday"]
-  ]),
-  {
-    success: false,
-    error: "TimeTable sheet must include SubjectName, DayofWeek and StartTime columns",
-    sessions: [],
-    zoomlink: ""
-  }
+  transformed.sessions.map(session => session.sessionid),
+  ["TA1", "TA3", "TA4", "TA8", "TA9"]
 );
+assert.equal(transformed.sessions[0].subjectname, "Quran", "SubjectID must resolve the canonical SubjectList name");
+assert.equal(transformed.sessions[0].teacherid, "ADMIN1");
+assert.equal(transformed.sessions[0].teachername, "Teacher A");
+assert.equal(transformed.sessions[0].zoomlink, "https://zoom.test/session-quran", "TeacherAssign ZoomLink must remain session-specific");
+assert.equal(transformed.sessions[0].moduleid, "MOD1");
+assert.equal(transformed.sessions[0].modulename, "Part-1", "ModuleID must resolve the canonical ModuleList name");
+assert.equal(transformed.sessions[0].moduleno, "1", "ModuleID must resolve the canonical ModuleList order");
+assert.equal(transformed.sessions[0].moduleassigned, true);
+assert.equal(transformed.sessions.find(session => session.sessionid === "TA4").assignmentstatus, "teacher-inactive");
+assert.equal(transformed.sessions.find(session => session.sessionid === "TA4").teachername, "Teacher not assigned");
+assert.equal(transformed.sessions.find(session => session.sessionid === "TA8").assignmentconflict, true);
+assert.equal(transformed.sessions.find(session => session.sessionid === "TA9").assignmentconflict, true);
+assert.equal(transformed.warnings.some(warning => warning.code === "MODULE_NOT_FOUND"), true);
+assert.equal(transformed.warnings.some(warning => warning.code === "MULTIPLE_TEACHER_ASSIGNMENTS"), true);
+assert.equal(transformed.sessions.some(session => session.sessionid === "TA7"), false, "Inactive TeacherAssign rows must be excluded");
+
+const oversight = buildTimetableResponse(teacherRows, {
+  adminRows,
+  subjectRows,
+  moduleRows,
+  legacyRows,
+  groupNo: "ALL",
+  viewerAdminId: "ADMIN9",
+  showGroupLabels: true
+});
+assert.equal(oversight.viewerhasassignments, false, "An oversight-only admin must not trigger greying");
+assert.equal(oversight.showgrouplabels, true);
+
+const literalGroupZero = buildTimetableResponse(teacherRows, {
+  adminRows,
+  subjectRows,
+  moduleRows,
+  groupNo: "0"
+});
+assert.deepEqual(
+  literalGroupZero.sessions.map(session => session.sessionid),
+  ["TA3", "TA6"],
+  "A literal GroupNo 0 filter must include only ALL and Group 0 rows"
+);
+
+const allGroupsStudent = buildTimetableResponse(teacherRows, {
+  adminRows,
+  subjectRows,
+  moduleRows,
+  groupNo: "ALL",
+  allGroupsStudent: true,
+  showGroupLabels: true
+});
+assert.deepEqual(
+  allGroupsStudent.sessions.map(session => session.sessionid),
+  ["TA1", "TA2", "TA3", "TA4", "TA5", "TA6", "TA8", "TA9"],
+  "Student ClassGroup 0 must receive every active TeacherAssign group"
+);
+assert.equal(allGroupsStudent.sessions.find(session => session.sessionid === "TA5").assignmentstatus, "teacher-not-found");
+
+assert.equal(buildTimetableResponse([]).success, true);
+assert.equal(buildTimetableResponse([]).count, 0);
+
+const badHeaders = buildTimetableResponse([
+  ["SubjectName", "DayofWeek"],
+  ["Quran", "Monday"]
+]);
+assert.equal(badHeaders.success, false);
+assert.match(badHeaders.error, /TeacherAssign sheet must include/);
 
 const keyPair = await crypto.subtle.generateKey(
   {
@@ -107,22 +174,44 @@ const studentToken = await makeSessionToken({
   studentid: "STUDENT1",
   classgroup: "1"
 }, sessionSecret);
+const allGroupsStudentToken = await makeSessionToken({
+  type: "student",
+  studentid: "STUDENT0",
+  classgroup: "0"
+}, sessionSecret);
+const teachingAdminToken = await makeSessionToken({
+  type: "admin",
+  adminid: "ADMIN1",
+  username: "Teacher A",
+  role: "ADMIN",
+  assignedgroup: "ALL"
+}, sessionSecret);
 const teacherToken = await makeSessionToken({
   type: "admin",
-  username: "Teacher A",
+  adminid: "ADMIN2",
+  username: "Teacher B",
   role: "TEACHER",
   assignedgroup: "1"
 }, sessionSecret);
+const oversightAdminToken = await makeSessionToken({
+  type: "admin",
+  adminid: "ADMIN9",
+  username: "Oversight Admin",
+  role: "ADMIN",
+  assignedgroup: "0"
+}, sessionSecret);
 const seniorToken = await makeSessionToken({
   type: "admin",
+  adminid: "ADMIN8",
   username: "Senior Admin",
-  role: "SENIOR"
+  role: "SENIOR",
+  assignedgroup: "ALL"
 }, sessionSecret);
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
 const sheetUpdates = [];
-let missingSheet = false;
-let directRows = timetableRows;
+let missingSheetName = "";
+let directLegacyRows = legacyRows.map(row => row.slice());
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -135,19 +224,25 @@ globalThis.fetch = async (input, init = {}) => {
     assert.equal(init.headers.Authorization, "Bearer mock-timetable-token");
     const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
 
-    if (missingSheet) {
-      return response({
-        error: { message: "Unable to parse range: TimeTable!A:ZZ" }
-      }, 400);
-    }
-
     if ((init.method || "GET") === "PUT") {
       sheetUpdates.push({ range, body: JSON.parse(init.body) });
       return response({ updatedRows: 1 });
     }
 
     requestedRanges.push(range);
-    return response({ values: directRows });
+
+    if (missingSheetName && range.startsWith(`${missingSheetName}!`)) {
+      return response({
+        error: { message: `Unable to parse range: ${range}` }
+      }, 400);
+    }
+
+    if (range === "TeacherAssign!A:ZZ") return response({ values: teacherRows });
+    if (range === "AdminRecords!A:ZZ") return response({ values: adminRows });
+    if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
+    if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
+    if (range === "TimeTable!A:ZZ") return response({ values: directLegacyRows });
+    throw new Error(`Unexpected Sheets range: ${range}`);
   }
 
   throw new Error(`Unexpected direct-timetable fetch: ${url}`);
@@ -165,41 +260,77 @@ try {
   const studentResult = await postTimetable(
     "/api/student/timetable/get",
     studentToken,
-    { groupNo: "2", assignedTeacher: "Teacher B" },
+    { groupNo: "2", teacherId: "ADMIN2" },
     directEnv
   );
   assert.equal(studentResult.response.status, 200);
-  assert.equal(studentResult.response.headers.get("X-M4L-Feature"), "timetable-read");
-  assert.equal(studentResult.response.headers.get("X-M4L-Backend"), "google-sheets");
-  assert.equal(
-    studentResult.response.headers.get("X-M4L-Backend-Source"),
-    "fixed"
-  );
   assert.equal(studentResult.data.groupno, "1", "Student reads must use the authenticated group");
-  assert.equal(studentResult.data.assignedteacher, "ALL");
+  assert.equal(studentResult.data.teacherid, "ALL", "Students must not filter out other teachers");
   assert.deepEqual(
     studentResult.data.sessions.map(session => session.sessionid),
-    ["S1", "S2", "S3"]
+    ["TA1", "TA3", "TA4", "TA8", "TA9"]
   );
 
-  const teacherResult = await postTimetable(
-    "/api/admin/timetable/get",
-    teacherToken,
-    { groupNo: "2", assignedTeacher: "Teacher B" },
+  const allGroupsResult = await postTimetable(
+    "/api/student/timetable/get",
+    allGroupsStudentToken,
+    { groupNo: "1", teacherId: "ADMIN1" },
     directEnv
   );
-  assert.equal(teacherResult.data.groupno, "1", "Teacher reads must use the assigned group");
-  assert.equal(
-    teacherResult.data.assignedteacher,
-    "Teacher A",
-    "Teacher reads must use the authenticated teacher name"
+  assert.equal(allGroupsResult.data.groupno, "ALL");
+  assert.equal(allGroupsResult.data.showgrouplabels, true);
+  assert.equal(allGroupsResult.data.count, 8, "Student Group 0 must receive all active timetable rows");
+
+  const teachingAdminResult = await postTimetable(
+    "/api/admin/timetable/get",
+    teachingAdminToken,
+    {},
+    directEnv
   );
+  assert.equal(teachingAdminResult.data.groupno, "ALL");
+  assert.equal(teachingAdminResult.data.vieweradminid, "ADMIN1");
+  assert.equal(teachingAdminResult.data.viewerhasassignments, true);
+  assert.equal(teachingAdminResult.data.count, 8, "Teaching admins must receive the complete timetable for visual greying");
+
+  const teacherOnlyResult = await postTimetable(
+    "/api/admin/timetable/get",
+    teacherToken,
+    { groupNo: "1", teacherId: "ADMIN1" },
+    directEnv
+  );
+  assert.equal(teacherOnlyResult.data.groupno, "ALL");
+  assert.equal(teacherOnlyResult.data.teacherid, "ADMIN2");
+  assert.equal(teacherOnlyResult.data.viewerrole, "TEACHER");
+  assert.equal(teacherOnlyResult.data.teacheronly, true);
+  assert.equal(teacherOnlyResult.data.showgrouplabels, true);
   assert.deepEqual(
-    teacherResult.data.sessions.map(session => session.sessionid),
-    ["S1", "S2"]
+    teacherOnlyResult.data.sessions.map(session => session.sessionid),
+    ["TA2", "TA6", "TA9"],
+    "A TEACHER request must be restricted to the authenticated AdminID across its assigned groups"
   );
 
-  missingSheet = true;
+  const oversightResult = await postTimetable(
+    "/api/admin/timetable/get",
+    oversightAdminToken,
+    {},
+    directEnv
+  );
+  assert.equal(oversightResult.data.viewerhasassignments, false);
+  assert.equal(oversightResult.data.count, 8, "AssignedGroup 0 must not restrict or grant scope; oversight policy supplies the full board");
+
+  const selectedTeacherResult = await postTimetable(
+    "/api/timetable/get",
+    teachingAdminToken,
+    { groupNo: "2", teacherId: "ADMIN2" },
+    directEnv
+  );
+  assert.deepEqual(
+    selectedTeacherResult.data.sessions.map(session => session.sessionid),
+    ["TA2"],
+    "Weekly Planner filtering must use the stable teacher AdminID"
+  );
+
+  missingSheetName = "TeacherAssign";
   const missingResult = await postTimetable(
     "/api/timetable/get",
     studentToken,
@@ -208,75 +339,48 @@ try {
   );
   assert.deepEqual(missingResult.data, {
     success: false,
-    error: "TimeTable sheet not found",
+    error: "TeacherAssign sheet not found",
     sessions: [],
-    zoomlink: ""
+    zoomlink: "",
+    timetablesource: "TeacherAssign"
   });
-  assert.deepEqual(new Set(requestedRanges), new Set(["TimeTable!A:ZZ"]));
 
-  missingSheet = false;
-  directRows = timetableRows.map(row => row.slice());
+  missingSheetName = "";
   sheetUpdates.length = 0;
+  directLegacyRows = legacyRows.map(row => row.slice());
 
   const directZoomWrite = await postTimetable(
     "/api/admin/timetable/update-zoom",
     seniorToken,
-    { zoomlink: "https://zoom.test/direct" },
+    { zoomlink: "https://zoom.test/direct-global" },
     directEnv
   );
   assert.equal(directZoomWrite.response.status, 200);
-  assert.equal(directZoomWrite.response.headers.get("X-M4L-Feature"), "timetable-write");
-  assert.equal(directZoomWrite.response.headers.get("X-M4L-Backend"), "google-sheets");
-  assert.equal(
-    directZoomWrite.response.headers.get("X-M4L-Backend-Source"),
-    "fixed"
-  );
   assert.equal(directZoomWrite.data.success, true);
-  assert.equal(directZoomWrite.data.zoomlink, "https://zoom.test/direct");
-  assert.equal(directZoomWrite.data.message, "Zoom link saved");
+  assert.equal(directZoomWrite.data.zoomlink, "https://zoom.test/direct-global");
+  assert.equal(directZoomWrite.data.sessions[0].zoomlink, "https://zoom.test/session-quran", "Global saves must not overwrite session Zoom links");
   assert.deepEqual(sheetUpdates, [{
     range: "TimeTable!F2",
     body: {
       range: "TimeTable!F2",
       majorDimension: "ROWS",
-      values: [["https://zoom.test/direct"]]
+      values: [["https://zoom.test/direct-global"]]
     }
   }]);
 
-  directRows = timetableRows.map(row => row.filter((value, index) => index !== 5));
-  sheetUpdates.length = 0;
-
-  const missingHeaderWrite = await postTimetable(
-    "/api/admin/timetable/update-zoom",
-    seniorToken,
-    { zoomLink: "https://zoom.test/header-created" },
-    directEnv
-  );
-  assert.equal(missingHeaderWrite.data.success, true);
-  assert.equal(missingHeaderWrite.data.zoomlink, "https://zoom.test/header-created");
-  assert.deepEqual(sheetUpdates, [
-    {
-      range: "TimeTable!H1",
-      body: {
-        range: "TimeTable!H1",
-        majorDimension: "ROWS",
-        values: [["ZoomLink"]]
-      }
-    },
-    {
-      range: "TimeTable!H2",
-      body: {
-        range: "TimeTable!H2",
-        majorDimension: "ROWS",
-        values: [["https://zoom.test/header-created"]]
-      }
-    }
+  const requiredRanges = new Set([
+    "TeacherAssign!A:ZZ",
+    "AdminRecords!A:ZZ",
+    "SubjectList!A:ZZ",
+    "ModuleList!A:ZZ",
+    "TimeTable!A:ZZ"
   ]);
+  assert.deepEqual(new Set(requestedRanges), requiredRanges);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("Direct TimeTable read/write tests passed.");
+console.log("TeacherAssign timetable read, identity, greying and Zoom-link tests passed.");
 
 async function postTimetable(path, token, body, env) {
   const response = await worker.fetch(new Request(`https://worker.test${path}`, {

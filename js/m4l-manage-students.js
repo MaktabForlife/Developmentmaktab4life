@@ -1,4 +1,4 @@
-/* M4L v97.1.5.3 - Manage Students module
+/* M4L v100.9 - Manage Students module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, /js/m4l-timetable.js, /js/m4l-resources.js, and /js/m4l-progress.js.
    This is a classic script, not type=module, so existing global function calls remain safe
    while the app is split gradually.
@@ -22,8 +22,57 @@ const manageStudentsState = {
   selectedStudentActiveDraft: true,
   studentDropdownOpen: false,
   registerSubmitting: false,
+  taskAssignmentSubmitting: false,
   studentSaveSubmitting: false
 };
+
+const ALL_GROUPS_STUDENT_VALUE = "0";
+const ALL_GROUPS_STUDENT_LABEL = "ALL (Group 0)";
+
+function getManagedStudentGroupValue(value, fallback = String(DEFAULT_STUDENT_GROUP)) {
+  if (value === null || value === undefined) return fallback;
+
+  const normalized = String(value).trim();
+  return normalized || fallback;
+}
+
+function getManagedStudentRecordGroup(student) {
+  const source = student || {};
+
+  for (const key of ["classgroup", "ClassGroup", "group", "Group"]) {
+    if (source[key] !== null && source[key] !== undefined && String(source[key]).trim() !== "") {
+      return String(source[key]).trim();
+    }
+  }
+
+  return String(DEFAULT_STUDENT_GROUP);
+}
+
+function getManagedStudentGroupLabel(value) {
+  const group = getManagedStudentGroupValue(value);
+  return group === ALL_GROUPS_STUDENT_VALUE
+    ? ALL_GROUPS_STUDENT_LABEL
+    : `Group ${group}`;
+}
+
+function canCurrentUserAssignAllGroupsStudent() {
+  const user = typeof state === "object" && state && state.user ? state.user : {};
+  return String(user.role || user.Role || "").trim().toUpperCase() === "ADMIN";
+}
+
+function validateManagedStudentGroupForCurrentUser(classgroup) {
+  if (!/^(0|[1-9]\d*)$/.test(classgroup)) {
+    alert("Group must be 0 (ALL) or a positive whole number.");
+    return false;
+  }
+
+  if (classgroup === ALL_GROUPS_STUDENT_VALUE && !canCurrentUserAssignAllGroupsStudent()) {
+    alert("Only an Admin can assign Group 0 (ALL) access.");
+    return false;
+  }
+
+  return true;
+}
 
 
 let manageStudentsGlobalClickBound = false;
@@ -171,6 +220,12 @@ function handleManageStudentsUiClick(event) {
     case "register-another":
       registerAnotherManagedStudent();
       break;
+    case "assign-registered-tasks":
+      startTaskAssignmentForRegisteredStudent();
+      break;
+    case "submit-task-assignment":
+      submitManagedStudentTaskAssignment();
+      break;
     case "exit-dashboard":
       showScreen("admin-home");
       break;
@@ -261,12 +316,12 @@ function showManageStudents() {
   manageStudentsState.selectedStudentActiveDraft = true;
   manageStudentsState.studentDropdownOpen = false;
   manageStudentsState.registerSubmitting = false;
+  manageStudentsState.taskAssignmentSubmitting = false;
 
   if (!showScreen("manage-students-screen")) return;
 
   upgradeManageStudentsBackButtons("manage-students-screen");
   renderManageStudentsScreen();
-  loadStudentAssignmentOptions();
 }
 
 async function loadStudentAssignmentOptions() {
@@ -292,15 +347,23 @@ async function loadStudentAssignmentOptions() {
 }
 
 function setManageStudentsMode(mode) {
-  manageStudentsState.mode = mode === "modify" ? "modify" : "register";
+  manageStudentsState.mode = ["register", "assign", "modify"].includes(mode)
+    ? mode
+    : "register";
   manageStudentsState.lastRegisteredStudent = null;
   manageStudentsState.registerSubmitting = false;
+  manageStudentsState.taskAssignmentSubmitting = false;
 
-  if (manageStudentsState.mode === "modify") {
+  if (manageStudentsState.mode === "modify" || manageStudentsState.mode === "assign") {
     manageStudentsState.selectedStudent = null;
     manageStudentsState.studentDropdownOpen = false;
     renderManageStudentsScreen();
     loadManagedStudentList(false);
+
+    if (manageStudentsState.mode === "assign") {
+      loadStudentAssignmentOptions();
+    }
+
     return;
   }
 
@@ -313,6 +376,8 @@ function renderManageStudentsScreen() {
   if (!container) return;
 
   const isRegister = manageStudentsState.mode === "register";
+  const isAssign = manageStudentsState.mode === "assign";
+  const isModify = manageStudentsState.mode === "modify";
 
   setDomHtml(container, `
     <div class="student-admin-mode-toggle" role="tablist" aria-label="Student management mode">
@@ -326,7 +391,15 @@ function renderManageStudentsScreen() {
       </button>
       <button
         type="button"
-        class="student-admin-mode-btn ${!isRegister ? "is-active" : ""}"
+        class="student-admin-mode-btn ${isAssign ? "is-active" : ""}"
+        data-manage-action="set-mode"
+        data-manage-mode="assign"
+      >
+        Assign Tasks
+      </button>
+      <button
+        type="button"
+        class="student-admin-mode-btn ${isModify ? "is-active" : ""}"
         data-manage-action="set-mode"
         data-manage-mode="modify"
       >
@@ -334,7 +407,9 @@ function renderManageStudentsScreen() {
       </button>
     </div>
 
-    ${isRegister ? renderRegisterStudentPanel() : renderModifyStudentPanel()}
+    ${isRegister
+      ? renderRegisterStudentPanel()
+      : (isAssign ? renderTaskAssignmentPanel() : renderModifyStudentPanel())}
   `);
 
   bindManageStudentsUiHandlers(container);
@@ -350,34 +425,16 @@ function renderRegisterStudentPanel() {
       <label class="student-admin-label" for="student-register-whatsapp">WhatsApp Number</label>
       <input id="student-register-whatsapp" type="tel" inputmode="tel" placeholder="WhatsApp number" autocomplete="off" />
 
-      <label class="student-admin-label" for="student-register-group">Group</label>
-      <input id="student-register-group" type="number" inputmode="numeric" min="1" value="${DEFAULT_STUDENT_GROUP}" />
-    </div>
-
-    <div class="student-admin-card">
-      <div class="student-admin-card-title">Task Assignment</div>
-
-      <label class="student-admin-radio-row">
-        <input type="radio" name="student-assignment-mode" value="all" checked data-manage-action="assignment-mode" />
-        <span>Assign all active subjects and modules</span>
-      </label>
-
-      <label class="student-admin-radio-row is-disabled" title="Manual task selection will be added later.">
-        <input type="radio" name="student-assignment-mode" value="selected" disabled />
-        <span>Select subjects/modules manually <small class="student-admin-coming-soon">Coming soon</small></span>
-      </label>
-
-      <p class="student-admin-help">Manual subject/module selection is temporarily disabled. New students will receive all active tasks.</p>
-
-      <div id="student-assignment-options" class="student-assignment-options hidden" aria-hidden="true">
-        ${renderStudentAssignmentOptions()}
-      </div>
+      <label class="student-admin-label" for="student-register-group">Group (0 = ALL)</label>
+      <input id="student-register-group" type="number" inputmode="numeric" min="0" step="1" value="${DEFAULT_STUDENT_GROUP}" />
+      <p class="student-admin-help">Group 0 means ALL timetable and resource groups. Only an Admin can grant this access.</p>
     </div>
 
     <div class="student-admin-action-grid">
       <button type="button" data-manage-action="submit-register">Register Student</button>
     </div>
 
+    <p class="student-admin-help student-registration-task-note">Tasks are assigned separately after registration.</p>
     <div id="student-register-feedback" class="student-admin-feedback"></div>
   `;
 }
@@ -399,18 +456,6 @@ function setRegisterStudentSubmitting(isSubmitting) {
     }
   });
 
-  container.querySelectorAll('input[name="student-assignment-mode"], .student-module-checkbox, [data-manage-action="toggle-subject-modules"]').forEach((input) => {
-    if (!input) return;
-    if (input.dataset && input.dataset.permanentlyDisabled === "true") return;
-    input.disabled = manageStudentsState.registerSubmitting;
-  });
-
-  const manualMode = container.querySelector('input[name="student-assignment-mode"][value="selected"]');
-  if (manualMode) {
-    manualMode.disabled = true;
-    manualMode.dataset.permanentlyDisabled = "true";
-  }
-
   const submitButton = container.querySelector('[data-manage-action="submit-register"]');
   if (submitButton) {
     submitButton.disabled = manageStudentsState.registerSubmitting;
@@ -428,20 +473,60 @@ function clearRegisterStudentForm() {
   if (whatsappInput) whatsappInput.value = "";
   if (groupInput) groupInput.value = String(DEFAULT_STUDENT_GROUP);
 
-  const assignmentAll = document.querySelector('input[name="student-assignment-mode"][value="all"]');
-  if (assignmentAll) assignmentAll.checked = true;
-
-  document.querySelectorAll(".student-module-checkbox").forEach((input) => {
-    input.checked = false;
-  });
-
-  const optionsBox = getDomElement("student-assignment-options");
-  if (optionsBox) {
-    optionsBox.classList.add("hidden");
-    optionsBox.setAttribute("aria-hidden", "true");
-  }
-
   setDomText("student-register-feedback", "");
+}
+
+function renderTaskAssignmentPanel() {
+  const student = manageStudentsState.selectedStudent;
+  const selectedStudentCard = student
+    ? `
+      <div class="student-admin-card selected-student-card student-assignment-selected-student">
+        <div class="student-admin-card-title">Selected Student</div>
+        <div class="selected-student-heading compact-selected-student-heading">
+          <div>
+            <strong>${escapeHtml(student.username || "Student")}</strong>
+            <small>${escapeHtml(getManagedStudentGroupLabel(student.classgroup))} · ${student.active === true ? "Active" : "Inactive"}</small>
+          </div>
+        </div>
+        ${student.active === true
+          ? '<p class="student-admin-help">Choose all active tasks or select particular subjects and modules below.</p>'
+          : '<p class="student-admin-help is-error">Tasks cannot be assigned while this student is inactive.</p>'}
+      </div>
+    `
+    : '<p class="student-admin-help student-assignment-select-prompt">Select a registered student before assigning tasks.</p>';
+
+  return `
+    ${renderModifyStudentPanel()}
+    ${selectedStudentCard}
+
+    <div class="student-admin-card student-task-selection-card">
+      <div class="student-admin-card-title">Task Selection</div>
+
+      <label class="student-admin-radio-row">
+        <input type="radio" name="student-assignment-mode" value="all" checked data-manage-action="assignment-mode" />
+        <span>Select all active subjects and modules</span>
+      </label>
+
+      <label class="student-admin-radio-row">
+        <input type="radio" name="student-assignment-mode" value="selected" data-manage-action="assignment-mode" />
+        <span>Select subjects and modules</span>
+      </label>
+
+      <div id="student-assignment-options" class="student-assignment-options hidden" aria-hidden="true">
+        ${renderStudentAssignmentOptions()}
+      </div>
+    </div>
+
+    <div class="student-admin-action-grid">
+      <button
+        type="button"
+        data-manage-action="submit-task-assignment"
+        ${!student || student.active !== true || manageStudentsState.taskAssignmentSubmitting ? "disabled" : ""}
+      >${manageStudentsState.taskAssignmentSubmitting ? "Assigning..." : "Assign Tasks"}</button>
+    </div>
+
+    <div id="student-task-assignment-feedback" class="student-admin-feedback" role="status" aria-live="polite"></div>
+  `;
 }
 
 function renderStudentAssignmentOptions() {
@@ -501,8 +586,10 @@ function toggleStudentAssignmentMode() {
 
   if (selectedMode === "selected") {
     optionsBox.classList.remove("hidden");
+    optionsBox.setAttribute("aria-hidden", "false");
   } else {
     optionsBox.classList.add("hidden");
+    optionsBox.setAttribute("aria-hidden", "true");
   }
 }
 
@@ -529,6 +616,96 @@ function collectSelectedStudentModules() {
   })).filter(item => item.subjectid && item.moduleid);
 }
 
+function setTaskAssignmentSubmitting(isSubmitting) {
+  manageStudentsState.taskAssignmentSubmitting = isSubmitting === true;
+  const container = getDomElement("manage-students-content");
+
+  if (!container) return;
+
+  container.querySelectorAll(
+    'input[name="student-assignment-mode"], .student-module-checkbox, ' +
+    '[data-manage-action="toggle-subject-modules"], [data-manage-action="submit-task-assignment"], ' +
+    '[data-manage-action="select-student"], [data-manage-action="toggle-dropdown"], #student-search-query'
+  ).forEach(control => {
+    control.disabled = manageStudentsState.taskAssignmentSubmitting;
+  });
+
+  const submitButton = container.querySelector('[data-manage-action="submit-task-assignment"]');
+  if (submitButton) {
+    submitButton.disabled = manageStudentsState.taskAssignmentSubmitting ||
+      !manageStudentsState.selectedStudent ||
+      manageStudentsState.selectedStudent.active !== true;
+    submitButton.setAttribute("aria-busy", manageStudentsState.taskAssignmentSubmitting ? "true" : "false");
+    submitButton.textContent = manageStudentsState.taskAssignmentSubmitting
+      ? "Assigning..."
+      : "Assign Tasks";
+  }
+}
+
+async function submitManagedStudentTaskAssignment() {
+  if (manageStudentsState.taskAssignmentSubmitting === true) return;
+
+  const student = manageStudentsState.selectedStudent;
+
+  if (!student) {
+    alert("Select a registered student first.");
+    return;
+  }
+
+  if (student.active !== true) {
+    alert("Tasks cannot be assigned while this student is inactive.");
+    return;
+  }
+
+  const assignmentMode = getSelectedStudentAssignmentMode();
+  const selectedModules = assignmentMode === "selected"
+    ? collectSelectedStudentModules()
+    : [];
+
+  if (assignmentMode === "selected" && selectedModules.length === 0) {
+    alert("Select at least one subject or module, or choose all active subjects and modules.");
+    return;
+  }
+
+  setTaskAssignmentSubmitting(true);
+  setDomText("student-task-assignment-feedback", "Checking existing assignments...");
+
+  let result;
+
+  try {
+    result = await apiPost("/api/admin/tasks/assign", {
+      studentids: [student.studentid],
+      assignmentMode,
+      assignAllTasks: assignmentMode === "all",
+      selectedModules
+    }, state.token);
+  } catch (err) {
+    console.error("Task assignment failed", err);
+    setTaskAssignmentSubmitting(false);
+    setDomText("student-task-assignment-feedback", "Task assignment failed. Please try again.");
+    return;
+  }
+
+  setTaskAssignmentSubmitting(false);
+
+  if (!result.success) {
+    setDomText("student-task-assignment-feedback", result.error || "Task assignment failed.");
+    return;
+  }
+
+  const assignedCount = Number(result.assignedCount || 0);
+  const skippedDuplicate = Number(result.skippedDuplicate || 0);
+  const assignedText = `${assignedCount} new task${assignedCount === 1 ? "" : "s"} assigned`;
+  const duplicateText = skippedDuplicate > 0
+    ? `; ${skippedDuplicate} duplicate${skippedDuplicate === 1 ? "" : "s"} skipped`
+    : "";
+
+  setDomText(
+    "student-task-assignment-feedback",
+    `${assignedText}${duplicateText}.`
+  );
+}
+
 async function submitRegisterStudent(confirmDuplicate) {
   if (manageStudentsState.registerSubmitting === true) {
     return;
@@ -541,16 +718,13 @@ async function submitRegisterStudent(confirmDuplicate) {
   const username = nameInput ? nameInput.value.trim() : "";
   const whatsapp6 = getLastSixDigits(whatsappInput ? whatsappInput.value : "");
   const classgroup = groupInput && groupInput.value.trim() ? groupInput.value.trim() : String(DEFAULT_STUDENT_GROUP);
-  const assignmentMode = getSelectedStudentAssignmentMode();
-  const selectedModules = assignmentMode === "selected" ? collectSelectedStudentModules() : [];
 
   if (!username) {
     alert("Enter the student's name.");
     return;
   }
 
-  if (assignmentMode === "selected" && selectedModules.length === 0) {
-    alert("Select at least one subject/module, or choose Assign all active subjects and modules.");
+  if (!validateManagedStudentGroupForCurrentUser(classgroup)) {
     return;
   }
 
@@ -564,9 +738,7 @@ async function submitRegisterStudent(confirmDuplicate) {
       username,
       whatsapp6,
       classgroup,
-      confirmDuplicate: confirmDuplicate === true,
-      assignmentMode,
-      selectedModules
+      confirmDuplicate: confirmDuplicate === true
     }, state.token);
   } catch (err) {
     console.error("Student registration failed", err);
@@ -580,7 +752,7 @@ async function submitRegisterStudent(confirmDuplicate) {
     setDomText("student-register-feedback", "Possible duplicate found.");
 
     const duplicateText = (result.matches || [])
-      .map(match => `${match.username || "Student"} · Group ${match.classgroup || "-"} · WhatsApp ${match.whatsapp6 || "-"}`)
+      .map(match => `${match.username || "Student"} · ${getManagedStudentGroupLabel(match.classgroup)} · WhatsApp ${match.whatsapp6 || "-"}`)
       .join("\n");
 
     const proceed = confirm(
@@ -628,7 +800,8 @@ function renderManageStudentResultScreen(context) {
 
   const actionButtons = context === "registered"
     ? `
-      <div class="student-admin-action-grid two-col">
+      <div class="student-admin-action-grid three-col">
+        <button type="button" data-manage-action="assign-registered-tasks">Assign Tasks</button>
         <button type="button" data-manage-action="register-another">Register Another Student</button>
         <button type="button" class="home-text-action-btn" data-manage-action="exit-dashboard"><span class="home-text-action-btn__icon" aria-hidden="true"></span><span>Exit to Dashboard</span></button>
       </div>
@@ -658,6 +831,24 @@ function registerAnotherManagedStudent() {
   if (!showScreen("manage-students-screen")) return;
 
   renderManageStudentsScreen();
+}
+
+function startTaskAssignmentForRegisteredStudent() {
+  const student = manageStudentsState.lastRegisteredStudent;
+
+  if (!student) return;
+
+  manageStudentsState.mode = "assign";
+  manageStudentsState.selectedStudent = normalizeManagedStudent(student);
+  manageStudentsState.searchQuery = "";
+  manageStudentsState.studentDropdownOpen = false;
+  manageStudentsState.taskAssignmentSubmitting = false;
+
+  if (!showScreen("manage-students-screen")) return;
+
+  renderManageStudentsScreen();
+  loadManagedStudentList(false);
+  loadStudentAssignmentOptions();
 }
 
 function backToManagedStudentList() {
@@ -760,13 +951,14 @@ async function loadManagedStudentList(forceRefresh) {
 
 function getManagedStudentDisplayGroup(student) {
   const rawGroup = String(student && student.classgroup !== undefined ? student.classgroup : "").trim();
-  const groupNumber = Number(rawGroup);
-  const isGroupZero = rawGroup === "0" || groupNumber === 0;
+  const isGroupZero = rawGroup === ALL_GROUPS_STUDENT_VALUE;
   const isInactive = !(student && student.active === true);
 
-  if (isInactive || isGroupZero) {
+  if (isInactive) {
     return "inactive";
   }
+
+  if (isGroupZero) return ALL_GROUPS_STUDENT_LABEL;
 
   return rawGroup || String(DEFAULT_STUDENT_GROUP);
 }
@@ -928,6 +1120,8 @@ async function searchManagedStudents() {
 }
 
 function selectManagedStudentByUniqueId(uniqueid) {
+  if (manageStudentsState.taskAssignmentSubmitting === true) return;
+
   const student = (manageStudentsState.allStudents || []).find(row => row.uniqueid === uniqueid) ||
     (manageStudentsState.searchResults || []).find(row => row.uniqueid === uniqueid);
 
@@ -937,12 +1131,19 @@ function selectManagedStudentByUniqueId(uniqueid) {
   manageStudentsState.selectedStudentActiveDraft = manageStudentsState.selectedStudent.active === true;
   manageStudentsState.studentDropdownOpen = false;
 
+  if (manageStudentsState.mode === "assign") {
+    renderManageStudentsScreen();
+    return;
+  }
+
   if (!showScreen("manage-student-edit-screen")) return;
 
   renderManagedStudentEditScreen();
 }
 
 function selectManagedStudent(index) {
+  if (manageStudentsState.taskAssignmentSubmitting === true) return;
+
   const student = manageStudentsState.searchResults[index];
 
   if (!student) return;
@@ -950,6 +1151,11 @@ function selectManagedStudent(index) {
   manageStudentsState.selectedStudent = normalizeManagedStudent(student);
   manageStudentsState.selectedStudentActiveDraft = manageStudentsState.selectedStudent.active === true;
   manageStudentsState.studentDropdownOpen = false;
+
+  if (manageStudentsState.mode === "assign") {
+    renderManageStudentsScreen();
+    return;
+  }
 
   if (!showScreen("manage-student-edit-screen")) return;
 
@@ -1013,15 +1219,17 @@ function renderSelectedStudentEditor() {
 
       <div class="student-edit-two-column-row">
         <div class="student-edit-field-half">
-          <label class="student-admin-label" for="student-edit-group">Group</label>
+          <label class="student-admin-label" for="student-edit-group">Group (0 = ALL)</label>
           <input
             id="student-edit-group"
             class="student-prefilled-input"
             type="number"
             inputmode="numeric"
             min="0"
-            value="${escapeAttribute(student.classgroup || DEFAULT_STUDENT_GROUP)}"
+            step="1"
+            value="${escapeAttribute(getManagedStudentGroupValue(student.classgroup))}"
           />
+          <small class="student-admin-help">0 = ALL timetable and resource groups</small>
         </div>
 
         <div class="student-edit-field-half">
@@ -1094,7 +1302,7 @@ function openManagedStudentSaveDialog(student) {
   const normalized = normalizeManagedStudent(student);
   setDomText("student-edit-save-name", normalized.username || "Student");
   setDomText("student-edit-save-whatsapp", normalized.whatsapp6 || "999999");
-  setDomText("student-edit-save-group", normalized.classgroup || String(DEFAULT_STUDENT_GROUP));
+  setDomText("student-edit-save-group", getManagedStudentGroupLabel(normalized.classgroup));
   setDomText("student-edit-save-status", normalized.active === true ? "Active" : "Inactive");
 
   if (typeof dialog.showModal === "function") {
@@ -1154,6 +1362,24 @@ async function saveManagedStudentChanges() {
 
   if (!username) {
     alert("Name cannot be empty.");
+    return;
+  }
+
+  const currentGroup = getManagedStudentGroupValue(student.classgroup);
+  const grantsAllGroupsAccess = classgroup === ALL_GROUPS_STUDENT_VALUE &&
+    active === true &&
+    (currentGroup !== ALL_GROUPS_STUDENT_VALUE || student.active !== true);
+
+  if (!/^(0|[1-9]\d*)$/.test(classgroup)) {
+    alert("Group must be 0 (ALL) or a positive whole number.");
+    return;
+  }
+
+  if (
+    ((classgroup === ALL_GROUPS_STUDENT_VALUE && currentGroup !== ALL_GROUPS_STUDENT_VALUE) || grantsAllGroupsAccess) &&
+    !canCurrentUserAssignAllGroupsStudent()
+  ) {
+    alert("Only an Admin can assign Group 0 (ALL) access.");
     return;
   }
 
@@ -1247,9 +1473,8 @@ function renderStudentMessageResult(student, context) {
   const normalized = normalizeManagedStudent(student);
   const loginLink = normalized.loginUrl || buildStudentLoginLink(normalized.uniqueid);
   const message = buildStudentWelcomeMessage(loginLink);
-  const assignment = normalized.assignment || {};
   const assignmentLine = context === "registered"
-    ? `<p class="student-admin-help">Assigned ${Number(assignment.assignedCount || 0)} task${Number(assignment.assignedCount || 0) === 1 ? "" : "s"}.</p>`
+    ? '<p class="student-admin-help">Registration complete. Tasks have not been assigned yet.</p>'
     : "";
   const messageBoxId = `student-message-text-${context}-${sanitizeDomId(normalized.uniqueid || normalized.studentid || "student")}`;
 
@@ -1330,9 +1555,9 @@ function normalizeManagedStudent(student) {
     whatsapp6: String(student.whatsapp6 || student.WhatsAppLast6 || student.whatsappLast6 || "").trim(),
     uniqueid: student.uniqueid || student.UniqueID || student.uniqueId || "",
     loginUrl: student.loginUrl || student.LoginUrl || student.loginurl || "",
-    classgroup: String(student.classgroup || student.ClassGroup || student.group || student.Group || DEFAULT_STUDENT_GROUP).trim(),
+    classgroup: getManagedStudentRecordGroup(student),
     active: student.active === true || String(student.active).toLowerCase() === "true",
-    assignment: student.assignment || null
+    taskAssignmentPending: student.taskAssignmentPending === true
   };
 }
 

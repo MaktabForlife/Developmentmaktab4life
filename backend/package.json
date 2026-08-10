@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "100.6.0",
+  "version": "101.1.1",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -20,16 +20,20 @@
     "test:curriculum-write": "node tests/curriculum-write.test.mjs",
     "test:student-management": "node tests/student-management.test.mjs",
     "test:student-registration": "node tests/student-registration.test.mjs",
+    "test:student-task-assignment-ui": "node tests/student-task-assignment-ui.test.mjs",
     "test:task-assignment-write": "node tests/task-assignment-write.test.mjs",
     "test:progress-read": "node tests/progress-read.test.mjs",
     "test:progress-write": "node tests/progress-write.test.mjs",
     "test:system-settings": "node tests/system-settings.test.mjs",
     "test:timetable": "node tests/timetable.test.mjs",
+    "test:timetable-ui": "node tests/timetable-teacher-ui.test.mjs",
     "test:weekly-planner": "node tests/weekly-planner.test.mjs",
     "test:pdfjs-annotations": "node tests/pdfjs-annotation-session.test.mjs",
     "test:pdf-split": "node tests/pdf-split-view.test.mjs",
     "test:drive-library": "node tests/drive-library.test.mjs",
-    "test:resource-management-ui": "node tests/resource-management-ui.test.mjs"
+    "test:resource-management-ui": "node tests/resource-management-ui.test.mjs",
+    "test:admin-menu-home": "node tests/admin-menu-home.test.mjs",
+    "test:group-zero-access": "node tests/group-zero-access.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.36.0"

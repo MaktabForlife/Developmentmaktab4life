@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=100.4.2">
+<link rel="stylesheet" href="/styles.css?v=101.1.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -157,41 +157,151 @@
       </div>
     </section>
 
-    <!-- ADMIN ACADEMICS MENU -->
+    <!-- ADMIN MENU HOME -->
     <section id="admin-academics" class="screen admin-theme">
       <div class="nav-header">
         <h2>Admin</h2>
       </div>
 
-      <div class="list-stack">
-        <button class="list-btn" onclick="showManageStudents()">Add / Modify Students</button>
+      <section class="home-section home-icons-section admin-menu-icons-section" aria-label="Admin menu">
+        <div class="home-cover-icon-grid admin-menu-icon-grid" aria-label="Admin menu app icons">
+          <button
+            class="home-cover-icon-btn"
+            data-cover-home-nav="home"
+            data-cover-home-role="admin"
+            type="button"
+            aria-label="Open app Home"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Home</span>
+          </button>
+
+          <button
+            class="home-cover-icon-btn is-home-active"
+            type="button"
+            onclick="showAdminAcademics()"
+            aria-current="page"
+            aria-label="Admin Home"
+         style="--cover-home-icon: url('/icons/adminhome.svg?v=100.7.2')"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Admin Home</span>
+          </button>
+
+          <button
+            class="home-cover-icon-btn"
+            type="button"
+            onclick="showManageStudents()"
+            style="--cover-home-icon: url('/icons/studentrecords.svg?v=100.7.2')"
+            aria-label="Open Student Records"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Student Records</span>
+          </button>
+
+          <button
+            id="open-manage-admins-btn"
+            class="home-cover-icon-btn hidden"
+            data-manage-admin-action="open"
+            type="button"
+            aria-hidden="true"
+            style="--cover-home-icon: url('/icons/admin.svg?v=100.7.2')"
+            aria-label="Open Admin Records"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Admin Records</span>
+          </button>
+
+          <button
+            id="open-manage-resources-btn"
+            class="home-cover-icon-btn hidden"
+            data-manage-resource-action="open"
+            type="button"
+            aria-hidden="true"
+            style="--cover-home-icon: url('/icons/resources.svg?v=100.7.2')"
+            aria-label="Open Resources"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Resources</span>
+          </button>
+
+          <button
+            id="open-admin-system-menu-btn"
+            class="home-cover-icon-btn hidden"
+            data-admin-menu-admin-only
+            onclick="showAdminSystemMenu()"
+            type="button"
+            aria-hidden="true"
+            style="--cover-home-icon: url('/icons/systemsettings.svg?v=100.7.2')"
+            aria-label="Open System Settings menu"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">System Settings</span>
+          </button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ADMIN SYSTEM MENU -->
+    <section id="admin-system-menu" class="screen admin-theme">
+      <div class="nav-header">
+        <h2>System Settings</h2>
         <button
-          id="open-manage-admins-btn"
-          class="list-btn hidden"
-          data-manage-admin-action="open"
+          class="xclose-home-btn icon-action-btn"
           type="button"
-          aria-hidden="true"
-        >Admins</button>
-        <button class="list-btn" onclick="showSubjectsScreen()">Curriculum</button>
-        <button class="list-btn" onclick="showWeeklyPlanner()">Weekly Planner</button>
-        <button
-          id="open-manage-resources-btn"
-          class="list-btn hidden"
-          data-manage-resource-action="open"
-          type="button"
-          aria-hidden="true"
-        >Library</button>
-        <button class="list-btn" onclick="showPlaceholder('Tasks')">Tasks</button>
-        <button class="list-btn" onclick="showAdminTimetableAdmin()">Timetable</button>
-        <button class="list-btn" onclick="showAdminZoomLinkAdmin()">Zoom Link</button>
-        <button
-          id="open-system-settings-btn"
-          class="list-btn hidden"
-          data-system-settings-action="open"
-          type="button"
-          aria-hidden="true"
-        >System Settings</button>
+          data-header-action="screen"
+          data-header-target="admin-academics"
+          aria-label="Close to Admin menu"
+          title="Close"
+        >
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
       </div>
+
+      <section class="home-section home-icons-section admin-menu-icons-section" aria-label="System Settings menu">
+        <div class="home-cover-icon-grid admin-system-icon-grid" aria-label="System Settings app icons">
+          <button
+            class="home-cover-icon-btn"
+            type="button"
+            onclick="showAdminZoomLinkAdmin()"
+            style="--cover-home-icon: url('/icons/zoom.svg?v=100.7.2')"
+            aria-label="Open Zoom Link settings"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Zoom Link</span>
+          </button>
+
+          <button
+            id="open-system-settings-btn"
+            class="home-cover-icon-btn hidden"
+            data-system-settings-action="open"
+            type="button"
+            aria-hidden="true"
+            style="--cover-home-icon: url('/icons/systemsettings.svg?v=100.7.2')"
+            aria-label="Open application System Settings"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">System Settings</span>
+          </button>
+        </div>
+      </section>
     </section>
 
     <!-- ADMIN SYSTEM SETTINGS -->
@@ -306,7 +416,10 @@
     <section id="manage-resources-screen" class="screen admin-theme student-admin-screen" aria-labelledby="manage-resources-title">
       <div class="student-admin-modern-header">
         <h2 id="manage-resources-title">Manage Library</h2>
-        <button type="button" class="small-btn" data-manage-resource-action="close">Back</button>
+        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
       </div>
       <div id="manage-resources-content">
         <p class="helper-text">Loading Library management...</p>
@@ -317,7 +430,10 @@
     <section id="manage-admins-screen" class="screen admin-theme student-admin-screen" aria-labelledby="manage-admins-title">
       <div class="student-admin-modern-header">
         <h2 id="manage-admins-title">Manage Admins</h2>
-        <button type="button" class="small-btn" data-manage-admin-action="close">Back</button>
+        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
       </div>
       <div id="manage-admins-content">
         <p class="helper-text">Loading admin management...</p>
@@ -328,7 +444,10 @@
     <section id="manage-students-screen" class="screen admin-theme student-admin-screen">
       <div class="student-admin-modern-header">
         <h2>Manage Students</h2>
-        <button class="small-btn" onclick="showScreen('admin-academics')">Back</button>
+        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
       </div>
 
       <div id="manage-students-content">
@@ -350,7 +469,10 @@
     <section id="manage-student-edit-screen" class="screen admin-theme student-admin-screen">
       <div class="student-admin-modern-header">
         <h2>Edit Student</h2>
-        <button class="small-btn" onclick="backToManagedStudentList()">Back</button>
+        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
       </div>
 
       <div id="manage-student-edit-content">
@@ -532,7 +654,10 @@
     <section id="admin-timetable-admin-screen" class="screen admin-theme">
       <div class="nav-header">
         <h2>Timetable / Zoom Link</h2>
-        <button class="small-btn" onclick="showScreen('admin-academics')">Back</button>
+        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+          <span class="visually-hidden">Close</span>
+        </button>
       </div>
 
       <div class="dashboard-section timetable-admin-form">
@@ -554,7 +679,7 @@
     </section>
 
 
-    <!-- WEEKLY PLANNER - V97.1.8.4.1 -->
+    <!-- WEEKLY PLANNER - V101.1.1 -->
     <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
       <div class="weekly-planner-global-panel">
         <div class="weekly-planner-live-title-row">
@@ -602,7 +727,12 @@
         </section>
 
         <section class="weekly-planner-controls" aria-label="Planner details">
-          <label class="weekly-planner-field weekly-planner-field--teacher"><span>Name</span><select id="weekly-planner-teacher"></select></label>
+          <div class="weekly-planner-edit-preview-title" aria-hidden="true">
+            <strong>UMM ABBAD ACADEMY</strong>
+            <span>REBOOT YOUR MAKTAB WEEKLY PLANNER</span>
+          </div>
+          <label class="weekly-planner-field weekly-planner-field--teacher"><span>Name of Muallima</span><select id="weekly-planner-teacher"></select></label>
+          <div class="weekly-planner-field weekly-planner-field--month"><span>Month</span><output id="weekly-planner-month"></output></div>
           <label class="weekly-planner-field weekly-planner-field--week"><span>Week commencing</span><input id="weekly-planner-week" type="date" /></label>
           <label class="weekly-planner-field weekly-planner-field--group"><span>Group</span><input id="weekly-planner-group" type="text" list="weekly-planner-groups" placeholder="Group" /><datalist id="weekly-planner-groups"></datalist></label>
         </section>
@@ -624,6 +754,13 @@
         <p id="weekly-planner-preview-message" class="helper-text weekly-planner-message" aria-live="polite"></p>
         <p class="weekly-planner-edit-hint">Tap a day on the planner to edit it.</p>
       </div>
+
+      <section id="weekly-planner-inline-editor" class="weekly-planner-inline-editor" aria-label="Edit weekly planner">
+        <p class="weekly-planner-inline-intro">Edit directly in the same layout as the submitted planner. Each Save stores the complete week without closing the editor.</p>
+        <div id="weekly-planner-inline-rail" class="weekly-planner-inline-rail">
+          <p class="helper-text">Loading weekly planner...</p>
+        </div>
+      </section>
 
       <dialog id="weekly-planner-day-editor" class="weekly-planner-day-editor" aria-labelledby="weekly-planner-day-editor-title">
         <div class="weekly-planner-day-editor-card">
@@ -1277,18 +1414,18 @@
 <script src="/app.js?v=94.1"></script>
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=100.2"></script>
-<script src="/js/m4l-shell.js?v=99.1"></script>
-  <script src="/js/m4l-timetable.js?v=97.1.5.5"></script>
-  <script src="/js/m4l-weekly-planner.js?v=97.1.8.4.1"></script>
+<script src="/js/m4l-shell.js?v=100.8"></script>
+  <script src="/js/m4l-timetable.js?v=100.10.5"></script>
+  <script src="/js/m4l-weekly-planner.js?v=101.1.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
-<script src="/js/m4l-admin-academics.js?v=100.4.0"></script>
+<script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
 <script src="/js/m4l-system-settings.js?v=98.12"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>
-<script src="/js/m4l-manage-students.js?v=97.1.5.3"></script>
+<script src="/js/m4l-manage-students.js?v=100.9"></script>
 <script src="/js/m4l-manage-admins.js?v=100.3.2"></script>
 <script src="/js/m4l-manage-resources.js?v=100.4.4"></script>
 </body>

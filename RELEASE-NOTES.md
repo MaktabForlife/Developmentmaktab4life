@@ -1,3 +1,382 @@
+V101.1.1
+
+# Unified large-screen Weekly Planner page width
+
+- On screens from 1180px upward, the complete Weekly Planner top section is
+  capped at the same 1400px width as the editable planner body.
+- The title, action toolbar and teacher/month/week/group header now align with
+  the day panels so the editor reads visually as one page.
+- Medium and mobile layouts are unchanged.
+- Application, Worker and Weekly Planner CSS cache metadata are bumped to
+  `101.1.1`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script, Worker binding or Cloudflare-setting change is required.
+
+---
+
+V101.1
+
+# Weekly Planner editable preview layout
+
+- The tablet/desktop editor now closely follows the familiar submitted planner
+  preview instead of presenting a separate application-style card design.
+- The teacher, month, week commencing date and group appear once in the shared
+  preview-style header. The month updates automatically from the selected week.
+- Monday to Thursday use the same 2×2 arrangement as the generated image.
+- Each day uses a cream heading, period labels in the left column and editable
+  subject/activity content in the right column.
+- The editor follows the selected preview font and ink colour.
+- Weekly Feedback remains full width below the four days.
+- Independent day Save controls and the non-jumping full-week save behaviour
+  introduced in V101 are retained.
+- The mobile preview and tap-a-day dialog flow are unchanged.
+- Application, Worker and Weekly Planner asset metadata are bumped to `101.1`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script, Worker binding or Cloudflare-setting change is required.
+
+---
+
+V101
+
+# Stable large-screen Weekly Planner editing
+
+- Mobile Weekly Planner editing is unchanged: tap one preview day, edit it in
+  the focused dialog, save, then move to the next day.
+- Tablet and desktop now use a permanent inline editor instead of expanding the
+  mobile dialog into four cards.
+- All four day cards remain visible. Each card shows its date and synchronized
+  group selector in its header and has its own Save button.
+- A day Save submits the complete four-day planner so the other three days are
+  preserved, but it does not rebuild the inline editor, close it, change mode,
+  move focus, or jump the page.
+- Weekly Feedback is also editable and saveable in the large-screen workspace.
+- Submitted and downloaded PNG files now use the authenticated teacher, week
+  commencing date and actual submission date, for example:
+  `MI-Hajira - 10 Aug - submitted 8 Aug.png`.
+- Weekly Planner JavaScript/CSS cache versions and application/Worker metadata
+  are bumped to `101`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare-setting change is required.
+
+---
+
+V100.10.5
+
+# Safer oversight disclosures and readable mobile details
+
+- `ADMIN` and `SENIOR` subject/module headings are no longer Zoom links. Tapping
+  the heading or adjacent chevron can only open or close its assignment details.
+- Every session link is presented as a separate underlined `Zoom` action inside
+  its exact group/teacher row, preventing accidental meeting launches.
+- Active Admin/Senior timetable text now uses the normal dark text colour,
+  including `Zoom`; other-teacher/muted content uses the existing light grey.
+  No third link colour or grey background shading is used.
+- The inline disclosure gap is increased to separate the title and chevron.
+- Admin/Senior mobile group, teacher and Zoom text is enlarged to a responsive
+  `0.82rem`–`0.94rem` range with increased line height and row spacing.
+- Student and `TEACHER` subject Zoom behaviour remains unchanged because those
+  accounts receive their own filtered timetable.
+- Timetable cache namespace is bumped to `v8`; release, JavaScript and CSS asset
+  versions are bumped to `100.10.5`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare-setting change is required.
+
+---
+
+V100.10.4
+
+# Responsive oversight days and subject-module rows
+
+- Timetable rows are now grouped by `Subject + ModuleName`. A session can
+  therefore show separate compact rows such as `Quran`, `Quran Part-1` and
+  `Quran Part-2`.
+- The module number remains available for stable ordering but is not displayed.
+  Subject-only rows sort before that subject's modules.
+- Inline disclosure chevrons now sit beside the subject/module title. Opening a
+  disclosure reveals the matching groups, teachers and exact per-assignment
+  Zoom actions.
+- `ADMIN` and `SENIOR` accounts use a day-by-day layout below `900px`. Each day
+  is a horizontally swipeable panel and its session list follows the page's
+  normal vertical scroll.
+- At `900px` and above, `ADMIN` and `SENIOR` retain the complete weekly grid
+  with the same compact subject/module disclosures.
+- Students and `TEACHER` accounts retain their filtered weekly grid at every
+  screen size. A single-group student sees the subject/module title and teacher
+  directly without a redundant group label or dropdown.
+- Multiple subjects at one time render as separate rows in both layouts.
+- Other-teacher sessions retain the normal background and use light-grey text
+  only.
+- The timetable cache namespace is bumped to `v7`; release, JavaScript and CSS
+  asset versions are bumped to `100.10.4`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare-setting change is required. Do not delete the legacy
+`TimeTable` sheet yet because it still owns the global Zoom link.
+
+---
+
+V100.10.3
+
+# Module-name-only display and unambiguous Zoom routing
+
+- Timetable assignment rows now show only the module name. For example,
+  `Group 4 · Part-1` replaces `Group 4 · Module 1: Part-1`.
+- A normal student with one applicable group sees the module name and teacher
+  directly on the card, without a redundant group dropdown or group label.
+- Group disclosures are reserved for subject slots containing assignments for
+  more than one group. Group 0 and oversight views can therefore inspect each
+  applicable teacher/link without crowding the timetable.
+- Sessions taught by another teacher retain the normal card background and use
+  light-grey text only; no grey background shading is applied.
+- ModuleID and ModuleNo remain available in the API for stable identity and
+  sorting, but the module number is not rendered.
+- A visible subject slot with one shared non-empty Zoom link keeps the subject
+  clickable.
+- If the grouped TeacherAssign rows contain different links, the subject is
+  deliberately not clickable. Each linked group/module row opens its own exact
+  Zoom meeting from inside the disclosure.
+- A blank link remains non-clickable and cannot inherit another group's link.
+- Teacher-only filtering means a TEACHER viewing one assigned row can still
+  open that row's link directly from the subject.
+- Timetable cache namespace is bumped to `v6`, and release/JavaScript asset
+  versions are bumped to `100.10.3`.
+
+Deploy the Worker/backend first and the frontend second. No spreadsheet,
+Apps Script or Cloudflare setting change is required.
+
+---
+
+V100.10.2
+
+# Module-aware timetable and shared compact disclosure layout
+
+- `TeacherAssign.ModuleID` is now optional. A blank value means the teacher is
+  teaching the whole subject; a populated value means the teacher is teaching
+  that module from the subject.
+- Module identity and display data are resolved through
+  `ModuleList.ModuleID`. Canonical module names and `Sort Order` values are
+  returned as `ModuleName` and `ModuleNo` in the timetable response.
+- Missing, inactive or subject-mismatched module IDs do not break the board.
+  The subject remains visible without an unverified module label and the API
+  returns a diagnostic warning.
+- Numbered-group sessions now display the subject once with a compact,
+  collapsed group disclosure. Opening it shows the group, optional module and
+  teacher rows. This same interaction is used on mobile and desktop.
+- `GroupNo = ALL` sessions show the subject and teacher directly. The redundant
+  `All groups` label is no longer displayed.
+- Session-specific `TeacherAssign.ZoomLink` values remain supported. A shared
+  link opens from the subject; differing links remain attached to their exact
+  group/module row.
+- Existing role rules remain intact: `TEACHER` sees only its own timetable;
+  `ADMIN` and `SENIOR` retain oversight access; other-teacher text remains
+  explicitly light grey for an admin who also teaches.
+- Timetable cache namespace is bumped to `v5`, and release/asset versions are
+  bumped to `100.10.2`.
+
+The audited TeacherAssign export contains 36 sessions, four valid module
+assignments after `TA002.ModuleID` was cleared, and four session Zoom links.
+`CourseID` remains an optional supported field for the later CourseList phase;
+the current `CoureName` header remains supported.
+
+Deploy the Worker/backend first and the frontend second. `ModuleList` must
+remain present. No Apps Script deployment or Worker-setting change is needed.
+Do not delete the legacy `TimeTable` yet because it still owns the global Zoom
+link during verification.
+
+---
+
+V100.10.1
+
+# Teacher-only timetable scope and compact assignment grid
+
+- `TEACHER` accounts see only sessions assigned to their authenticated
+  `AdminID`, regardless of request-body group or teacher filters.
+- `ADMIN` and `SENIOR` retain the complete oversight timetable.
+- A subject shared by several groups is displayed once, with compact
+  `Group — Teacher` rows beneath it in group-number order.
+- Shared Zoom links remain on the subject. Different per-group Zoom links move
+  safely to their matching group row.
+- Greyed timetable text is now explicitly light grey.
+- Cache and frontend asset versions are bumped for immediate delivery.
+
+Deploy the Worker/backend before the frontend. No workbook, Apps Script or
+Worker-setting change is required.
+
+---
+
+V100.10
+
+# Teacher-aware TeacherAssign timetable
+
+V100.10 makes `TeacherAssign` the displayed timetable source while retaining
+the legacy `TimeTable` only for the existing global Zoom link during the
+verification period.
+
+## Student timetable
+
+- Students receive `TeacherAssign` sessions for their authenticated group plus
+  rows explicitly marked `ALL`.
+- Active Student Group 0 retains its V100.8 all-groups access and receives every
+  active timetable group without collapsing same-time group sessions.
+- Every session displays the teacher name resolved from
+  `TeacherAssign.AssignedTeacher -> AdminRecords.AdminID`.
+- A populated `TeacherAssign.ZoomLink` is session-specific. The subject becomes
+  clickable and opens that session's Zoom meeting in a new tab.
+- The existing global Join Zoom action remains separate and continues reading
+  the legacy `TimeTable` link during V100.10 verification.
+
+## Admin timetable
+
+- Admin, Senior and Teacher portal users receive the complete relevant board.
+- If the logged-in `AdminID` has at least one visible `TeacherAssign` session,
+  their own sessions remain fully active and other teachers' sessions are
+  greyed while remaining readable.
+- An admin with no `TeacherAssign` rows is treated as oversight-only and sees
+  every session normally, as agreed.
+- Teacher matching never uses displayed names, roles or
+  `AdminRecords.AssignedGroup`.
+
+## Data safety
+
+- Subject names are canonicalised through `SubjectList.SubjectID`; this safely
+  resolves the workbook's `SUBJ8` Akhlaq/Akhlaaq spelling difference.
+- Missing or inactive teacher records show `Teacher not assigned` instead of
+  silently selecting another teacher.
+- If an optional `Active`/`Status` column is later added to `TeacherAssign`,
+  inactive rows are excluded. With the current workbook's absent column, all
+  existing rows are treated as active.
+- Multiple active rows for the same course/group/subject/day/time are retained,
+  flagged in the API response and labelled `Check assignment` in the UI.
+- The current misspelled `CoureName` header remains supported. `CourseID` is
+  also supported when Phase 2 introduces a stable course table.
+
+## Workbook audit
+
+The supplied workbook contains 36 `TeacherAssign` sessions covering 12 base
+slots and Groups 1-4 plus `ALL`. Session IDs and logical assignment keys are
+unique; all teacher IDs resolve to active Admin records; all subject IDs
+resolve; and each numbered group receives 12 sessions. No workbook changes
+were required for V100.10.
+
+## Cache and deployment
+
+- Timetable cache namespace bumped from `v2` to `v3`.
+- Frontend asset versions bumped to `100.10`.
+- Deploy the Worker/backend first and the frontend second.
+- Do not delete `TimeTable` yet. It still owns the global Zoom link during this
+  verification release. Its session rows are no longer the displayed timetable.
+- No Apps Script deployment or new Worker setting is required.
+
+---
+
+V100.9
+
+# Separate student registration and task assignment
+
+Student registration now creates the account and personal login link without
+assigning curriculum tasks. Student Records includes a separate **Assign
+Tasks** tab where an Admin or Senior can select a registered active student and
+then choose all active tasks or particular subjects and modules.
+
+Before writing, the Worker checks every selected `(StudentID, TaskID)` pair
+already present in `StudentTasks`. Duplicate assignments are skipped, and a
+duplicate-only retry does not reserve new IDs or append rows.
+
+Group 0 students no longer receive tasks merely because they were registered.
+They may still be assigned tasks deliberately through the manual assignment
+screen. No Google Sheets schema or Apps Script deployment is required.
+
+Deploy the Worker/backend first and the Admin frontend second.
+
+---
+
+V100.8
+
+# Active Student Group 0 sees ALL groups
+
+An active student assigned `ClassGroup = 0` can now view the complete
+timetable and all active Library resources. Direct access to protected Google
+Drive resources enforces the same rule, so catalogue visibility and file
+authorization remain aligned.
+
+The Admin student-management UI displays this assignment as `ALL (Group 0)`.
+Only an ADMIN can newly grant it. Attendance and Progress continue to exclude
+Group 0 students as agreed.
+
+Content records continue to use `ALL` for a global audience. Group 0 does not
+replace `ALL` in TimeTable rows, Resource rows, or AdminRecords teacher
+assignments.
+
+Deploy the Worker/backend first and the frontend second. No Apps Script or
+Google Sheets schema deployment is required.
+
+All 26 tests present in the supplied repository pass. Its existing
+`test:pdfjs-annotations` package entry references a test file absent from the
+supplied V100.7.2 archive; this unrelated baseline omission remains unchanged.
+
+---
+
+V100.7.2
+
+# Highlighted Admin Home tile
+
+The Admin landing page now has separate Home and Admin Home tiles. Home returns
+to the main app Home, while Admin Home represents the current Admin landing page
+and uses the same lavender active-state highlight as the main app Home tile.
+
+The six Admin tiles display in one row on medium and large screens. This
+frontend-only package is cumulative from V100.6 and supersedes V100.7 and
+V100.7.1.
+
+---
+
+V100.7.1
+
+# Admin Home tile and x-close navigation
+
+The Admin landing page now includes a Home tile for returning to the main app
+Home. Top-level Back controls in Student Records, Admin Records, Resources,
+System Settings and Zoom Link are now x-close icons that return directly to the
+Admin tile landing page. Internal form navigation such as Back to List is
+unchanged.
+
+The System Settings tile now uses the supplied monitor-and-cog SVG artwork.
+
+This frontend-only package is cumulative from V100.6 and supersedes V100.7.
+
+---
+
+V100.7
+
+# Admin menu tile landing page
+
+The Admin navigation item now opens a four-tile landing page using the same
+app-icon card style as the main Home page:
+
+- Student Records
+- Admin Records
+- Resources
+- System Settings
+
+System Settings opens a smaller submenu containing Zoom Link and the existing
+System Settings form. Admin-only controls retain their current visibility and
+Worker-side authorization rules.
+
+This is a frontend-only release. Deploy the files listed in
+`CHANGED-FILES.txt`; no Worker or Apps Script deployment is required.
+
+## Validation
+
+- Admin menu integration regression test added.
+- JavaScript syntax and package JSON checks pass.
+- Existing Admin management UI test updated for the new stylesheet cache key.
+
+---
+
 V100.6
 
 # Worker Settings become the environment source of truth

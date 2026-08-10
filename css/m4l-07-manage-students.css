@@ -25,7 +25,7 @@
 
 .student-admin-mode-toggle {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   background: var(--surface-card);
   border: 1px solid rgba(var(--primary-rgb), 0.12);
@@ -41,6 +41,7 @@
   box-shadow: none;
   background: var(--surface-chip);
   color: var(--text-muted);
+  padding-inline: 8px;
 }
 
 .student-admin-mode-btn.is-active {
@@ -85,6 +86,20 @@
   line-height: 1.35;
   margin: 4px 0 0;
   text-align: left;
+}
+
+.student-admin-help.is-error {
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.student-registration-task-note,
+.student-assignment-select-prompt {
+  margin: 0 2px 14px;
+}
+
+.student-assignment-selected-student {
+  border-left: 6px solid var(--primary);
 }
 
 .student-admin-feedback {
@@ -367,6 +382,17 @@
 
   .student-admin-modern-header .small-btn {
     min-width: 82px;
+  }
+
+  .student-admin-mode-toggle {
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .student-admin-mode-btn {
+    min-height: 44px;
+    padding-inline: 5px;
+    font-size: 0.82rem;
   }
 
   .student-admin-card,
