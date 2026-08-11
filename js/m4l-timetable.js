@@ -20,7 +20,7 @@ v98 - Timetable board + V84 Home vertical stack support
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // V100.10.5 cache namespace removes Zoom actions from ADMIN/SENIOR subject
 // headings and delivers the larger, two-colour oversight detail treatment.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v8";
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v9";
 
 let timetableCache = null;
 let timetableCacheKey = "";
@@ -1300,87 +1300,6 @@ function setTimetableScreenTheme(screenId, theme) {
   screen.classList.toggle("admin-theme", theme !== "student");
 }
 
-async function showAdminTimetableAdmin(focusZoom = false) {
-  setTimetableScreenTheme("admin-timetable-admin-screen", "admin");
-  showScreen("admin-timetable-admin-screen");
-
-  const previewContainer = document.getElementById("admin-timetable-admin-preview");
-  const zoomInput = document.getElementById("admin-global-zoom-link");
-  const message = document.getElementById("admin-timetable-message");
-
-  if (previewContainer) {
-    setDomHtml(previewContainer, `<p class="helper-text">Loading timetable...</p>`);
-  }
-
-  if (message) {
-    message.textContent = "";
-  }
-
-  try {
-    const result = await fetchTimetable({ force: true });
-    renderTimetable(previewContainer, result);
-
-    if (zoomInput) {
-      zoomInput.value = normalizeTimetableText(result.zoomlink || "");
-      if (focusZoom) {
-        setTimeout(() => zoomInput.focus(), 80);
-      }
-    }
-  } catch (err) {
-    if (previewContainer) {
-      setDomHtml(previewContainer, `<p class="error-message">${escapeHtml(err.message || "Unable to load timetable.")}</p>`);
-    }
-  }
-}
-
-function showAdminZoomLinkAdmin() {
-  showAdminTimetableAdmin(true);
-}
-
-async function saveAdminTimetableZoomLink(button) {
-  const zoomInput = document.getElementById("admin-global-zoom-link");
-  const message = document.getElementById("admin-timetable-message");
-  const zoomlink = zoomInput ? zoomInput.value.trim() : "";
-
-  if (message) {
-    message.textContent = "Saving...";
-    message.classList.remove("error-message");
-  }
-
-  if (button) {
-    button.disabled = true;
-  }
-
-  try {
-    const result = await apiPost("/api/admin/timetable/update-zoom", {
-      zoomlink
-    }, state.token);
-
-    if (!result.success) {
-      throw new Error(result.error || "Could not save Zoom link.");
-    }
-
-    const cacheKey = getTimetableCacheKey({ groupNo: "ALL", teacherId: "ALL" });
-    setActiveTimetableCache(cacheKey, result);
-    writeTimetableCache(cacheKey, result);
-
-    if (message) {
-      message.textContent = result.message || "Zoom link saved.";
-    }
-
-    renderTimetable("admin-timetable-admin-preview", result);
-  } catch (err) {
-    if (message) {
-      message.textContent = err.message || "Could not save Zoom link.";
-      message.classList.add("error-message");
-    }
-  } finally {
-    if (button) {
-      button.disabled = false;
-    }
-  }
-}
-
 window.M4LTimetable = {
   scheduleStudentHomeTimetableLoad,
   normalizeTimetableRows,
@@ -1394,8 +1313,5 @@ window.M4LTimetable = {
   openTimetableZoomLink,
   openStudentTimetableZoom,
   showAdminTimetable,
-  refreshAdminTimetable,
-  showAdminTimetableAdmin,
-  showAdminZoomLinkAdmin,
-  saveAdminTimetableZoomLink
+  refreshAdminTimetable
 };

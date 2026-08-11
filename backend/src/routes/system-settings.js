@@ -1,24 +1,20 @@
 import { getAuthUser } from "../lib/auth.js";
-import {
-  appendGoogleSheetValues,
-  batchUpdateGoogleSheetValues
-} from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import {
   DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL,
+  GLOBAL_ZOOM_LINK_KEY,
   STUDENT_LOGIN_BASE_KEY,
-  SYSTEM_CONFIG_SHEET,
   WEEKLY_PLANNER_DRIVE_FOLDER_ID_KEY,
   WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY,
   buildGoogleDriveFolderUrl,
   extractGoogleDriveFolderId,
-  findSystemConfigRowIndexes,
   getSystemConfigValue,
+  normalizeGlobalZoomLink,
   normalizeStudentLoginBaseUrl,
-  readSystemConfigRows
+  readSystemConfigRows,
+  upsertSystemConfigValues
 } from "../lib/system-config.js";
 
-const SYSTEM_CONFIG_APPEND_RANGE = `${SYSTEM_CONFIG_SHEET}!A:D`;
 const MAX_FOLDER_LABEL_LENGTH = 80;
 
 export async function getSystemSettingsGoogleSheetsEndpoint(request, env) {
@@ -50,12 +46,14 @@ export async function saveSystemSettingsGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
   let studentLoginBaseUrl;
   let weeklyPlannerDriveFolderId;
+  let globalZoomLink;
 
   try {
     studentLoginBaseUrl = normalizeStudentLoginBaseUrl(body.studentLoginBaseUrl);
     weeklyPlannerDriveFolderId = extractGoogleDriveFolderId(
       body.weeklyPlannerDriveFolder || body.weeklyPlannerDriveFolderId
     );
+    globalZoomLink = normalizeGlobalZoomLink(body.globalZoomLink);
   } catch (error) {
     return json({
       success: false,
@@ -84,39 +82,17 @@ export async function saveSystemSettingsGoogleSheetsEndpoint(request, env) {
   const valuesByKey = new Map([
     [STUDENT_LOGIN_BASE_KEY, studentLoginBaseUrl],
     [WEEKLY_PLANNER_DRIVE_FOLDER_ID_KEY, weeklyPlannerDriveFolderId],
-    [WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY, weeklyPlannerDriveFolderLabel]
+    [WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY, weeklyPlannerDriveFolderLabel],
+    [GLOBAL_ZOOM_LINK_KEY, globalZoomLink]
   ]);
-  const updates = [];
-  const appends = [];
+  const saved = await upsertSystemConfigValues(env, valuesByKey, {
+    rows,
+    updatedAt,
+    updatedBy
+  });
 
-  for (const [key, value] of valuesByKey.entries()) {
-    const rowIndexes = findSystemConfigRowIndexes(rows, key);
-
-    if (rowIndexes.length > 1) {
-      return json({
-        success: false,
-        error: `SystemConfig contains duplicate ${key} rows`
-      }, 409);
-    }
-
-    if (rowIndexes.length === 1) {
-      const sheetRow = rowIndexes[0] + 1;
-      updates.push({
-        range: `${SYSTEM_CONFIG_SHEET}!B${sheetRow}:D${sheetRow}`,
-        majorDimension: "ROWS",
-        values: [[value, updatedAt, updatedBy]]
-      });
-    } else {
-      appends.push([key, value, updatedAt, updatedBy]);
-    }
-  }
-
-  if (updates.length > 0) {
-    await batchUpdateGoogleSheetValues(env, updates);
-  }
-
-  if (appends.length > 0) {
-    await appendGoogleSheetValues(env, SYSTEM_CONFIG_APPEND_RANGE, appends);
+  if (!saved.ok) {
+    return json({ success: false, error: saved.error }, saved.status || 409);
   }
 
   return json({
@@ -128,10 +104,12 @@ export async function saveSystemSettingsGoogleSheetsEndpoint(request, env) {
       weeklyPlannerDriveFolderId,
       weeklyPlannerDriveFolderUrl: buildGoogleDriveFolderUrl(weeklyPlannerDriveFolderId),
       weeklyPlannerDriveFolderLabel,
+      globalZoomLink,
       configured: {
         studentLoginBaseUrl: true,
         weeklyPlannerDriveFolderId: true,
-        weeklyPlannerDriveFolderLabel: true
+        weeklyPlannerDriveFolderLabel: true,
+        globalZoomLink: Boolean(globalZoomLink)
       },
       updatedAt,
       updatedBy
@@ -161,6 +139,16 @@ function buildSystemSettingsResponse(rows, env) {
     rows,
     WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY
   ) || DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL;
+  const storedGlobalZoomLink = getSystemConfigValue(rows, GLOBAL_ZOOM_LINK_KEY);
+  let globalZoomLink = "";
+
+  if (storedGlobalZoomLink) {
+    try {
+      globalZoomLink = normalizeGlobalZoomLink(storedGlobalZoomLink);
+    } catch {
+      globalZoomLink = storedGlobalZoomLink;
+    }
+  }
   let weeklyPlannerDriveFolderUrl = "";
 
   if (weeklyPlannerDriveFolderId) {
@@ -179,13 +167,15 @@ function buildSystemSettingsResponse(rows, env) {
     weeklyPlannerDriveFolderId,
     weeklyPlannerDriveFolderUrl,
     weeklyPlannerDriveFolderLabel,
+    globalZoomLink,
     configured: {
       studentLoginBaseUrl: Boolean(storedStudentLoginBaseUrl),
       weeklyPlannerDriveFolderId: Boolean(weeklyPlannerDriveFolderId),
       weeklyPlannerDriveFolderLabel: Boolean(getSystemConfigValue(
         rows,
         WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY
-      ))
+      )),
+      globalZoomLink: Boolean(storedGlobalZoomLink)
     }
   };
 }

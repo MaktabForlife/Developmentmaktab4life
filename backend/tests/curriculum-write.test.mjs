@@ -5,13 +5,15 @@ import worker from "../src/worker.js";
 const subjectRows = [
   ["SubjectID", "SubjectName", "Active", "CreateDate"],
   ["SUB1", "Aqidah", true, "2026-07-01T00:00:00.000Z"],
-  ["SUB2", "Zakat", true, "2026-07-02T00:00:00.000Z"]
+  ["SUB2", "Zakat", true, "2026-07-02T00:00:00.000Z"],
+  ["SUBJ17", "", true, ""]
 ];
 const taskRows = [
   ["TaskID", "SubjectID", "TaskName", "AudioLink", "VisualLink", "VideoLink", "PDFLink", "Active", "CreateDate"],
   ["TASK3", "SUB2", "Zakat C", "", "", "", "", true, "2026-07-03T00:00:00.000Z"],
   ["TASK2", "SUB1", "Lesson B", "audio-b", "", "", "pdf-b", true, "2026-07-02T00:00:00.000Z"],
-  ["TASK1", "SUB1", "Lesson A", "", "visual-a", "", "", false, "2026-07-01T00:00:00.000Z"]
+  ["TASK1", "SUB1", "Lesson A", "", "visual-a", "", "", false, "2026-07-01T00:00:00.000Z"],
+  ["TASK120", "", "", "", "", "", "", false, ""]
 ];
 const subjectResourceRows = [
   ["ResourceID", "SubjectID", "ResourceName", "ResourceType", "ResourceLink", "Active", "CreateDate"],
@@ -19,13 +21,6 @@ const subjectResourceRows = [
   ["RES2", "SUB1", "Book B", "PDF", "https://example.test/b", true, "2026-07-02T00:00:00.000Z"],
   ["RES1", "SUB1", "Book A", "LINK", "https://example.test/a", false, "2026-07-01T00:00:00.000Z"]
 ];
-const systemConfigRows = [
-  ["ConfigKey", "Value"],
-  ["NextSubjectNumber", 10],
-  ["NextTaskNumber", 20],
-  ["NextResourceNumber", 30]
-];
-
 const keyPair = await crypto.subtle.generateKey(
   {
     name: "RSASSA-PKCS1-v1_5",
@@ -89,7 +84,6 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "SubjectResources!A:ZZ") return response({ values: subjectResourceRows });
-    if (range === "SystemConfig!A:B") return response({ values: systemConfigRows });
   }
 
   if (method === "PUT") {
@@ -137,13 +131,12 @@ try {
     "M4L_BACKEND_CURRICULUM_WRITE"
   );
   assert.equal(createdSubject.data.success, true);
-  assert.equal(createdSubject.data.subject.subjectid, "SUBJ10");
+  assert.equal(createdSubject.data.subject.subjectid, "SUBJ18");
   assert.equal(createdSubject.data.subject.subjectname, "Fiqh");
   assert.equal(createdSubject.data.subject.active, true);
   assert.match(createdSubject.data.subject.createdate, /^\d{4}-\d{2}-\d{2}T/);
-  assertWrite("PUT", "SystemConfig!B2", [[11]]);
   assertWrite("POST", "SubjectList!A:D", [[
-    "SUBJ10",
+    "SUBJ18",
     "Fiqh",
     true,
     createdSubject.data.subject.createdate
@@ -201,10 +194,9 @@ try {
     "curriculum-write",
     "M4L_BACKEND_CURRICULUM_WRITE"
   );
-  assert.equal(createdTask.data.task.taskid, "TASK20");
-  assertWrite("PUT", "SystemConfig!B3", [[21]]);
+  assert.equal(createdTask.data.task.taskid, "TASK121");
   assertWrite("POST", "TaskList!A:I", [[
-    "TASK20",
+    "TASK121",
     "SUB2",
     "Lesson D",
     "audio-d",
@@ -256,11 +248,10 @@ try {
     "curriculum-resources-write",
     "M4L_BACKEND_CURRICULUM_RESOURCES_WRITE"
   );
-  assert.equal(createdResource.data.resource.resourceid, "RES30");
+  assert.equal(createdResource.data.resource.resourceid, "RES4");
   assert.equal(createdResource.data.resource.resourcetype, "AUDIO");
-  assertWrite("PUT", "SystemConfig!B4", [[31]]);
   assertWrite("POST", "SubjectResources!A:G", [[
-    "RES30",
+    "RES4",
     "SUB2",
     "Zakat Audio",
     "AUDIO",

@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=101.1.1">
+<link rel="stylesheet" href="/styles.css?v=101.2">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -274,19 +274,6 @@
       <section class="home-section home-icons-section admin-menu-icons-section" aria-label="System Settings menu">
         <div class="home-cover-icon-grid admin-system-icon-grid" aria-label="System Settings app icons">
           <button
-            class="home-cover-icon-btn"
-            type="button"
-            onclick="showAdminZoomLinkAdmin()"
-            style="--cover-home-icon: url('/icons/zoom.svg?v=100.7.2')"
-            aria-label="Open Zoom Link settings"
-          >
-            <span class="home-cover-icon-tile" aria-hidden="true">
-              <span class="home-cover-icon-glyph"></span>
-            </span>
-            <span class="home-cover-icon-label">Zoom Link</span>
-          </button>
-
-          <button
             id="open-system-settings-btn"
             class="home-cover-icon-btn hidden"
             data-system-settings-action="open"
@@ -377,6 +364,22 @@
           </label>
 
           <p id="system-settings-drive-destination" class="system-settings-destination"></p>
+        </section>
+
+        <section class="system-settings-card" aria-labelledby="system-settings-zoom-heading">
+          <h3 id="system-settings-zoom-heading">Online Class</h3>
+          <label class="system-settings-field" for="system-settings-global-zoom-link">
+            <span>Global Zoom link</span>
+            <input
+              id="system-settings-global-zoom-link"
+              name="globalZoomLink"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://zoom.us/..."
+            />
+            <span class="system-settings-help">Used when a timetable session does not have its own Zoom link.</span>
+          </label>
         </section>
 
         <button type="submit" class="system-settings-save" data-system-settings-action="save">
@@ -650,34 +653,6 @@
         </div>
       </div>
     </section>
-
-    <section id="admin-timetable-admin-screen" class="screen admin-theme">
-      <div class="nav-header">
-        <h2>Timetable / Zoom Link</h2>
-        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
-          <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
-          <span class="visually-hidden">Close</span>
-        </button>
-      </div>
-
-      <div class="dashboard-section timetable-admin-form">
-        <h3>Global Zoom Link</h3>
-        <p class="helper-text">This link is stored in the TimeTable tab, row 2, ZoomLink column.</p>
-        <input id="admin-global-zoom-link" type="url" inputmode="url" placeholder="https://..." />
-        <button type="button" class="save-btn" onclick="saveAdminTimetableZoomLink(this)">
-          Save Zoom Link
-        </button>
-        <p id="admin-timetable-message" class="helper-text timetable-status-message"></p>
-      </div>
-
-      <div class="timetable-card">
-        <h3>Timetable Preview</h3>
-        <div id="admin-timetable-admin-preview">
-          <p class="helper-text">Loading timetable...</p>
-        </div>
-      </div>
-    </section>
-
 
     <!-- WEEKLY PLANNER - V101.1.1 -->
     <section id="weekly-planner-screen" class="screen admin-theme weekly-planner-screen">
@@ -1415,13 +1390,13 @@
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=100.2"></script>
 <script src="/js/m4l-shell.js?v=100.8"></script>
-  <script src="/js/m4l-timetable.js?v=100.10.5"></script>
+  <script src="/js/m4l-timetable.js?v=101.2"></script>
   <script src="/js/m4l-weekly-planner.js?v=101.1.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
-<script src="/js/m4l-system-settings.js?v=98.12"></script>
+<script src="/js/m4l-system-settings.js?v=101.2"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>

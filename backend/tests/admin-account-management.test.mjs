@@ -15,7 +15,6 @@ const rows = [
   ["ADMIN1", "Main Admin", "MAIN-LINK", true, adminOneHash, "ADMIN", "ALL", true, "", ""],
   ["ADMIN2", "Senior User", "SENIOR-LINK", true, adminTwoHash, "SENIOR", "2", true, "", ""]
 ];
-const systemConfigRows = [["NextAdminNumber", 1]];
 const reads = [];
 const writes = [];
 
@@ -87,7 +86,6 @@ globalThis.fetch = async (input, init = {}) => {
   if (init.method === "GET") {
     reads.push(range);
     if (range === "AdminRecords!A:ZZ") return response({ values: rows });
-    if (range === "SystemConfig!A:B") return response({ values: systemConfigRows });
     const match = /^AdminRecords!A(\d+):J\1$/.exec(range);
     if (match) return response({ values: [rows[Number(match[1]) - 1] || []] });
     throw new Error(`Unexpected read range: ${range}`);
@@ -102,13 +100,7 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "PUT") {
     const payload = JSON.parse(init.body);
-    if (range.startsWith("SystemConfig!")) {
-      const match = /^SystemConfig!B(\d+)$/.exec(range);
-      if (!match) throw new Error(`Unexpected SystemConfig update: ${range}`);
-      systemConfigRows[Number(match[1]) - 1][1] = payload.values[0][0];
-    } else {
-      applyUpdate(range, payload.values);
-    }
+    applyUpdate(range, payload.values);
     writes.push({ range, values: payload.values });
     return response({ updatedRows: 1 });
   }
@@ -136,7 +128,6 @@ try {
   assert.equal(duplicateName.data.code, "DUPLICATE_ADMIN_NAME");
   assert.equal(duplicateName.data.match.adminid, "ADMIN1");
   assert.equal(rows.length, 3);
-  assert.equal(systemConfigRows[0][1], 1);
 
   const registered = await post("/api/admin/register-admin", {
     username: "Teacher Three",
@@ -149,8 +140,8 @@ try {
   assert.equal(registered.data.admin.pinsetup, false);
   assert.equal(registered.data.admin.adminid, "ADMIN3");
   assert.match(registered.data.admin.uniqueid, /^[A-Z2-9]{10}$/);
-  assert.equal(systemConfigRows[0][1], 4);
   assert.equal(rows.length, 4);
+  assert.equal(reads.includes("SystemConfig!A:B"), false, "Admin IDs must not use SystemConfig counters");
 
   const newAdminId = registered.data.admin.adminid;
   const updated = await post("/api/admin/update-admin", {

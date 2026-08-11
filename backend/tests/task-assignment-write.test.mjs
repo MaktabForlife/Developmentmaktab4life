@@ -62,7 +62,6 @@ const teacherToken = await makeSessionToken({
 let studentRows;
 let taskRows;
 let studentTaskRows;
-let systemConfigRows;
 let missingSheetName = "";
 let reads = [];
 let updates = [];
@@ -88,11 +87,8 @@ function resetSheets() {
   ];
   studentTaskRows = [
     STUDENT_TASK_HEADERS,
-    ["STASK1", "ST1", "TASK1", "SUB1", "Aqidah", "MOD1", "Module 1", "First", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"]
-  ];
-  systemConfigRows = [
-    ["OtherSetting", "value"],
-    ["NextStudentTaskNumber", 100]
+    ["STASK1", "ST1", "TASK1", "SUB1", "Aqidah", "MOD1", "Module 1", "First", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"],
+    ["STASK99", "HISTORIC", "TASKX", "", "", "", "", "", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"]
   ];
   missingSheetName = "";
   reads = [];
@@ -129,7 +125,6 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
-    if (range === "SystemConfig!A:ZZ") return response({ values: systemConfigRows });
 
     throw new Error(`Unexpected task-assignment range: ${range}`);
   }
@@ -138,11 +133,6 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "PUT") {
     updates.push({ range, payload });
-
-    if (range === "SystemConfig!B2") {
-      systemConfigRows[1][1] = payload.values[0][0];
-    }
-
     return response({ updatedRange: range, updatedRows: 1 });
   }
 
@@ -184,14 +174,7 @@ try {
     skippedInvalidTask: 2,
     skippedInvalidStudent: 1
   });
-  assert.deepEqual(updates, [{
-    range: "SystemConfig!B2",
-    payload: {
-      range: "SystemConfig!B2",
-      majorDimension: "ROWS",
-      values: [[103]]
-    }
-  }]);
+  assert.deepEqual(updates, [], "Task assignment must not write SystemConfig counters");
   assert.equal(appends.length, 1);
   assert.equal(appends[0].range, "StudentTasks!A:N");
   assert.deepEqual(
@@ -394,19 +377,6 @@ try {
   assert.deepEqual(missingStudentTasks.data, {
     success: false,
     error: "StudentTasks sheet not found"
-  });
-  assert.equal(updates.length + appends.length, 0);
-
-  resetSheets();
-  systemConfigRows = [["OtherSetting", "value"]];
-  const missingCounter = await postAdmin(
-    adminToken,
-    { studentids: ["ST2"], taskids: ["TASK1"] },
-    directEnv
-  );
-  assert.deepEqual(missingCounter.data, {
-    success: false,
-    error: "NextStudentTaskNumber not found"
   });
   assert.equal(updates.length + appends.length, 0);
 

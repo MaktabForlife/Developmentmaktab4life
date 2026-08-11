@@ -1,4 +1,4 @@
-/* M4L V98.12 - ADMIN-only UI-managed SystemConfig settings. */
+/* M4L V101.2 - ADMIN-only UI-managed SystemConfig settings. */
 (function () {
   "use strict";
 
@@ -63,7 +63,8 @@
         : {};
       const allConfigured = configured.studentLoginBaseUrl === true &&
         configured.weeklyPlannerDriveFolderId === true &&
-        configured.weeklyPlannerDriveFolderLabel === true;
+        configured.weeklyPlannerDriveFolderLabel === true &&
+        configured.globalZoomLink === true;
 
       setSystemSettingsMessage(
         allConfigured
@@ -91,6 +92,7 @@
     const studentLoginBaseUrl = getInputValue("system-settings-student-login-url");
     const weeklyPlannerDriveFolder = getInputValue("system-settings-drive-folder");
     const weeklyPlannerDriveFolderLabel = getInputValue("system-settings-drive-label");
+    const globalZoomLink = getInputValue("system-settings-global-zoom-link");
 
     if (!studentLoginBaseUrl || !weeklyPlannerDriveFolder) {
       setSystemSettingsMessage(
@@ -108,7 +110,8 @@
       const result = await postSystemSettings("/api/admin/system-settings/save", {
         studentLoginBaseUrl,
         weeklyPlannerDriveFolder,
-        weeklyPlannerDriveFolderLabel
+        weeklyPlannerDriveFolderLabel,
+        globalZoomLink
       });
 
       if (!result.success) {
@@ -141,6 +144,7 @@
       "system-settings-drive-label",
       settings.weeklyPlannerDriveFolderLabel || "Weekly Planner"
     );
+    setInputValue("system-settings-global-zoom-link", settings.globalZoomLink || "");
 
     const destination = document.getElementById("system-settings-drive-destination");
     if (destination) {

@@ -10,7 +10,7 @@ const admin = await readFile(new URL("../../admin/index.html", import.meta.url),
 const student = await readFile(new URL("../../student/index.html", import.meta.url), "utf8");
 const root = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 
-assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v8"/);
+assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v9"/);
 assert.match(timetable, /teacherId: normalizeTimetableText\(resolvedTeacherId\)/);
 assert.match(timetable, /teachername: teacherName/);
 assert.match(timetable, /data-timetable-teacher-id=/);
@@ -66,8 +66,8 @@ assert.doesNotMatch(
 assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.5/);
 
 for (const html of [admin, student, root]) {
-  assert.match(html, /m4l-timetable\.js\?v=100\.10\.5/);
-  assert.match(html, /styles\.css\?v=101\.1\.1/);
+  assert.match(html, /m4l-timetable\.js\?v=101\.2/);
+  assert.match(html, /styles\.css\?v=101\.2/);
 }
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=101\.1\.1/);

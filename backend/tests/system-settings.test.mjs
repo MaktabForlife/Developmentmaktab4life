@@ -123,10 +123,12 @@ try {
       weeklyPlannerDriveFolderId: "",
       weeklyPlannerDriveFolderUrl: "",
       weeklyPlannerDriveFolderLabel: "Weekly Planner",
+      globalZoomLink: "",
       configured: {
         studentLoginBaseUrl: true,
         weeklyPlannerDriveFolderId: false,
-        weeklyPlannerDriveFolderLabel: false
+        weeklyPlannerDriveFolderLabel: false,
+        globalZoomLink: false
       }
     }
   });
@@ -134,7 +136,8 @@ try {
   const saved = await postAdmin("/api/admin/system-settings/save", adminToken, {
     studentLoginBaseUrl: "https://new.example.test/student",
     weeklyPlannerDriveFolder: "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMn",
-    weeklyPlannerDriveFolderLabel: "Planner Archive"
+    weeklyPlannerDriveFolderLabel: "Planner Archive",
+    globalZoomLink: "https://zoom.test/j/123456?pwd=abc"
   }, directEnv);
 
   assert.equal(saved.response.status, 200);
@@ -147,6 +150,7 @@ try {
     "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMn"
   );
   assert.equal(saved.data.settings.weeklyPlannerDriveFolderLabel, "Planner Archive");
+  assert.equal(saved.data.settings.globalZoomLink, "https://zoom.test/j/123456?pwd=abc");
   assert.equal(saved.data.settings.updatedBy, "ADMIN1");
   assert.match(saved.data.settings.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 
@@ -163,7 +167,8 @@ try {
     appends[0].payload.values.map(row => [row[0], row[1], row[3]]),
     [
       ["WeeklyPlannerDriveFolderId", "1AbCdEfGhIjKlMn", "ADMIN1"],
-      ["WeeklyPlannerDriveFolderLabel", "Planner Archive", "ADMIN1"]
+      ["WeeklyPlannerDriveFolderLabel", "Planner Archive", "ADMIN1"],
+      ["GlobalZoomLink", "https://zoom.test/j/123456?pwd=abc", "ADMIN1"]
     ]
   );
 
@@ -176,7 +181,9 @@ try {
   assert.equal(reloaded.data.settings.configured.studentLoginBaseUrl, true);
   assert.equal(reloaded.data.settings.configured.weeklyPlannerDriveFolderId, true);
   assert.equal(reloaded.data.settings.configured.weeklyPlannerDriveFolderLabel, true);
+  assert.equal(reloaded.data.settings.configured.globalZoomLink, true);
   assert.equal(reloaded.data.settings.weeklyPlannerDriveFolderLabel, "Planner Archive");
+  assert.equal(reloaded.data.settings.globalZoomLink, "https://zoom.test/j/123456?pwd=abc");
 
   const readCountBeforeInvalid = reads.length;
   const invalid = await postAdmin("/api/admin/system-settings/save", adminToken, {
@@ -186,6 +193,14 @@ try {
   assert.equal(invalid.response.status, 400);
   assert.match(invalid.data.error, /must use https/);
   assert.equal(reads.length, readCountBeforeInvalid, "Invalid settings must not reach Google Sheets");
+
+  const invalidZoom = await postAdmin("/api/admin/system-settings/save", adminToken, {
+    studentLoginBaseUrl: "https://valid.example.test/student/",
+    weeklyPlannerDriveFolder: "1AbCdEfGhIjKlMn",
+    globalZoomLink: "ftp://zoom.test/meeting"
+  }, directEnv);
+  assert.equal(invalidZoom.response.status, 400);
+  assert.match(invalidZoom.data.error, /Zoom link must use https/);
 
   const senior = await postAdmin("/api/admin/system-settings/get", seniorToken, {}, directEnv);
   assert.equal(senior.response.status, 403);

@@ -5,11 +5,11 @@ import {
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { nextSequentialId } from "../lib/sequential-ids.js";
 
 const SUBJECT_LIST_SHEET = "SubjectList";
 const TASK_LIST_SHEET = "TaskList";
 const SUBJECT_RESOURCES_SHEET = "SubjectResources";
-const SYSTEM_CONFIG_SHEET = "SystemConfig";
 const FULL_SHEET_RANGE = "A:ZZ";
 const SUBJECT_LIST_APPEND_RANGE = `${SUBJECT_LIST_SHEET}!A:D`;
 const TASK_LIST_APPEND_RANGE = `${TASK_LIST_SHEET}!A:I`;
@@ -55,19 +55,9 @@ export async function createSubjectGoogleSheetsEndpoint(request, env) {
     });
   }
 
-  const idResult = await reserveLegacyId(
-    env,
-    "NextSubjectNumber",
-    "SUBJ"
-  );
-
-  if (!idResult.ok) {
-    return json({ success: false, error: idResult.error });
-  }
-
   const now = new Date().toISOString();
   const subject = {
-    subjectid: idResult.id,
+    subjectid: nextSequentialId(rows, "SUBJ"),
     subjectname: subjectName,
     active: true,
     createdate: now
@@ -199,15 +189,9 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
     });
   }
 
-  const idResult = await reserveLegacyId(env, "NextTaskNumber", "TASK");
-
-  if (!idResult.ok) {
-    return json({ success: false, error: idResult.error });
-  }
-
   const now = new Date().toISOString();
   const task = {
-    taskid: idResult.id,
+    taskid: nextSequentialId(rows, "TASK"),
     subjectid,
     taskname: taskName,
     audiolink: audioLink,
@@ -377,19 +361,9 @@ export async function createSubjectResourceGoogleSheetsEndpoint(request, env) {
     return missingSheetResponse(SUBJECT_RESOURCES_SHEET);
   }
 
-  const idResult = await reserveLegacyId(
-    env,
-    "NextResourceNumber",
-    "RES"
-  );
-
-  if (!idResult.ok) {
-    return json({ success: false, error: idResult.error });
-  }
-
   const now = new Date().toISOString();
   const resource = {
-    resourceid: idResult.id,
+    resourceid: nextSequentialId(rows, "RES"),
     subjectid,
     resourcename: resourceName,
     resourcetype: resourceType,
@@ -675,34 +649,6 @@ async function readCurriculumSheet(env, sheetName, range = FULL_SHEET_RANGE) {
 
     throw error;
   }
-}
-
-async function reserveLegacyId(env, counterName, prefix) {
-  const rows = await readCurriculumSheet(env, SYSTEM_CONFIG_SHEET, "A:B");
-
-  if (rows === null) {
-    return { ok: false, error: `${SYSTEM_CONFIG_SHEET} sheet not found` };
-  }
-
-  const rowIndex = rows.findIndex(row => clean(getValue(row, 0)) === counterName);
-
-  if (rowIndex === -1) {
-    return { ok: false, error: `${counterName} not found` };
-  }
-
-  const current = Number(getValue(rows[rowIndex], 1));
-
-  if (!Number.isSafeInteger(current) || current < 0) {
-    return { ok: false, error: `${counterName} must contain a valid number` };
-  }
-
-  await updateGoogleSheetValues(
-    env,
-    `${SYSTEM_CONFIG_SHEET}!B${rowIndex + 1}`,
-    [[current + 1]]
-  );
-
-  return { ok: true, id: `${prefix}${current}` };
 }
 
 function findSubjectByName(rows, subjectName, excludedSubjectId = "") {

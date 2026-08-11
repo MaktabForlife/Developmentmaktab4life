@@ -1,4 +1,4 @@
-/* V101.1.1 aligned large-screen Weekly Planner page width.
+/* V101.2 SystemConfig settings and global Zoom migration.
 
    V100.7.2 highlighted Admin Home tile.
 
@@ -90,7 +90,7 @@ v91.7.4 - CSS split phase 1 loader
 @import url('/css/m4l-16-weekly-planner-archive.css?v=97.1.8.4.1');
 
 @import url("/css/m4l-17-teaching-panel.css?v=98.0");
-@import url("/css/m4l-18-system-settings.css?v=98.12");
+@import url("/css/m4l-18-system-settings.css?v=101.2");
 @import url("/css/m4l-19-pdf-split-view.css?v=99.1");
 @import url("/css/m4l-20-manage-admins.css?v=100.3.0");
 @import url("/css/m4l-21-manage-resources.css?v=100.4.2");

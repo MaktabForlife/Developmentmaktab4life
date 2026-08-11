@@ -1,4 +1,4 @@
-/* M4L V101.1.1 - aligned large-screen Weekly Planner page width.
+/* M4L V101.2 - SystemConfig settings and counter-free identifiers.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "101.1.1"
+          version: "101.2"
         });
       }
 

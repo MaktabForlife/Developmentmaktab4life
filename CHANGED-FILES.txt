@@ -1,21 +1,40 @@
-V101.1.1
+V101.2
 
 Backend / Worker
+- backend/src/lib/sequential-ids.js
+- backend/src/lib/system-config.js
+- backend/src/routes/admin-account-management.js
+- backend/src/routes/curriculum.js
+- backend/src/routes/student-registration.js
+- backend/src/routes/system-settings.js
+- backend/src/routes/task-assignment.js
+- backend/src/routes/timetable.js
 - backend/src/worker.js
 - backend/package.json
-- backend/tests/router.test.mjs
-- backend/tests/timetable-teacher-ui.test.mjs
-- backend/tests/admin-management-ui.test.mjs
+- backend/tests/sequential-ids.test.mjs
+- backend/tests/student-registration.test.mjs
 - backend/tests/student-task-assignment-ui.test.mjs
+- backend/tests/admin-account-management.test.mjs
+- backend/tests/admin-management-ui.test.mjs
+- backend/tests/curriculum-write.test.mjs
+- backend/tests/group-zero-access.test.mjs
+- backend/tests/task-assignment-write.test.mjs
+- backend/tests/system-settings.test.mjs
+- backend/tests/timetable.test.mjs
+- backend/tests/timetable-teacher-ui.test.mjs
+- backend/tests/admin-menu-home.test.mjs
+- backend/tests/router.test.mjs
 
 Frontend
-- js/m4l-weekly-planner.js
-- js/tests/weekly-planner.test.mjs
-- css/m4l-15-weekly-planner.css
+- js/m4l-system-settings.js
+- js/m4l-timetable.js
 - styles.css
 - admin/index.html
 - student/index.html
 - index.html
+
+Documentation
+- docs/V101.2-SYSTEMCONFIG-MIGRATION.md
 
 Release metadata
 - version.json
@@ -28,7 +47,9 @@ Release metadata
 Deployment order
 1. Worker/backend
 2. Frontend
+3. Save Global Zoom link through ADMIN System Settings
+4. Verify ID creation and Zoom behavior
+5. Remove obsolete SystemConfig counter rows
 
-Large-screen top section now matches the 1400px editable planner body width.
-Medium and mobile layouts remain unchanged.
-No Apps Script, spreadsheet, Worker binding or Cloudflare-setting change is required.
+No Apps Script deployment or new Worker binding is required.
+Do not delete TimeTable or TeacherAssign in this release.

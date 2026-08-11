@@ -6,9 +6,9 @@ import {
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { nextSequentialId } from "../lib/sequential-ids.js";
 
 const ADMIN_RECORDS_SHEET = "AdminRecords";
-const SYSTEM_CONFIG_SHEET = "SystemConfig";
 const FULL_SHEET_RANGE = `${ADMIN_RECORDS_SHEET}!A:ZZ`;
 const APPEND_RANGE = `${ADMIN_RECORDS_SHEET}!A:J`;
 const UNIQUE_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -75,13 +75,7 @@ export async function registerAdminGoogleSheetsEndpoint(request, env) {
     }, 409);
   }
 
-  const adminIdResult = await reserveAdminId(env, rows);
-
-  if (!adminIdResult.ok) {
-    return json({ success: false, error: adminIdResult.error }, 503);
-  }
-
-  const adminid = adminIdResult.adminid;
+  const adminid = nextSequentialId(rows, "ADMIN");
   const uniqueid = generateUniqueId(rows);
   const createdate = new Date().toISOString();
 
@@ -351,36 +345,6 @@ function countOtherActiveAdmins(rows, excludedSheetRow) {
     admin.active === true &&
     admin.role === "ADMIN"
   )).length;
-}
-
-async function reserveAdminId(env, adminRows = []) {
-  const rows = await readGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!A:B`);
-  const rowIndex = rows.findIndex(row => clean(row?.[0]) === "NextAdminNumber");
-
-  if (rowIndex === -1) {
-    return { ok: false, error: "NextAdminNumber not found in SystemConfig" };
-  }
-
-  const current = Number(rows[rowIndex]?.[1]);
-
-  if (!Number.isInteger(current) || current < 1) {
-    return { ok: false, error: "NextAdminNumber is invalid" };
-  }
-
-  const existingIds = new Set(
-    adminRows.slice(1).map(row => clean(row?.[0]).toUpperCase()).filter(Boolean)
-  );
-  let candidate = current;
-
-  while (existingIds.has(`ADMIN${candidate}`)) {
-    candidate += 1;
-    if (candidate > 999999999) {
-      return { ok: false, error: "Unable to allocate a unique AdminID" };
-    }
-  }
-
-  await updateGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!B${rowIndex + 1}`, [[candidate + 1]]);
-  return { ok: true, adminid: `ADMIN${candidate}` };
 }
 
 function generateUniqueId(rows) {

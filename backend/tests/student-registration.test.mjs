@@ -17,13 +17,11 @@ const studentRows = [
     "RegisteredBy"
   ],
   ["SYSTEM1", "Maktab Day", "999999", "SYSTEM", false, "", "ALL", "", "", 0, true, "SYSTEM"],
-  ["ST1", "Ahmad", "012345", "LINK-AHMAD", true, "secret", "2", "2026-07-01", "", 0, true, "Admin"],
-  ["ST2", "Ahmad1", "111111", "LINK-AHMAD1", true, "secret", "2", "2026-07-02", "", 0, true, "Admin"],
-  ["ST3", "Ahmad2", "222222", "LINK-AHMAD2", true, "secret", "2", "2026-07-03", "", 0, true, "Admin"]
+  ["MAKTAB197", "Ahmad", "012345", "LINK-AHMAD", true, "secret", "2", "2026-07-01", "", 0, true, "Admin"],
+  ["MAKTAB198", "Ahmad1", "111111", "LINK-AHMAD1", true, "secret", "2", "2026-07-02", "", 0, true, "Admin"],
+  ["MAKTAB199", "Ahmad2", "222222", "LINK-AHMAD2", true, "secret", "2", "2026-07-03", "", 0, true, "Admin"]
 ];
 const systemConfigRows = [
-  ["NextStudentNumber", 200],
-  ["NextStudentTaskNumber", 500],
   ["StudentLoginBaseUrl", "https://development.example.test/student/"]
 ];
 const taskRows = [
@@ -138,7 +136,6 @@ globalThis.fetch = async (input, init = {}) => {
     }
 
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
-    if (range === "SystemConfig!A:ZZ") return response({ values: systemConfigRows });
     if (range === "SystemConfig!A:D") return response({ values: systemConfigRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
@@ -150,12 +147,6 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "PUT") {
     updates.push({ range, payload });
-
-    if (range === "SystemConfig!B1") {
-      systemConfigRows[0][1] = payload.values[0][0];
-    } else if (range === "SystemConfig!B2") {
-      systemConfigRows[1][1] = payload.values[0][0];
-    }
 
     return response({ updatedRange: range, updatedRows: 1 });
   }
@@ -210,9 +201,7 @@ try {
   assert.equal(registered.data.taskAssignmentPending, true);
   assert.equal("assignment" in registered.data, false);
 
-  assert.deepEqual(updates.map(item => [item.range, item.payload.values]), [
-    ["SystemConfig!B1", [[201]]]
-  ]);
+  assert.deepEqual(updates, [], "Registration must not write SystemConfig counters");
   assert.equal(appends.length, 1);
   assert.equal(appends[0].range, "StudentRecords!A:L");
   assert.deepEqual(appends[0].payload.values[0].slice(0, 4), [
@@ -233,7 +222,6 @@ try {
   ]);
   assert.match(appends[0].payload.values[0][7], /^\d{4}-\d{2}-\d{2}T/);
 
-  assert.equal(systemConfigRows[1][1], 500, "Registration must not reserve StudentTask IDs");
   assert.equal(
     appends.some(item => item.range.startsWith("StudentTasks!")),
     false,
@@ -368,7 +356,6 @@ try {
     new Set(reads),
     new Set([
       "StudentRecords!A:ZZ",
-      "SystemConfig!A:ZZ",
       "SystemConfig!A:D"
     ])
   );

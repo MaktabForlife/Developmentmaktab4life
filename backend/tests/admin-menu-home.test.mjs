@@ -35,9 +35,11 @@ assert.match(landing, /admin\.svg\?v=100\.7\.2/);
 assert.match(landing, /resources\.svg\?v=100\.7\.2/);
 assert.match(landing, /systemsettings\.svg\?v=100\.7\.2/);
 
-assert.match(adminHtml, /id="admin-system-menu"[\s\S]*?>Zoom Link<[\s\S]*?>System Settings</);
+assert.match(adminHtml, /id="admin-system-menu"[\s\S]*?>System Settings</);
+assert.doesNotMatch(adminHtml, /showAdminZoomLinkAdmin/);
 assert.match(adminHtml, /id="system-settings-screen"[\s\S]*?data-header-target="admin-academics"/);
-assert.match(adminHtml, /id="admin-timetable-admin-screen"[\s\S]*?app-icon-xclose[\s\S]*?data-header-target="admin-academics"|id="admin-timetable-admin-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);
+assert.match(adminHtml, /id="system-settings-global-zoom-link"/);
+assert.doesNotMatch(adminHtml, /id="admin-timetable-admin-screen"/);
 assert.doesNotMatch(adminHtml, /id="admin-system-menu"[\s\S]*?<button[^>]*>Back<\/button>[\s\S]*?<!-- ADMIN SYSTEM SETTINGS -->/);
 assert.match(adminHtml, /id="manage-resources-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);
 assert.match(adminHtml, /id="manage-admins-screen"[\s\S]*?data-header-target="admin-academics"[\s\S]*?app-icon-xclose/);

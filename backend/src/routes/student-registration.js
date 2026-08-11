@@ -1,15 +1,14 @@
 import { normalizeWhatsapp6, requireAdminOrSenior } from "../lib/auth.js";
 import {
   appendGoogleSheetValues,
-  readGoogleSheetValues,
-  updateGoogleSheetValues
+  readGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { nextSequentialId } from "../lib/sequential-ids.js";
 import { getStudentLoginBaseUrl } from "../lib/system-config.js";
 import { buildStudentDuplicateResponse } from "./student-management.js";
 
 const STUDENT_RECORDS_SHEET = "StudentRecords";
-const SYSTEM_CONFIG_SHEET = "SystemConfig";
 const FULL_SHEET_RANGE = "A:ZZ";
 const STUDENT_RECORDS_APPEND_RANGE = `${STUDENT_RECORDS_SHEET}!A:L`;
 const UNIQUE_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -97,17 +96,13 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
   const finalUsername = confirmDuplicate
     ? getNextAvailableUsername(studentRows, username)
     : username;
-  const studentIdResult = await reserveStudentId(env);
-
-  if (!studentIdResult.ok) {
-    return json({ success: false, error: studentIdResult.error });
-  }
+  const studentid = nextSequentialId(studentRows, "MAKTAB");
 
   const uniqueid = generateUniqueId();
   const createdate = new Date().toISOString();
 
   await appendGoogleSheetValues(env, STUDENT_RECORDS_APPEND_RANGE, [[
-    studentIdResult.studentid,
+    studentid,
     finalUsername,
     whatsapp6,
     uniqueid,
@@ -123,7 +118,7 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
 
   return json({
     success: true,
-    studentid: studentIdResult.studentid,
+    studentid,
     username: finalUsername,
     whatsapp6,
     classgroup,
@@ -133,20 +128,6 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
     loginUrl: `${studentLoginBaseUrl}${uniqueid}`,
     taskAssignmentPending: true
   });
-}
-
-async function reserveStudentId(env) {
-  const rows = await readRegistrationSheet(env, SYSTEM_CONFIG_SHEET);
-
-  if (rows === null) {
-    return { ok: false, error: "SystemConfig sheet not found" };
-  }
-
-  const current = Number(getValue(rows[0], 1));
-
-  await updateGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!B1`, [[current + 1]]);
-
-  return { ok: true, studentid: `MAKTAB${current}` };
 }
 
 async function readRegistrationSheet(env, sheetName) {

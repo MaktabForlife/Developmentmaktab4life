@@ -1,3 +1,27 @@
+# V101.2 — SystemConfig foundation and counter-free identifiers
+
+- Adds `GlobalZoomLink` to the ADMIN-only System Settings read/write contract.
+- Uses SystemConfig for the global Join Zoom action while retaining a legacy
+  TimeTable fallback until the new row has been saved.
+- Removes the separate Zoom Link settings tile, screen and frontend write path.
+- Retains the old timetable Zoom endpoint temporarily for cached-client
+  compatibility, but redirects its write to SystemConfig and restricts it to
+  `ADMIN` accounts.
+- Adds a shared sequential-ID helper that calculates the next unused suffix
+  from every row in the authoritative sheet, including blank and inactive
+  records.
+- Converts Student, Admin, Subject, Task, SubjectResource and StudentTask
+  creation so no Worker route reads or writes an ID counter.
+- Adds focused tests for placeholder IDs, multi-ID allocation, SystemConfig
+  Zoom persistence, legacy fallback, session-link isolation and counter-free
+  record creation.
+- Bumps timetable cache metadata to `v9` and release metadata to `101.2`.
+
+The Worker must be deployed before any counter rows are removed. The migration
+and rollback sequence is documented in `docs/V101.2-SYSTEMCONFIG-MIGRATION.md`.
+
+---
+
 # V101.1.1 — Unified large-screen Weekly Planner page width
 
 - Caps `.weekly-planner-global-panel` at 1400px only from the 1180px desktop

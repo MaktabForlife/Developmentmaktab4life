@@ -1,3 +1,29 @@
+V101.2
+
+# SystemConfig foundation and global Zoom migration
+
+- Moves the global Zoom setting into the existing ADMIN-only System Settings
+  screen as `GlobalZoomLink`.
+- Timetable reads prefer `SystemConfig.GlobalZoomLink` and retain the legacy
+  `TimeTable.ZoomLink` only as a one-release migration fallback.
+- Removes the separate Zoom Link tile and legacy Timetable/Zoom editor.
+- Keeps `TeacherAssign.ZoomLink` session-specific and unchanged.
+- Replaces all live `Next...Number` dependencies with IDs calculated from the
+  authoritative StudentRecords, AdminRecords, SubjectList, TaskList,
+  SubjectResources and StudentTasks sheets.
+- Blank or inactive rows still reserve their IDs: an existing blank `SUBJ17`
+  therefore produces `SUBJ18`, never another `SUBJ17`.
+- Bumps the timetable cache namespace to `v9` and application/Worker metadata
+  to `101.2`.
+
+Deploy the Worker/backend first while retaining all existing SystemConfig rows.
+Deploy the frontend second, save the global Zoom URL through System Settings,
+verify reads and writes, and only then remove the obsolete counter rows. Follow
+`docs/V101.2-SYSTEMCONFIG-MIGRATION.md`. No Apps Script deployment or new
+Worker binding is required. Do not delete `TimeTable` or `TeacherAssign` yet.
+
+---
+
 V101.1.1
 
 # Unified large-screen Weekly Planner page width
