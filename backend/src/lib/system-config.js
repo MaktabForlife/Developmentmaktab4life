@@ -1,12 +1,17 @@
-import { readGoogleSheetValues } from "./google-sheets.js";
+import {
+  appendGoogleSheetValues,
+  batchUpdateGoogleSheetValues,
+  readGoogleSheetValues
+} from "./google-sheets.js";
 
 export const SYSTEM_CONFIG_SHEET = "SystemConfig";
 export const STUDENT_LOGIN_BASE_KEY = "StudentLoginBaseUrl";
 export const WEEKLY_PLANNER_DRIVE_FOLDER_ID_KEY = "WeeklyPlannerDriveFolderId";
 export const WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY = "WeeklyPlannerDriveFolderLabel";
+export const GLOBAL_ZOOM_LINK_KEY = "GlobalZoomLink";
 export const DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL = "Weekly Planner";
 
-const SYSTEM_CONFIG_RANGE = `${SYSTEM_CONFIG_SHEET}!A:D`;
+const SYSTEM_CONFIG_RANGE = `${SYSTEM_CONFIG_SHEET}!A:E`;
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
 
 export async function readSystemConfigRows(env) {
@@ -35,6 +40,58 @@ export function findSystemConfigRowIndexes(rows, key) {
   });
 
   return indexes;
+}
+
+export async function upsertSystemConfigValues(env, valuesByKey, options = {}) {
+  const entries = valuesByKey instanceof Map
+    ? Array.from(valuesByKey.entries())
+    : Object.entries(valuesByKey || {});
+  const rows = Array.isArray(options.rows)
+    ? options.rows
+    : await readSystemConfigRows(env);
+  const updatedAt = clean(options.updatedAt) || new Date().toISOString();
+  const updatedBy = clean(options.updatedBy) || "SYSTEM";
+  const updatedByName = clean(options.updatedByName) || updatedBy;
+  const updates = [];
+  const appends = [];
+
+  for (const [rawKey, rawValue] of entries) {
+    const key = clean(rawKey);
+    if (!key) continue;
+
+    const rowIndexes = findSystemConfigRowIndexes(rows, key);
+
+    if (rowIndexes.length > 1) {
+      return {
+        ok: false,
+        status: 409,
+        error: `SystemConfig contains duplicate ${key} rows`
+      };
+    }
+
+    const value = clean(rawValue);
+
+    if (rowIndexes.length === 1) {
+      const sheetRow = rowIndexes[0] + 1;
+      updates.push({
+        range: `${SYSTEM_CONFIG_SHEET}!B${sheetRow}:E${sheetRow}`,
+        majorDimension: "ROWS",
+        values: [[value, updatedAt, updatedBy, updatedByName]]
+      });
+    } else {
+      appends.push([key, value, updatedAt, updatedBy, updatedByName]);
+    }
+  }
+
+  if (updates.length > 0) {
+    await batchUpdateGoogleSheetValues(env, updates);
+  }
+
+  if (appends.length > 0) {
+    await appendGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!A:E`, appends);
+  }
+
+  return { ok: true, updatedAt, updatedBy, updatedByName };
 }
 
 export async function getStudentLoginBaseUrl(env) {
@@ -74,6 +131,30 @@ export function normalizeStudentLoginBaseUrl(value) {
   }
 
   url.pathname = ensureTrailingSlash(url.pathname || "/");
+  return url.toString();
+}
+
+export function normalizeGlobalZoomLink(value) {
+  const text = clean(value);
+
+  if (!text) return "";
+
+  let url;
+
+  try {
+    url = new URL(text);
+  } catch {
+    throw new Error("Enter a valid global Zoom link");
+  }
+
+  if (url.protocol !== "https:") {
+    throw new Error("Global Zoom link must use https://");
+  }
+
+  if (url.username || url.password) {
+    throw new Error("Global Zoom link cannot contain credentials");
+  }
+
   return url.toString();
 }
 

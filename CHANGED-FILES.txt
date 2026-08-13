@@ -1,21 +1,42 @@
-V101.1.1
+V101.3
 
 Backend / Worker
+- backend/src/lib/admin-audit.js
+- backend/src/lib/system-config.js
+- backend/src/routes/admin-account-management.js
+- backend/src/routes/attendance.js
+- backend/src/routes/auth-google-sheets.js
+- backend/src/routes/curriculum.js
+- backend/src/routes/drive-library.js
+- backend/src/routes/progress-write.js
+- backend/src/routes/student-management.js
+- backend/src/routes/student-registration.js
+- backend/src/routes/system-settings.js
+- backend/src/routes/task-assignment.js
+- backend/src/routes/timetable.js
+- backend/src/routes/weekly-planner.js
 - backend/src/worker.js
 - backend/package.json
-- backend/tests/router.test.mjs
-- backend/tests/timetable-teacher-ui.test.mjs
-- backend/tests/admin-management-ui.test.mjs
-- backend/tests/student-task-assignment-ui.test.mjs
 
-Frontend
-- js/m4l-weekly-planner.js
-- js/tests/weekly-planner.test.mjs
-- css/m4l-15-weekly-planner.css
-- styles.css
-- admin/index.html
-- student/index.html
-- index.html
+Tests
+- backend/tests/admin-account-management.test.mjs
+- backend/tests/admin-audit.test.mjs
+- backend/tests/attendance.test.mjs
+- backend/tests/auth.test.mjs
+- backend/tests/curriculum-write.test.mjs
+- backend/tests/drive-library.test.mjs
+- backend/tests/progress-write.test.mjs
+- backend/tests/router.test.mjs
+- backend/tests/student-management.test.mjs
+- backend/tests/student-registration.test.mjs
+- backend/tests/system-settings.test.mjs
+- backend/tests/task-assignment-write.test.mjs
+- backend/tests/timetable.test.mjs
+- backend/tests/weekly-planner.test.mjs
+
+Documentation
+- docs/V101.3-ADMIN-AUDIT-MIGRATION.md
+- docs/V101.3-AdminAuditLog-template.csv
 
 Release metadata
 - version.json
@@ -26,9 +47,12 @@ Release metadata
 - DELETE-FILES.txt
 
 Deployment order
-1. Worker/backend
-2. Frontend
+1. Back up the Google Sheet.
+2. Create AdminAuditLog and append the documented audit columns.
+3. Deploy the Worker/backend.
+4. Deploy version.json and js/version.json.
+5. Run the creation, modification and sensitive-data verification checklist.
 
-Large-screen top section now matches the 1400px editable planner body width.
-Medium and mobile layouts remain unchanged.
-No Apps Script, spreadsheet, Worker binding or Cloudflare-setting change is required.
+The Sheet migration must precede the Worker because audited writes fail closed.
+No Apps Script deployment, Worker binding or Cloudflare-variable change is
+required. Do not delete TimeTable or TeacherAssign.

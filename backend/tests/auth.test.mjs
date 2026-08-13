@@ -12,7 +12,9 @@ import {
 
 const STUDENT_HEADERS = [
   "StudentID", "Username", "WhatsAppLast6", "UniqueID", "PinSetup", "PinHash",
-  "ClassGroup", "CreateDate", "LastLogin", "FailedAttempts", "Active", "RegisteredBy"
+  "ClassGroup", "CreateDate", "LastLogin", "FailedAttempts", "Active", "RegisteredBy",
+  "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID",
+  "ModifiedByAdminName", "ModifiedDate"
 ];
 const ADMIN_HEADERS = [
   "AdminID", "Username", "UniqueID", "PinSetup", "PinHash", "Role",
@@ -28,6 +30,7 @@ let adminRows;
 let reads = [];
 let updates = [];
 let batchUpdates = [];
+let auditRows = [];
 let missingSheetName = "";
 
 function resetSheets() {
@@ -48,6 +51,10 @@ function resetSheets() {
   reads = [];
   updates = [];
   batchUpdates = [];
+  auditRows = [[
+    "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+    "RecordType", "RecordID", "ChangedFields"
+  ]];
   missingSheetName = "";
 }
 
@@ -112,6 +119,7 @@ globalThis.fetch = async (input, init = {}) => {
 
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "AdminRecords!A:ZZ") return response({ values: adminRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
 
     const studentCredentialRange = /^StudentRecords!A(\d+):K\1$/.exec(range);
     if (studentCredentialRange) {
@@ -124,6 +132,16 @@ globalThis.fetch = async (input, init = {}) => {
     }
 
     throw new Error(`Unexpected authentication range: ${range}`);
+  }
+
+  if (init.method === "POST" && range.endsWith(":append")) {
+    const payload = JSON.parse(init.body);
+    const cleanRange = range.replace(/:append$/, "");
+    if (cleanRange !== "AdminAuditLog!A:I") {
+      throw new Error(`Unexpected append range: ${cleanRange}`);
+    }
+    auditRows.push(...payload.values);
+    return response({ updates: { updatedRows: payload.values.length } });
   }
 
   if (init.method === "PUT") {
@@ -425,7 +443,7 @@ try {
     studentid: "ST1",
     username: "Student One"
   });
-  assert.deepEqual(batchUpdates.slice(-2), [
+  assert.deepEqual(batchUpdates.slice(-5, -3), [
     {
       range: "StudentRecords!E2:F2",
       majorDimension: "ROWS",
@@ -437,6 +455,12 @@ try {
       values: [[0]]
     }
   ]);
+  assert.equal(studentRows[1][14], "ADMIN1");
+  assert.equal(studentRows[1][15], "Admin One");
+  assert.ok(auditRows.some(row => (
+    row[5] === "PIN_RESET" && row[6] === "STUDENT_RECORD" && row[7] === "ST1"
+  )));
+  assert.equal(JSON.stringify(auditRows).includes(studentHash), false);
 
   const resetStudentAuth = await getAuthUser(new Request("https://worker.test/api/tasks/student", {
     headers: { Authorization: `Bearer ${studentLogin.data.token}` }

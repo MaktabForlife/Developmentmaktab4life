@@ -8,16 +8,21 @@ const adminOneHash = await createSaltedPinHash("1234", pinSecret);
 const adminTwoHash = await createSaltedPinHash("5678", pinSecret);
 const headers = [
   "AdminID", "Username", "UniqueID", "PinSetup", "PinHash", "Role",
-  "AssignedGroup", "Active", "CreateDate", "LastLogin"
+  "AssignedGroup", "Active", "CreateDate", "LastLogin",
+  "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID",
+  "ModifiedByAdminName", "ModifiedDate"
 ];
 const rows = [
   headers,
   ["ADMIN1", "Main Admin", "MAIN-LINK", true, adminOneHash, "ADMIN", "ALL", true, "", ""],
   ["ADMIN2", "Senior User", "SENIOR-LINK", true, adminTwoHash, "SENIOR", "2", true, "", ""]
 ];
-const systemConfigRows = [["NextAdminNumber", 1]];
 const reads = [];
 const writes = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 
 const keyPair = await crypto.subtle.generateKey({
   name: "RSASSA-PKCS1-v1_5",
@@ -87,7 +92,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (init.method === "GET") {
     reads.push(range);
     if (range === "AdminRecords!A:ZZ") return response({ values: rows });
-    if (range === "SystemConfig!A:B") return response({ values: systemConfigRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
     const match = /^AdminRecords!A(\d+):J\1$/.exec(range);
     if (match) return response({ values: [rows[Number(match[1]) - 1] || []] });
     throw new Error(`Unexpected read range: ${range}`);
@@ -95,6 +100,11 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "POST" && rawRange.endsWith(":append")) {
     const payload = JSON.parse(init.body);
+    if (range === "AdminAuditLog!A:I") {
+      auditRows.push(...payload.values);
+      writes.push({ range, values: payload.values });
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
     rows.push(payload.values[0]);
     writes.push({ range, values: payload.values });
     return response({ updates: { updatedRows: 1 } });
@@ -102,13 +112,7 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "PUT") {
     const payload = JSON.parse(init.body);
-    if (range.startsWith("SystemConfig!")) {
-      const match = /^SystemConfig!B(\d+)$/.exec(range);
-      if (!match) throw new Error(`Unexpected SystemConfig update: ${range}`);
-      systemConfigRows[Number(match[1]) - 1][1] = payload.values[0][0];
-    } else {
-      applyUpdate(range, payload.values);
-    }
+    applyUpdate(range, payload.values);
     writes.push({ range, values: payload.values });
     return response({ updatedRows: 1 });
   }
@@ -136,7 +140,6 @@ try {
   assert.equal(duplicateName.data.code, "DUPLICATE_ADMIN_NAME");
   assert.equal(duplicateName.data.match.adminid, "ADMIN1");
   assert.equal(rows.length, 3);
-  assert.equal(systemConfigRows[0][1], 1);
 
   const registered = await post("/api/admin/register-admin", {
     username: "Teacher Three",
@@ -149,8 +152,10 @@ try {
   assert.equal(registered.data.admin.pinsetup, false);
   assert.equal(registered.data.admin.adminid, "ADMIN3");
   assert.match(registered.data.admin.uniqueid, /^[A-Z2-9]{10}$/);
-  assert.equal(systemConfigRows[0][1], 4);
   assert.equal(rows.length, 4);
+  assert.equal(rows[3][10], "ADMIN1");
+  assert.equal(rows[3][11], "Main Admin");
+  assert.equal(reads.includes("SystemConfig!A:B"), false, "Admin IDs must not use SystemConfig counters");
 
   const newAdminId = registered.data.admin.adminid;
   const updated = await post("/api/admin/update-admin", {
@@ -167,6 +172,8 @@ try {
   assert.equal(rows[3][1], "Senior Three");
   assert.equal(rows[3][5], "SENIOR");
   assert.equal(rows[3][7], false);
+  assert.equal(rows[3][12], "ADMIN1");
+  assert.equal(rows[3][13], "Main Admin");
 
   const selfSecurityChange = await post("/api/admin/update-admin", {
     adminid: "ADMIN1",
@@ -193,6 +200,7 @@ try {
   assert.equal(resetOther.response.status, 200);
   assert.equal(rows[2][3], false);
   assert.equal(rows[2][4], "");
+  assert.ok(auditRows.some(row => row[5] === "PIN_RESET" && row[7] === "ADMIN2"));
 
   // Restore ADMIN2 credentials, then prove a role update invalidates its old token.
   rows[2][3] = true;
@@ -211,6 +219,8 @@ try {
 
   assert.ok(reads.includes("AdminRecords!A2:J2"));
   assert.ok(writes.length >= 4);
+  assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "ADMIN3"));
+  assert.equal(JSON.stringify(auditRows).includes(adminOneHash), false);
 } finally {
   globalThis.fetch = originalFetch;
 }

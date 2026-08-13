@@ -1,7 +1,6 @@
-V101.1.1
+V101.3
 
 No repository files or Google Sheet tabs should be deleted in this release.
 
-The legacy TimeTable session data is no longer displayed, but TimeTable still owns the
-global Zoom link and must remain until the TeacherAssign timetable is verified and the
-global link is migrated in a later retirement release.
+Create the new `AdminAuditLog` tab and append the V101.3 audit columns before
+deploying the Worker. Keep `SystemConfig`, `TimeTable` and `TeacherAssign`.

@@ -4,7 +4,8 @@ import worker from "../src/worker.js";
 const weeklyHeaders = [
   "PlannerID", "TeacherID", "TeacherName", "WeekStart", "WeekEnd", "Month",
   "GroupNo", "Status", "PlannerData", "Feedback", "FeedbackBy", "CreatedDate",
-  "UpdatedDate", "PublishedDate"
+  "UpdatedDate", "PublishedDate", "CreatedByAdminID", "CreatedByAdminName",
+  "ModifiedByAdminID", "ModifiedByAdminName"
 ];
 const adminRows = [
   ["adminid", "username", "uniqueid", "pinsetup", "pinhash", "role", "assignedgroup", "active", "createdate", "lastlogin", "URL"],
@@ -12,6 +13,10 @@ const adminRows = [
   ["ADMIN2", "Other Teacher", "HIJKLMN", true, "", "TEACHER", "3", true, "", "", ""]
 ];
 const weeklyRows = [weeklyHeaders];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 const calls = [];
 
 const keyPair = await crypto.subtle.generateKey(
@@ -55,21 +60,31 @@ globalThis.fetch = async (input, init = {}) => {
       return response({ values: adminRows });
     }
 
-    if (range === "WeeklyPlanners!A1:N1") {
+    if (range === "AdminAuditLog!A1:I1") {
+      return response({ values: [auditRows[0]] });
+    }
+
+    if (range === "WeeklyPlanners!A1:R1") {
       return response({ values: [weeklyHeaders] });
     }
 
-    if (range === "WeeklyPlanners!A:N" && (init.method || "GET") === "GET") {
+    if (range === "WeeklyPlanners!A:R" && (init.method || "GET") === "GET") {
       return response({ values: weeklyRows });
     }
 
-    if (range === "WeeklyPlanners!A:N" && init.method === "POST" && isAppendRequest) {
+    if (range === "AdminAuditLog!A:I" && init.method === "POST" && isAppendRequest) {
+      const payload = JSON.parse(init.body);
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
+
+    if (range === "WeeklyPlanners!A:R" && init.method === "POST" && isAppendRequest) {
       const payload = JSON.parse(init.body);
       weeklyRows.push(payload.values[0]);
       return response({ updates: { updatedRows: 1 } });
     }
 
-    if (/^WeeklyPlanners!A\d+:N\d+$/.test(range) && init.method === "PUT") {
+    if (/^WeeklyPlanners!A\d+:R\d+$/.test(range) && init.method === "PUT") {
       const rowNumber = Number(range.match(/A(\d+)/)[1]);
       const payload = JSON.parse(init.body);
       weeklyRows[rowNumber - 1] = payload.values[0];
@@ -168,14 +183,17 @@ assert.equal(saved.status, 200);
 assert.equal(saved.data.canEdit, true);
 assert.equal(saved.data.planner.status, "READY");
 assert.equal(weeklyRows.length, 2);
-assert.equal(weeklyRows[1].length, 14);
+assert.equal(weeklyRows[1].length, 18);
+assert.equal(weeklyRows[1][14], "ADMIN1");
+assert.equal(weeklyRows[1][15], "Test Teacher");
+assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === saved.data.planner.plannerId));
 
 const appendCall = calls.find(call => {
-  return call.method === "POST" && call.url.includes("WeeklyPlanners!A%3AN:append");
+  return call.method === "POST" && call.url.includes("WeeklyPlanners!A%3AR:append");
 });
-assert.ok(appendCall, "New planners must use the Sheets values:append endpoint for one A:N row");
+assert.ok(appendCall, "New planners must use the Sheets values:append endpoint for one A:R row");
 assert.equal(
-  calls.some(call => call.method === "POST" && /WeeklyPlanners!A%3AN\?/.test(call.url)),
+  calls.some(call => call.method === "POST" && /WeeklyPlanners!A%3AR\?/.test(call.url)),
   false,
   "New planners must not POST to the ordinary values range endpoint"
 );
@@ -223,9 +241,11 @@ const updated = await callWorker("/api/admin/weekly-planner/save", {
 assert.equal(updated.status, 200);
 assert.equal(weeklyRows.length, 2, "Updating must not append another planner row");
 const boundedUpdateCall = calls.find(call => {
-  return call.method === "PUT" && call.url.includes("WeeklyPlanners!A2%3AN2");
+  return call.method === "PUT" && call.url.includes("WeeklyPlanners!A2%3AR2");
 });
-assert.ok(boundedUpdateCall, "Existing planners must update only their A:N row");
+assert.ok(boundedUpdateCall, "Existing planners must update only their A:R row");
+assert.equal(weeklyRows[1][16], "ADMIN1");
+assert.equal(weeklyRows[1][17], "Test Teacher");
 
 const conflict = await callWorker("/api/admin/weekly-planner/save", {
   teacherId: "ADMIN1",

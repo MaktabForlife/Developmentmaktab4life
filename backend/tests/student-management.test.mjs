@@ -14,7 +14,12 @@ const studentRows = [
     "LastLogin",
     "FailedAttempts",
     "Active",
-    "RegisteredBy"
+    "RegisteredBy",
+    "CreatedByAdminID",
+    "CreatedByAdminName",
+    "ModifiedByAdminID",
+    "ModifiedByAdminName",
+    "ModifiedDate"
   ],
   ["SYSTEM1", "Maktab Day", "999999", "SYSTEM", false, "", "ALL", "", "", 0, true, "SYSTEM"],
   ["ST3", "Zayd", "789012", "LINK-ZAYD", true, "secret-z", "10", "2026-07-03", "", 0, true, "Admin"],
@@ -103,6 +108,10 @@ const seniorToken = await makeSessionToken({
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
 const batchUpdates = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 let missingSheetName = "";
 
 globalThis.fetch = async (input, init = {}) => {
@@ -124,6 +133,13 @@ globalThis.fetch = async (input, init = {}) => {
     const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
     requestedRanges.push(range);
 
+    if (init.method === "POST" && range.endsWith(":append")) {
+      const payload = JSON.parse(init.body);
+      assert.equal(range.replace(/:append$/, ""), "AdminAuditLog!A:I");
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
+
     if (missingSheetName && range.startsWith(`${missingSheetName}!`)) {
       return response({ error: { message: `Unable to parse range: ${range}` } }, 400);
     }
@@ -132,7 +148,8 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
     if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
-    if (range === "SystemConfig!A:D") return response({ values: systemConfigRows });
+    if (range === "SystemConfig!A:E") return response({ values: systemConfigRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
 
     throw new Error(`Unexpected student-management range: ${range}`);
   }
@@ -217,7 +234,10 @@ try {
       { range: "StudentRecords!B4", majorDimension: "ROWS", values: [["Ahmad Updated"]] },
       { range: "StudentRecords!C4", majorDimension: "ROWS", values: [["001234"]] },
       { range: "StudentRecords!G4", majorDimension: "ROWS", values: [["5"]] },
-      { range: "StudentRecords!K4", majorDimension: "ROWS", values: [[false]] }
+      { range: "StudentRecords!K4", majorDimension: "ROWS", values: [[false]] },
+      { range: "StudentRecords!O4", majorDimension: "ROWS", values: [["ADMIN1"]] },
+      { range: "StudentRecords!P4", majorDimension: "ROWS", values: [["Admin User"]] },
+      { range: "StudentRecords!Q4", majorDimension: "ROWS", values: [[batchUpdates[0].data[6].values[0][0]]] }
     ]
   });
   assert.equal(
@@ -225,6 +245,8 @@ try {
     false,
     "Student updates must not overwrite PIN or failed-attempt fields"
   );
+  assert.match(batchUpdates[0].data[6].values[0][0], /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(auditRows.some(row => row[5] === "UPDATE" && row[7] === "ST1"));
 
   const unchangedStudent = await postAdmin(
     "/api/admin/update-student",
@@ -363,7 +385,9 @@ try {
       "SubjectList!A:ZZ",
       "ModuleList!A:ZZ",
       "TaskList!A:ZZ",
-      "SystemConfig!A:D"
+      "SystemConfig!A:E",
+      "AdminAuditLog!A1:I1",
+      "AdminAuditLog!A:I:append"
     ])
   );
 } finally {

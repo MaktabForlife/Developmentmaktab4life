@@ -1,19 +1,24 @@
 import { getAuthUser, requireAdminOrSenior } from "../lib/auth.js";
 import {
+  appendAdminAuditLog,
+  columnIndexToA1,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit,
+  stampCreatedRow,
+  stampModifiedRow
+} from "../lib/admin-audit.js";
+import {
   appendGoogleSheetValues,
   readGoogleSheetValues,
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { nextSequentialId } from "../lib/sequential-ids.js";
 
 const SUBJECT_LIST_SHEET = "SubjectList";
 const TASK_LIST_SHEET = "TaskList";
 const SUBJECT_RESOURCES_SHEET = "SubjectResources";
-const SYSTEM_CONFIG_SHEET = "SystemConfig";
 const FULL_SHEET_RANGE = "A:ZZ";
-const SUBJECT_LIST_APPEND_RANGE = `${SUBJECT_LIST_SHEET}!A:D`;
-const TASK_LIST_APPEND_RANGE = `${TASK_LIST_SHEET}!A:I`;
-const SUBJECT_RESOURCES_APPEND_RANGE = `${SUBJECT_RESOURCES_SHEET}!A:G`;
 const RESOURCE_TYPES = Object.freeze([
   "PDF",
   "AUDIO",
@@ -55,30 +60,30 @@ export async function createSubjectGoogleSheetsEndpoint(request, env) {
     });
   }
 
-  const idResult = await reserveLegacyId(
-    env,
-    "NextSubjectNumber",
-    "SUBJ"
-  );
-
-  if (!idResult.ok) {
-    return json({ success: false, error: idResult.error });
-  }
-
-  const now = new Date().toISOString();
+  const auditContext = await requireCurriculumAudit(env, permission.user, rows);
+  if (!auditContext.ok) return auditContext.response;
+  const now = auditContext.audit.timestamp;
   const subject = {
-    subjectid: idResult.id,
+    subjectid: nextSequentialId(rows, "SUBJ"),
     subjectname: subjectName,
     active: true,
     createdate: now
   };
 
-  await appendGoogleSheetValues(env, SUBJECT_LIST_APPEND_RANGE, [[
-    subject.subjectid,
-    subject.subjectname,
-    subject.active,
-    subject.createdate
-  ]]);
+  const row = new Array((rows[0] || []).length).fill("");
+  row[0] = subject.subjectid;
+  row[1] = subject.subjectname;
+  row[2] = subject.active;
+  row[3] = subject.createdate;
+  stampCreatedRow(row, auditContext.rowAudit.columns, auditContext.audit.actor, now);
+
+  await appendGoogleSheetValues(env, appendRange(SUBJECT_LIST_SHEET, row.length), [row]);
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "CREATE",
+    recordType: "SUBJECT",
+    recordId: subject.subjectid,
+    changedFields: ["SubjectName", "Active"]
+  });
 
   return json({ success: true, subject });
 }
@@ -136,21 +141,43 @@ export async function updateSubjectGoogleSheetsEndpoint(request, env) {
     }
   }
 
-  const updatedRow = copyRow(rows[rowIndex], 4);
+  const changedFields = [];
+  const updatedRow = copyRow(rows[rowIndex], (rows[0] || []).length);
 
   if (subjectName !== undefined) {
     updatedRow[1] = subjectName;
+    changedFields.push("SubjectName");
   }
 
   if (body.active !== undefined) {
     updatedRow[2] = body.active;
+    changedFields.push("Active");
   }
+
+  if (changedFields.length === 0) {
+    return json({ success: true, message: "No subject changes requested", subjectid });
+  }
+
+  const auditContext = await requireCurriculumAudit(env, permission.user, rows);
+  if (!auditContext.ok) return auditContext.response;
+  stampModifiedRow(
+    updatedRow,
+    auditContext.rowAudit.columns,
+    auditContext.audit.actor,
+    auditContext.audit.timestamp
+  );
 
   await updateGoogleSheetValues(
     env,
-    `${SUBJECT_LIST_SHEET}!A${rowIndex + 1}:D${rowIndex + 1}`,
+    updateRange(SUBJECT_LIST_SHEET, rowIndex + 1, updatedRow.length),
     [updatedRow]
   );
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "UPDATE",
+    recordType: "SUBJECT",
+    recordId: subjectid,
+    changedFields
+  });
 
   return json({
     success: true,
@@ -199,15 +226,11 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
     });
   }
 
-  const idResult = await reserveLegacyId(env, "NextTaskNumber", "TASK");
-
-  if (!idResult.ok) {
-    return json({ success: false, error: idResult.error });
-  }
-
-  const now = new Date().toISOString();
+  const auditContext = await requireCurriculumAudit(env, permission.user, rows);
+  if (!auditContext.ok) return auditContext.response;
+  const now = auditContext.audit.timestamp;
   const task = {
-    taskid: idResult.id,
+    taskid: nextSequentialId(rows, "TASK"),
     subjectid,
     taskname: taskName,
     audiolink: audioLink,
@@ -218,17 +241,33 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
     createdate: now
   };
 
-  await appendGoogleSheetValues(env, TASK_LIST_APPEND_RANGE, [[
-    task.taskid,
-    task.subjectid,
-    task.taskname,
-    task.audiolink,
-    task.visuallink,
-    task.videolink,
-    task.pdflink,
-    task.active,
-    task.createdate
-  ]]);
+  const row = new Array((rows[0] || []).length).fill("");
+  row[0] = task.taskid;
+  row[1] = task.subjectid;
+  row[2] = task.taskname;
+  row[3] = task.audiolink;
+  row[4] = task.visuallink;
+  row[5] = task.videolink;
+  row[6] = task.pdflink;
+  row[7] = task.active;
+  row[8] = task.createdate;
+  stampCreatedRow(row, auditContext.rowAudit.columns, auditContext.audit.actor, now);
+
+  await appendGoogleSheetValues(env, appendRange(TASK_LIST_SHEET, row.length), [row]);
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "CREATE",
+    recordType: "TASK",
+    recordId: task.taskid,
+    changedFields: [
+      "SubjectID",
+      "TaskName",
+      "AudioLink",
+      "VisualLink",
+      "VideoLink",
+      "PDFLink",
+      "Active"
+    ]
+  });
 
   return json({ success: true, task });
 }
@@ -315,21 +354,41 @@ export async function updateTaskGoogleSheetsEndpoint(request, env) {
     }
   }
 
-  const updatedRow = copyRow(currentRow, 9);
+  const changedFields = [];
+  const updatedRow = copyRow(currentRow, (rows[0] || []).length);
 
-  if (updates.subjectid !== undefined) updatedRow[1] = updates.subjectid;
-  if (updates.taskName !== undefined) updatedRow[2] = updates.taskName;
-  if (updates.audioLink !== undefined) updatedRow[3] = updates.audioLink;
-  if (updates.visualLink !== undefined) updatedRow[4] = updates.visualLink;
-  if (updates.videoLink !== undefined) updatedRow[5] = updates.videoLink;
-  if (updates.pdfLink !== undefined) updatedRow[6] = updates.pdfLink;
-  if (updates.active !== undefined) updatedRow[7] = updates.active;
+  if (updates.subjectid !== undefined) { updatedRow[1] = updates.subjectid; changedFields.push("SubjectID"); }
+  if (updates.taskName !== undefined) { updatedRow[2] = updates.taskName; changedFields.push("TaskName"); }
+  if (updates.audioLink !== undefined) { updatedRow[3] = updates.audioLink; changedFields.push("AudioLink"); }
+  if (updates.visualLink !== undefined) { updatedRow[4] = updates.visualLink; changedFields.push("VisualLink"); }
+  if (updates.videoLink !== undefined) { updatedRow[5] = updates.videoLink; changedFields.push("VideoLink"); }
+  if (updates.pdfLink !== undefined) { updatedRow[6] = updates.pdfLink; changedFields.push("PDFLink"); }
+  if (updates.active !== undefined) { updatedRow[7] = updates.active; changedFields.push("Active"); }
+
+  if (changedFields.length === 0) {
+    return json({ success: true, message: "No task changes requested", taskid });
+  }
+
+  const auditContext = await requireCurriculumAudit(env, permission.user, rows);
+  if (!auditContext.ok) return auditContext.response;
+  stampModifiedRow(
+    updatedRow,
+    auditContext.rowAudit.columns,
+    auditContext.audit.actor,
+    auditContext.audit.timestamp
+  );
 
   await updateGoogleSheetValues(
     env,
-    `${TASK_LIST_SHEET}!A${rowIndex + 1}:I${rowIndex + 1}`,
+    updateRange(TASK_LIST_SHEET, rowIndex + 1, updatedRow.length),
     [updatedRow]
   );
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "UPDATE",
+    recordType: "TASK",
+    recordId: taskid,
+    changedFields
+  });
 
   return json({
     success: true,
@@ -377,19 +436,11 @@ export async function createSubjectResourceGoogleSheetsEndpoint(request, env) {
     return missingSheetResponse(SUBJECT_RESOURCES_SHEET);
   }
 
-  const idResult = await reserveLegacyId(
-    env,
-    "NextResourceNumber",
-    "RES"
-  );
-
-  if (!idResult.ok) {
-    return json({ success: false, error: idResult.error });
-  }
-
-  const now = new Date().toISOString();
+  const auditContext = await requireCurriculumAudit(env, permission.user, rows);
+  if (!auditContext.ok) return auditContext.response;
+  const now = auditContext.audit.timestamp;
   const resource = {
-    resourceid: idResult.id,
+    resourceid: nextSequentialId(rows, "RES"),
     subjectid,
     resourcename: resourceName,
     resourcetype: resourceType,
@@ -398,15 +449,23 @@ export async function createSubjectResourceGoogleSheetsEndpoint(request, env) {
     createdate: now
   };
 
-  await appendGoogleSheetValues(env, SUBJECT_RESOURCES_APPEND_RANGE, [[
-    resource.resourceid,
-    resource.subjectid,
-    resource.resourcename,
-    resource.resourcetype,
-    resource.resourcelink,
-    resource.active,
-    resource.createdate
-  ]]);
+  const row = new Array((rows[0] || []).length).fill("");
+  row[0] = resource.resourceid;
+  row[1] = resource.subjectid;
+  row[2] = resource.resourcename;
+  row[3] = resource.resourcetype;
+  row[4] = resource.resourcelink;
+  row[5] = resource.active;
+  row[6] = resource.createdate;
+  stampCreatedRow(row, auditContext.rowAudit.columns, auditContext.audit.actor, now);
+
+  await appendGoogleSheetValues(env, appendRange(SUBJECT_RESOURCES_SHEET, row.length), [row]);
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "CREATE",
+    recordType: "SUBJECT_RESOURCE",
+    recordId: resource.resourceid,
+    changedFields: ["SubjectID", "ResourceName", "ResourceType", "ResourceLink", "Active"]
+  });
 
   return json({ success: true, resource });
 }
@@ -479,19 +538,39 @@ export async function updateSubjectResourceGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Resource not found" });
   }
 
-  const updatedRow = copyRow(rows[rowIndex], 7);
+  const changedFields = [];
+  const updatedRow = copyRow(rows[rowIndex], (rows[0] || []).length);
 
-  if (updates.subjectid !== undefined) updatedRow[1] = updates.subjectid;
-  if (updates.resourceName !== undefined) updatedRow[2] = updates.resourceName;
-  if (updates.resourceType !== undefined) updatedRow[3] = updates.resourceType;
-  if (updates.resourceLink !== undefined) updatedRow[4] = updates.resourceLink;
-  if (updates.active !== undefined) updatedRow[5] = updates.active;
+  if (updates.subjectid !== undefined) { updatedRow[1] = updates.subjectid; changedFields.push("SubjectID"); }
+  if (updates.resourceName !== undefined) { updatedRow[2] = updates.resourceName; changedFields.push("ResourceName"); }
+  if (updates.resourceType !== undefined) { updatedRow[3] = updates.resourceType; changedFields.push("ResourceType"); }
+  if (updates.resourceLink !== undefined) { updatedRow[4] = updates.resourceLink; changedFields.push("ResourceLink"); }
+  if (updates.active !== undefined) { updatedRow[5] = updates.active; changedFields.push("Active"); }
+
+  if (changedFields.length === 0) {
+    return json({ success: true, message: "No resource changes requested", resourceid });
+  }
+
+  const auditContext = await requireCurriculumAudit(env, permission.user, rows);
+  if (!auditContext.ok) return auditContext.response;
+  stampModifiedRow(
+    updatedRow,
+    auditContext.rowAudit.columns,
+    auditContext.audit.actor,
+    auditContext.audit.timestamp
+  );
 
   await updateGoogleSheetValues(
     env,
-    `${SUBJECT_RESOURCES_SHEET}!A${rowIndex + 1}:G${rowIndex + 1}`,
+    updateRange(SUBJECT_RESOURCES_SHEET, rowIndex + 1, updatedRow.length),
     [updatedRow]
   );
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "UPDATE",
+    recordType: "SUBJECT_RESOURCE",
+    recordId: resourceid,
+    changedFields
+  });
 
   return json({
     success: true,
@@ -677,32 +756,34 @@ async function readCurriculumSheet(env, sheetName, range = FULL_SHEET_RANGE) {
   }
 }
 
-async function reserveLegacyId(env, counterName, prefix) {
-  const rows = await readCurriculumSheet(env, SYSTEM_CONFIG_SHEET, "A:B");
+async function requireCurriculumAudit(env, user, rows) {
+  const rowAudit = getRequiredRowAuditColumns(rows?.[0] || []);
 
-  if (rows === null) {
-    return { ok: false, error: `${SYSTEM_CONFIG_SHEET} sheet not found` };
+  if (!rowAudit.ok) {
+    return {
+      ok: false,
+      response: json({ success: false, error: rowAudit.error }, 503)
+    };
   }
 
-  const rowIndex = rows.findIndex(row => clean(getValue(row, 0)) === counterName);
+  const audit = await prepareAdminAudit(env, user);
 
-  if (rowIndex === -1) {
-    return { ok: false, error: `${counterName} not found` };
+  if (!audit.ok) {
+    return {
+      ok: false,
+      response: json({ success: false, error: audit.error }, 503)
+    };
   }
 
-  const current = Number(getValue(rows[rowIndex], 1));
+  return { ok: true, rowAudit, audit };
+}
 
-  if (!Number.isSafeInteger(current) || current < 0) {
-    return { ok: false, error: `${counterName} must contain a valid number` };
-  }
+function appendRange(sheetName, length) {
+  return `${sheetName}!A:${columnIndexToA1(length - 1)}`;
+}
 
-  await updateGoogleSheetValues(
-    env,
-    `${SYSTEM_CONFIG_SHEET}!B${rowIndex + 1}`,
-    [[current + 1]]
-  );
-
-  return { ok: true, id: `${prefix}${current}` };
+function updateRange(sheetName, sheetRow, length) {
+  return `${sheetName}!A${sheetRow}:${columnIndexToA1(length - 1)}${sheetRow}`;
 }
 
 function findSubjectByName(rows, subjectName, excludedSubjectId = "") {

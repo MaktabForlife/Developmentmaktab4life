@@ -35,12 +35,19 @@ const taskRows = [
 ];
 const ebookRows = [[
   "eBookId", "eBookName", "SubjectId", "SubjectName", "ModuleId", "ModuleName",
-  "TaskId", "GroupNo", "ebookFormat", "eBookLink", "Active", "Date"
+  "TaskId", "GroupNo", "ebookFormat", "eBookLink", "Active", "Date",
+  "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID",
+  "ModifiedByAdminName", "ModifiedDate"
 ]];
-const printableRows = [["PrintableId", "PrintableName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "PrintableFormat", "PrintableLink", "Active", "Date"]];
-const audioRows = [["AudioId", "AudioName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "AudioFormat", "AudioLink", "Active", "Date"]];
-const videoRows = [["VideoId", "VideoName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "VideoFormat", "VideoLink", "Active", "Date"]];
-const otherRows = [["OtherResourceID", "OtherResourceName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "OtherResourceFormat", "OtherResourceLink", "Active", "Date"]];
+const resourceAuditHeaders = ["CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID", "ModifiedByAdminName", "ModifiedDate"];
+const printableRows = [["PrintableId", "PrintableName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "PrintableFormat", "PrintableLink", "Active", "Date", ...resourceAuditHeaders]];
+const audioRows = [["AudioId", "AudioName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "AudioFormat", "AudioLink", "Active", "Date", ...resourceAuditHeaders]];
+const videoRows = [["VideoId", "VideoName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "VideoFormat", "VideoLink", "Active", "Date", ...resourceAuditHeaders]];
+const otherRows = [["OtherResourceID", "OtherResourceName", "SubjectId", "SubjectName", "ModuleId", "ModuleName", "TaskId", "GroupNo", "OtherResourceFormat", "OtherResourceLink", "Active", "Date", ...resourceAuditHeaders]];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 const sheets = new Map([
   ["AdminRecords!A:ZZ", adminRows],
   ["StudentRecords!A:ZZ", studentRows],
@@ -181,6 +188,8 @@ try {
   assert.equal(created.data.resource.fileid, "FILE123");
   assert.equal(ebookRows.length, 2);
   assert.match(ebookRows[1][9], /\/api\/library\/drive\/file\/FILE123$/);
+  assert.equal(ebookRows[1][12], "ADMIN1");
+  assert.equal(ebookRows[1][13], "Main Admin");
 
   const duplicate = await post("/api/admin/resources/create", {
     resourceType: "PRINTABLE",
@@ -230,6 +239,8 @@ try {
   }, adminToken);
   assert.equal(grouped.response.status, 200);
   assert.equal(grouped.data.resource.groupno, "4");
+  assert.equal(ebookRows[1][14], "ADMIN1");
+  assert.equal(ebookRows[1][15], "Main Admin");
 
   const groupFourList = await post("/api/resources/list", {}, studentFourToken);
   assert.equal(groupFourList.response.status, 200);
@@ -283,6 +294,8 @@ try {
   }, adminToken);
   assert.equal(inactiveAccess.response.status, 403);
   assert.equal(inactiveAccess.data.error, "Resource is inactive");
+  assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "EBOOK1"));
+  assert.ok(auditRows.some(row => row[5] === "UPDATE" && row[7] === "EBOOK1"));
 } finally {
   globalThis.fetch = originalFetch;
 }
@@ -310,12 +323,17 @@ function handleSheets(url, init) {
     if (authMatch) return response({ values: [adminRows[Number(authMatch[1]) - 1] || []] });
     const studentAuthMatch = /^StudentRecords!A(\d+):K\1$/.exec(range);
     if (studentAuthMatch) return response({ values: [studentRows[Number(studentAuthMatch[1]) - 1] || []] });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
     if (!sheets.has(range)) throw new Error(`Unexpected sheet read: ${range}`);
     return response({ values: sheets.get(range) });
   }
 
   if (init.method === "POST" && rawRange.endsWith(":append")) {
     const payload = JSON.parse(init.body);
+    if (range === "AdminAuditLog!A:I") {
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
     const sheetName = range.split("!")[0];
     const target = sheets.get(`${sheetName}!A:ZZ`);
     target.push(payload.values[0]);

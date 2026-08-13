@@ -1,5 +1,12 @@
-/* M4L V100.4.3 - ModuleList-backed Library management options. */
+/* M4L V101.3 - ModuleList-backed Library management with Admin auditing. */
 import { getAuthUser, requireSystemAdmin } from "../lib/auth.js";
+import {
+  appendAdminAuditLog,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit,
+  stampCreatedRow,
+  stampModifiedRow
+} from "../lib/admin-audit.js";
 import {
   appendGoogleSheetValues,
   readGoogleSheetValues,
@@ -193,10 +200,14 @@ export async function createDriveResourceEndpoint(request, env) {
   const sheet = await readRequiredResourceSheet(env, config);
   const columns = getRequiredResourceColumns(sheet.headers, config);
   if (!columns.ok) return json({ success: false, error: columns.error }, 503);
+  const rowAudit = getRequiredRowAuditColumns(sheet.headers);
+  if (!rowAudit.ok) return json({ success: false, error: rowAudit.error }, 503);
+  const audit = await prepareAdminAudit(env, permission.user);
+  if (!audit.ok) return json({ success: false, error: audit.error }, 503);
 
   const resourceId = nextResourceId(sheet.rows, columns.value.id, config.idPrefix);
   const resourceLink = buildPrivateDriveResourceLink(request, file.id);
-  const now = new Date().toISOString();
+  const now = audit.timestamp;
   const row = new Array(sheet.headers.length).fill("");
 
   setRowValue(row, columns.value.id, resourceId);
@@ -211,12 +222,28 @@ export async function createDriveResourceEndpoint(request, env) {
   setRowValue(row, columns.value.link, resourceLink);
   setRowValue(row, columns.value.active, payload.active);
   setRowValue(row, columns.value.date, now);
+  stampCreatedRow(row, rowAudit.columns, audit.actor, now);
 
   await appendGoogleSheetValues(
     env,
     `${config.sheetName}!A:${columnToLetters(sheet.headers.length)}`,
     [row]
   );
+  await appendAdminAuditLog(env, audit, {
+    action: "CREATE",
+    recordType: `${config.type}_RESOURCE`,
+    recordId: resourceId,
+    changedFields: [
+      "Name",
+      "SubjectID",
+      "ModuleID",
+      "TaskID",
+      "GroupNo",
+      "Format",
+      "Link",
+      "Active"
+    ]
+  });
 
   return json({
     success: true,
@@ -270,6 +297,8 @@ export async function updateDriveResourceEndpoint(request, env) {
   const sheet = await readRequiredResourceSheet(env, config);
   const columns = getRequiredResourceColumns(sheet.headers, config);
   if (!columns.ok) return json({ success: false, error: columns.error }, 503);
+  const rowAudit = getRequiredRowAuditColumns(sheet.headers);
+  if (!rowAudit.ok) return json({ success: false, error: rowAudit.error }, 503);
 
   const requestedSheetRow = Number(body.sheetRow || body.sheetrow || 0);
   let rowIndex = -1;
@@ -291,6 +320,9 @@ export async function updateDriveResourceEndpoint(request, env) {
   if (rowIndex < 1) {
     return json({ success: false, error: "Resource not found" }, 404);
   }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+  if (!audit.ok) return json({ success: false, error: audit.error }, 503);
 
   const existingRow = sheet.rows[rowIndex];
   const row = copyRow(existingRow, sheet.headers.length);
@@ -333,12 +365,27 @@ export async function updateDriveResourceEndpoint(request, env) {
   setRowValue(row, columns.value.taskId, validation.task?.taskid || "");
   setRowValue(row, columns.value.groupNo, payload.groupNo || "ALL");
   setRowValue(row, columns.value.active, payload.active);
+  stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
 
   await updateGoogleSheetValues(
     env,
     `${config.sheetName}!A${rowIndex + 1}:${columnToLetters(sheet.headers.length)}${rowIndex + 1}`,
     [row]
   );
+  await appendAdminAuditLog(env, audit, {
+    action: "UPDATE",
+    recordType: `${config.type}_RESOURCE`,
+    recordId: resourceId,
+    changedFields: [
+      "Name",
+      "SubjectID",
+      "ModuleID",
+      "TaskID",
+      "GroupNo",
+      ...(payload.fileId ? ["Format", "Link"] : []),
+      "Active"
+    ]
+  });
 
   return json({
     success: true,

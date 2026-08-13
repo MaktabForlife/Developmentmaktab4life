@@ -12,7 +12,9 @@ const TASK_HEADERS = [
 const STUDENT_TASK_HEADERS = [
   "StudentTaskID", "StudentID", "TaskID", "SubjectID", "SubjectName",
   "ModuleID", "ModuleName", "TaskName", "CompleteStatus", "CompleteDate",
-  "VerifyStatus", "VerifyDate", "AssignedBy", "AssignedDate"
+  "VerifyStatus", "VerifyDate", "AssignedBy", "AssignedDate", "AssignedByName",
+  "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID",
+  "ModifiedByAdminName", "ModifiedDate"
 ];
 
 const keyPair = await crypto.subtle.generateKey(
@@ -62,11 +64,11 @@ const teacherToken = await makeSessionToken({
 let studentRows;
 let taskRows;
 let studentTaskRows;
-let systemConfigRows;
 let missingSheetName = "";
 let reads = [];
 let updates = [];
 let appends = [];
+let auditRows = [];
 
 function resetSheets() {
   studentRows = [
@@ -88,16 +90,17 @@ function resetSheets() {
   ];
   studentTaskRows = [
     STUDENT_TASK_HEADERS,
-    ["STASK1", "ST1", "TASK1", "SUB1", "Aqidah", "MOD1", "Module 1", "First", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"]
-  ];
-  systemConfigRows = [
-    ["OtherSetting", "value"],
-    ["NextStudentTaskNumber", 100]
+    ["STASK1", "ST1", "TASK1", "SUB1", "Aqidah", "MOD1", "Module 1", "First", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"],
+    ["STASK99", "HISTORIC", "TASKX", "", "", "", "", "", "", "", "", "", "ADMIN0", "2026-07-01T00:00:00.000Z"]
   ];
   missingSheetName = "";
   reads = [];
   updates = [];
   appends = [];
+  auditRows = [[
+    "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+    "RecordType", "RecordID", "ChangedFields"
+  ]];
 }
 
 resetSheets();
@@ -129,7 +132,7 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
-    if (range === "SystemConfig!A:ZZ") return response({ values: systemConfigRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
 
     throw new Error(`Unexpected task-assignment range: ${range}`);
   }
@@ -138,18 +141,17 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "PUT") {
     updates.push({ range, payload });
-
-    if (range === "SystemConfig!B2") {
-      systemConfigRows[1][1] = payload.values[0][0];
-    }
-
     return response({ updatedRange: range, updatedRows: 1 });
   }
 
   if (init.method === "POST" && isAppend) {
+    if (range === "AdminAuditLog!A:I") {
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
     appends.push({ range, payload });
 
-    if (range === "StudentTasks!A:N") {
+    if (range === "StudentTasks!A:T") {
       studentTaskRows.push(...payload.values);
     }
 
@@ -184,16 +186,9 @@ try {
     skippedInvalidTask: 2,
     skippedInvalidStudent: 1
   });
-  assert.deepEqual(updates, [{
-    range: "SystemConfig!B2",
-    payload: {
-      range: "SystemConfig!B2",
-      majorDimension: "ROWS",
-      values: [[103]]
-    }
-  }]);
+  assert.deepEqual(updates, [], "Task assignment must not write SystemConfig counters");
   assert.equal(appends.length, 1);
-  assert.equal(appends[0].range, "StudentTasks!A:N");
+  assert.equal(appends[0].range, "StudentTasks!A:T");
   assert.deepEqual(
     appends[0].payload.values.map(row => [row[0], row[1], row[2], row[3], row[12]]),
     [
@@ -202,12 +197,16 @@ try {
       ["STASK102", "ST2", "TASK2", "SUB1", "ADMIN1"]
     ]
   );
-  assert.ok(appends[0].payload.values.every(row => row.length === 14));
+  assert.ok(appends[0].payload.values.every(row => row.length === 20));
   assert.deepEqual(appends[0].payload.values[0].slice(4, 8), [
     "Aqidah", "MOD2", "Module 2", "Second"
   ]);
   assert.ok(appends[0].payload.values.every(row => row[13] === appends[0].payload.values[0][13]));
   assert.match(appends[0].payload.values[0][13], /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(appends[0].payload.values[0][14], "Admin User");
+  assert.equal(appends[0].payload.values[0][15], "ADMIN1");
+  assert.equal(appends[0].payload.values[0][16], "Admin User");
+  assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "STASK100"));
 
   resetSheets();
   const allStudents = await postAdmin(
@@ -394,19 +393,6 @@ try {
   assert.deepEqual(missingStudentTasks.data, {
     success: false,
     error: "StudentTasks sheet not found"
-  });
-  assert.equal(updates.length + appends.length, 0);
-
-  resetSheets();
-  systemConfigRows = [["OtherSetting", "value"]];
-  const missingCounter = await postAdmin(
-    adminToken,
-    { studentids: ["ST2"], taskids: ["TASK1"] },
-    directEnv
-  );
-  assert.deepEqual(missingCounter.data, {
-    success: false,
-    error: "NextStudentTaskNumber not found"
   });
   assert.equal(updates.length + appends.length, 0);
 

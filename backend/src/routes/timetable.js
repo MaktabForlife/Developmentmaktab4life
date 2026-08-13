@@ -1,10 +1,19 @@
 import { callAppsScript } from "../lib/apps-script.js";
-import { getAuthUser, requireAdminOrSenior } from "../lib/auth.js";
 import {
-  readGoogleSheetValues,
-  updateGoogleSheetValues
-} from "../lib/google-sheets.js";
+  appendAdminAuditLog,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
+import { getAuthUser, requireAdminOrSenior, requireSystemAdmin } from "../lib/auth.js";
+import { readGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import {
+  GLOBAL_ZOOM_LINK_KEY,
+  findSystemConfigRowIndexes,
+  getSystemConfigValue,
+  normalizeGlobalZoomLink,
+  readSystemConfigRows,
+  upsertSystemConfigValues
+} from "../lib/system-config.js";
 
 const TEACHER_TIMETABLE_SHEET_NAME = "TeacherAssign";
 const LEGACY_TIMETABLE_SHEET_NAME = "TimeTable";
@@ -70,13 +79,21 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
     return json(missingTimetableSheetResponse(missingSheet));
   }
 
-  const legacyRows = await readLegacyTimetableRows(env);
+  const systemConfigRows = await readTimetableSystemConfigRows(env);
+  const globalZoomConfigured = findSystemConfigRowIndexes(
+    systemConfigRows,
+    GLOBAL_ZOOM_LINK_KEY
+  ).length === 1;
+  const globalZoomLink = getSystemConfigValue(systemConfigRows, GLOBAL_ZOOM_LINK_KEY);
+  const legacyRows = globalZoomConfigured ? [] : await readLegacyTimetableRows(env);
 
   return json(buildTimetableResponse(teacherRows, {
     adminRows,
     subjectRows,
     moduleRows,
     legacyRows,
+    globalZoomLink,
+    globalZoomConfigured,
     groupNo: context.groupNo,
     teacherId: context.teacherId,
     allGroupsStudent: context.allGroupsStudent,
@@ -96,11 +113,12 @@ export function buildTimetableResponse(rows = [], options = {}) {
   ) || "ALL";
   const viewerAdminId = clean(options.viewerAdminId);
   const viewerRole = clean(options.viewerRole).toUpperCase();
+  const globalZoom = resolveGlobalZoom(options);
   const baseResponse = {
     success: true,
     sessions: [],
-    zoomlink: extractGlobalZoomLink(options.legacyRows),
-    zoomsource: extractGlobalZoomLink(options.legacyRows) ? LEGACY_TIMETABLE_SHEET_NAME : "",
+    zoomlink: globalZoom.link,
+    zoomsource: globalZoom.source,
     timetablesource: TEACHER_TIMETABLE_SHEET_NAME,
     groupno: requestedGroup,
     teacherid: requestedTeacherId,
@@ -242,16 +260,14 @@ export function buildTimetableResponse(rows = [], options = {}) {
     ...markAssignmentConflicts(sessions),
     ...markSubjectModuleOverlaps(sessions)
   ];
-  const legacyZoomLink = extractGlobalZoomLink(options.legacyRows);
-
   return {
     ...baseResponse,
     sessions,
-    // TeacherAssign.ZoomLink is deliberately session-specific. The existing
-    // global Join Zoom action remains sourced from the legacy TimeTable during
-    // V100.10 verification so the two link types cannot overwrite each other.
-    zoomlink: legacyZoomLink,
-    zoomsource: legacyZoomLink ? LEGACY_TIMETABLE_SHEET_NAME : "",
+    // TeacherAssign.ZoomLink remains session-specific. Global Join Zoom uses
+    // SystemConfig, with the old TimeTable value retained as a migration-only
+    // fallback until GlobalZoomLink has been saved.
+    zoomlink: globalZoom.link,
+    zoomsource: globalZoom.source,
     viewerhasassignments: Boolean(viewerAdminId) && sessions.some(session => {
       return session.teacherassigned === true &&
         normalizeMatch(session.teacherid) === normalizeMatch(viewerAdminId);
@@ -285,14 +301,24 @@ export async function updateTimetableZoomLinkEndpoint(request, env) {
 }
 
 export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) {
-  const auth = await requireAdminOrSenior(request, env);
+  const auth = await requireSystemAdmin(request, env);
 
   if (!auth.ok) {
     return auth.response;
   }
 
   const body = await request.json();
-  const zoomlink = clean(body.zoomlink || body.zoomLink || body.link || "");
+  let zoomlink;
+
+  try {
+    zoomlink = normalizeGlobalZoomLink(body.zoomlink || body.zoomLink || body.link || "");
+  } catch (error) {
+    return json({
+      success: false,
+      error: error && error.message ? error.message : "Invalid global Zoom link"
+    }, 400);
+  }
+
   let teacherRows;
   let adminRows;
   let subjectRows;
@@ -315,22 +341,40 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
     return json(missingTimetableSheetResponse(missingSheet));
   }
 
-  const legacySync = await syncLegacyZoomLink(env, zoomlink);
+  const systemConfigRows = await readSystemConfigRows(env);
+  const audit = await prepareAdminAudit(env, auth.user);
 
-  if (!legacySync.synced) {
-    return json({
-      success: false,
-      error: "Global Zoom link could not be saved to the legacy TimeTable sheet",
-      sessions: [],
-      zoomlink: ""
-    });
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
   }
+
+  const saved = await upsertSystemConfigValues(
+    env,
+    new Map([[GLOBAL_ZOOM_LINK_KEY, zoomlink]]),
+    {
+      rows: systemConfigRows,
+      updatedBy: audit.actor.adminid,
+      updatedByName: audit.actor.adminname
+    }
+  );
+
+  if (!saved.ok) {
+    return json({ success: false, error: saved.error }, saved.status || 409);
+  }
+
+  await appendAdminAuditLog(env, audit, {
+    action: "UPDATE",
+    recordType: "SYSTEM_CONFIG",
+    recordId: GLOBAL_ZOOM_LINK_KEY,
+    changedFields: [GLOBAL_ZOOM_LINK_KEY]
+  });
 
   const timetable = buildTimetableResponse(teacherRows, {
     adminRows,
     subjectRows,
     moduleRows,
-    legacyRows: legacySync.rows,
+    globalZoomLink: zoomlink,
+    globalZoomConfigured: true,
     groupNo: "ALL",
     teacherId: "ALL",
     viewerAdminId: auth.user.adminid || "",
@@ -340,7 +384,7 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
   });
 
   timetable.message = "Zoom link saved";
-  timetable.legacyzoomsynced = true;
+  timetable.systemconfigzoomsaved = true;
 
   return json(timetable);
 }
@@ -716,6 +760,21 @@ function extractGlobalZoomLink(rows = []) {
   return "";
 }
 
+function resolveGlobalZoom(options = {}) {
+  if (options.globalZoomConfigured === true) {
+    return {
+      link: clean(options.globalZoomLink),
+      source: "SystemConfig"
+    };
+  }
+
+  const legacyLink = extractGlobalZoomLink(options.legacyRows);
+  return {
+    link: legacyLink,
+    source: legacyLink ? LEGACY_TIMETABLE_SHEET_NAME : ""
+  };
+}
+
 async function readLegacyTimetableRows(env) {
   try {
     return await readGoogleSheetValues(env, LEGACY_TIMETABLE_SHEET_RANGE);
@@ -726,40 +785,11 @@ async function readLegacyTimetableRows(env) {
   }
 }
 
-async function syncLegacyZoomLink(env, zoomlink) {
-  let rows;
-
+async function readTimetableSystemConfigRows(env) {
   try {
-    rows = await readGoogleSheetValues(env, LEGACY_TIMETABLE_SHEET_RANGE);
-  } catch (error) {
-    return { synced: false, rows: [] };
-  }
-
-  try {
-    const headers = Array.isArray(rows[0]) ? rows[0].slice() : [];
-    const headerMap = buildHeaderMap(headers);
-    let zoomLinkColumn = findColumn(
-      headerMap,
-      ["ZoomLink", "Zoom Link", "ClassLink", "MeetingLink"]
-    );
-
-    if (zoomLinkColumn < 0) {
-      zoomLinkColumn = headers.length;
-      const headerRange = `${LEGACY_TIMETABLE_SHEET_NAME}!${columnName(zoomLinkColumn)}1`;
-      await updateGoogleSheetValues(env, headerRange, [["ZoomLink"]]);
-      headers[zoomLinkColumn] = "ZoomLink";
-    }
-
-    const zoomLinkRange = `${LEGACY_TIMETABLE_SHEET_NAME}!${columnName(zoomLinkColumn)}2`;
-    await updateGoogleSheetValues(env, zoomLinkRange, [[zoomlink]]);
-
-    const updatedRows = rows.map(row => Array.isArray(row) ? row.slice() : []);
-    updatedRows[0] = headers;
-    updatedRows[1] = updatedRows[1] || [];
-    updatedRows[1][zoomLinkColumn] = zoomlink;
-    return { synced: true, rows: updatedRows };
-  } catch (error) {
-    return { synced: false, rows };
+    return await readSystemConfigRows(env);
+  } catch {
+    return [];
   }
 }
 
@@ -863,17 +893,4 @@ function isMissingSheetError(error, sheetName) {
   return message.includes("Google Sheets API error 400:") &&
     message.includes("Unable to parse range") &&
     message.toLowerCase().includes(clean(sheetName).toLowerCase());
-}
-
-function columnName(columnIndex) {
-  let value = Number(columnIndex) + 1;
-  let result = "";
-
-  while (value > 0) {
-    const remainder = (value - 1) % 26;
-    result = String.fromCharCode(65 + remainder) + result;
-    value = Math.floor((value - 1) / 26);
-  }
-
-  return result;
 }

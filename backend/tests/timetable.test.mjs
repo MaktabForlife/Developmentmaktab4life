@@ -95,6 +95,18 @@ assert.equal(transformed.warnings.some(warning => warning.code === "MODULE_NOT_F
 assert.equal(transformed.warnings.some(warning => warning.code === "MULTIPLE_TEACHER_ASSIGNMENTS"), true);
 assert.equal(transformed.sessions.some(session => session.sessionid === "TA7"), false, "Inactive TeacherAssign rows must be excluded");
 
+const systemConfiguredZoom = buildTimetableResponse(teacherRows, {
+  adminRows,
+  subjectRows,
+  moduleRows,
+  legacyRows,
+  globalZoomLink: "https://zoom.test/system-config",
+  globalZoomConfigured: true,
+  groupNo: "1"
+});
+assert.equal(systemConfiguredZoom.zoomlink, "https://zoom.test/system-config");
+assert.equal(systemConfiguredZoom.zoomsource, "SystemConfig");
+
 const oversight = buildTimetableResponse(teacherRows, {
   adminRows,
   subjectRows,
@@ -210,8 +222,16 @@ const seniorToken = await makeSessionToken({
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
 const sheetUpdates = [];
+const sheetAppends = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 let missingSheetName = "";
 let directLegacyRows = legacyRows.map(row => row.slice());
+const systemConfigRows = [
+  ["StudentLoginBaseUrl", "https://development.example.test/student/"]
+];
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -222,11 +242,31 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-timetable-token");
-    const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
+    const rangeAndAction = decodeURIComponent(url.pathname.split("/values/")[1] || "");
+    const isAppend = rangeAndAction.endsWith(":append");
+    const range = isAppend ? rangeAndAction.slice(0, -":append".length) : rangeAndAction;
 
     if ((init.method || "GET") === "PUT") {
       sheetUpdates.push({ range, body: JSON.parse(init.body) });
       return response({ updatedRows: 1 });
+    }
+
+    if ((init.method || "GET") === "POST" && isAppend) {
+      const payload = JSON.parse(init.body);
+
+      if (range === "AdminAuditLog!A:I") {
+        auditRows.push(...payload.values);
+        return response({ updates: { updatedRows: payload.values.length } });
+      }
+
+      sheetAppends.push({ range, body: payload });
+
+      if (range === "SystemConfig!A:E") {
+        systemConfigRows.push(...payload.values);
+        return response({ updates: { updatedRows: payload.values.length } });
+      }
+
+      throw new Error(`Unexpected Sheets append range: ${range}`);
     }
 
     requestedRanges.push(range);
@@ -242,6 +282,8 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
     if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
     if (range === "TimeTable!A:ZZ") return response({ values: directLegacyRows });
+    if (range === "SystemConfig!A:E") return response({ values: systemConfigRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
     throw new Error(`Unexpected Sheets range: ${range}`);
   }
 
@@ -347,33 +389,59 @@ try {
 
   missingSheetName = "";
   sheetUpdates.length = 0;
+  sheetAppends.length = 0;
   directLegacyRows = legacyRows.map(row => row.slice());
+
+  const forbiddenSeniorZoomWrite = await postTimetable(
+    "/api/admin/timetable/update-zoom",
+    seniorToken,
+    { zoomlink: "https://zoom.test/senior-blocked" },
+    directEnv
+  );
+  assert.equal(forbiddenSeniorZoomWrite.response.status, 403);
 
   const directZoomWrite = await postTimetable(
     "/api/admin/timetable/update-zoom",
-    seniorToken,
+    teachingAdminToken,
     { zoomlink: "https://zoom.test/direct-global" },
     directEnv
   );
   assert.equal(directZoomWrite.response.status, 200);
   assert.equal(directZoomWrite.data.success, true);
   assert.equal(directZoomWrite.data.zoomlink, "https://zoom.test/direct-global");
+  assert.equal(directZoomWrite.data.zoomsource, "SystemConfig");
+  assert.equal(directZoomWrite.data.systemconfigzoomsaved, true);
   assert.equal(directZoomWrite.data.sessions[0].zoomlink, "https://zoom.test/session-quran", "Global saves must not overwrite session Zoom links");
-  assert.deepEqual(sheetUpdates, [{
-    range: "TimeTable!F2",
-    body: {
-      range: "TimeTable!F2",
-      majorDimension: "ROWS",
-      values: [["https://zoom.test/direct-global"]]
-    }
-  }]);
+  assert.deepEqual(sheetUpdates, [], "Global Zoom saves must not write TimeTable");
+  assert.equal(sheetAppends.length, 1);
+  assert.equal(sheetAppends[0].range, "SystemConfig!A:E");
+  assert.deepEqual(sheetAppends[0].body.values[0].slice(0, 2), [
+    "GlobalZoomLink",
+    "https://zoom.test/direct-global"
+  ]);
+  assert.equal(sheetAppends[0].body.values[0][3], "ADMIN1");
+  assert.equal(sheetAppends[0].body.values[0][4], "Teacher A");
+  assert.ok(auditRows.some(row => (
+    row[5] === "UPDATE" && row[6] === "SYSTEM_CONFIG" && row[7] === "GlobalZoomLink"
+  )));
+
+  requestedRanges.length = 0;
+  const configuredRead = await postTimetable(
+    "/api/admin/timetable/get",
+    teachingAdminToken,
+    {},
+    directEnv
+  );
+  assert.equal(configuredRead.data.zoomsource, "SystemConfig");
+  assert.equal(configuredRead.data.zoomlink, "https://zoom.test/direct-global");
+  assert.equal(requestedRanges.includes("TimeTable!A:ZZ"), false, "Configured reads must not depend on TimeTable");
 
   const requiredRanges = new Set([
     "TeacherAssign!A:ZZ",
     "AdminRecords!A:ZZ",
     "SubjectList!A:ZZ",
     "ModuleList!A:ZZ",
-    "TimeTable!A:ZZ"
+    "SystemConfig!A:E"
   ]);
   assert.deepEqual(new Set(requestedRanges), requiredRanges);
 } finally {
