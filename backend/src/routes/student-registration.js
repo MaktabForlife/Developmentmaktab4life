@@ -1,5 +1,12 @@
 import { normalizeWhatsapp6, requireAdminOrSenior } from "../lib/auth.js";
 import {
+  appendAdminAuditLog,
+  columnIndexToA1,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit,
+  stampCreatedRow
+} from "../lib/admin-audit.js";
+import {
   appendGoogleSheetValues,
   readGoogleSheetValues
 } from "../lib/google-sheets.js";
@@ -10,7 +17,6 @@ import { buildStudentDuplicateResponse } from "./student-management.js";
 
 const STUDENT_RECORDS_SHEET = "StudentRecords";
 const FULL_SHEET_RANGE = "A:ZZ";
-const STUDENT_RECORDS_APPEND_RANGE = `${STUDENT_RECORDS_SHEET}!A:L`;
 const UNIQUE_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export async function registerStudentGoogleSheetsEndpoint(request, env) {
@@ -52,13 +58,6 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
     }, 403);
   }
 
-  const registeredby = clean(
-    permission.user.username ||
-    permission.user.name ||
-    permission.user.adminid ||
-    permission.user.uniqueid ||
-    "ADMIN"
-  );
   let studentLoginBaseUrl;
 
   try {
@@ -97,24 +96,48 @@ export async function registerStudentGoogleSheetsEndpoint(request, env) {
     ? getNextAvailableUsername(studentRows, username)
     : username;
   const studentid = nextSequentialId(studentRows, "MAKTAB");
-
   const uniqueid = generateUniqueId();
-  const createdate = new Date().toISOString();
+  const rowAudit = getRequiredRowAuditColumns(studentRows[0] || []);
 
-  await appendGoogleSheetValues(env, STUDENT_RECORDS_APPEND_RANGE, [[
-    studentid,
-    finalUsername,
-    whatsapp6,
-    uniqueid,
-    false,
-    "",
-    classgroup,
-    createdate,
-    "",
-    0,
-    true,
-    registeredby
-  ]]);
+  if (!rowAudit.ok) {
+    return json({ success: false, error: rowAudit.error }, 503);
+  }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
+  const registeredby = audit.actor.adminname;
+  const createdate = audit.timestamp;
+  const row = new Array((studentRows[0] || []).length).fill("");
+
+  row[0] = studentid;
+  row[1] = finalUsername;
+  row[2] = whatsapp6;
+  row[3] = uniqueid;
+  row[4] = false;
+  row[5] = "";
+  row[6] = classgroup;
+  row[7] = createdate;
+  row[8] = "";
+  row[9] = 0;
+  row[10] = true;
+  row[11] = registeredby;
+  stampCreatedRow(row, rowAudit.columns, audit.actor, createdate);
+
+  await appendGoogleSheetValues(
+    env,
+    `${STUDENT_RECORDS_SHEET}!A:${columnIndexToA1(row.length - 1)}`,
+    [row]
+  );
+  await appendAdminAuditLog(env, audit, {
+    action: "CREATE",
+    recordType: "STUDENT_RECORD",
+    recordId: studentid,
+    changedFields: ["Username", "WhatsAppLast6", "ClassGroup", "Active"]
+  });
 
   return json({
     success: true,

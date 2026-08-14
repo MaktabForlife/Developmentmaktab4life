@@ -1,9 +1,6 @@
-V101.2
+V101.3
 
 No repository files or Google Sheet tabs should be deleted in this release.
 
-After V101.2 is deployed and verified, the obsolete `Next...Number` rows may be
-removed from SystemConfig as documented in
-`docs/V101.2-SYSTEMCONFIG-MIGRATION.md`.
-
-Keep both TimeTable and TeacherAssign for the later timetable cutover phase.
+Create the new `AdminAuditLog` tab and append the V101.3 audit columns before
+deploying the Worker. Keep `SystemConfig`, `TimeTable` and `TeacherAssign`.

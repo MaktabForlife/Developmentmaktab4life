@@ -20,7 +20,8 @@ const attendanceHeaders = [
   "DayCounter",
   "Notes",
   "AdminID",
-  "DateStamp"
+  "DateStamp",
+  "AdminName"
 ];
 const attendanceRowsFixture = [
   attendanceHeaders,
@@ -74,6 +75,10 @@ const seniorToken = await makeSessionToken({
 const originalFetch = globalThis.fetch;
 const sheetUpdates = [];
 const sheetAppends = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 let attendanceRows = attendanceRowsFixture.map(row => row.slice());
 let missingSheetName = "";
 
@@ -101,8 +106,10 @@ globalThis.fetch = async (input, init = {}) => {
     }
 
     if ((init.method || "GET") === "POST") {
-      sheetAppends.push({ range, body: JSON.parse(init.body) });
-      return response({ updates: { updatedRows: JSON.parse(init.body).values.length } });
+      const body = JSON.parse(init.body);
+      sheetAppends.push({ range, body });
+      if (range === "AdminAuditLog!A:I") auditRows.push(...body.values);
+      return response({ updates: { updatedRows: body.values.length } });
     }
 
     if (range === "StudentRecords!A:ZZ") {
@@ -111,6 +118,10 @@ globalThis.fetch = async (input, init = {}) => {
 
     if (range === "Attendance!A:ZZ") {
       return response({ values: attendanceRows });
+    }
+
+    if (range === "AdminAuditLog!A1:I1") {
+      return response({ values: [auditRows[0]] });
     }
 
     throw new Error(`Unexpected attendance range: ${range}`);
@@ -214,16 +225,18 @@ try {
   assert.equal(submitResult.data.skippedDuplicateCount, 2);
   assert.equal(submitResult.data.adminid, "ADMIN-T1");
   assert.match(submitResult.data.datestamp, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
-  assert.equal(sheetAppends.length, 1);
-  assert.equal(sheetAppends[0].range, "Attendance!A:ZZ");
-  const submittedRows = sheetAppends[0].body.values;
+  const attendanceAppends = sheetAppends.filter(item => item.range === "Attendance!A:ZZ");
+  assert.equal(attendanceAppends.length, 1);
+  const submittedRows = attendanceAppends[0].body.values;
   assert.deepEqual(submittedRows[0].slice(0, 7), [
     "2026-07-28", "S1", "Zayd 10", "1", "ABSENT", "", ""
   ]);
   assert.equal(submittedRows[0][7], "ADMIN-T1");
+  assert.equal(submittedRows[0][9], "Teacher A");
   assert.deepEqual(submittedRows[1].slice(0, 8), [
     "2026-07-28", "SYSTEM1", "daycounter", "SYSTEM", "ABSENT", "daycounter", "Register marked", "ADMIN-T1"
   ]);
+  assert.ok(auditRows.some(row => row[5] === "SUBMIT" && row[7] === "2026-07-28"));
 
   const forbidden = await postAttendance(
     "/api/attendance/submit-absent",
@@ -250,9 +263,9 @@ try {
   assert.equal(allPresent.data.absentCount, 0);
   assert.equal(allPresent.data.rowsAdded, 1);
   assert.deepEqual(sheetUpdates, [{
-    range: "Attendance!A1:H1",
+    range: "Attendance!A1:I1",
     body: {
-      range: "Attendance!A1:H1",
+      range: "Attendance!A1:I1",
       majorDimension: "ROWS",
       values: [[
         "AttendanceDate",
@@ -262,11 +275,15 @@ try {
         "Status",
         "Notes",
         "AdminID",
-        "DateStamp"
+        "DateStamp",
+        "AdminName"
       ]]
     }
   }]);
-  assert.equal(sheetAppends[0].body.values[0][5], "All students present");
+  assert.equal(
+    sheetAppends.find(item => item.range === "Attendance!A:ZZ").body.values[0][5],
+    "All students present"
+  );
 
   attendanceRows = attendanceRowsFixture.map(row => row.slice());
   missingSheetName = "StudentRecords";

@@ -1,3 +1,29 @@
+V101.3
+
+# Authenticated Admin attribution and append-only audit history
+
+- Adds `AdminAuditLog` with server-generated time, authenticated Admin ID/name,
+  role, action, record type, record ID and changed field names.
+- Adds immutable creation attribution and separate latest-modification
+  attribution to current master-data write paths.
+- Audits Admin and Student records, curriculum, Drive and subject resources,
+  task assignments/progress, System Settings, global Zoom compatibility writes,
+  Attendance and Weekly Planner saves.
+- Preserves existing creation information when records are modified.
+- Adds the authenticated name to Attendance, StudentTask assignment and
+  SystemConfig writes.
+- Excludes PINs, hashes, secrets, tokens, credentials and submitted field
+  values from the central log.
+- Fails administrative writes closed when `AdminAuditLog` or required audit
+  columns have not been installed; read routes remain available.
+- Bumps application and Worker metadata to `101.3`.
+
+The Google Sheet migration must be completed before the V101.3 Worker is
+deployed. Follow `docs/V101.3-ADMIN-AUDIT-MIGRATION.md`. No Apps Script,
+Worker binding or Cloudflare-variable change is required.
+
+---
+
 V101.2
 
 # SystemConfig foundation and global Zoom migration

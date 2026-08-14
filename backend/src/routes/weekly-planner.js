@@ -3,6 +3,11 @@ import {
   readGoogleSheetValues,
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
+import {
+  appendAdminAuditLog,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
 import { callAppsScript } from "../lib/apps-script.js";
 import { getAuthUser } from "../lib/auth.js";
 import { json } from "../lib/http.js";
@@ -29,7 +34,11 @@ const WEEKLY_PLANNER_HEADERS = Object.freeze([
   "FeedbackBy",
   "CreatedDate",
   "UpdatedDate",
-  "PublishedDate"
+  "PublishedDate",
+  "CreatedByAdminID",
+  "CreatedByAdminName",
+  "ModifiedByAdminID",
+  "ModifiedByAdminName"
 ]);
 
 async function requireWeeklyPlannerAdmin(request, env) {
@@ -57,7 +66,7 @@ export async function weeklyPlannerHealthEndpoint(request, env) {
 
   const rows = await readGoogleSheetValues(
     env,
-    `${WEEKLY_PLANNER_SHEET_NAME}!A1:N1`
+    `${WEEKLY_PLANNER_SHEET_NAME}!A1:R1`
   );
   validateSheetHeaders(rows[0] || [], WEEKLY_PLANNER_HEADERS, WEEKLY_PLANNER_SHEET_NAME);
 
@@ -504,7 +513,19 @@ export async function saveWeeklyPlannerEndpoint(request, env) {
     }, 409);
   }
 
-  const now = new Date().toISOString();
+  const rowAudit = getRequiredRowAuditColumns(WEEKLY_PLANNER_HEADERS);
+
+  if (!rowAudit.ok) {
+    return json({ success: false, error: rowAudit.error }, 503);
+  }
+
+  const audit = await prepareAdminAudit(env, auth.user);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
+  const now = audit.timestamp;
   const plannerId = existing
     ? existing.plannerId
     : buildWeeklyPlannerId(teacher.teacherId, week.weekStart);
@@ -523,23 +544,34 @@ export async function saveWeeklyPlannerEndpoint(request, env) {
     feedbackBy: String(auth.user.username || "").trim(),
     createdDate: existing ? existing.createdDate : now,
     updatedDate: now,
-    publishedDate: status === "READY" ? now : (existing ? existing.publishedDate : "")
+    publishedDate: status === "READY" ? now : (existing ? existing.publishedDate : ""),
+    createdByAdminID: existing ? existing.createdByAdminID : audit.actor.adminid,
+    createdByAdminName: existing ? existing.createdByAdminName : audit.actor.adminname,
+    modifiedByAdminID: existing ? audit.actor.adminid : "",
+    modifiedByAdminName: existing ? audit.actor.adminname : ""
   };
   const values = [weeklyPlannerRecordToRow(record)];
 
   if (existing) {
     await updateGoogleSheetValues(
       env,
-      `${WEEKLY_PLANNER_SHEET_NAME}!A${existing.rowNumber}:N${existing.rowNumber}`,
+      `${WEEKLY_PLANNER_SHEET_NAME}!A${existing.rowNumber}:R${existing.rowNumber}`,
       values
     );
   } else {
     await appendGoogleSheetValues(
       env,
-      `${WEEKLY_PLANNER_SHEET_NAME}!A:N`,
+      `${WEEKLY_PLANNER_SHEET_NAME}!A:R`,
       values
     );
   }
+
+  await appendAdminAuditLog(env, audit, {
+    action: existing ? "UPDATE" : "CREATE",
+    recordType: "WEEKLY_PLANNER",
+    recordId: plannerId,
+    changedFields: ["GroupNo", "Status", "PlannerData", "Feedback"]
+  });
 
   return json({
     success: true,
@@ -609,7 +641,7 @@ function compareWeeklyPlannerTeachers(a, b) {
 async function readWeeklyPlannerRecords(env) {
   const rows = await readGoogleSheetValues(
     env,
-    `${WEEKLY_PLANNER_SHEET_NAME}!A:N`
+    `${WEEKLY_PLANNER_SHEET_NAME}!A:R`
   );
   validateSheetHeaders(rows[0] || [], WEEKLY_PLANNER_HEADERS, WEEKLY_PLANNER_SHEET_NAME);
 
@@ -632,7 +664,11 @@ async function readWeeklyPlannerRecords(env) {
       feedbackBy: String(row[10] || "").trim(),
       createdDate: String(row[11] || "").trim(),
       updatedDate: String(row[12] || "").trim(),
-      publishedDate: String(row[13] || "").trim()
+      publishedDate: String(row[13] || "").trim(),
+      createdByAdminID: String(row[14] || "").trim(),
+      createdByAdminName: String(row[15] || "").trim(),
+      modifiedByAdminID: String(row[16] || "").trim(),
+      modifiedByAdminName: String(row[17] || "").trim()
     };
   }).filter(record => record.plannerId && record.teacherId && record.weekStart);
 }
@@ -652,7 +688,11 @@ function weeklyPlannerRecordToRow(record) {
     record.feedbackBy,
     record.createdDate,
     record.updatedDate,
-    record.publishedDate
+    record.publishedDate,
+    record.createdByAdminID,
+    record.createdByAdminName,
+    record.modifiedByAdminID,
+    record.modifiedByAdminName
   ];
 }
 

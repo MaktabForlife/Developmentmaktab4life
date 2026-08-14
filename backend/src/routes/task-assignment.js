@@ -1,5 +1,11 @@
 import { requireAdminOrSenior } from "../lib/auth.js";
 import {
+  appendAdminAuditLogs,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit,
+  stampCreatedRow
+} from "../lib/admin-audit.js";
+import {
   appendGoogleSheetValues,
   readGoogleSheetValues
 } from "../lib/google-sheets.js";
@@ -21,6 +27,7 @@ export async function assignTasksGoogleSheetsEndpoint(request, env) {
   const body = await request.json();
   const assignmentMode = clean(body.assignmentMode).toLowerCase();
   const options = {
+    actor: permission.user,
     assignedBy: clean(
       permission.user.adminid ||
       permission.user.username ||
@@ -155,7 +162,6 @@ async function assignTasksToStudents(env, options) {
     studentTaskRows,
     studentTaskColumns
   );
-  const assignedDate = new Date().toISOString();
   const assignments = [];
   let skippedDuplicate = 0;
   let skippedInvalidTask = 0;
@@ -185,11 +191,23 @@ async function assignTasksToStudents(env, options) {
       }
 
       existingAssignments.add(pairKey);
-      assignments.push({ studentid, task, assignedDate });
+      assignments.push({ studentid, task });
     });
   });
 
   if (assignments.length > 0) {
+    const rowAudit = getRequiredRowAuditColumns(studentTaskHeaders);
+
+    if (!rowAudit.ok) {
+      return { success: false, error: rowAudit.error };
+    }
+
+    const audit = await prepareAdminAudit(env, options.actor);
+
+    if (!audit.ok) {
+      return { success: false, error: audit.error };
+    }
+
     const studentTaskIds = nextSequentialIds(
       studentTaskRows,
       "STASK",
@@ -197,8 +215,8 @@ async function assignTasksToStudents(env, options) {
       { idColumn: studentTaskColumns.id }
     );
 
-    const rowsToAdd = assignments.map((assignment, index) => (
-      buildStudentTaskRow(
+    const rowsToAdd = assignments.map((assignment, index) => {
+      const row = buildStudentTaskRow(
         studentTaskHeaders,
         studentTaskHeaderMap,
         {
@@ -206,15 +224,33 @@ async function assignTasksToStudents(env, options) {
           studentid: assignment.studentid,
           task: assignment.task,
           assignedBy: options.assignedBy,
-          assignedDate: assignment.assignedDate
+          assignedByName: audit.actor.adminname,
+          assignedDate: audit.timestamp
         }
-      )
-    ));
+      );
+
+      return stampCreatedRow(
+        row,
+        rowAudit.columns,
+        audit.actor,
+        audit.timestamp
+      );
+    });
 
     await appendGoogleSheetValues(
       env,
       `${STUDENT_TASKS_SHEET}!A:${columnIndexToA1(studentTaskHeaders.length - 1)}`,
       rowsToAdd
+    );
+    await appendAdminAuditLogs(
+      env,
+      audit,
+      assignments.map((assignment, index) => ({
+        action: "CREATE",
+        recordType: "STUDENT_TASK_ASSIGNMENT",
+        recordId: studentTaskIds[index],
+        changedFields: ["StudentID", "TaskID", "AssignedBy", "AssignedDate"]
+      }))
     );
   }
 
@@ -384,6 +420,7 @@ function buildStudentTaskRow(headers, headerMap, options) {
   setCell(row, headerMap, ["VerifyStatus", "Verified", "verifystatus"], "");
   setCell(row, headerMap, ["VerifyDate", "VerifiedDate", "verifydate"], "");
   setCell(row, headerMap, ["AssignedBy", "assignedby"], options.assignedBy);
+  setCell(row, headerMap, ["AssignedByName", "assignedbyname"], options.assignedByName);
   setCell(row, headerMap, ["AssignedDate", "assigneddate"], options.assignedDate);
 
   return row;

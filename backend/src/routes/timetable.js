@@ -1,4 +1,8 @@
 import { callAppsScript } from "../lib/apps-script.js";
+import {
+  appendAdminAuditLog,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
 import { getAuthUser, requireAdminOrSenior, requireSystemAdmin } from "../lib/auth.js";
 import { readGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
@@ -338,18 +342,32 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
   }
 
   const systemConfigRows = await readSystemConfigRows(env);
+  const audit = await prepareAdminAudit(env, auth.user);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
   const saved = await upsertSystemConfigValues(
     env,
     new Map([[GLOBAL_ZOOM_LINK_KEY, zoomlink]]),
     {
       rows: systemConfigRows,
-      updatedBy: clean(auth.user.adminid || auth.user.username || "ADMIN")
+      updatedBy: audit.actor.adminid,
+      updatedByName: audit.actor.adminname
     }
   );
 
   if (!saved.ok) {
     return json({ success: false, error: saved.error }, saved.status || 409);
   }
+
+  await appendAdminAuditLog(env, audit, {
+    action: "UPDATE",
+    recordType: "SYSTEM_CONFIG",
+    recordId: GLOBAL_ZOOM_LINK_KEY,
+    changedFields: [GLOBAL_ZOOM_LINK_KEY]
+  });
 
   const timetable = buildTimetableResponse(teacherRows, {
     adminRows,

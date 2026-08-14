@@ -1,4 +1,8 @@
 import { callAppsScript } from "../lib/apps-script.js";
+import {
+  appendAdminAuditLog,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
 import { getAuthUser } from "../lib/auth.js";
 import {
   appendGoogleSheetValues,
@@ -20,7 +24,8 @@ const ATTENDANCE_HEADERS = Object.freeze([
   "Status",
   "Notes",
   "AdminID",
-  "DateStamp"
+  "DateStamp",
+  "AdminName"
 ]);
 
 export async function submitAbsentAttendance(request, env) {
@@ -67,13 +72,26 @@ export async function submitAbsentAttendanceGoogleSheetsEndpoint(request, env) {
   const studentIdCol = findAttendanceColumn(headerMap, ["StudentID", "StudentId", "studentid"]);
   const usernameCol = findAttendanceColumn(headerMap, ["Username", "StudentName", "Name"]);
   const statusCol = findAttendanceColumn(headerMap, ["Status", "AttendanceStatus"]);
+  const adminNameCol = findAttendanceColumn(headerMap, ["AdminName", "MarkedByName"]);
 
   if (!date) {
     return json({ success: false, error: "Missing date" });
   }
 
-  if (dateCol === -1 || studentIdCol === -1 || usernameCol === -1 || statusCol === -1) {
+  if (
+    dateCol === -1 ||
+    studentIdCol === -1 ||
+    usernameCol === -1 ||
+    statusCol === -1 ||
+    adminNameCol === -1
+  ) {
     return json({ success: false, error: "Attendance sheet is missing required headers" });
+  }
+
+  const audit = await prepareAdminAudit(env, context.authUser);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
   }
 
   const existingStudentDatePairs = new Set();
@@ -90,7 +108,8 @@ export async function submitAbsentAttendanceGoogleSheetsEndpoint(request, env) {
   });
 
   const now = formatAttendanceTimestamp(new Date());
-  const adminId = clean(context.authUser.adminid || "ADMIN") || "ADMIN";
+  const adminId = audit.actor.adminid;
+  const adminName = audit.actor.adminname;
   const outputRows = [];
   const submittedPairs = new Set();
 
@@ -112,6 +131,7 @@ export async function submitAbsentAttendanceGoogleSheetsEndpoint(request, env) {
     setAttendanceCell(row, headerMap, ["Status", "AttendanceStatus"], "ABSENT");
     setAttendanceCell(row, headerMap, ["Notes"], "");
     setAttendanceCell(row, headerMap, ["AdminID", "AdminId", "adminid", "MarkedBy"], adminId);
+    setAttendanceCell(row, headerMap, ["AdminName", "MarkedByName"], adminName);
     setAttendanceCell(row, headerMap, ["DateStamp", "Datestamp", "Timestamp", "MarkedDate"], now);
     outputRows.push(row);
   });
@@ -131,10 +151,17 @@ export async function submitAbsentAttendanceGoogleSheetsEndpoint(request, env) {
     context.absentStudents.length === 0 ? "All students present" : "Register marked"
   );
   setAttendanceCell(systemRow, headerMap, ["AdminID", "AdminId", "adminid", "MarkedBy"], adminId);
+  setAttendanceCell(systemRow, headerMap, ["AdminName", "MarkedByName"], adminName);
   setAttendanceCell(systemRow, headerMap, ["DateStamp", "Datestamp", "Timestamp", "MarkedDate"], now);
   outputRows.push(systemRow);
 
   await appendGoogleSheetValues(env, ATTENDANCE_SHEET_RANGE, outputRows);
+  await appendAdminAuditLog(env, audit, {
+    action: "SUBMIT",
+    recordType: "ATTENDANCE",
+    recordId: date,
+    changedFields: ["Status", "Notes"]
+  });
 
   return json({
     success: true,
@@ -509,7 +536,7 @@ async function readAttendanceRowsWithHeaders(env) {
 
   await updateGoogleSheetValues(
     env,
-    `${ATTENDANCE_SHEET_NAME}!A1:H1`,
+    `${ATTENDANCE_SHEET_NAME}!A1:I1`,
     [ATTENDANCE_HEADERS.slice()]
   );
 

@@ -3,20 +3,23 @@ import { createSessionToken } from "../src/lib/auth.js";
 import worker from "../src/worker.js";
 
 const subjectRows = [
-  ["SubjectID", "SubjectName", "Active", "CreateDate"],
+  ["SubjectID", "SubjectName", "Active", "CreateDate", "CreatedByAdminID",
+    "CreatedByAdminName", "ModifiedByAdminID", "ModifiedByAdminName", "ModifiedDate"],
   ["SUB1", "Aqidah", true, "2026-07-01T00:00:00.000Z"],
   ["SUB2", "Zakat", true, "2026-07-02T00:00:00.000Z"],
   ["SUBJ17", "", true, ""]
 ];
 const taskRows = [
-  ["TaskID", "SubjectID", "TaskName", "AudioLink", "VisualLink", "VideoLink", "PDFLink", "Active", "CreateDate"],
+  ["TaskID", "SubjectID", "TaskName", "AudioLink", "VisualLink", "VideoLink", "PDFLink", "Active", "CreateDate",
+    "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID", "ModifiedByAdminName", "ModifiedDate"],
   ["TASK3", "SUB2", "Zakat C", "", "", "", "", true, "2026-07-03T00:00:00.000Z"],
   ["TASK2", "SUB1", "Lesson B", "audio-b", "", "", "pdf-b", true, "2026-07-02T00:00:00.000Z"],
   ["TASK1", "SUB1", "Lesson A", "", "visual-a", "", "", false, "2026-07-01T00:00:00.000Z"],
   ["TASK120", "", "", "", "", "", "", false, ""]
 ];
 const subjectResourceRows = [
-  ["ResourceID", "SubjectID", "ResourceName", "ResourceType", "ResourceLink", "Active", "CreateDate"],
+  ["ResourceID", "SubjectID", "ResourceName", "ResourceType", "ResourceLink", "Active", "CreateDate",
+    "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID", "ModifiedByAdminName", "ModifiedDate"],
   ["RES3", "SUB2", "Zakat Guide", "PDF", "https://example.test/zakat", true, "2026-07-03T00:00:00.000Z"],
   ["RES2", "SUB1", "Book B", "PDF", "https://example.test/b", true, "2026-07-02T00:00:00.000Z"],
   ["RES1", "SUB1", "Book A", "LINK", "https://example.test/a", false, "2026-07-01T00:00:00.000Z"]
@@ -60,6 +63,10 @@ const teacherToken = await createSessionToken({
 }, directEnv);
 const originalFetch = globalThis.fetch;
 const requests = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -84,6 +91,7 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "SubjectResources!A:ZZ") return response({ values: subjectResourceRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
   }
 
   if (method === "PUT") {
@@ -91,6 +99,7 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (method === "POST" && append) {
+    if (range === "AdminAuditLog!A:I") auditRows.push(...body.values);
     return response({ updates: { updatedRange: range, updatedRows: body.values.length } });
   }
 
@@ -135,12 +144,14 @@ try {
   assert.equal(createdSubject.data.subject.subjectname, "Fiqh");
   assert.equal(createdSubject.data.subject.active, true);
   assert.match(createdSubject.data.subject.createdate, /^\d{4}-\d{2}-\d{2}T/);
-  assertWrite("POST", "SubjectList!A:D", [[
+  assertWrite("POST", "SubjectList!A:I", [[
     "SUBJ18",
     "Fiqh",
     true,
     createdSubject.data.subject.createdate
   ]]);
+  assert.equal(writeRow("POST", "SubjectList!A:I")[4], "ADMIN1");
+  assert.equal(writeRow("POST", "SubjectList!A:I")[5], "Admin User");
 
   const updatedSubject = await postCurriculum(
     "/api/admin/subjects/update",
@@ -150,12 +161,13 @@ try {
   );
   assert.equal(updatedSubject.data.success, true);
   assert.equal(updatedSubject.data.subjectid, "SUB2");
-  assertWrite("PUT", "SubjectList!A3:D3", [[
+  assertWrite("PUT", "SubjectList!A3:I3", [[
     "SUB2",
     "Advanced Zakat",
     false,
     "2026-07-02T00:00:00.000Z"
   ]]);
+  assert.equal(writeRow("PUT", "SubjectList!A3:I3")[6], "ADMIN1");
 
   const writesBeforeDuplicateUpdate = writeRequests().length;
   const duplicateSubjectUpdate = await postCurriculum(
@@ -195,7 +207,7 @@ try {
     "M4L_BACKEND_CURRICULUM_WRITE"
   );
   assert.equal(createdTask.data.task.taskid, "TASK121");
-  assertWrite("POST", "TaskList!A:I", [[
+  assertWrite("POST", "TaskList!A:N", [[
     "TASK121",
     "SUB2",
     "Lesson D",
@@ -206,6 +218,7 @@ try {
     true,
     createdTask.data.task.createdate
   ]]);
+  assert.equal(writeRow("POST", "TaskList!A:N")[9], "ADMIN1");
 
   const updatedTask = await postCurriculum(
     "/api/admin/tasks/update",
@@ -220,7 +233,7 @@ try {
     directEnv
   );
   assert.equal(updatedTask.data.success, true);
-  assertWrite("PUT", "TaskList!A4:I4", [[
+  assertWrite("PUT", "TaskList!A4:N4", [[
     "TASK1",
     "SUB2",
     "Lesson A2",
@@ -231,6 +244,7 @@ try {
     true,
     "2026-07-01T00:00:00.000Z"
   ]]);
+  assert.equal(writeRow("PUT", "TaskList!A4:N4")[11], "ADMIN1");
 
   const createdResource = await postCurriculum(
     "/api/admin/subject-resources/create",
@@ -250,7 +264,7 @@ try {
   );
   assert.equal(createdResource.data.resource.resourceid, "RES4");
   assert.equal(createdResource.data.resource.resourcetype, "AUDIO");
-  assertWrite("POST", "SubjectResources!A:G", [[
+  assertWrite("POST", "SubjectResources!A:L", [[
     "RES4",
     "SUB2",
     "Zakat Audio",
@@ -259,6 +273,7 @@ try {
     true,
     createdResource.data.resource.createdate
   ]]);
+  assert.equal(writeRow("POST", "SubjectResources!A:L")[7], "ADMIN1");
 
   const updatedResource = await postCurriculum(
     "/api/admin/subject-resources/update",
@@ -273,7 +288,7 @@ try {
     directEnv
   );
   assert.equal(updatedResource.data.success, true);
-  assertWrite("PUT", "SubjectResources!A4:G4", [[
+  assertWrite("PUT", "SubjectResources!A4:L4", [[
     "RES1",
     "SUB1",
     "Book A Revised",
@@ -282,6 +297,7 @@ try {
     true,
     "2026-07-01T00:00:00.000Z"
   ]]);
+  assert.equal(writeRow("PUT", "SubjectResources!A4:L4")[9], "ADMIN1");
 
   const writesBeforeInvalidResource = writeRequests().length;
   const invalidResource = await postCurriculum(
@@ -298,6 +314,8 @@ try {
   assert.equal(invalidResource.response.status, 400);
   assert.deepEqual(invalidResource.data, { success: false, error: "Invalid resourceType" });
   assert.equal(writeRequests().length, writesBeforeInvalidResource);
+  assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "SUBJ18"));
+  assert.ok(auditRows.some(row => row[5] === "UPDATE" && row[7] === "TASK1"));
 } finally {
   globalThis.fetch = originalFetch;
 }
@@ -312,9 +330,19 @@ function assertWrite(method, range, values) {
   const match = requests.find(request => (
     request.method === method &&
     request.range === range &&
-    JSON.stringify(request.body?.values) === JSON.stringify(values)
+    Array.isArray(request.body?.values) &&
+    request.body.values.length === values.length &&
+    request.body.values.every((row, index) => (
+      JSON.stringify(row.slice(0, values[index].length)) === JSON.stringify(values[index])
+    ))
   ));
   assert.ok(match, `Expected ${method} ${range} with ${JSON.stringify(values)}`);
+}
+
+function writeRow(method, range) {
+  const match = requests.find(request => request.method === method && request.range === range);
+  assert.ok(match, `Expected ${method} ${range}`);
+  return match.body.values[0];
 }
 
 function assertDirectHeaders(responseValue, feature, _source) {

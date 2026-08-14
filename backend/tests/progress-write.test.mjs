@@ -22,7 +22,12 @@ const studentTaskRows = [
     "VerifyStatus",
     "VerifyDate",
     "AssignedBy",
-    "AssignedDate"
+    "AssignedDate",
+    "CreatedByAdminID",
+    "CreatedByAdminName",
+    "ModifiedByAdminID",
+    "ModifiedByAdminName",
+    "ModifiedDate"
   ],
   ["STASK1", "ST1", "T1", "SUB1", "M1", "First", "", "", "", "", "Admin", "2026-07-01"],
   ["STASK2", "ST1", "T2", "SUB1", "M2", "Second", "COMPLETE", "2026-07-02", "VERIFIED", "2026-07-03", "Admin", "2026-07-01"],
@@ -84,6 +89,10 @@ const adminToken = await makeSessionToken({
 
 const originalFetch = globalThis.fetch;
 const batchPayloads = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 let requestedRanges = [];
 let missingSheetName = "";
 
@@ -107,12 +116,20 @@ globalThis.fetch = async (input, init = {}) => {
     const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
     requestedRanges.push(range);
 
+    if (init.method === "POST" && range.endsWith(":append")) {
+      const payload = JSON.parse(init.body);
+      assert.equal(range.replace(/:append$/, ""), "AdminAuditLog!A:I");
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
+
     if (missingSheetName && range.startsWith(`${missingSheetName}!`)) {
       return response({ error: { message: `Unable to parse range: ${range}` } }, 400);
     }
 
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
 
     throw new Error(`Unexpected Progress write range: ${range}`);
   }
@@ -173,6 +190,12 @@ try {
   assert.equal(verifyCells.get("StudentTasks!I3"), "");
   assert.equal(verifyCells.get("StudentTasks!J3"), "");
   assert.equal(verifyCells.has("StudentTasks!G2"), false);
+  assert.equal(verifyCells.get("StudentTasks!O2"), "ADMIN1");
+  assert.equal(verifyCells.get("StudentTasks!P2"), "Admin");
+  assert.match(verifyCells.get("StudentTasks!Q2"), /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(auditRows.some(row => (
+    row[5] === "UPDATE" && row[6] === "STUDENT_TASK_ASSIGNMENT" && row[7] === "STASK1"
+  )));
 
   batchPayloads.length = 0;
   const teacherOwnGroup = await post(

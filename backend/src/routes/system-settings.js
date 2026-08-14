@@ -1,4 +1,8 @@
 import { getAuthUser } from "../lib/auth.js";
+import {
+  appendAdminAuditLog,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
 import { json } from "../lib/http.js";
 import {
   DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL,
@@ -77,8 +81,15 @@ export async function saveSystemSettingsGoogleSheetsEndpoint(request, env) {
   }
 
   const rows = await readSystemConfigRows(env);
+  const audit = await prepareAdminAudit(env, permission.user);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
   const updatedAt = new Date().toISOString();
-  const updatedBy = clean(permission.user.adminid || permission.user.username || "ADMIN");
+  const updatedBy = audit.actor.adminid;
+  const updatedByName = audit.actor.adminname;
   const valuesByKey = new Map([
     [STUDENT_LOGIN_BASE_KEY, studentLoginBaseUrl],
     [WEEKLY_PLANNER_DRIVE_FOLDER_ID_KEY, weeklyPlannerDriveFolderId],
@@ -88,12 +99,20 @@ export async function saveSystemSettingsGoogleSheetsEndpoint(request, env) {
   const saved = await upsertSystemConfigValues(env, valuesByKey, {
     rows,
     updatedAt,
-    updatedBy
+    updatedBy,
+    updatedByName
   });
 
   if (!saved.ok) {
     return json({ success: false, error: saved.error }, saved.status || 409);
   }
+
+  await appendAdminAuditLog(env, audit, {
+    action: "UPDATE",
+    recordType: "SYSTEM_CONFIG",
+    recordId: "SYSTEM_CONFIG",
+    changedFields: Array.from(valuesByKey.keys())
+  });
 
   return json({
     success: true,
@@ -112,7 +131,8 @@ export async function saveSystemSettingsGoogleSheetsEndpoint(request, env) {
         globalZoomLink: Boolean(globalZoomLink)
       },
       updatedAt,
-      updatedBy
+      updatedBy,
+      updatedByName
     }
   });
 }

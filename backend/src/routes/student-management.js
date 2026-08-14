@@ -1,5 +1,11 @@
 import { normalizeWhatsapp6, requireAdminOrSenior } from "../lib/auth.js";
 import {
+  appendAdminAuditLog,
+  buildModifiedAuditCellUpdates,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
+import {
   batchUpdateGoogleSheetValues,
   readGoogleSheetValues
 } from "../lib/google-sheets.js";
@@ -170,6 +176,7 @@ export async function updateStudentGoogleSheetsEndpoint(request, env) {
   const studentRow = rows[rowIndex + 1];
   const sheetRow = rowIndex + 2;
   const updates = [];
+  const changedFields = [];
   const updatedValues = {};
   const currentClassGroup = clean(getValue(studentRow, columns.classgroup));
   const currentActive = normalizeBooleanCell(getValue(studentRow, columns.active));
@@ -196,25 +203,54 @@ export async function updateStudentGoogleSheetsEndpoint(request, env) {
   if (body.username !== undefined) {
     updatedValues.username = String(body.username).trim();
     updates.push(singleCellUpdate(columns.username, sheetRow, updatedValues.username));
+    changedFields.push("Username");
   }
 
   if (body.whatsapp6 !== undefined) {
     updatedValues.whatsapp6 = normalizeWhatsapp6(body.whatsapp6);
     updates.push(singleCellUpdate(columns.whatsapp6, sheetRow, updatedValues.whatsapp6));
+    changedFields.push("WhatsAppLast6");
   }
 
   if (body.classgroup !== undefined) {
     updatedValues.classgroup = requestedClassGroup;
     updates.push(singleCellUpdate(columns.classgroup, sheetRow, updatedValues.classgroup));
+    changedFields.push("ClassGroup");
   }
 
   if (body.active !== undefined) {
     updatedValues.active = body.active;
     updates.push(singleCellUpdate(columns.active, sheetRow, updatedValues.active));
+    changedFields.push("Active");
   }
 
   if (updates.length > 0) {
+    const rowAudit = getRequiredRowAuditColumns(rows[0] || []);
+
+    if (!rowAudit.ok) {
+      return json({ success: false, error: rowAudit.error }, 503);
+    }
+
+    const audit = await prepareAdminAudit(env, permission.user);
+
+    if (!audit.ok) {
+      return json({ success: false, error: audit.error }, 503);
+    }
+
+    updates.push(...buildModifiedAuditCellUpdates(
+      STUDENT_RECORDS_SHEET,
+      sheetRow,
+      rowAudit.columns,
+      audit.actor,
+      audit.timestamp
+    ));
     await batchUpdateGoogleSheetValues(env, updates);
+    await appendAdminAuditLog(env, audit, {
+      action: "UPDATE",
+      recordType: "STUDENT_RECORD",
+      recordId: getValue(studentRow, columns.studentid),
+      changedFields
+    });
   }
 
   return json({

@@ -1,5 +1,11 @@
 import { getAuthUser } from "../lib/auth.js";
 import {
+  appendAdminAuditLogs,
+  buildModifiedAuditCellUpdates,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
+import {
   batchUpdateGoogleSheetValues,
   readGoogleSheetValues
 } from "../lib/google-sheets.js";
@@ -154,7 +160,34 @@ async function applyProgressStatusUpdates(env, sourceUpdates, authUser) {
   });
 
   const studentMap = buildStudentLookup(studentRows);
-  const now = new Date().toISOString();
+  let audit = null;
+  let rowAudit = null;
+
+  if (authUser.type === "admin") {
+    rowAudit = getRequiredRowAuditColumns(studentTaskRows[0] || []);
+
+    if (!rowAudit.ok) {
+      return json({
+        success: false,
+        error: rowAudit.error,
+        updatedCount: 0,
+        failedCount: updates.length
+      }, 503);
+    }
+
+    audit = await prepareAdminAudit(env, authUser);
+
+    if (!audit.ok) {
+      return json({
+        success: false,
+        error: audit.error,
+        updatedCount: 0,
+        failedCount: updates.length
+      }, 503);
+    }
+  }
+
+  const now = audit ? audit.timestamp : new Date().toISOString();
   const validationErrors = [];
   const cellUpdates = [];
   const results = [];
@@ -234,6 +267,16 @@ async function applyProgressStatusUpdates(env, sourceUpdates, authUser) {
       ));
     }
 
+    if (audit) {
+      cellUpdates.push(...buildModifiedAuditCellUpdates(
+        STUDENT_TASKS_SHEET,
+        sheetRow,
+        rowAudit.columns,
+        audit.actor,
+        audit.timestamp
+      ));
+    }
+
     results.push({
       success: true,
       index: update.index,
@@ -253,6 +296,18 @@ async function applyProgressStatusUpdates(env, sourceUpdates, authUser) {
 
   if (cellUpdates.length > 0) {
     await batchUpdateGoogleSheetValues(env, cellUpdates);
+  }
+
+  if (audit) {
+    await appendAdminAuditLogs(env, audit, updates.map(update => ({
+      action: "UPDATE",
+      recordType: "STUDENT_TASK_ASSIGNMENT",
+      recordId: update.studenttaskid,
+      changedFields: [
+        ...(hasOwn(update, "completeStatus") ? ["CompleteStatus", "CompleteDate"] : []),
+        ...(hasOwn(update, "verifyStatus") ? ["VerifyStatus", "VerifyDate"] : [])
+      ]
+    })));
   }
 
   return json({

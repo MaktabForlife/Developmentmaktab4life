@@ -1,16 +1,21 @@
 import { requireSystemAdmin } from "../lib/auth.js";
 import {
+  appendAdminAuditLog,
+  buildCreatedAuditCellUpdates,
+  buildModifiedAuditCellUpdates,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
+import {
   appendGoogleSheetValues,
   batchUpdateGoogleSheetValues,
-  readGoogleSheetValues,
-  updateGoogleSheetValues
+  readGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import { nextSequentialId } from "../lib/sequential-ids.js";
 
 const ADMIN_RECORDS_SHEET = "AdminRecords";
 const FULL_SHEET_RANGE = `${ADMIN_RECORDS_SHEET}!A:ZZ`;
-const APPEND_RANGE = `${ADMIN_RECORDS_SHEET}!A:J`;
 const UNIQUE_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const VALID_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER"]);
 
@@ -77,20 +82,49 @@ export async function registerAdminGoogleSheetsEndpoint(request, env) {
 
   const adminid = nextSequentialId(rows, "ADMIN");
   const uniqueid = generateUniqueId(rows);
-  const createdate = new Date().toISOString();
+  const rowAudit = getRequiredRowAuditColumns(rows[0] || []);
 
-  await appendGoogleSheetValues(env, APPEND_RANGE, [[
-    adminid,
-    username,
-    uniqueid,
-    false,
-    "",
-    role,
-    assignedgroup,
-    true,
-    createdate,
-    ""
-  ]]);
+  if (!rowAudit.ok) {
+    return json({ success: false, error: rowAudit.error }, 503);
+  }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
+  const createdate = audit.timestamp;
+  const appended = await appendGoogleSheetValues(
+    env,
+    `${ADMIN_RECORDS_SHEET}!A:J`,
+    [[
+      adminid,
+      username,
+      uniqueid,
+      false,
+      "",
+      role,
+      assignedgroup,
+      true,
+      createdate,
+      ""
+    ]]
+  );
+  const appendedRow = getAppendedRowNumber(appended, rows.length + 1);
+  await batchUpdateGoogleSheetValues(env, buildCreatedAuditCellUpdates(
+    ADMIN_RECORDS_SHEET,
+    appendedRow,
+    rowAudit.columns,
+    audit.actor,
+    createdate
+  ));
+  await appendAdminAuditLog(env, audit, {
+    action: "CREATE",
+    recordType: "ADMIN_RECORD",
+    recordId: adminid,
+    changedFields: ["Username", "Role", "AssignedGroup", "Active"]
+  });
 
   return json({
     success: true,
@@ -174,13 +208,44 @@ export async function updateAdminGoogleSheetsEndpoint(request, env) {
   }
 
   const updates = [];
+  const changedFields = [];
   if (body.username !== undefined) updates.push(cellUpdate("B", target.row, clean(body.username)));
   if (body.role !== undefined) updates.push(cellUpdate("F", target.row, nextRole));
   if (body.assignedgroup !== undefined) updates.push(cellUpdate("G", target.row, nextAssignedGroup));
   if (body.active !== undefined) updates.push(cellUpdate("H", target.row, nextActive));
 
+  if (body.username !== undefined) changedFields.push("Username");
+  if (body.role !== undefined) changedFields.push("Role");
+  if (body.assignedgroup !== undefined) changedFields.push("AssignedGroup");
+  if (body.active !== undefined) changedFields.push("Active");
+
   if (updates.length > 0) {
+    const rowAudit = getRequiredRowAuditColumns(rows[0] || []);
+
+    if (!rowAudit.ok) {
+      return json({ success: false, error: rowAudit.error }, 503);
+    }
+
+    const audit = await prepareAdminAudit(env, permission.user);
+
+    if (!audit.ok) {
+      return json({ success: false, error: audit.error }, 503);
+    }
+
+    updates.push(...buildModifiedAuditCellUpdates(
+      ADMIN_RECORDS_SHEET,
+      target.row,
+      rowAudit.columns,
+      audit.actor,
+      audit.timestamp
+    ));
     await batchUpdateGoogleSheetValues(env, updates);
+    await appendAdminAuditLog(env, audit, {
+      action: "UPDATE",
+      recordType: "ADMIN_RECORD",
+      recordId: target.adminid,
+      changedFields
+    });
   }
 
   return json({
@@ -228,7 +293,35 @@ export async function resetAdminPinGoogleSheetsEndpoint(request, env) {
     }, 409);
   }
 
-  await updateGoogleSheetValues(env, `${ADMIN_RECORDS_SHEET}!D${target.row}:E${target.row}`, [[false, ""]]);
+  const rowAudit = getRequiredRowAuditColumns(rows[0] || []);
+
+  if (!rowAudit.ok) {
+    return json({ success: false, error: rowAudit.error }, 503);
+  }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
+  await batchUpdateGoogleSheetValues(env, [
+    cellUpdate("D", target.row, false),
+    cellUpdate("E", target.row, ""),
+    ...buildModifiedAuditCellUpdates(
+      ADMIN_RECORDS_SHEET,
+      target.row,
+      rowAudit.columns,
+      audit.actor,
+      audit.timestamp
+    )
+  ]);
+  await appendAdminAuditLog(env, audit, {
+    action: "PIN_RESET",
+    recordType: "ADMIN_RECORD",
+    recordId: target.adminid,
+    changedFields: ["AuthenticationStatus"]
+  });
 
   return json({
     success: true,
@@ -369,6 +462,18 @@ function cellUpdate(column, row, value) {
     majorDimension: "ROWS",
     values: [[value]]
   };
+}
+
+function getAppendedRowNumber(result, fallback) {
+  const updatedRange = clean(result?.updates?.updatedRange);
+  const match = /!A(\d+):[A-Z]+\d+$/.exec(updatedRange);
+  const parsed = match ? Number(match[1]) : Number(fallback);
+
+  if (!Number.isInteger(parsed) || parsed < 2) {
+    throw new Error("Unable to determine appended AdminRecords row");
+  }
+
+  return parsed;
 }
 
 function normalizeRole(value) {

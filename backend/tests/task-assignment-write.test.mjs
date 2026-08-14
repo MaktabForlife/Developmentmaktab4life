@@ -12,7 +12,9 @@ const TASK_HEADERS = [
 const STUDENT_TASK_HEADERS = [
   "StudentTaskID", "StudentID", "TaskID", "SubjectID", "SubjectName",
   "ModuleID", "ModuleName", "TaskName", "CompleteStatus", "CompleteDate",
-  "VerifyStatus", "VerifyDate", "AssignedBy", "AssignedDate"
+  "VerifyStatus", "VerifyDate", "AssignedBy", "AssignedDate", "AssignedByName",
+  "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID",
+  "ModifiedByAdminName", "ModifiedDate"
 ];
 
 const keyPair = await crypto.subtle.generateKey(
@@ -66,6 +68,7 @@ let missingSheetName = "";
 let reads = [];
 let updates = [];
 let appends = [];
+let auditRows = [];
 
 function resetSheets() {
   studentRows = [
@@ -94,6 +97,10 @@ function resetSheets() {
   reads = [];
   updates = [];
   appends = [];
+  auditRows = [[
+    "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+    "RecordType", "RecordID", "ChangedFields"
+  ]];
 }
 
 resetSheets();
@@ -125,6 +132,7 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
 
     throw new Error(`Unexpected task-assignment range: ${range}`);
   }
@@ -137,9 +145,13 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (init.method === "POST" && isAppend) {
+    if (range === "AdminAuditLog!A:I") {
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
     appends.push({ range, payload });
 
-    if (range === "StudentTasks!A:N") {
+    if (range === "StudentTasks!A:T") {
       studentTaskRows.push(...payload.values);
     }
 
@@ -176,7 +188,7 @@ try {
   });
   assert.deepEqual(updates, [], "Task assignment must not write SystemConfig counters");
   assert.equal(appends.length, 1);
-  assert.equal(appends[0].range, "StudentTasks!A:N");
+  assert.equal(appends[0].range, "StudentTasks!A:T");
   assert.deepEqual(
     appends[0].payload.values.map(row => [row[0], row[1], row[2], row[3], row[12]]),
     [
@@ -185,12 +197,16 @@ try {
       ["STASK102", "ST2", "TASK2", "SUB1", "ADMIN1"]
     ]
   );
-  assert.ok(appends[0].payload.values.every(row => row.length === 14));
+  assert.ok(appends[0].payload.values.every(row => row.length === 20));
   assert.deepEqual(appends[0].payload.values[0].slice(4, 8), [
     "Aqidah", "MOD2", "Module 2", "Second"
   ]);
   assert.ok(appends[0].payload.values.every(row => row[13] === appends[0].payload.values[0][13]));
   assert.match(appends[0].payload.values[0][13], /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(appends[0].payload.values[0][14], "Admin User");
+  assert.equal(appends[0].payload.values[0][15], "ADMIN1");
+  assert.equal(appends[0].payload.values[0][16], "Admin User");
+  assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "STASK100"));
 
   resetSheets();
   const allStudents = await postAdmin(

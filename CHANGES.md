@@ -1,3 +1,24 @@
+# V101.3 — Authenticated administrative audit trail
+
+- Adds a shared audit module for authenticated actor attribution, row creation
+  stamps, row modification stamps and append-only audit events.
+- Requires exact `AdminAuditLog!A1:I1` headers before any audited write.
+- Uses UUID-based audit IDs, avoiding a new counter or mutable sequence row.
+- Extends SystemConfig rows with `UpdatedByAdminName` in column E.
+- Adds auditing to Admin/Student management, PIN reset, curriculum,
+  resource-management, task-assignment, staff progress writes, Attendance,
+  Weekly Planner, System Settings and the cached timetable Zoom write.
+- Retains creation identity during updates and records only changed field names
+  centrally; sensitive fields and submitted values are excluded.
+- Adds focused audit-helper coverage and updates all affected route tests.
+- Bumps release and Worker metadata to `101.3`.
+
+Install the Google Sheet audit schema before deploying the Worker. The exact
+column and verification sequence is documented in
+`docs/V101.3-ADMIN-AUDIT-MIGRATION.md`.
+
+---
+
 # V101.2 — SystemConfig foundation and counter-free identifiers
 
 - Adds `GlobalZoomLink` to the ADMIN-only System Settings read/write contract.

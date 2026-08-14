@@ -14,7 +14,12 @@ const studentRows = [
     "LastLogin",
     "FailedAttempts",
     "Active",
-    "RegisteredBy"
+    "RegisteredBy",
+    "CreatedByAdminID",
+    "CreatedByAdminName",
+    "ModifiedByAdminID",
+    "ModifiedByAdminName",
+    "ModifiedDate"
   ],
   ["SYSTEM1", "Maktab Day", "999999", "SYSTEM", false, "", "ALL", "", "", 0, true, "SYSTEM"],
   ["MAKTAB197", "Ahmad", "012345", "LINK-AHMAD", true, "secret", "2", "2026-07-01", "", 0, true, "Admin"],
@@ -109,6 +114,10 @@ const originalFetch = globalThis.fetch;
 const reads = [];
 const updates = [];
 const appends = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 let missingSheetName = "";
 
 globalThis.fetch = async (input, init = {}) => {
@@ -136,7 +145,8 @@ globalThis.fetch = async (input, init = {}) => {
     }
 
     if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
-    if (range === "SystemConfig!A:D") return response({ values: systemConfigRows });
+    if (range === "SystemConfig!A:E") return response({ values: systemConfigRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
 
@@ -152,9 +162,13 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (init.method === "POST" && isAppend) {
+    if (range === "AdminAuditLog!A:I") {
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
     appends.push({ range, payload });
 
-    if (range === "StudentRecords!A:L") {
+    if (range === "StudentRecords!A:Q") {
       studentRows.push(...payload.values);
     } else if (range === "StudentTasks!A:N") {
       studentTaskRows.push(...payload.values);
@@ -203,14 +217,14 @@ try {
 
   assert.deepEqual(updates, [], "Registration must not write SystemConfig counters");
   assert.equal(appends.length, 1);
-  assert.equal(appends[0].range, "StudentRecords!A:L");
+  assert.equal(appends[0].range, "StudentRecords!A:Q");
   assert.deepEqual(appends[0].payload.values[0].slice(0, 4), [
     "MAKTAB200",
     "New Student",
     "123456",
     registered.data.uniqueid
   ]);
-  assert.deepEqual(appends[0].payload.values[0].slice(4), [
+  assert.deepEqual(appends[0].payload.values[0].slice(4, 12), [
     false,
     "",
     "4",
@@ -221,6 +235,9 @@ try {
     "Admin User"
   ]);
   assert.match(appends[0].payload.values[0][7], /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(appends[0].payload.values[0][12], "ADMIN1");
+  assert.equal(appends[0].payload.values[0][13], "Admin User");
+  assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "MAKTAB200"));
 
   assert.equal(
     appends.some(item => item.range.startsWith("StudentTasks!")),
@@ -282,7 +299,7 @@ try {
   assert.equal(confirmed.data.username, "Ahmad3");
   assert.equal(confirmed.data.studentid, "MAKTAB201");
   assert.equal(confirmed.data.taskAssignmentPending, true);
-  assert.equal(appends.at(-1).range, "StudentRecords!A:L");
+  assert.equal(appends.at(-1).range, "StudentRecords!A:Q");
 
   const allGroupsRegistration = await postAdmin(
     "/api/admin/register-student",
@@ -356,7 +373,8 @@ try {
     new Set(reads),
     new Set([
       "StudentRecords!A:ZZ",
-      "SystemConfig!A:D"
+      "SystemConfig!A:E",
+      "AdminAuditLog!A1:I1"
     ])
   );
 } finally {

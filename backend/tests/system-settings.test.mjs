@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import worker from "../src/worker.js";
 
 const systemConfigRows = [
-  ["NextStudentNumber", 250],
-  ["NextStudentTaskNumber", 900],
   [
     "StudentLoginBaseUrl",
     "https://old.example.test/student/",
     "2026-07-01T00:00:00.000Z",
-    "ADMIN0"
+    "ADMIN0",
+    "Old Admin"
   ]
 ];
 
@@ -58,6 +57,10 @@ const originalFetch = globalThis.fetch;
 const reads = [];
 const batchUpdates = [];
 const appends = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -77,10 +80,10 @@ globalThis.fetch = async (input, init = {}) => {
     batchUpdates.push(payload);
 
     payload.data.forEach(update => {
-      const match = update.range.match(/^SystemConfig!B(\d+):D\1$/);
+      const match = update.range.match(/^SystemConfig!B(\d+):E\1$/);
       assert.ok(match, `Unexpected SystemConfig update range: ${update.range}`);
       const rowIndex = Number(match[1]) - 1;
-      systemConfigRows[rowIndex].splice(1, 3, ...update.values[0]);
+      systemConfigRows[rowIndex].splice(1, 4, ...update.values[0]);
     });
 
     return response({ totalUpdatedRows: payload.data.length });
@@ -92,12 +95,19 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (init.method === "GET") {
     reads.push(range);
-    assert.equal(range, "SystemConfig!A:D");
+    if (range === "AdminAuditLog!A1:I1") {
+      return response({ values: [auditRows[0]] });
+    }
+    assert.equal(range, "SystemConfig!A:E");
     return response({ values: systemConfigRows });
   }
 
   if (init.method === "POST" && isAppend) {
     const payload = JSON.parse(init.body);
+    if (range === "AdminAuditLog!A:I") {
+      auditRows.push(...payload.values);
+      return response({ updates: { updatedRows: payload.values.length } });
+    }
     appends.push({ range, payload });
     systemConfigRows.push(...payload.values);
     return response({ updates: { updatedRows: payload.values.length } });
@@ -152,17 +162,19 @@ try {
   assert.equal(saved.data.settings.weeklyPlannerDriveFolderLabel, "Planner Archive");
   assert.equal(saved.data.settings.globalZoomLink, "https://zoom.test/j/123456?pwd=abc");
   assert.equal(saved.data.settings.updatedBy, "ADMIN1");
+  assert.equal(saved.data.settings.updatedByName, "Admin User");
   assert.match(saved.data.settings.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 
   assert.equal(batchUpdates.length, 1);
   assert.equal(batchUpdates[0].valueInputOption, "RAW");
   assert.equal(batchUpdates[0].data.length, 1);
-  assert.equal(batchUpdates[0].data[0].range, "SystemConfig!B3:D3");
+  assert.equal(batchUpdates[0].data[0].range, "SystemConfig!B1:E1");
   assert.equal(batchUpdates[0].data[0].values[0][0], "https://new.example.test/student/");
   assert.equal(batchUpdates[0].data[0].values[0][2], "ADMIN1");
+  assert.equal(batchUpdates[0].data[0].values[0][3], "Admin User");
 
   assert.equal(appends.length, 1);
-  assert.equal(appends[0].range, "SystemConfig!A:D");
+  assert.equal(appends[0].range, "SystemConfig!A:E");
   assert.deepEqual(
     appends[0].payload.values.map(row => [row[0], row[1], row[3]]),
     [
@@ -171,11 +183,9 @@ try {
       ["GlobalZoomLink", "https://zoom.test/j/123456?pwd=abc", "ADMIN1"]
     ]
   );
-
-  assert.deepEqual(systemConfigRows.slice(0, 2), [
-    ["NextStudentNumber", 250],
-    ["NextStudentTaskNumber", 900]
-  ], "System Settings must not alter existing counter rows");
+  assert.ok(auditRows.some(row => (
+    row[5] === "UPDATE" && row[6] === "SYSTEM_CONFIG" && row[7] === "SYSTEM_CONFIG"
+  )));
 
   const reloaded = await postAdmin("/api/admin/system-settings/get", adminToken, {}, directEnv);
   assert.equal(reloaded.data.settings.configured.studentLoginBaseUrl, true);
@@ -202,6 +212,23 @@ try {
   assert.equal(invalidZoom.response.status, 400);
   assert.match(invalidZoom.data.error, /Zoom link must use https/);
 
+  const writesBeforeInvalidAuditSchema = batchUpdates.length + appends.length + auditRows.length;
+  auditRows[0][0] = "WrongHeader";
+  const invalidAuditSchema = await postAdmin("/api/admin/system-settings/save", adminToken, {
+    studentLoginBaseUrl: "https://valid.example.test/student/",
+    weeklyPlannerDriveFolder: "1AbCdEfGhIjKlMn",
+    weeklyPlannerDriveFolderLabel: "Planner Archive",
+    globalZoomLink: "https://zoom.test/j/123456?pwd=abc"
+  }, directEnv);
+  assert.equal(invalidAuditSchema.response.status, 503);
+  assert.match(invalidAuditSchema.data.error, /AdminAuditLog must use/);
+  assert.equal(
+    batchUpdates.length + appends.length + auditRows.length,
+    writesBeforeInvalidAuditSchema,
+    "Invalid audit headers must stop the settings write"
+  );
+  auditRows[0][0] = "AuditID";
+
   const senior = await postAdmin("/api/admin/system-settings/get", seniorToken, {}, directEnv);
   assert.equal(senior.response.status, 403);
   assert.deepEqual(senior.data, { success: false, error: "Forbidden" });
@@ -219,7 +246,9 @@ try {
   ), directEnv);
   assert.equal(unauthenticated.status, 401);
 
-  assert.equal(reads.every(range => range === "SystemConfig!A:D"), true);
+  assert.equal(reads.every(range => (
+    range === "SystemConfig!A:E" || range === "AdminAuditLog!A1:I1"
+  )), true);
 } finally {
   globalThis.fetch = originalFetch;
 }

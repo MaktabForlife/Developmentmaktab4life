@@ -223,6 +223,10 @@ const originalFetch = globalThis.fetch;
 const requestedRanges = [];
 const sheetUpdates = [];
 const sheetAppends = [];
+const auditRows = [[
+  "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
+  "RecordType", "RecordID", "ChangedFields"
+]];
 let missingSheetName = "";
 let directLegacyRows = legacyRows.map(row => row.slice());
 const systemConfigRows = [
@@ -249,9 +253,15 @@ globalThis.fetch = async (input, init = {}) => {
 
     if ((init.method || "GET") === "POST" && isAppend) {
       const payload = JSON.parse(init.body);
+
+      if (range === "AdminAuditLog!A:I") {
+        auditRows.push(...payload.values);
+        return response({ updates: { updatedRows: payload.values.length } });
+      }
+
       sheetAppends.push({ range, body: payload });
 
-      if (range === "SystemConfig!A:D") {
+      if (range === "SystemConfig!A:E") {
         systemConfigRows.push(...payload.values);
         return response({ updates: { updatedRows: payload.values.length } });
       }
@@ -272,7 +282,8 @@ globalThis.fetch = async (input, init = {}) => {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
     if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
     if (range === "TimeTable!A:ZZ") return response({ values: directLegacyRows });
-    if (range === "SystemConfig!A:D") return response({ values: systemConfigRows });
+    if (range === "SystemConfig!A:E") return response({ values: systemConfigRows });
+    if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
     throw new Error(`Unexpected Sheets range: ${range}`);
   }
 
@@ -403,11 +414,16 @@ try {
   assert.equal(directZoomWrite.data.sessions[0].zoomlink, "https://zoom.test/session-quran", "Global saves must not overwrite session Zoom links");
   assert.deepEqual(sheetUpdates, [], "Global Zoom saves must not write TimeTable");
   assert.equal(sheetAppends.length, 1);
-  assert.equal(sheetAppends[0].range, "SystemConfig!A:D");
+  assert.equal(sheetAppends[0].range, "SystemConfig!A:E");
   assert.deepEqual(sheetAppends[0].body.values[0].slice(0, 2), [
     "GlobalZoomLink",
     "https://zoom.test/direct-global"
   ]);
+  assert.equal(sheetAppends[0].body.values[0][3], "ADMIN1");
+  assert.equal(sheetAppends[0].body.values[0][4], "Teacher A");
+  assert.ok(auditRows.some(row => (
+    row[5] === "UPDATE" && row[6] === "SYSTEM_CONFIG" && row[7] === "GlobalZoomLink"
+  )));
 
   requestedRanges.length = 0;
   const configuredRead = await postTimetable(
@@ -425,7 +441,7 @@ try {
     "AdminRecords!A:ZZ",
     "SubjectList!A:ZZ",
     "ModuleList!A:ZZ",
-    "SystemConfig!A:D"
+    "SystemConfig!A:E"
   ]);
   assert.deepEqual(new Set(requestedRanges), requiredRanges);
 } finally {

@@ -11,7 +11,7 @@ export const WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY = "WeeklyPlannerDriveFolderLa
 export const GLOBAL_ZOOM_LINK_KEY = "GlobalZoomLink";
 export const DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL = "Weekly Planner";
 
-const SYSTEM_CONFIG_RANGE = `${SYSTEM_CONFIG_SHEET}!A:D`;
+const SYSTEM_CONFIG_RANGE = `${SYSTEM_CONFIG_SHEET}!A:E`;
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
 
 export async function readSystemConfigRows(env) {
@@ -51,6 +51,7 @@ export async function upsertSystemConfigValues(env, valuesByKey, options = {}) {
     : await readSystemConfigRows(env);
   const updatedAt = clean(options.updatedAt) || new Date().toISOString();
   const updatedBy = clean(options.updatedBy) || "SYSTEM";
+  const updatedByName = clean(options.updatedByName) || updatedBy;
   const updates = [];
   const appends = [];
 
@@ -73,12 +74,12 @@ export async function upsertSystemConfigValues(env, valuesByKey, options = {}) {
     if (rowIndexes.length === 1) {
       const sheetRow = rowIndexes[0] + 1;
       updates.push({
-        range: `${SYSTEM_CONFIG_SHEET}!B${sheetRow}:D${sheetRow}`,
+        range: `${SYSTEM_CONFIG_SHEET}!B${sheetRow}:E${sheetRow}`,
         majorDimension: "ROWS",
-        values: [[value, updatedAt, updatedBy]]
+        values: [[value, updatedAt, updatedBy, updatedByName]]
       });
     } else {
-      appends.push([key, value, updatedAt, updatedBy]);
+      appends.push([key, value, updatedAt, updatedBy, updatedByName]);
     }
   }
 
@@ -87,10 +88,10 @@ export async function upsertSystemConfigValues(env, valuesByKey, options = {}) {
   }
 
   if (appends.length > 0) {
-    await appendGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!A:D`, appends);
+    await appendGoogleSheetValues(env, `${SYSTEM_CONFIG_SHEET}!A:E`, appends);
   }
 
-  return { ok: true, updatedAt, updatedBy };
+  return { ok: true, updatedAt, updatedBy, updatedByName };
 }
 
 export async function getStudentLoginBaseUrl(env) {

@@ -7,6 +7,12 @@ import {
   verifyPin
 } from "../lib/auth.js";
 import {
+  appendAdminAuditLog,
+  buildModifiedAuditCellUpdates,
+  getRequiredRowAuditColumns,
+  prepareAdminAudit
+} from "../lib/admin-audit.js";
+import {
   batchUpdateGoogleSheetValues,
   readGoogleSheetValues,
   updateGoogleSheetValues
@@ -364,7 +370,43 @@ export async function resetStudentPinGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Student not found" }, 404);
   }
 
-  await updateStudentPinFields(env, student.row, false, "");
+  const rowAudit = getRequiredRowAuditColumns(rows[0] || []);
+
+  if (!rowAudit.ok) {
+    return json({ success: false, error: rowAudit.error }, 503);
+  }
+
+  const audit = await prepareAdminAudit(env, authUser);
+
+  if (!audit.ok) {
+    return json({ success: false, error: audit.error }, 503);
+  }
+
+  await batchUpdateGoogleSheetValues(env, [
+    {
+      range: `${STUDENT_RECORDS_SHEET}!E${student.row}:F${student.row}`,
+      majorDimension: "ROWS",
+      values: [[false, ""]]
+    },
+    {
+      range: `${STUDENT_RECORDS_SHEET}!J${student.row}`,
+      majorDimension: "ROWS",
+      values: [[0]]
+    },
+    ...buildModifiedAuditCellUpdates(
+      STUDENT_RECORDS_SHEET,
+      student.row,
+      rowAudit.columns,
+      audit.actor,
+      audit.timestamp
+    )
+  ]);
+  await appendAdminAuditLog(env, audit, {
+    action: "PIN_RESET",
+    recordType: "STUDENT_RECORD",
+    recordId: student.studentid,
+    changedFields: ["AuthenticationStatus"]
+  });
 
   return json({
     success: true,

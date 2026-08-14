@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "101.2",
+  "version": "101.3",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -11,6 +11,7 @@
     "test:apps-script-cleanup": "node tests/apps-script-cleanup.test.mjs",
     "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:sequential-ids": "node tests/sequential-ids.test.mjs",
+    "test:admin-audit": "node tests/admin-audit.test.mjs",
     "test:resources": "node tests/resources.test.mjs",
     "test:routes": "node tests/router.test.mjs",
     "test:auth": "node tests/auth.test.mjs",
