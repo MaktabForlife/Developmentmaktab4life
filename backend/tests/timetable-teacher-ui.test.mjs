@@ -67,7 +67,7 @@ assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.5/);
 
 for (const html of [admin, student, root]) {
   assert.match(html, /m4l-timetable\.js\?v=101\.2/);
-  assert.match(html, /styles\.css\?v=101\.4/);
+  assert.match(html, /styles\.css\?v=101\.4\.1/);
 }
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=101\.1\.1/);

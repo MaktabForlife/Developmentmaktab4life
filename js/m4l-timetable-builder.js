@@ -1,4 +1,4 @@
-/* M4L V101.4 - desktop-first Admin timetable and curriculum builder. */
+/* M4L V101.4.1 - multi-day/group Admin timetable and curriculum builder. */
 
 const timetableBuilderState = {
   loaded: false,
@@ -94,6 +94,10 @@ function handleTimetableBuilderChange(event) {
   const target = event?.target;
   if (!target || !target.closest("#timetable-builder-screen")) return;
 
+  if (target.closest("#timetable-session-dialog")) {
+    clearTimetableSessionMessage();
+  }
+
   if (target.id === "ttb-course-select") {
     timetableBuilderState.selectedCourseId = target.value;
     timetableBuilderState.editCourseId = target.value;
@@ -104,6 +108,15 @@ function handleTimetableBuilderChange(event) {
 
   if (target.id === "ttb-session-subject") {
     renderTimetableSessionModuleOptions(target.value, "");
+    return;
+  }
+
+  if (target.matches("input[name='ttb-session-group']")) {
+    enforceTimetableBuilderGroupSelection(target);
+    return;
+  }
+
+  if (target.matches("input[name='ttb-session-day']")) {
     return;
   }
 
@@ -346,8 +359,8 @@ function renderTimetableBuilderCourses() {
         ${courseId ? `
           <div class="timetable-builder-inline-form">
             <input id="ttb-slot-id" type="hidden" value="${ttbAttr(slot?.timeslotid || "")}" />
-            <label class="timetable-builder-field"><span>Start</span><input id="ttb-slot-start" type="time" value="${ttbAttr(slot?.starttime || "")}" /></label>
-            <label class="timetable-builder-field"><span>End</span><input id="ttb-slot-end" type="time" value="${ttbAttr(slot?.endtime || "")}" /></label>
+            <label class="timetable-builder-field"><span>Start</span><input id="ttb-slot-start" type="time" lang="en-GB" step="60" value="${ttbAttr(slot?.starttime || "")}" /></label>
+            <label class="timetable-builder-field"><span>End</span><input id="ttb-slot-end" type="time" lang="en-GB" step="60" value="${ttbAttr(slot?.endtime || "")}" /></label>
             <label class="timetable-builder-check"><input id="ttb-slot-active" type="checkbox" ${slot ? (slot.active ? "checked" : "") : "checked"} /><span>Active</span></label>
             <button type="button" class="timetable-builder-primary" data-ttb-action="save-slot">${slot ? "Save Time Slot" : "Add Time Slot"}</button>
           </div>
@@ -608,7 +621,13 @@ function openTimetableSessionEditor(sessionId, timeSlotId, day) {
 
   setValue("ttb-session-id", session?.sessionid || "");
   setValue("ttb-session-course", session?.courseid || courseId);
-  setSelectOptions("ttb-session-day", (timetableBuilderState.data.days || []).map(value => ({ value, label: value })), session?.dayofweek || day || "Mon");
+  renderTimetableSessionChoices(
+    "ttb-session-days",
+    "ttb-session-day",
+    timetableBuilderState.data.days || [],
+    [session?.dayofweek || day || "Mon"],
+    session ? "radio" : "checkbox"
+  );
   setSelectOptions("ttb-session-slot", (timetableBuilderState.data.timeslots || [])
     .filter(slot => slot.courseid === courseId && (slot.active || slot.timeslotid === session?.timeslotid))
     .map(slot => ({ value: slot.timeslotid, label: formatBuilderTimeRange(slot) })), session?.timeslotid || timeSlotId || "");
@@ -616,13 +635,26 @@ function openTimetableSessionEditor(sessionId, timeSlotId, day) {
     .filter(subject => subject.active || subject.subjectid === session?.subjectid)
     .map(subject => ({ value: subject.subjectid, label: subject.subjectname })), selectedSubject);
   renderTimetableSessionModuleOptions(selectedSubject, session?.moduleid || "");
-  setSelectOptions("ttb-session-group", (timetableBuilderState.data.groups || []).map(value => ({ value, label: value })), session?.groupno || "ALL");
+  renderTimetableSessionChoices(
+    "ttb-session-groups",
+    "ttb-session-group",
+    timetableBuilderState.data.groups || [],
+    [session?.groupno || "ALL"],
+    session ? "radio" : "checkbox"
+  );
   setSelectOptions("ttb-session-teacher", (timetableBuilderState.data.teachers || [])
     .filter(teacher => teacher.active || teacher.teacherid === session?.teacherid)
     .map(teacher => ({ value: teacher.teacherid, label: `${teacher.teachername} — ${teacher.role}` })), session?.teacherid || "");
   setValue("ttb-session-zoom", session?.zoomlink || "");
   document.getElementById("ttb-session-active").checked = session ? session.active === true : true;
   document.getElementById("timetable-session-dialog-title").textContent = session ? "Modify Session" : "Add Session";
+  document.getElementById("ttb-session-days-help").textContent = session
+    ? "Modify this session's day."
+    : "Select one or more days.";
+  document.getElementById("ttb-session-groups-help").textContent = session
+    ? "Modify this session's group."
+    : "Select one or more groups. ALL must be selected by itself.";
+  clearTimetableSessionMessage();
 
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
@@ -634,33 +666,54 @@ function closeTimetableSessionEditor() {
   if (!dialog) return false;
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
+  clearTimetableSessionMessage();
   return true;
 }
 
 async function saveTimetableBuilderSession(button) {
+  const sessionid = valueOf("ttb-session-id");
+  const daysofweek = selectedTimetableBuilderValues("ttb-session-day");
+  const groupnos = selectedTimetableBuilderValues("ttb-session-group");
+
+  if (!daysofweek.length) {
+    showTimetableSessionMessage("Select at least one day.");
+    return false;
+  }
+
+  if (!groupnos.length) {
+    showTimetableSessionMessage("Select at least one group.");
+    return false;
+  }
+
   const payload = {
-    sessionid: valueOf("ttb-session-id"),
+    sessionid,
     courseid: valueOf("ttb-session-course"),
     timeslotid: valueOf("ttb-session-slot"),
-    dayofweek: valueOf("ttb-session-day"),
+    ...(sessionid ? { dayofweek: daysofweek[0] } : { daysofweek }),
     subjectid: valueOf("ttb-session-subject"),
     moduleid: valueOf("ttb-session-module"),
-    groupno: valueOf("ttb-session-group"),
+    ...(sessionid ? { groupno: groupnos[0] } : { groupnos }),
     teacherid: valueOf("ttb-session-teacher"),
     zoomlink: valueOf("ttb-session-zoom"),
     active: checkedOf("ttb-session-active")
   };
   button.disabled = true;
+  showTimetableSessionMessage("Checking the selected days and groups…", "working");
   try {
     const result = await apiPost("/api/admin/timetable-builder/session/save", payload, state.token);
-    if (!result.success) throw new Error(result.error || "Unable to save session");
+    if (!result.success) {
+      showTimetableSessionMessage(result.error || "Unable to save session", "error", result.conflicts);
+      return false;
+    }
     closeTimetableSessionEditor();
     timetableBuilderState.loaded = false;
     await loadTimetableBuilder(true);
     setTimetableBuilderMessage(result.message || "Session saved.", "success");
     return true;
   } catch (error) {
-    setTimetableBuilderMessage(error?.message || "Unable to save session.", "error");
+    const message = error?.message || "Unable to save session.";
+    showTimetableSessionMessage(message, "error");
+    setTimetableBuilderMessage(message, "error");
     return false;
   } finally {
     button.disabled = false;
@@ -676,13 +729,59 @@ function formatBuilderTimeRange(slot) {
 }
 
 function formatBuilderTime(value) {
-  const match = /^(\d{2}):(\d{2})$/.exec(String(value || ""));
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(value || ""));
   if (!match) return String(value || "");
-  const hour = Number(match[1]);
-  const minute = match[2];
-  const suffix = hour >= 12 ? "pm" : "am";
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${minute}${suffix}`;
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`;
+}
+
+function renderTimetableSessionChoices(containerId, name, values, selectedValues, type) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const selected = new Set((selectedValues || []).map(String));
+  container.innerHTML = values.map(value => `
+    <label class="timetable-builder-choice">
+      <input type="${ttbAttr(type)}" name="${ttbAttr(name)}" value="${ttbAttr(value)}" ${selected.has(String(value)) ? "checked" : ""} />
+      <span>${ttbEscape(value)}</span>
+    </label>
+  `).join("");
+}
+
+function selectedTimetableBuilderValues(name) {
+  return Array.from(document.querySelectorAll(`input[name='${name}']:checked`)).map(input => input.value);
+}
+
+function enforceTimetableBuilderGroupSelection(changedInput) {
+  if (changedInput.type !== "checkbox" || !changedInput.checked) return;
+  const inputs = Array.from(document.querySelectorAll("input[name='ttb-session-group']"));
+  if (changedInput.value === "ALL") {
+    inputs.forEach(input => { if (input !== changedInput) input.checked = false; });
+    return;
+  }
+  const allInput = inputs.find(input => input.value === "ALL");
+  if (allInput) allInput.checked = false;
+}
+
+function showTimetableSessionMessage(message, type = "error", conflicts = []) {
+  const element = document.getElementById("timetable-session-message");
+  if (!element) return false;
+  const conflictItems = Array.isArray(conflicts) ? conflicts.filter(item => item?.message) : [];
+  const heading = conflictItems.length
+    ? "The session could not be saved because of these timetable conflicts:"
+    : (message || "Unable to save session.");
+  element.className = `timetable-session-message is-${ttbAttr(type)}`;
+  element.innerHTML = `
+    <strong>${ttbEscape(heading)}</strong>
+    ${conflictItems.length ? `<ul>${conflictItems.map(item => `<li>${ttbEscape(item.message)}</li>`).join("")}</ul>` : ""}
+  `;
+  return true;
+}
+
+function clearTimetableSessionMessage() {
+  const element = document.getElementById("timetable-session-message");
+  if (!element) return false;
+  element.className = "timetable-session-message";
+  element.textContent = "";
+  return true;
 }
 
 function setSelectOptions(id, options, selectedValue) {

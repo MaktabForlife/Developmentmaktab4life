@@ -182,6 +182,7 @@ try {
   assert.equal(slot.data.timeslot.timeslotid, "SLOT2");
   assert.equal(slot.data.timeslot.endtime, "10:30");
 
+  const sessionWritesBeforeConflict = writes.filter(write => write.range === "TimetableSessions!A:P").length;
   const conflict = await post("/api/admin/timetable-builder/session/save", adminToken, {
     courseid: "COURSE1",
     timeslotid: "SLOT2",
@@ -195,6 +196,47 @@ try {
   assert.equal(conflict.response.status, 409);
   assert.equal(conflict.data.conflict, true);
   assert.equal(conflict.data.conflicts[0].type, "TEACHER");
+  assert.match(conflict.data.error, /Teacher One/);
+  assert.match(conflict.data.error, /Mon/);
+  assert.match(conflict.data.error, /09:00–10:00/);
+  assert.match(conflict.data.error, /Evening Maktab/);
+  assert.equal(
+    writes.filter(write => write.range === "TimetableSessions!A:P").length,
+    sessionWritesBeforeConflict,
+    "A conflict must not write any session rows"
+  );
+
+  const groupConflict = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    daysofweek: ["Mon", "Wed"],
+    subjectid: "SUB2",
+    groupnos: ["1", "2"],
+    teacherid: "TEACH2",
+    active: true
+  });
+  assert.equal(groupConflict.response.status, 409);
+  assert.equal(groupConflict.data.conflict, true);
+  assert.ok(groupConflict.data.conflicts.some(item => item.type === "GROUP"));
+  assert.ok(groupConflict.data.conflicts.some(item => /Group 1/.test(item.message)));
+  assert.ok(groupConflict.data.conflicts.some(item => /Mon/.test(item.message) && /09:00–10:00/.test(item.message)));
+  assert.equal(
+    writes.filter(write => write.range === "TimetableSessions!A:P").length,
+    sessionWritesBeforeConflict,
+    "One conflicting combination must prevent the complete bulk write"
+  );
+
+  const invalidAllSelection = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    daysofweek: ["Wed"],
+    subjectid: "SUB1",
+    groupnos: ["ALL", "1"],
+    teacherid: "TEACH2",
+    active: true
+  });
+  assert.equal(invalidAllSelection.response.status, 400);
+  assert.match(invalidAllSelection.data.error, /ALL by itself/);
 
   const session = await post("/api/admin/timetable-builder/session/save", adminToken, {
     courseid: "COURSE1",
@@ -214,10 +256,36 @@ try {
   assert.equal(sessionRows.at(-1)[11], "ADMIN1");
   assert.equal(sessionRows.at(-1)[12], "Admin User");
 
+  const bulk = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    daysofweek: ["Thursday", "Wednesday", "Wednesday"],
+    subjectid: "SUB1",
+    moduleid: "MOD1",
+    groupnos: ["2", "1", "2"],
+    teacherid: "TEACH1",
+    active: true
+  });
+  assert.equal(bulk.response.status, 200);
+  assert.equal(bulk.data.success, true);
+  assert.equal(bulk.data.count, 4);
+  assert.equal(bulk.data.message, "4 sessions created");
+  assert.deepEqual(bulk.data.sessions.map(item => [item.sessionid, item.dayofweek, item.groupno]), [
+    ["SESSION3", "Wed", "1"],
+    ["SESSION4", "Wed", "2"],
+    ["SESSION5", "Thu", "1"],
+    ["SESSION6", "Thu", "2"]
+  ]);
+  assert.deepEqual(sessionRows.slice(-4).map(row => [row[3], row[6]]), [
+    ["Wed", "1"], ["Wed", "2"], ["Thu", "1"], ["Thu", "2"]
+  ]);
+  assert.ok(sessionRows.slice(-4).every(row => row[11] === "ADMIN1" && row[12] === "Admin User"));
+
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[6] === "COURSE" && row[7] === "COURSE2"));
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[6] === "TIME_SLOT" && row[7] === "SLOT2"));
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[6] === "TIMETABLE_SESSION" && row[7] === "SESSION2"));
-  assert.equal(writes.filter(write => write.range === "TimetableSessions!A:P").length, 1, "Conflicts must not write sessions");
+  assert.equal(auditRows.filter(row => /^SESSION[3-6]$/.test(row[7])).length, 4);
+  assert.equal(writes.filter(write => write.range === "TimetableSessions!A:P").length, 2);
 } finally {
   globalThis.fetch = originalFetch;
 }

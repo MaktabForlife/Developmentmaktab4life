@@ -1,4 +1,6 @@
-/* V101.4 Timetable Builder and curriculum management workspace.
+/* V101.4.1 multi-day/group Timetable Builder refinement.
+
+   V101.4 Timetable Builder and curriculum management workspace.
 
    V101.2 SystemConfig settings and global Zoom migration.
 
@@ -96,4 +98,4 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-19-pdf-split-view.css?v=99.1");
 @import url("/css/m4l-20-manage-admins.css?v=100.3.0");
 @import url("/css/m4l-21-manage-resources.css?v=100.4.2");
-@import url("/css/m4l-22-timetable-builder.css?v=101.4");
+@import url("/css/m4l-22-timetable-builder.css?v=101.4.1");

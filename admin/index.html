@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=101.4">
+<link rel="stylesheet" href="/styles.css?v=101.4.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -670,7 +670,7 @@
       </div>
     </section>
 
-    <!-- ADMIN TIMETABLE BUILDER - V101.4 -->
+    <!-- ADMIN TIMETABLE BUILDER - V101.4.1 -->
     <section id="timetable-builder-screen" class="screen admin-theme timetable-builder-screen" aria-labelledby="timetable-builder-title">
       <header class="timetable-builder-header">
         <div>
@@ -721,10 +721,11 @@
           <input id="ttb-session-id" type="hidden" />
           <input id="ttb-session-course" type="hidden" />
           <div class="timetable-builder-form-grid">
-            <label class="timetable-builder-field">
-              <span>Day</span>
-              <select id="ttb-session-day" required></select>
-            </label>
+            <fieldset class="timetable-builder-choice-field timetable-builder-field--wide">
+              <legend>Days</legend>
+              <p id="ttb-session-days-help">Select one or more days.</p>
+              <div id="ttb-session-days" class="timetable-builder-choice-grid timetable-builder-choice-grid--days"></div>
+            </fieldset>
             <label class="timetable-builder-field">
               <span>Time slot</span>
               <select id="ttb-session-slot" required></select>
@@ -737,10 +738,11 @@
               <span>Module <small>optional</small></span>
               <select id="ttb-session-module"></select>
             </label>
-            <label class="timetable-builder-field">
-              <span>Group</span>
-              <select id="ttb-session-group" required></select>
-            </label>
+            <fieldset class="timetable-builder-choice-field timetable-builder-field--wide">
+              <legend>Groups</legend>
+              <p id="ttb-session-groups-help">Select one or more groups. ALL must be selected by itself.</p>
+              <div id="ttb-session-groups" class="timetable-builder-choice-grid timetable-builder-choice-grid--groups"></div>
+            </fieldset>
             <label class="timetable-builder-field">
               <span>Teacher</span>
               <select id="ttb-session-teacher" required></select>
@@ -754,6 +756,7 @@
               <span>Active session</span>
             </label>
           </div>
+          <div id="timetable-session-message" class="timetable-session-message" role="alert" aria-live="assertive"></div>
           <div class="timetable-builder-dialog-actions">
             <button type="button" class="timetable-builder-secondary" data-ttb-action="close-session">Cancel</button>
             <button type="button" class="timetable-builder-primary" data-ttb-action="save-session">Save Session</button>
@@ -1505,7 +1508,7 @@
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
 <script src="/js/m4l-system-settings.js?v=101.2"></script>
-<script src="/js/m4l-timetable-builder.js?v=101.4"></script>
+<script src="/js/m4l-timetable-builder.js?v=101.4.1"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>

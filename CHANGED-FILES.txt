@@ -1,4 +1,4 @@
-V101.4
+V101.4.1 — cumulative deployment package from V101.3
 
 Frontend
 - admin/index.html
@@ -56,3 +56,6 @@ Deployment order
 V101.4 does not publish builder sessions. TeacherAssign and TimeTable remain the
 live read source. No Apps Script deployment, Worker binding, or Cloudflare
 variable change is required.
+
+V101.4.1 adds no Sheet headers. It adds multi-day/group creation, detailed
+in-dialog conflict feedback and 24-hour time display.

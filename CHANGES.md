@@ -1,3 +1,25 @@
+# V101.4.1 — Multi-day and multi-group session creation
+
+- Replaces the new-session Day and Group dropdowns with clear selectable tiles.
+- Allows several days and several numbered groups in one save, creating every
+  selected day–group combination in one validated batch.
+- Keeps `ALL` exclusive because it already represents every course group.
+- Keeps modification intentionally limited to one existing session at a time.
+- Validates the complete batch before appending any session rows.
+- Allows one teacher/session definition to be shared across the selected groups
+  while continuing to block genuinely overlapping teacher assignments.
+- Shows conflict reasons inside the open editor, including teacher or group,
+  day, 24-hour time range, and course.
+- Displays all builder time ranges in 24-hour `HH:MM–HH:MM` format.
+- Adds bulk-combination, `ALL`, group-conflict, teacher-conflict, no-partial-write,
+  UI feedback, and 24-hour-format regression coverage.
+- Bumps application and Worker metadata to `101.4.1`.
+
+No Google Sheet header changes are required after the V101.4 three-tab
+migration.
+
+---
+
 # V101.4 — Desktop Timetable Builder and curriculum workspace
 
 - Adds an ADMIN-only, desktop-first Monday-to-Sunday timetable grid with the

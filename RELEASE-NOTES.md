@@ -1,3 +1,25 @@
+V101.4.1
+
+# Multi-day and multi-group Timetable Builder sessions
+
+- Admin can select multiple days when creating a session.
+- Admin can select multiple numbered groups; `ALL` remains a standalone choice.
+- One save creates every selected day–group combination only after the complete
+  selection passes validation.
+- Existing sessions remain single-record edits to avoid accidental bulk changes.
+- Teacher and group conflicts are explained inside the session dialog with the
+  affected teacher/group, day, 24-hour time, and course.
+- A failed combination prevents the complete batch from being written.
+- Timetable ranges now display in 24-hour format such as `09:00–10:30`.
+- Application and Worker metadata are bumped to `101.4.1`.
+
+This package is cumulative and includes the V101.4 Timetable Builder. No new
+Google Sheet changes are required beyond the V101.4 `Courses`, `TimeSlots`, and
+`TimetableSessions` tabs. No Apps Script, Worker binding, or Cloudflare-variable
+change is required.
+
+---
+
 V101.4
 
 # Desktop Timetable Builder and curriculum management

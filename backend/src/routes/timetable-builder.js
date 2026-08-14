@@ -1,7 +1,8 @@
-/* M4L V101.4 - audited, ADMIN-only course timetable builder. */
+/* M4L V101.4.1 - audited multi-day and multi-group timetable builder. */
 
 import {
   appendAdminAuditLog,
+  appendAdminAuditLogs,
   columnIndexToA1,
   getRequiredRowAuditColumns,
   prepareAdminAudit,
@@ -15,7 +16,7 @@ import {
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
-import { nextSequentialId } from "../lib/sequential-ids.js";
+import { nextSequentialId, nextSequentialIds } from "../lib/sequential-ids.js";
 import {
   GLOBAL_ZOOM_LINK_KEY,
   getSystemConfigValue,
@@ -377,10 +378,14 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
   const sessionId = clean(body.sessionid || body.sessionId);
   const courseId = clean(body.courseid || body.courseId);
   const timeSlotId = clean(body.timeslotid || body.timeSlotId);
-  const dayOfWeek = normalizeDay(body.dayofweek || body.dayOfWeek || body.day);
+  const daySelection = normalizeDaySelection(
+    body.daysofweek ?? body.days ?? body.dayofweek ?? body.dayOfWeek ?? body.day
+  );
   const subjectId = clean(body.subjectid || body.subjectId);
   const moduleId = clean(body.moduleid || body.moduleId);
-  const groupNo = normalizeGroup(body.groupno ?? body.groupNo ?? body.group);
+  const groupSelection = normalizeGroupSelection(
+    body.groupnos ?? body.groups ?? body.groupno ?? body.groupNo ?? body.group
+  );
   const teacherId = clean(body.teacherid || body.teacherId);
   let zoomLink;
 
@@ -390,10 +395,31 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: error.message }, 400);
   }
 
-  if (!courseId || !timeSlotId || !dayOfWeek || !subjectId || !groupNo || !teacherId) {
+  if (daySelection.invalid.length > 0) {
+    return json({ success: false, error: `Invalid day selection: ${daySelection.invalid.join(", ")}` }, 400);
+  }
+
+  if (groupSelection.invalid.length > 0) {
+    return json({ success: false, error: `Invalid group selection: ${groupSelection.invalid.join(", ")}` }, 400);
+  }
+
+  if (groupSelection.values.includes("ALL") && groupSelection.values.length > 1) {
+    return json({ success: false, error: "Select ALL by itself, or select one or more numbered groups" }, 400);
+  }
+
+  if (sessionId && (daySelection.values.length !== 1 || groupSelection.values.length !== 1)) {
+    return json({ success: false, error: "An existing session must be modified one day and one group at a time" }, 400);
+  }
+
+  const combinationCount = daySelection.values.length * groupSelection.values.length;
+  if (combinationCount > 70) {
+    return json({ success: false, error: "Select no more than 70 day and group combinations at once" }, 400);
+  }
+
+  if (!courseId || !timeSlotId || !daySelection.values.length || !subjectId || !groupSelection.values.length || !teacherId) {
     return json({
       success: false,
-      error: "Course, time slot, day, subject, group and teacher are required"
+      error: "Course, time slot, at least one day, subject, at least one group and teacher are required"
     }, 400);
   }
 
@@ -445,24 +471,31 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
     if (module && !module.active) return json({ success: false, error: "Activate the module first" }, 409);
     if (!teacher.active) return json({ success: false, error: "Activate the teacher first" }, 409);
 
-    const conflicts = findSessionConflicts({
-      sessionId,
-      courseId,
-      timeSlot,
-      dayOfWeek,
-      groupNo,
-      teacherId,
-      sessions,
-      timeSlots,
-      courses
-    });
+    const conflicts = daySelection.values.flatMap(dayOfWeek => (
+      groupSelection.values.flatMap(groupNo => findSessionConflicts({
+        sessionId,
+        courseId,
+        timeSlot,
+        dayOfWeek,
+        groupNo,
+        subjectId,
+        moduleId,
+        teacherId,
+        teacherName: teacher.teachername,
+        zoomLink,
+        sessions,
+        timeSlots,
+        courses
+      }))
+    ));
 
     if (conflicts.length > 0) {
+      const uniqueConflicts = deduplicateConflicts(conflicts);
       return json({
         success: false,
         conflict: true,
-        error: conflicts[0].message,
-        conflicts
+        error: uniqueConflicts[0].message,
+        conflicts: uniqueConflicts
       }, 409);
     }
   }
@@ -473,26 +506,30 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
   const rowAudit = getRequiredRowAuditColumns(TIMETABLE_SESSION_HEADERS);
   if (!rowAudit.ok) return json({ success: false, error: rowAudit.error }, 503);
 
-  const proposed = {
-    sessionid: existing ? existing.sessionid : nextSequentialId(data.sessionRows, "SESSION"),
-    courseid: courseId,
-    timeslotid: timeSlotId,
-    dayofweek: dayOfWeek,
-    subjectid: subjectId,
-    moduleid: moduleId,
-    groupno: groupNo,
-    teacherid: teacherId,
-    zoomlink: zoomLink,
-    active,
-    createddate: existing ? existing.createddate : audit.timestamp
-  };
-
   if (!existing) {
-    const row = sessionToRow(proposed, TIMETABLE_SESSION_HEADERS.length);
-    stampCreatedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
-
-    await appendGoogleSheetValues(env, appendRange(TIMETABLE_SESSION_SHEET, row.length), [row]);
-    await appendAdminAuditLog(env, audit, {
+    const combinations = daySelection.values.flatMap(dayofweek => (
+      groupSelection.values.map(groupno => ({ dayofweek, groupno }))
+    ));
+    const sessionIds = nextSequentialIds(data.sessionRows, "SESSION", combinations.length);
+    const proposedSessions = combinations.map((combination, index) => ({
+      sessionid: sessionIds[index],
+      courseid: courseId,
+      timeslotid: timeSlotId,
+      dayofweek: combination.dayofweek,
+      subjectid: subjectId,
+      moduleid: moduleId,
+      groupno: combination.groupno,
+      teacherid: teacherId,
+      zoomlink: zoomLink,
+      active,
+      createddate: audit.timestamp
+    }));
+    const rows = proposedSessions.map(proposed => {
+      const row = sessionToRow(proposed, TIMETABLE_SESSION_HEADERS.length);
+      stampCreatedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
+      return row;
+    });
+    const auditEvents = proposedSessions.map(proposed => ({
       action: "CREATE",
       recordType: "TIMETABLE_SESSION",
       recordId: proposed.sessionid,
@@ -500,10 +537,35 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
         "CourseID", "TimeSlotID", "DayOfWeek", "SubjectID", "ModuleID",
         "GroupNo", "TeacherID", "ZoomLink", "Active"
       ]
-    });
+    }));
 
-    return json({ success: true, message: "Session created", session: proposed });
+    await appendGoogleSheetValues(env, appendRange(TIMETABLE_SESSION_SHEET, rows[0].length), rows);
+    await appendAdminAuditLogs(env, audit, auditEvents);
+
+    return json({
+      success: true,
+      message: proposedSessions.length === 1
+        ? "Session created"
+        : `${proposedSessions.length} sessions created`,
+      count: proposedSessions.length,
+      session: proposedSessions[0],
+      sessions: proposedSessions
+    });
   }
+
+  const proposed = {
+    sessionid: existing.sessionid,
+    courseid: courseId,
+    timeslotid: timeSlotId,
+    dayofweek: daySelection.values[0],
+    subjectid: subjectId,
+    moduleid: moduleId,
+    groupno: groupSelection.values[0],
+    teacherid: teacherId,
+    zoomlink: zoomLink,
+    active,
+    createddate: existing.createddate
+  };
 
   const changedFields = getSessionChangedFields(existing, proposed);
   if (changedFields.length === 0) {
@@ -755,24 +817,68 @@ function findSessionConflicts(options) {
     if (!otherSlot || !otherSlot.active) return;
     if (!rangesOverlap(start, end, timeToMinutes(otherSlot.starttime), timeToMinutes(otherSlot.endtime))) return;
 
-    if (session.teacherid === options.teacherId) {
+    const courseName = courseMap.get(session.courseid)?.coursename || session.courseid;
+    const range = `${otherSlot.starttime}–${otherSlot.endtime}`;
+    const sharedAssignment = isSameSharedTeacherAssignment(session, options);
+
+    if (session.teacherid === options.teacherId && !sharedAssignment) {
       conflicts.push({
         type: "TEACHER",
         sessionid: session.sessionid,
-        message: `This teacher is already assigned to an overlapping ${courseMap.get(session.courseid)?.coursename || session.courseid} session`
+        dayofweek: options.dayOfWeek,
+        starttime: otherSlot.starttime,
+        endtime: otherSlot.endtime,
+        courseid: session.courseid,
+        coursename: courseName,
+        groupno: session.groupno,
+        teacherid: session.teacherid,
+        message: `${options.teacherName || "This teacher"} is already assigned on ${options.dayOfWeek} at ${range} (${courseName}, group ${session.groupno}).`
       });
     }
 
     if (session.courseid === options.courseId && groupsOverlap(session.groupno, options.groupNo)) {
+      const requestedGroup = options.groupNo === "ALL" ? "All groups" : `Group ${options.groupNo}`;
       conflicts.push({
         type: "GROUP",
         sessionid: session.sessionid,
-        message: `Group ${options.groupNo} already has an overlapping session in this course`
+        dayofweek: options.dayOfWeek,
+        starttime: otherSlot.starttime,
+        endtime: otherSlot.endtime,
+        courseid: session.courseid,
+        coursename: courseName,
+        groupno: session.groupno,
+        teacherid: session.teacherid,
+        message: `${requestedGroup} already has a session on ${options.dayOfWeek} at ${range} (${courseName}).`
       });
     }
   });
 
   return conflicts;
+}
+
+function isSameSharedTeacherAssignment(session, options) {
+  return session.courseid === options.courseId &&
+    session.timeslotid === options.timeSlot.timeslotid &&
+    session.subjectid === options.subjectId &&
+    session.moduleid === options.moduleId &&
+    session.teacherid === options.teacherId &&
+    session.zoomlink === options.zoomLink;
+}
+
+function deduplicateConflicts(conflicts) {
+  const seen = new Set();
+  return conflicts.filter(conflict => {
+    const key = [
+      conflict.type,
+      conflict.sessionid,
+      conflict.dayofweek,
+      conflict.groupno,
+      conflict.message
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function getSessionChangedFields(existing, proposed) {
@@ -832,10 +938,40 @@ function normalizeDay(value) {
   return days[key] || "";
 }
 
+function normalizeDaySelection(value) {
+  const rawValues = toSelectionValues(value);
+  const normalized = rawValues.map(normalizeDay);
+  const invalid = rawValues.filter((item, index) => !normalized[index]);
+  const selected = new Set(normalized.filter(Boolean));
+  return {
+    values: DAY_ORDER.filter(day => selected.has(day)),
+    invalid
+  };
+}
+
 function normalizeGroup(value) {
   const text = clean(value).toUpperCase();
   if (text === "ALL") return "ALL";
   return /^[1-9]\d*$/.test(text) ? String(Number(text)) : "";
+}
+
+function normalizeGroupSelection(value) {
+  const rawValues = toSelectionValues(value);
+  const normalized = rawValues.map(normalizeGroup);
+  const invalid = rawValues.filter((item, index) => !normalized[index]);
+  const values = Array.from(new Set(normalized.filter(Boolean))).sort((left, right) => {
+    if (left === "ALL") return -1;
+    if (right === "ALL") return 1;
+    return Number(left) - Number(right);
+  });
+  return { values, invalid };
+}
+
+function toSelectionValues(value) {
+  if (Array.isArray(value)) return value.map(clean).filter(Boolean);
+  const text = clean(value);
+  if (!text) return [];
+  return text.includes(",") ? text.split(",").map(clean).filter(Boolean) : [text];
 }
 
 function normalizeTime(value) {

@@ -1,4 +1,4 @@
-/* M4L V101.4 - desktop-first Timetable Builder. */
+/* M4L V101.4.1 - desktop-first Timetable Builder with bulk session choices. */
 
 body:has(#timetable-builder-screen.active) .app-shell {
   width: min(100%, 1500px);
@@ -563,6 +563,114 @@ body:has(#timetable-builder-screen.active) .app-shell {
   grid-column: 1 / -1;
 }
 
+.timetable-builder-choice-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.timetable-builder-choice-field legend {
+  padding: 0;
+  color: var(--text-muted, #70736c);
+  font-size: 0.83rem;
+  font-weight: 680;
+}
+
+.timetable-builder-choice-field > p {
+  margin: 4px 0 8px;
+  color: var(--text-muted, #70736c);
+  font-size: 0.76rem;
+}
+
+.timetable-builder-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(70px, 1fr));
+  gap: 7px;
+}
+
+.timetable-builder-choice-grid--groups {
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+}
+
+.timetable-builder-choice {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.timetable-builder-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.timetable-builder-choice span {
+  display: grid;
+  min-height: 40px;
+  padding: 7px 9px;
+  place-items: center;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text-muted, #70736c);
+  font-size: 0.86rem;
+  font-weight: 690;
+}
+
+.timetable-builder-choice input:checked + span {
+  border-color: var(--primary, #31513f);
+  background: var(--primary, #31513f);
+  color: #fff;
+}
+
+.timetable-builder-choice input:focus-visible + span {
+  outline: 3px solid color-mix(in srgb, var(--primary, #31513f) 22%, transparent);
+  outline-offset: 2px;
+}
+
+.timetable-session-message {
+  display: none;
+  margin-top: 16px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.timetable-session-message.is-error,
+.timetable-session-message.is-working {
+  display: block;
+}
+
+.timetable-session-message.is-error {
+  border: 1px solid #efb5b5;
+  background: #fff0f0;
+  color: #8b2525;
+}
+
+.timetable-session-message.is-working {
+  border: 1px solid var(--border, #e4dadd);
+  background: var(--surface-track, #f4f1ef);
+  color: var(--text-muted, #70736c);
+}
+
+.timetable-session-message strong {
+  display: block;
+}
+
+.timetable-session-message ul {
+  margin: 7px 0 0;
+  padding-left: 20px;
+}
+
+.timetable-session-message li + li {
+  margin-top: 4px;
+}
+
 .timetable-builder-dialog-actions {
   justify-content: flex-end;
   margin-top: 20px;
@@ -606,5 +714,9 @@ body:has(#timetable-builder-screen.active) .app-shell {
 
   .timetable-builder-field--wide {
     grid-column: auto;
+  }
+
+  .timetable-builder-choice-grid--days {
+    grid-template-columns: repeat(4, minmax(62px, 1fr));
   }
 }
