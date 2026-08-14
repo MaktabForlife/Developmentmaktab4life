@@ -24,6 +24,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "drive-library": defineFixedFeature(BACKEND_WORKER),
   "timetable-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
   "timetable-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
+  "timetable-builder": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
   "student-management-read": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
   "student-management-write": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
   "student-management-update": defineFixedFeature(BACKEND_GOOGLE_SHEETS),

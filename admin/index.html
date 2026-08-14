@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=101.2">
+<link rel="stylesheet" href="/styles.css?v=101.4">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -233,6 +233,22 @@
               <span class="home-cover-icon-glyph"></span>
             </span>
             <span class="home-cover-icon-label">Resources</span>
+          </button>
+
+          <button
+            id="open-timetable-builder-btn"
+            class="home-cover-icon-btn hidden"
+            data-admin-menu-admin-only
+            type="button"
+            aria-hidden="true"
+            onclick="showTimetableBuilder()"
+            style="--cover-home-icon: url('/icons/timetable.svg?v=101.4')"
+            aria-label="Open Timetable Builder"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Timetable Builder</span>
           </button>
 
           <button
@@ -652,6 +668,98 @@
           <p class="helper-text">Loading timetable...</p>
         </div>
       </div>
+    </section>
+
+    <!-- ADMIN TIMETABLE BUILDER - V101.4 -->
+    <section id="timetable-builder-screen" class="screen admin-theme timetable-builder-screen" aria-labelledby="timetable-builder-title">
+      <header class="timetable-builder-header">
+        <div>
+          <p class="timetable-builder-eyebrow">Academic setup</p>
+          <h2 id="timetable-builder-title">Timetable Builder</h2>
+        </div>
+        <div class="timetable-builder-header-actions">
+          <button type="button" class="icon-action-btn timetable-builder-reload" data-ttb-action="reload" aria-label="Reload Timetable Builder" title="Reload">
+            <span class="app-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Reload</span>
+          </button>
+          <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+            <span class="visually-hidden">Close</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="timetable-builder-status-band">
+        <strong>Builder draft</strong>
+        <span>The live student and teacher timetable still reads from TeacherAssign.</span>
+      </div>
+
+      <nav class="timetable-builder-tabs" aria-label="Timetable Builder sections">
+        <button type="button" class="is-active" data-ttb-action="show-tab" data-ttb-tab="timetable">Timetable</button>
+        <button type="button" data-ttb-action="show-tab" data-ttb-tab="courses">Courses &amp; Times</button>
+        <button type="button" data-ttb-action="show-tab" data-ttb-tab="subjects">Subjects</button>
+        <button type="button" data-ttb-action="show-tab" data-ttb-tab="modules">Modules</button>
+        <button type="button" data-ttb-action="show-tab" data-ttb-tab="tasks">Tasks</button>
+      </nav>
+
+      <p id="timetable-builder-message" class="timetable-builder-message" role="status" aria-live="polite"></p>
+      <div id="timetable-builder-content" class="timetable-builder-content">
+        <p class="helper-text">Loading Timetable Builder...</p>
+      </div>
+
+      <dialog id="timetable-session-dialog" class="timetable-builder-dialog" aria-labelledby="timetable-session-dialog-title">
+        <form id="timetable-session-form" class="timetable-builder-dialog-form" onsubmit="return false;">
+          <div class="timetable-builder-dialog-heading">
+            <div>
+              <p class="timetable-builder-eyebrow">Grid session</p>
+              <h3 id="timetable-session-dialog-title">Add Session</h3>
+            </div>
+            <button type="button" class="icon-action-btn" data-ttb-action="close-session" aria-label="Close session editor" title="Close">
+              <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+            </button>
+          </div>
+          <input id="ttb-session-id" type="hidden" />
+          <input id="ttb-session-course" type="hidden" />
+          <div class="timetable-builder-form-grid">
+            <label class="timetable-builder-field">
+              <span>Day</span>
+              <select id="ttb-session-day" required></select>
+            </label>
+            <label class="timetable-builder-field">
+              <span>Time slot</span>
+              <select id="ttb-session-slot" required></select>
+            </label>
+            <label class="timetable-builder-field">
+              <span>Subject</span>
+              <select id="ttb-session-subject" required></select>
+            </label>
+            <label class="timetable-builder-field">
+              <span>Module <small>optional</small></span>
+              <select id="ttb-session-module"></select>
+            </label>
+            <label class="timetable-builder-field">
+              <span>Group</span>
+              <select id="ttb-session-group" required></select>
+            </label>
+            <label class="timetable-builder-field">
+              <span>Teacher</span>
+              <select id="ttb-session-teacher" required></select>
+            </label>
+            <label class="timetable-builder-field timetable-builder-field--wide">
+              <span>Zoom override <small>optional</small></span>
+              <input id="ttb-session-zoom" type="url" inputmode="url" placeholder="Leave blank to use the global Zoom link" />
+            </label>
+            <label class="timetable-builder-check timetable-builder-field--wide">
+              <input id="ttb-session-active" type="checkbox" checked />
+              <span>Active session</span>
+            </label>
+          </div>
+          <div class="timetable-builder-dialog-actions">
+            <button type="button" class="timetable-builder-secondary" data-ttb-action="close-session">Cancel</button>
+            <button type="button" class="timetable-builder-primary" data-ttb-action="save-session">Save Session</button>
+          </div>
+        </form>
+      </dialog>
     </section>
 
     <!-- WEEKLY PLANNER - V101.1.1 -->
@@ -1389,7 +1497,7 @@
 <script src="/app.js?v=94.1"></script>
 <script src="/js/m4l-cache.js?v=94.6"></script>
 <script src="/js/m4l-auth.js?v=100.2"></script>
-<script src="/js/m4l-shell.js?v=100.8"></script>
+<script src="/js/m4l-shell.js?v=101.4"></script>
   <script src="/js/m4l-timetable.js?v=101.2"></script>
   <script src="/js/m4l-weekly-planner.js?v=101.1.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
@@ -1397,6 +1505,7 @@
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
 <script src="/js/m4l-system-settings.js?v=101.2"></script>
+<script src="/js/m4l-timetable-builder.js?v=101.4"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>

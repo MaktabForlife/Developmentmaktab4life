@@ -55,14 +55,23 @@ import {
 import {
   createSubjectGoogleSheetsEndpoint,
   createSubjectResourceGoogleSheetsEndpoint,
+  createModuleGoogleSheetsEndpoint,
   createTaskGoogleSheetsEndpoint,
+  listModulesGoogleSheetsEndpoint,
   listSubjectResourcesGoogleSheetsEndpoint,
   listSubjectsGoogleSheetsEndpoint,
   listTasksGoogleSheetsEndpoint,
+  updateModuleGoogleSheetsEndpoint,
   updateSubjectGoogleSheetsEndpoint,
   updateSubjectResourceGoogleSheetsEndpoint,
   updateTaskGoogleSheetsEndpoint
 } from "./routes/curriculum.js";
+import {
+  getTimetableBuilderGoogleSheetsEndpoint,
+  saveTimetableCourseGoogleSheetsEndpoint,
+  saveTimetableSessionGoogleSheetsEndpoint,
+  saveTimetableTimeSlotGoogleSheetsEndpoint
+} from "./routes/timetable-builder.js";
 import {
   checkStudentDuplicateGoogleSheetsEndpoint,
   getStudentAssignmentOptionsGoogleSheetsEndpoint,
@@ -100,6 +109,10 @@ const ROUTES = new Map([
   ["/api/student/timetable/get", googleSheetsRoute("timetable-read", getTimetableGoogleSheetsEndpoint)],
   ["/api/admin/timetable/get", googleSheetsRoute("timetable-read", getTimetableGoogleSheetsEndpoint)],
   ["/api/admin/timetable/update-zoom", googleSheetsRoute("timetable-write", updateTimetableZoomLinkGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/get", googleSheetsRoute("timetable-builder", getTimetableBuilderGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/course/save", googleSheetsRoute("timetable-builder", saveTimetableCourseGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/time-slot/save", googleSheetsRoute("timetable-builder", saveTimetableTimeSlotGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/session/save", googleSheetsRoute("timetable-builder", saveTimetableSessionGoogleSheetsEndpoint)],
 
   ["/api/admin/weekly-planner/health", googleSheetsRoute("weekly-planner", weeklyPlannerHealthEndpoint)],
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],
@@ -143,6 +156,10 @@ const ROUTES = new Map([
   ["/api/admin/subjects/create", googleSheetsRoute("curriculum-write", createSubjectGoogleSheetsEndpoint)],
   ["/api/admin/subjects/list", googleSheetsRoute("curriculum-read", listSubjectsGoogleSheetsEndpoint)],
   ["/api/admin/subjects/update", googleSheetsRoute("curriculum-write", updateSubjectGoogleSheetsEndpoint)],
+
+  ["/api/admin/modules/create", googleSheetsRoute("curriculum-write", createModuleGoogleSheetsEndpoint)],
+  ["/api/admin/modules/list", googleSheetsRoute("curriculum-read", listModulesGoogleSheetsEndpoint)],
+  ["/api/admin/modules/update", googleSheetsRoute("curriculum-write", updateModuleGoogleSheetsEndpoint)],
 
   ["/api/admin/subject-resources/create", googleSheetsRoute("curriculum-resources-write", createSubjectResourceGoogleSheetsEndpoint)],
   ["/api/admin/subject-resources/list", googleSheetsRoute("curriculum-resources-read", listSubjectResourcesGoogleSheetsEndpoint)],

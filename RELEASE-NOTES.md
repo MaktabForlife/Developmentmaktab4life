@@ -1,3 +1,31 @@
+V101.4
+
+# Desktop Timetable Builder and curriculum management
+
+- Adds an ADMIN-only desktop workspace with five tabs: Timetable, Courses &
+  Times, Subjects, Modules, and Tasks.
+- Builds one course at a time using course-owned start/end time slots and a
+  Monday-to-Sunday week grid.
+- Creates and modifies sessions with Subject, optional Module, Group, Teacher,
+  optional Zoom override, and Active status.
+- Uses the global Zoom link from System Settings whenever a session override is
+  blank.
+- Prevents overlapping teacher assignments and overlapping group sessions in
+  the same course, including `ALL` group conflicts.
+- Adds audited course, time-slot, session, module, and module-aware task routes.
+- Keeps Subjects, Modules, and Tasks editable from the same builder workspace.
+- Preserves the current live timetable from `TeacherAssign`; V101.4 builder
+  sessions remain unpublished draft data until a deliberate cutover release.
+- Bumps application and Worker metadata to `101.4`.
+
+Before deploying the Worker, create `Courses`, `TimeSlots`, and
+`TimetableSessions` with the exact headers in
+`docs/V101.4-TIMETABLE-BUILDER-MIGRATION.md`. The confirmed production
+`SubjectList`, `ModuleList`, and `TaskList` headers require no additional change.
+No Apps Script, Worker binding, or Cloudflare-variable change is required.
+
+---
+
 V101.3
 
 # Authenticated Admin attribution and append-only audit history

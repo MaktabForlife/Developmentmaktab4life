@@ -16,6 +16,10 @@ const expectedPaths = [
   "/api/student/timetable/get",
   "/api/admin/timetable/get",
   "/api/admin/timetable/update-zoom",
+  "/api/admin/timetable-builder/get",
+  "/api/admin/timetable-builder/course/save",
+  "/api/admin/timetable-builder/time-slot/save",
+  "/api/admin/timetable-builder/session/save",
   "/api/admin/weekly-planner/health",
   "/api/admin/weekly-planner/teachers",
   "/api/admin/weekly-planner/get",
@@ -52,6 +56,9 @@ const expectedPaths = [
   "/api/admin/subjects/create",
   "/api/admin/subjects/list",
   "/api/admin/subjects/update",
+  "/api/admin/modules/create",
+  "/api/admin/modules/list",
+  "/api/admin/modules/update",
   "/api/admin/subject-resources/create",
   "/api/admin/subject-resources/list",
   "/api/admin/subject-resources/update",
@@ -66,14 +73,14 @@ const expectedPaths = [
   "/api/progress/task-detail"
 ];
 
-assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain every V96.1 API path and alias");
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include V101.4 builder routes");
 
 const root = await worker.fetch(new Request("https://worker.test/"), {});
 assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "101.3"
+  version: "101.4"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

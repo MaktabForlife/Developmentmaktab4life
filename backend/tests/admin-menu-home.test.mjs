@@ -24,15 +24,17 @@ assert.match(landing, />Admin Home</);
 assert.match(landing, />Student Records</);
 assert.match(landing, />Admin Records</);
 assert.match(landing, />Resources</);
+assert.match(landing, />Timetable Builder</);
 assert.match(landing, />System Settings</);
 assert.doesNotMatch(landing, /class="list-stack"/);
 assert.doesNotMatch(landing, />Curriculum</);
 assert.doesNotMatch(landing, />Weekly Planner</);
 assert.doesNotMatch(landing, />Tasks</);
-assert.equal((landing.match(/class="home-cover-icon-btn/g) || []).length, 6);
+assert.equal((landing.match(/class="home-cover-icon-btn/g) || []).length, 7);
 assert.match(landing, /studentrecords\.svg\?v=100\.7\.2/);
 assert.match(landing, /admin\.svg\?v=100\.7\.2/);
 assert.match(landing, /resources\.svg\?v=100\.7\.2/);
+assert.match(landing, /timetable\.svg\?v=101\.4/);
 assert.match(landing, /systemsettings\.svg\?v=100\.7\.2/);
 
 assert.match(adminHtml, /id="admin-system-menu"[\s\S]*?>System Settings</);
@@ -49,7 +51,7 @@ assert.match(academicsJs, /function showAdminSystemMenu\(\)/);
 assert.match(academicsJs, /getAdminAcademicsRole\(\) === "ADMIN"/);
 assert.match(academicsJs, /data-admin-menu-admin-only/);
 assert.match(homeCss, /\.admin-menu-icon-grid/);
-assert.match(homeCss, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+assert.match(homeCss, /\.admin-menu-icon-grid[\s\S]*?grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
 assert.match(shellJs, /"admin-system-menu"/);
 
 assert.equal(existsSync(new URL("../../icons/studentrecords.svg", import.meta.url)), true);

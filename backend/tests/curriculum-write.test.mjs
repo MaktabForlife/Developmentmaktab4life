@@ -9,6 +9,11 @@ const subjectRows = [
   ["SUB2", "Zakat", true, "2026-07-02T00:00:00.000Z"],
   ["SUBJ17", "", true, ""]
 ];
+const moduleRows = [[
+  "ModuleID", "ModuleName", "SubjectID", "SubjectName", "Sort Order", "Active",
+  "CreatedDate", "classgroup", "CreatedByAdminID", "CreatedByAdminName",
+  "ModifiedByAdminID", "ModifiedByAdminName", "ModifiedDate"
+]];
 const taskRows = [
   ["TaskID", "SubjectID", "TaskName", "AudioLink", "VisualLink", "VideoLink", "PDFLink", "Active", "CreateDate",
     "CreatedByAdminID", "CreatedByAdminName", "ModifiedByAdminID", "ModifiedByAdminName", "ModifiedDate"],
@@ -89,6 +94,7 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (method === "GET") {
     if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
+    if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
     if (range === "TaskList!A:ZZ") return response({ values: taskRows });
     if (range === "SubjectResources!A:ZZ") return response({ values: subjectResourceRows });
     if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
@@ -99,6 +105,7 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (method === "POST" && append) {
+    if (range === "ModuleList!A:M") moduleRows.push(...body.values);
     if (range === "AdminAuditLog!A:I") auditRows.push(...body.values);
     return response({ updates: { updatedRange: range, updatedRows: body.values.length } });
   }
@@ -178,6 +185,41 @@ try {
   );
   assert.equal(duplicateSubjectUpdate.data.duplicate, true);
   assert.equal(writeRequests().length, writesBeforeDuplicateUpdate);
+
+  const createdModule = await postCurriculum(
+    "/api/admin/modules/create",
+    adminToken,
+    { subjectid: "SUB1", moduleName: "Belief Foundations" },
+    directEnv
+  );
+  assert.equal(createdModule.data.success, true);
+  assert.equal(createdModule.data.module.moduleid, "MOD1");
+  assert.equal(createdModule.data.module.sortorder, 1);
+  assertWrite("POST", "ModuleList!A:M", [[
+    "MOD1", "Belief Foundations", "SUB1", "Aqidah", 1, true,
+    createdModule.data.module.createddate, "ALL"
+  ]]);
+  assert.equal(writeRow("POST", "ModuleList!A:M")[8], "ADMIN1");
+  assert.equal(writeRow("POST", "ModuleList!A:M")[9], "Admin User");
+
+  const updatedModule = await postCurriculum(
+    "/api/admin/modules/update",
+    adminToken,
+    {
+      moduleid: "MOD1",
+      subjectid: "SUB1",
+      moduleName: "Core Beliefs",
+      sortOrder: 2,
+      active: false
+    },
+    directEnv
+  );
+  assert.equal(updatedModule.data.success, true);
+  assertWrite("PUT", "ModuleList!A2:M2", [[
+    "MOD1", "Core Beliefs", "SUB1", "Aqidah", 2, false,
+    createdModule.data.module.createddate, "ALL"
+  ]]);
+  assert.equal(writeRow("PUT", "ModuleList!A2:M2")[10], "ADMIN1");
 
   const duplicateTask = await postCurriculum(
     "/api/admin/tasks/create",
@@ -315,6 +357,7 @@ try {
   assert.deepEqual(invalidResource.data, { success: false, error: "Invalid resourceType" });
   assert.equal(writeRequests().length, writesBeforeInvalidResource);
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "SUBJ18"));
+  assert.ok(auditRows.some(row => row[5] === "UPDATE" && row[7] === "MOD1"));
   assert.ok(auditRows.some(row => row[5] === "UPDATE" && row[7] === "TASK1"));
 } finally {
   globalThis.fetch = originalFetch;

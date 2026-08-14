@@ -1,0 +1,610 @@
+/* M4L V101.4 - desktop-first Timetable Builder. */
+
+body:has(#timetable-builder-screen.active) .app-shell {
+  width: min(100%, 1500px);
+  max-width: 1500px;
+}
+
+.timetable-builder-screen {
+  width: 100%;
+  min-height: calc(100dvh - var(--user-band-height, 0px));
+  padding: clamp(18px, 2vw, 32px);
+  background: var(--surface, #fff);
+}
+
+.timetable-builder-header,
+.timetable-builder-panel-heading,
+.timetable-builder-grid-title,
+.timetable-builder-course-bar,
+.timetable-builder-dialog-heading,
+.timetable-builder-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.timetable-builder-header {
+  margin-bottom: 14px;
+}
+
+.timetable-builder-header h2,
+.timetable-builder-panel h3,
+.timetable-builder-grid-title h3,
+.timetable-builder-dialog h3 {
+  margin: 0;
+  color: var(--text, #2f312e);
+}
+
+.timetable-builder-header h2 {
+  font-size: clamp(1.7rem, 2.4vw, 2.35rem);
+}
+
+.timetable-builder-eyebrow {
+  margin: 0 0 3px;
+  color: var(--primary, #31513f);
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.timetable-builder-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timetable-builder-reload .app-icon {
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  -webkit-mask: url('/icons/refresh.svg') center / contain no-repeat;
+  mask: url('/icons/refresh.svg') center / contain no-repeat;
+}
+
+.timetable-builder-status-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary, #31513f) 24%, white);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary, #31513f) 7%, white);
+  color: var(--text-muted, #70736c);
+  font-size: 0.88rem;
+}
+
+.timetable-builder-status-band strong {
+  color: var(--primary, #31513f);
+  white-space: nowrap;
+}
+
+.timetable-builder-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 12px;
+  background: var(--surface-track, #f4f1ef);
+  scrollbar-width: thin;
+}
+
+.timetable-builder-tabs button {
+  flex: 0 0 auto;
+  min-width: 110px;
+  min-height: 42px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted, #70736c);
+  font: inherit;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.timetable-builder-tabs button.is-active {
+  background: var(--primary, #31513f);
+  color: #fff;
+  box-shadow: 0 2px 7px rgba(31, 50, 39, 0.16);
+}
+
+.timetable-builder-message {
+  min-height: 22px;
+  margin: 8px 2px;
+  color: var(--text-muted, #70736c);
+  font-size: 0.88rem;
+}
+
+.timetable-builder-message.is-error,
+.timetable-builder-message.is-success {
+  padding: 8px 11px;
+  border-radius: 8px;
+}
+
+.timetable-builder-message.is-error {
+  background: #fff0f0;
+  color: #9b3030;
+}
+
+.timetable-builder-message.is-success {
+  background: #edf8f0;
+  color: #28683d;
+}
+
+.timetable-builder-content {
+  width: 100%;
+}
+
+.timetable-builder-course-bar,
+.timetable-builder-panel,
+.timetable-builder-grid-card,
+.timetable-builder-empty {
+  border: 1px solid var(--border, #e4dadd);
+  background: var(--surface, #fff);
+  box-shadow: 0 4px 16px rgba(44, 49, 45, 0.05);
+}
+
+.timetable-builder-course-bar {
+  justify-content: flex-start;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.timetable-builder-course-select {
+  width: min(380px, 46vw);
+  margin-right: auto;
+}
+
+.timetable-builder-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted, #70736c);
+  font-size: 0.83rem;
+  font-weight: 680;
+}
+
+.timetable-builder-field small {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.timetable-builder-field input,
+.timetable-builder-field select {
+  width: 100%;
+  min-height: 43px;
+  padding: 8px 11px;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text, #2f312e);
+  font: inherit;
+  font-size: 0.96rem;
+  font-weight: 500;
+}
+
+.timetable-builder-field input:focus,
+.timetable-builder-field select:focus {
+  border-color: var(--primary, #31513f);
+  outline: 2px solid color-mix(in srgb, var(--primary, #31513f) 18%, transparent);
+  outline-offset: 1px;
+}
+
+.timetable-builder-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted, #70736c);
+  font-size: 0.9rem;
+}
+
+.timetable-builder-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary, #31513f);
+}
+
+.timetable-builder-primary,
+.timetable-builder-secondary,
+.timetable-builder-panel-heading > button,
+.ttb-grid-time button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--primary, #31513f);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.timetable-builder-primary {
+  background: var(--primary, #31513f);
+  color: #fff;
+}
+
+.timetable-builder-secondary,
+.timetable-builder-panel-heading > button,
+.ttb-grid-time button {
+  background: #fff;
+  color: var(--primary, #31513f);
+}
+
+.timetable-builder-primary:disabled,
+.timetable-builder-secondary:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.timetable-builder-grid-card {
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.timetable-builder-grid-title {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border, #e4dadd);
+}
+
+.timetable-builder-grid-title p,
+.timetable-builder-panel-heading p {
+  margin: 3px 0 0;
+  color: var(--text-muted, #70736c);
+  font-size: 0.82rem;
+}
+
+.timetable-builder-grid-title > span {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--surface-track, #f4f1ef);
+  color: var(--text-muted, #70736c);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.timetable-builder-grid-scroll {
+  width: 100%;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.timetable-builder-week-grid {
+  display: grid;
+  grid-template-columns: 132px repeat(var(--ttb-day-count), minmax(152px, 1fr));
+  min-width: 1240px;
+  background: var(--border, #e4dadd);
+  gap: 1px;
+}
+
+.ttb-grid-heading,
+.ttb-grid-time,
+.ttb-grid-cell {
+  background: #fff;
+}
+
+.ttb-grid-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  min-height: 48px;
+  place-items: center;
+  background: var(--surface-track, #f4f1ef);
+  color: var(--text, #2f312e);
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.ttb-grid-heading--time,
+.ttb-grid-time {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.ttb-grid-time {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 132px;
+  padding: 12px;
+  color: var(--text, #2f312e);
+}
+
+.ttb-grid-time strong {
+  font-size: 0.87rem;
+  white-space: nowrap;
+}
+
+.ttb-grid-time button {
+  min-height: 31px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+}
+
+.ttb-grid-cell {
+  position: relative;
+  display: grid;
+  align-content: start;
+  min-height: 132px;
+  padding: 7px;
+}
+
+.ttb-grid-cell-sessions {
+  display: grid;
+  gap: 6px;
+}
+
+.ttb-session-card {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--primary, #31513f) 34%, white);
+  border-left: 4px solid var(--primary, #31513f);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary, #31513f) 6%, white);
+  color: var(--text, #2f312e);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ttb-session-card strong,
+.ttb-session-card span,
+.ttb-session-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ttb-session-card strong {
+  font-size: 0.84rem;
+}
+
+.ttb-session-card span,
+.ttb-session-card small {
+  color: var(--text-muted, #70736c);
+  font-size: 0.72rem;
+}
+
+.ttb-session-card.is-inactive {
+  border-left-color: #9b9c98;
+  filter: grayscale(1);
+  opacity: 0.62;
+}
+
+.ttb-grid-add {
+  align-self: end;
+  justify-self: end;
+  width: 28px;
+  height: 28px;
+  margin-top: 7px;
+  border: 1px dashed var(--primary, #31513f);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary, #31513f);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.timetable-builder-management-grid {
+  display: grid;
+  grid-template-columns: minmax(290px, 360px) minmax(520px, 1fr);
+  gap: 14px;
+  min-width: 840px;
+}
+
+.timetable-builder-panel {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 14px;
+}
+
+.timetable-builder-panel--wide {
+  min-width: 0;
+}
+
+.timetable-builder-panel-heading {
+  min-height: 42px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, #e4dadd);
+}
+
+.timetable-builder-panel-heading--filter {
+  align-items: end;
+}
+
+.timetable-builder-panel-heading--filter .timetable-builder-field {
+  width: min(260px, 32vw);
+  margin-left: auto;
+}
+
+.timetable-builder-inline-form {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) auto auto;
+  align-items: end;
+  gap: 10px;
+  padding: 13px;
+  border-radius: 10px;
+  background: var(--surface-track, #f4f1ef);
+}
+
+.timetable-builder-inline-form .timetable-builder-check {
+  min-height: 43px;
+}
+
+.timetable-builder-record-list {
+  display: grid;
+  gap: 7px;
+}
+
+.timetable-builder-record-list--scroll {
+  max-height: min(58vh, 620px);
+  padding-right: 3px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.timetable-builder-record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text, #2f312e);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timetable-builder-record-row > span:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.timetable-builder-record-row strong,
+.timetable-builder-record-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timetable-builder-record-row small,
+.timetable-builder-list-empty {
+  color: var(--text-muted, #70736c);
+}
+
+.timetable-builder-record-row.is-inactive {
+  opacity: 0.58;
+}
+
+.timetable-builder-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf8f0;
+  color: #28683d;
+  font-size: 0.72rem;
+  font-weight: 720;
+}
+
+.is-inactive .timetable-builder-status {
+  background: #eee;
+  color: #676967;
+}
+
+.timetable-builder-empty {
+  padding: 42px 24px;
+  border-radius: 14px;
+  color: var(--text-muted, #70736c);
+  text-align: center;
+}
+
+.timetable-builder-empty h3,
+.timetable-builder-empty p {
+  margin-top: 0;
+}
+
+.timetable-builder-empty--inside {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.timetable-builder-dialog {
+  width: min(760px, calc(100vw - 36px));
+  max-height: calc(100dvh - 36px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--text, #2f312e);
+  box-shadow: 0 20px 60px rgba(23, 32, 26, 0.28);
+}
+
+.timetable-builder-dialog::backdrop {
+  background: rgba(25, 34, 28, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.timetable-builder-dialog-form {
+  padding: 22px;
+}
+
+.timetable-builder-dialog-heading {
+  margin-bottom: 18px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--border, #e4dadd);
+}
+
+.timetable-builder-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.timetable-builder-field--wide {
+  grid-column: 1 / -1;
+}
+
+.timetable-builder-dialog-actions {
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, #e4dadd);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .timetable-builder-tabs button:hover:not(.is-active),
+  .timetable-builder-secondary:hover,
+  .timetable-builder-panel-heading > button:hover,
+  .ttb-grid-time button:hover,
+  .timetable-builder-record-row:hover,
+  .ttb-grid-add:hover {
+    background: color-mix(in srgb, var(--primary, #31513f) 7%, white);
+  }
+
+  .ttb-session-card:hover {
+    border-color: var(--primary, #31513f);
+  }
+}
+
+@media (max-width: 920px) {
+  .timetable-builder-screen {
+    overflow-x: auto;
+  }
+
+  .timetable-builder-status-band {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .timetable-builder-screen {
+    padding: 16px;
+  }
+
+  .timetable-builder-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timetable-builder-field--wide {
+    grid-column: auto;
+  }
+}

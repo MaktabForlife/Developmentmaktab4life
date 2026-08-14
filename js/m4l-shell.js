@@ -2572,6 +2572,12 @@ function getUserBandRefreshAction(screenId, role) {
       : null;
   }
 
+  if (activeScreenId === "timetable-builder-screen") {
+    return typeof loadTimetableBuilder === "function"
+      ? { label: "Refresh", title: "Refresh Timetable Builder", handler: () => loadTimetableBuilder(true) }
+      : null;
+  }
+
   if (activeScreenId === "weekly-planner-screen") {
     return typeof loadWeeklyPlanner === "function"
       ? { label: "Refresh", title: "Refresh weekly planner", handler: loadWeeklyPlanner }
@@ -3568,6 +3574,8 @@ function getBottomNavActiveKey(screenId, role) {
     }
 
     if (id.startsWith("admin-timetable")) return "admin";
+
+    if (id === "timetable-builder-screen") return "admin";
 
     if (id.startsWith("weekly-planner")) return "admin";
 

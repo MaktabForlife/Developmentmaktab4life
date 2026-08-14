@@ -16,6 +16,7 @@ import { json } from "../lib/http.js";
 import { nextSequentialId } from "../lib/sequential-ids.js";
 
 const SUBJECT_LIST_SHEET = "SubjectList";
+const MODULE_LIST_SHEET = "ModuleList";
 const TASK_LIST_SHEET = "TaskList";
 const SUBJECT_RESOURCES_SHEET = "SubjectResources";
 const FULL_SHEET_RANGE = "A:ZZ";
@@ -186,44 +187,222 @@ export async function updateSubjectGoogleSheetsEndpoint(request, env) {
   });
 }
 
-export async function createTaskGoogleSheetsEndpoint(request, env) {
+export async function createModuleGoogleSheetsEndpoint(request, env) {
   const permission = await requireAdminOrSenior(request, env);
-
-  if (!permission.ok) {
-    return permission.response;
-  }
+  if (!permission.ok) return permission.response;
 
   const body = await request.json();
   const subjectid = clean(body.subjectid);
+  const moduleName = clean(body.moduleName || body.modulename);
+
+  if (!subjectid) return json({ success: false, error: "Missing subjectid" }, 400);
+  if (!moduleName) return json({ success: false, error: "Missing moduleName" }, 400);
+
+  const [moduleRows, subjectRows] = await Promise.all([
+    readCurriculumSheet(env, MODULE_LIST_SHEET),
+    readCurriculumSheet(env, SUBJECT_LIST_SHEET)
+  ]);
+
+  if (moduleRows === null) return missingSheetResponse(MODULE_LIST_SHEET);
+  if (subjectRows === null) return missingSheetResponse(SUBJECT_LIST_SHEET);
+
+  const subject = findSubjectById(subjectRows, subjectid);
+  if (!subject) return json({ success: false, error: "Subject not found" }, 404);
+
+  const columns = getCurriculumColumns(moduleRows[0]);
+  const required = requireColumns(columns, [
+    "moduleid", "modulename", "subjectid", "active", "createddate"
+  ], MODULE_LIST_SHEET);
+  if (!required.ok) return json({ success: false, error: required.error }, 503);
+
+  const duplicate = findModuleBySubjectAndName(moduleRows, subjectid, moduleName);
+  if (duplicate) {
+    return json({ success: false, duplicate: true, error: "Module already exists for this subject", module: duplicate }, 409);
+  }
+
+  const requestedSortOrder = normalizePositiveInteger(body.sortOrder || body.sortorder);
+  const sortOrder = requestedSortOrder || nextModuleSortOrder(moduleRows, subjectid);
+  const auditContext = await requireCurriculumAudit(env, permission.user, moduleRows);
+  if (!auditContext.ok) return auditContext.response;
+  const now = auditContext.audit.timestamp;
+  const module = {
+    moduleid: nextSequentialId(moduleRows, "MOD"),
+    modulename: moduleName,
+    subjectid,
+    subjectname: subject.subjectname,
+    sortorder: sortOrder,
+    active: true,
+    createddate: now
+  };
+
+  const row = new Array((moduleRows[0] || []).length).fill("");
+  setColumnValue(row, columns, "moduleid", module.moduleid);
+  setColumnValue(row, columns, "modulename", module.modulename);
+  setColumnValue(row, columns, "subjectid", module.subjectid);
+  setColumnValue(row, columns, "subjectname", module.subjectname);
+  setColumnValue(row, columns, "sortorder", module.sortorder);
+  setColumnValue(row, columns, "active", module.active);
+  setColumnValue(row, columns, "createddate", module.createddate);
+  setColumnValue(row, columns, "classgroup", "ALL");
+  stampCreatedRow(row, auditContext.rowAudit.columns, auditContext.audit.actor, now);
+
+  await appendGoogleSheetValues(env, appendRange(MODULE_LIST_SHEET, row.length), [row]);
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "CREATE",
+    recordType: "MODULE",
+    recordId: module.moduleid,
+    changedFields: ["SubjectID", "ModuleName", "SortOrder", "Active"]
+  });
+
+  return json({ success: true, message: "Module created", module });
+}
+
+export async function updateModuleGoogleSheetsEndpoint(request, env) {
+  const permission = await requireAdminOrSenior(request, env);
+  if (!permission.ok) return permission.response;
+
+  const body = await request.json();
+  const moduleid = clean(body.moduleid);
+  if (!moduleid) return json({ success: false, error: "Missing moduleid" }, 400);
+
+  const [moduleRows, subjectRows] = await Promise.all([
+    readCurriculumSheet(env, MODULE_LIST_SHEET),
+    readCurriculumSheet(env, SUBJECT_LIST_SHEET)
+  ]);
+  if (moduleRows === null) return missingSheetResponse(MODULE_LIST_SHEET);
+  if (subjectRows === null) return missingSheetResponse(SUBJECT_LIST_SHEET);
+
+  const columns = getCurriculumColumns(moduleRows[0]);
+  const required = requireColumns(columns, [
+    "moduleid", "modulename", "subjectid", "active", "createddate"
+  ], MODULE_LIST_SHEET);
+  if (!required.ok) return json({ success: false, error: required.error }, 503);
+
+  const rowIndex = findRowIndexById(moduleRows, columns.moduleid, moduleid);
+  if (rowIndex === -1) return json({ success: false, error: "Module not found" }, 404);
+
+  const current = moduleFromRow(moduleRows[rowIndex], columns);
+  const subjectid = body.subjectid !== undefined ? clean(body.subjectid) : current.subjectid;
+  const moduleName = body.moduleName !== undefined || body.modulename !== undefined
+    ? clean(body.moduleName || body.modulename)
+    : current.modulename;
+  const sortOrder = body.sortOrder !== undefined || body.sortorder !== undefined
+    ? normalizePositiveInteger(body.sortOrder || body.sortorder)
+    : current.sortorder;
+  const active = body.active !== undefined ? body.active : current.active;
+
+  if (!subjectid) return json({ success: false, error: "subjectid cannot be empty" }, 400);
+  if (!moduleName) return json({ success: false, error: "moduleName cannot be empty" }, 400);
+  if (!sortOrder) return json({ success: false, error: "Sort order must be a positive whole number" }, 400);
+  if (typeof active !== "boolean") return json({ success: false, error: "active must be true or false" }, 400);
+
+  const subject = findSubjectById(subjectRows, subjectid);
+  if (!subject) return json({ success: false, error: "Subject not found" }, 404);
+
+  const duplicate = findModuleBySubjectAndName(moduleRows, subjectid, moduleName, moduleid);
+  if (duplicate) {
+    return json({ success: false, duplicate: true, error: "Another module with that name already exists for this subject", module: duplicate }, 409);
+  }
+
+  const changedFields = [];
+  if (current.subjectid !== subjectid) changedFields.push("SubjectID");
+  if (current.modulename !== moduleName) changedFields.push("ModuleName");
+  if (current.sortorder !== sortOrder) changedFields.push("SortOrder");
+  if (current.active !== active) changedFields.push("Active");
+
+  if (changedFields.length === 0) {
+    return json({ success: true, message: "No module changes requested", module: current });
+  }
+
+  const auditContext = await requireCurriculumAudit(env, permission.user, moduleRows);
+  if (!auditContext.ok) return auditContext.response;
+  const updatedRow = copyRow(moduleRows[rowIndex], (moduleRows[0] || []).length);
+  setColumnValue(updatedRow, columns, "subjectid", subjectid);
+  setColumnValue(updatedRow, columns, "subjectname", subject.subjectname);
+  setColumnValue(updatedRow, columns, "modulename", moduleName);
+  setColumnValue(updatedRow, columns, "sortorder", sortOrder);
+  setColumnValue(updatedRow, columns, "active", active);
+  stampModifiedRow(updatedRow, auditContext.rowAudit.columns, auditContext.audit.actor, auditContext.audit.timestamp);
+
+  await updateGoogleSheetValues(env, updateRange(MODULE_LIST_SHEET, rowIndex + 1, updatedRow.length), [updatedRow]);
+  await appendAdminAuditLog(env, auditContext.audit, {
+    action: "UPDATE",
+    recordType: "MODULE",
+    recordId: moduleid,
+    changedFields
+  });
+
+  return json({
+    success: true,
+    message: "Module updated",
+    module: { ...current, subjectid, subjectname: subject.subjectname, modulename: moduleName, sortorder: sortOrder, active }
+  });
+}
+
+export async function listModulesGoogleSheetsEndpoint(request, env) {
+  const auth = await requireAdminRead(request, env);
+  if (!auth.ok) return auth.response;
+
+  const body = await request.json();
+  const subjectid = clean(body.subjectid || "ALL");
+  const activeOnly = body.activeOnly === true;
+  const rows = await readCurriculumSheet(env, MODULE_LIST_SHEET);
+  if (rows === null) return json({ success: false, error: `${MODULE_LIST_SHEET} sheet not found` });
+
+  return json(buildModulesResponse(rows, { subjectid, activeOnly }));
+}
+
+export async function createTaskGoogleSheetsEndpoint(request, env) {
+  const permission = await requireAdminOrSenior(request, env);
+  if (!permission.ok) return permission.response;
+
+  const body = await request.json();
+  const subjectid = clean(body.subjectid);
+  const moduleid = clean(body.moduleid || body.moduleId);
   const taskName = clean(body.taskName);
   const audioLink = clean(body.audioLink);
-  const visualLink = clean(body.visualLink);
+  const visualLink = clean(body.visualLink || body.graphicLink);
   const videoLink = clean(body.videoLink);
   const pdfLink = clean(body.pdfLink);
 
-  if (!subjectid) {
-    return json({ success: false, error: "Missing subjectid" }, 400);
+  if (!subjectid) return json({ success: false, error: "Missing subjectid" }, 400);
+  if (!taskName) return json({ success: false, error: "Missing taskName" }, 400);
+
+  const [rows, subjectRows, moduleRows] = await Promise.all([
+    readCurriculumSheet(env, TASK_LIST_SHEET),
+    readCurriculumSheet(env, SUBJECT_LIST_SHEET),
+    readCurriculumSheet(env, MODULE_LIST_SHEET)
+  ]);
+  if (rows === null) return missingSheetResponse(TASK_LIST_SHEET);
+  if (subjectRows === null) return missingSheetResponse(SUBJECT_LIST_SHEET);
+  if (moduleRows === null) return missingSheetResponse(MODULE_LIST_SHEET);
+
+  const columns = getCurriculumColumns(rows[0]);
+  const required = requireColumns(columns, [
+    "taskid", "subjectid", "taskname", "active", "createddate"
+  ], TASK_LIST_SHEET);
+  if (!required.ok) return json({ success: false, error: required.error }, 503);
+
+  const subject = findSubjectById(subjectRows, subjectid);
+  if (!subject) return json({ success: false, error: "Subject not found" }, 404);
+
+  const module = moduleid ? findModuleById(moduleRows, moduleid) : null;
+  if (moduleid && (!module || module.subjectid !== subjectid)) {
+    return json({ success: false, error: "The selected module does not belong to this subject" }, 409);
+  }
+  if (moduleid && !Number.isInteger(columns.moduleid)) {
+    return json({ success: false, error: "TaskList is missing the ModuleID column" }, 503);
   }
 
-  if (!taskName) {
-    return json({ success: false, error: "Missing taskName" }, 400);
-  }
-
-  const rows = await readCurriculumSheet(env, TASK_LIST_SHEET);
-
-  if (rows === null) {
-    return missingSheetResponse(TASK_LIST_SHEET);
-  }
-
-  const duplicate = findTaskBySubjectAndName(rows, subjectid, taskName);
+  const duplicate = findTaskBySubjectAndName(rows, subjectid, taskName, "", true, moduleid);
 
   if (duplicate) {
     return json({
       success: false,
       duplicate: true,
-      error: "Task already exists for this subject",
+      error: "Task already exists for this subject and module",
       task: duplicate
-    });
+    }, 409);
   }
 
   const auditContext = await requireCurriculumAudit(env, permission.user, rows);
@@ -232,6 +411,9 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
   const task = {
     taskid: nextSequentialId(rows, "TASK"),
     subjectid,
+    subjectname: subject.subjectname,
+    moduleid,
+    modulename: module ? module.modulename : "",
     taskname: taskName,
     audiolink: audioLink,
     visuallink: visualLink,
@@ -242,15 +424,18 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
   };
 
   const row = new Array((rows[0] || []).length).fill("");
-  row[0] = task.taskid;
-  row[1] = task.subjectid;
-  row[2] = task.taskname;
-  row[3] = task.audiolink;
-  row[4] = task.visuallink;
-  row[5] = task.videolink;
-  row[6] = task.pdflink;
-  row[7] = task.active;
-  row[8] = task.createdate;
+  setColumnValue(row, columns, "taskid", task.taskid);
+  setColumnValue(row, columns, "subjectid", task.subjectid);
+  setColumnValue(row, columns, "subjectname", task.subjectname);
+  setColumnValue(row, columns, "moduleid", task.moduleid);
+  setColumnValue(row, columns, "modulename", task.modulename);
+  setColumnValue(row, columns, "taskname", task.taskname);
+  setColumnValue(row, columns, "audiolink", task.audiolink);
+  setColumnValue(row, columns, "visuallink", task.visuallink);
+  setColumnValue(row, columns, "videolink", task.videolink);
+  setColumnValue(row, columns, "pdflink", task.pdflink);
+  setColumnValue(row, columns, "active", task.active);
+  setColumnValue(row, columns, "createddate", task.createddate);
   stampCreatedRow(row, auditContext.rowAudit.columns, auditContext.audit.actor, now);
 
   await appendGoogleSheetValues(env, appendRange(TASK_LIST_SHEET, row.length), [row]);
@@ -260,6 +445,7 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
     recordId: task.taskid,
     changedFields: [
       "SubjectID",
+      "ModuleID",
       "TaskName",
       "AudioLink",
       "VisualLink",
@@ -274,115 +460,103 @@ export async function createTaskGoogleSheetsEndpoint(request, env) {
 
 export async function updateTaskGoogleSheetsEndpoint(request, env) {
   const permission = await requireAdminOrSenior(request, env);
-
-  if (!permission.ok) {
-    return permission.response;
-  }
+  if (!permission.ok) return permission.response;
 
   const body = await request.json();
   const taskid = clean(body.taskid);
+  if (!taskid) return json({ success: false, error: "Missing taskid" }, 400);
 
-  if (!taskid) {
-    return json({ success: false, error: "Missing taskid" }, 400);
-  }
+  const [rows, subjectRows, moduleRows] = await Promise.all([
+    readCurriculumSheet(env, TASK_LIST_SHEET),
+    readCurriculumSheet(env, SUBJECT_LIST_SHEET),
+    readCurriculumSheet(env, MODULE_LIST_SHEET)
+  ]);
+  if (rows === null) return missingSheetResponse(TASK_LIST_SHEET);
+  if (subjectRows === null) return missingSheetResponse(SUBJECT_LIST_SHEET);
+  if (moduleRows === null) return missingSheetResponse(MODULE_LIST_SHEET);
 
-  const updates = { taskid };
+  const columns = getCurriculumColumns(rows[0]);
+  const required = requireColumns(columns, [
+    "taskid", "subjectid", "taskname", "active", "createddate"
+  ], TASK_LIST_SHEET);
+  if (!required.ok) return json({ success: false, error: required.error }, 503);
 
-  if (body.subjectid !== undefined) {
-    updates.subjectid = clean(body.subjectid);
-
-    if (!updates.subjectid) {
-      return json({ success: false, error: "subjectid cannot be empty" }, 400);
-    }
-  }
-
-  if (body.taskName !== undefined) {
-    updates.taskName = clean(body.taskName);
-
-    if (!updates.taskName) {
-      return json({ success: false, error: "taskName cannot be empty" }, 400);
-    }
-  }
-
-  ["audioLink", "visualLink", "videoLink", "pdfLink"].forEach(field => {
-    if (body[field] !== undefined) {
-      updates[field] = clean(body[field]);
-    }
-  });
-
-  if (body.active !== undefined) {
-    if (typeof body.active !== "boolean") {
-      return json({ success: false, error: "active must be true or false" }, 400);
-    }
-
-    updates.active = body.active;
-  }
-
-  const rows = await readCurriculumSheet(env, TASK_LIST_SHEET);
-
-  if (rows === null) {
-    return missingSheetResponse(TASK_LIST_SHEET);
-  }
-
-  const rowIndex = findRowIndexById(rows, 0, taskid);
-
-  if (rowIndex === -1) {
-    return json({ success: false, error: "Task not found" });
-  }
+  const rowIndex = findRowIndexById(rows, columns.taskid, taskid);
+  if (rowIndex === -1) return json({ success: false, error: "Task not found" }, 404);
 
   const currentRow = rows[rowIndex];
-  const subjectToCheck = updates.subjectid !== undefined
-    ? updates.subjectid
-    : clean(getValue(currentRow, 1));
+  const current = taskFromRow(currentRow, columns);
+  const moduleProvided = Object.prototype.hasOwnProperty.call(body, "moduleid") ||
+    Object.prototype.hasOwnProperty.call(body, "moduleId");
+  const subjectid = body.subjectid !== undefined ? clean(body.subjectid) : current.subjectid;
+  const moduleid = moduleProvided ? clean(body.moduleid || body.moduleId) : current.moduleid;
+  const taskName = body.taskName !== undefined ? clean(body.taskName) : current.taskname;
+  const active = body.active !== undefined ? body.active : current.active;
+  const audioLink = body.audioLink !== undefined ? clean(body.audioLink) : current.audiolink;
+  const visualLink = body.visualLink !== undefined || body.graphicLink !== undefined
+    ? clean(body.visualLink || body.graphicLink)
+    : current.visuallink;
+  const videoLink = body.videoLink !== undefined ? clean(body.videoLink) : current.videolink;
+  const pdfLink = body.pdfLink !== undefined ? clean(body.pdfLink) : current.pdflink;
 
-  if (updates.taskName !== undefined) {
-    const duplicate = findTaskBySubjectAndName(
-      rows,
-      subjectToCheck,
-      updates.taskName,
-      taskid,
-      false
-    );
+  if (!subjectid) return json({ success: false, error: "subjectid cannot be empty" }, 400);
+  if (!taskName) return json({ success: false, error: "taskName cannot be empty" }, 400);
+  if (typeof active !== "boolean") return json({ success: false, error: "active must be true or false" }, 400);
 
-    if (duplicate) {
-      return json({
-        success: false,
-        duplicate: true,
-        error: "Another task with that name already exists for this subject",
-        task: duplicate
-      });
-    }
+  const subject = findSubjectById(subjectRows, subjectid);
+  if (!subject) return json({ success: false, error: "Subject not found" }, 404);
+  const module = moduleid ? findModuleById(moduleRows, moduleid) : null;
+  if (moduleid && (!module || module.subjectid !== subjectid)) {
+    return json({ success: false, error: "The selected module does not belong to this subject" }, 409);
+  }
+  if (moduleid && !Number.isInteger(columns.moduleid)) {
+    return json({ success: false, error: "TaskList is missing the ModuleID column" }, 503);
   }
 
-  const changedFields = [];
-  const updatedRow = copyRow(currentRow, (rows[0] || []).length);
+  const duplicate = findTaskBySubjectAndName(rows, subjectid, taskName, taskid, false, moduleid);
+  if (duplicate) {
+    return json({
+      success: false,
+      duplicate: true,
+      error: "Another task with that name already exists for this subject and module",
+      task: duplicate
+    }, 409);
+  }
 
-  if (updates.subjectid !== undefined) { updatedRow[1] = updates.subjectid; changedFields.push("SubjectID"); }
-  if (updates.taskName !== undefined) { updatedRow[2] = updates.taskName; changedFields.push("TaskName"); }
-  if (updates.audioLink !== undefined) { updatedRow[3] = updates.audioLink; changedFields.push("AudioLink"); }
-  if (updates.visualLink !== undefined) { updatedRow[4] = updates.visualLink; changedFields.push("VisualLink"); }
-  if (updates.videoLink !== undefined) { updatedRow[5] = updates.videoLink; changedFields.push("VideoLink"); }
-  if (updates.pdfLink !== undefined) { updatedRow[6] = updates.pdfLink; changedFields.push("PDFLink"); }
-  if (updates.active !== undefined) { updatedRow[7] = updates.active; changedFields.push("Active"); }
-
+  const proposed = {
+    ...current,
+    subjectid,
+    subjectname: subject.subjectname,
+    moduleid,
+    modulename: module ? module.modulename : "",
+    taskname: taskName,
+    audiolink: audioLink,
+    visuallink: visualLink,
+    videolink: videoLink,
+    pdflink: pdfLink,
+    active
+  };
+  const changedFields = getTaskChangedFields(current, proposed);
   if (changedFields.length === 0) {
-    return json({ success: true, message: "No task changes requested", taskid });
+    return json({ success: true, message: "No task changes requested", task: current });
   }
 
   const auditContext = await requireCurriculumAudit(env, permission.user, rows);
   if (!auditContext.ok) return auditContext.response;
-  stampModifiedRow(
-    updatedRow,
-    auditContext.rowAudit.columns,
-    auditContext.audit.actor,
-    auditContext.audit.timestamp
-  );
+  const updatedRow = copyRow(currentRow, (rows[0] || []).length);
+  setColumnValue(updatedRow, columns, "subjectid", proposed.subjectid);
+  setColumnValue(updatedRow, columns, "subjectname", proposed.subjectname);
+  setColumnValue(updatedRow, columns, "moduleid", proposed.moduleid);
+  setColumnValue(updatedRow, columns, "modulename", proposed.modulename);
+  setColumnValue(updatedRow, columns, "taskname", proposed.taskname);
+  setColumnValue(updatedRow, columns, "audiolink", proposed.audiolink);
+  setColumnValue(updatedRow, columns, "visuallink", proposed.visuallink);
+  setColumnValue(updatedRow, columns, "videolink", proposed.videolink);
+  setColumnValue(updatedRow, columns, "pdflink", proposed.pdflink);
+  setColumnValue(updatedRow, columns, "active", proposed.active);
+  stampModifiedRow(updatedRow, auditContext.rowAudit.columns, auditContext.audit.actor, auditContext.audit.timestamp);
 
-  await updateGoogleSheetValues(
-    env,
-    updateRange(TASK_LIST_SHEET, rowIndex + 1, updatedRow.length),
-    [updatedRow]
-  );
+  await updateGoogleSheetValues(env, updateRange(TASK_LIST_SHEET, rowIndex + 1, updatedRow.length), [updatedRow]);
   await appendAdminAuditLog(env, auditContext.audit, {
     action: "UPDATE",
     recordType: "TASK",
@@ -390,11 +564,7 @@ export async function updateTaskGoogleSheetsEndpoint(request, env) {
     changedFields
   });
 
-  return json({
-    success: true,
-    message: "Task updated successfully",
-    taskid
-  });
+  return json({ success: true, message: "Task updated successfully", task: proposed });
 }
 
 export async function createSubjectResourceGoogleSheetsEndpoint(request, env) {
@@ -649,34 +819,49 @@ export function buildSubjectsResponse(rows = []) {
   };
 }
 
+export function buildModulesResponse(rows = [], options = {}) {
+  const requestedSubjectId = clean(options.subjectid || "ALL");
+  const activeOnly = options.activeOnly === true;
+  const columns = getCurriculumColumns(rows[0]);
+  const modules = rows.slice(1).map(row => moduleFromRow(row, columns)).filter(module => {
+    if (!module.moduleid || !module.modulename) return false;
+    if (requestedSubjectId !== "ALL" && module.subjectid !== requestedSubjectId) return false;
+    if (activeOnly && module.active !== true) return false;
+    return true;
+  });
+
+  modules.sort((left, right) => (
+    String(left.subjectid).localeCompare(String(right.subjectid)) ||
+    Number(left.sortorder || 0) - Number(right.sortorder || 0) ||
+    String(left.modulename).localeCompare(String(right.modulename))
+  ));
+
+  return {
+    success: true,
+    subjectid: requestedSubjectId,
+    count: modules.length,
+    modules
+  };
+}
+
 export function buildTasksResponse(rows = [], options = {}) {
   const requestedSubjectId = clean(options.subjectid || "ALL");
   const activeOnly = options.activeOnly === true;
+  const columns = getCurriculumColumns(rows[0]);
   const tasks = [];
 
   rows.slice(1).forEach(row => {
-    const subjectid = clean(getValue(row, 1));
-    const active = normalizeBooleanCell(getValue(row, 7));
+    const task = taskFromRow(row, columns);
 
-    if (requestedSubjectId !== "ALL" && subjectid !== requestedSubjectId) {
+    if (requestedSubjectId !== "ALL" && task.subjectid !== requestedSubjectId) {
       return;
     }
 
-    if (activeOnly && active !== true) {
+    if (activeOnly && task.active !== true) {
       return;
     }
 
-    tasks.push({
-      taskid: getValue(row, 0),
-      subjectid: getValue(row, 1),
-      taskname: getValue(row, 2),
-      audiolink: getValue(row, 3),
-      visuallink: getValue(row, 4),
-      videolink: getValue(row, 5),
-      pdflink: getValue(row, 6),
-      active,
-      createdate: getValue(row, 8)
-    });
+    if (task.taskid && task.taskname) tasks.push(task);
   });
 
   tasks.sort((a, b) => {
@@ -816,41 +1001,171 @@ function findTaskBySubjectAndName(
   subjectid,
   taskName,
   excludedTaskId = "",
-  includeLinks = true
+  includeLinks = true,
+  moduleid = ""
 ) {
   const targetSubject = clean(subjectid);
+  const targetModule = clean(moduleid);
   const targetTask = normalizeText(taskName);
   const excludedId = clean(excludedTaskId);
+  const columns = getCurriculumColumns(rows[0]);
 
   for (let index = 1; index < rows.length; index += 1) {
     const row = rows[index];
-    const taskid = clean(getValue(row, 0));
+    const task = taskFromRow(row, columns);
 
     if (
-      (!excludedId || taskid !== excludedId) &&
-      clean(getValue(row, 1)) === targetSubject &&
-      normalizeText(getValue(row, 2)) === targetTask
+      (!excludedId || task.taskid !== excludedId) &&
+      task.subjectid === targetSubject &&
+      task.moduleid === targetModule &&
+      normalizeText(task.taskname) === targetTask
     ) {
-      const task = {
-        taskid: getValue(row, 0),
-        subjectid: getValue(row, 1),
-        taskname: getValue(row, 2)
+      if (includeLinks) return task;
+      return {
+        taskid: task.taskid,
+        subjectid: task.subjectid,
+        moduleid: task.moduleid,
+        taskname: task.taskname,
+        active: task.active,
+        createdate: task.createdate
       };
-
-      if (includeLinks) {
-        task.audiolink = getValue(row, 3);
-        task.visuallink = getValue(row, 4);
-        task.videolink = getValue(row, 5);
-        task.pdflink = getValue(row, 6);
-      }
-
-      task.active = normalizeBooleanCell(getValue(row, 7));
-      task.createdate = getValue(row, 8);
-      return task;
     }
   }
 
   return null;
+}
+
+function getCurriculumColumns(headers = []) {
+  return {
+    subjectid: findHeaderIndex(headers, ["SubjectID", "SubjectId"]),
+    subjectname: findHeaderIndex(headers, ["SubjectName"]),
+    moduleid: findHeaderIndex(headers, ["ModuleID", "ModuleId"]),
+    modulename: findHeaderIndex(headers, ["ModuleName"]),
+    sortorder: findHeaderIndex(headers, ["SortOrder", "Sort Order", "ModuleNo"]),
+    classgroup: findHeaderIndex(headers, ["ClassGroup", "classgroup", "GroupNo"]),
+    taskid: findHeaderIndex(headers, ["TaskID", "TaskId"]),
+    taskname: findHeaderIndex(headers, ["TaskName"]),
+    audiolink: findHeaderIndex(headers, ["AudioLink"]),
+    visuallink: findHeaderIndex(headers, ["VisualLink", "GraphicLink"]),
+    videolink: findHeaderIndex(headers, ["VideoLink"]),
+    pdflink: findHeaderIndex(headers, ["PDFLink", "PdfLink"]),
+    active: findHeaderIndex(headers, ["Active"]),
+    createddate: findHeaderIndex(headers, ["CreatedDate", "CreateDate", "Date"])
+  };
+}
+
+function findHeaderIndex(headers, aliases) {
+  const targets = new Set(aliases.map(normalizeHeaderName));
+  return (Array.isArray(headers) ? headers : []).findIndex(header => targets.has(normalizeHeaderName(header)));
+}
+
+function normalizeHeaderName(value) {
+  return clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function requireColumns(columns, names, sheetName) {
+  const missing = names.filter(name => !Number.isInteger(columns[name]) || columns[name] < 0);
+  return missing.length === 0
+    ? { ok: true }
+    : { ok: false, error: `${sheetName} is missing required columns: ${missing.join(", ")}` };
+}
+
+function setColumnValue(row, columns, name, value) {
+  const index = columns[name];
+  if (Number.isInteger(index) && index >= 0) row[index] = value;
+}
+
+function findSubjectById(rows, subjectid) {
+  const target = clean(subjectid);
+  const row = rows.slice(1).find(item => clean(getValue(item, 0)) === target);
+  return row ? {
+    subjectid: clean(getValue(row, 0)),
+    subjectname: clean(getValue(row, 1)),
+    active: normalizeBooleanCell(getValue(row, 2))
+  } : null;
+}
+
+function moduleFromRow(row, columns) {
+  return {
+    moduleid: clean(getValue(row, columns.moduleid)),
+    modulename: clean(getValue(row, columns.modulename)),
+    subjectid: clean(getValue(row, columns.subjectid)),
+    subjectname: clean(getValue(row, columns.subjectname)),
+    sortorder: Number(getValue(row, columns.sortorder)) || 0,
+    active: normalizeBooleanCell(getValue(row, columns.active)),
+    createddate: getValue(row, columns.createddate)
+  };
+}
+
+function findModuleById(rows, moduleid) {
+  const columns = getCurriculumColumns(rows[0]);
+  const target = clean(moduleid);
+  const row = rows.slice(1).find(item => clean(getValue(item, columns.moduleid)) === target);
+  return row ? moduleFromRow(row, columns) : null;
+}
+
+function findModuleBySubjectAndName(rows, subjectid, moduleName, excludedModuleId = "") {
+  const columns = getCurriculumColumns(rows[0]);
+  const targetSubject = clean(subjectid);
+  const targetName = normalizeText(moduleName);
+  const excluded = clean(excludedModuleId);
+
+  for (let index = 1; index < rows.length; index += 1) {
+    const module = moduleFromRow(rows[index], columns);
+    if (
+      (!excluded || module.moduleid !== excluded) &&
+      module.subjectid === targetSubject &&
+      normalizeText(module.modulename) === targetName
+    ) {
+      return module;
+    }
+  }
+
+  return null;
+}
+
+function nextModuleSortOrder(rows, subjectid) {
+  const columns = getCurriculumColumns(rows[0]);
+  return rows.slice(1).reduce((maximum, row) => {
+    const module = moduleFromRow(row, columns);
+    return module.subjectid === subjectid ? Math.max(maximum, module.sortorder || 0) : maximum;
+  }, 0) + 1;
+}
+
+function normalizePositiveInteger(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : 0;
+}
+
+function taskFromRow(row, columns) {
+  return {
+    taskid: clean(getValue(row, columns.taskid)),
+    subjectid: clean(getValue(row, columns.subjectid)),
+    subjectname: clean(getValue(row, columns.subjectname)),
+    moduleid: clean(getValue(row, columns.moduleid)),
+    modulename: clean(getValue(row, columns.modulename)),
+    taskname: clean(getValue(row, columns.taskname)),
+    audiolink: clean(getValue(row, columns.audiolink)),
+    visuallink: clean(getValue(row, columns.visuallink)),
+    videolink: clean(getValue(row, columns.videolink)),
+    pdflink: clean(getValue(row, columns.pdflink)),
+    active: normalizeBooleanCell(getValue(row, columns.active)),
+    createdate: getValue(row, columns.createddate)
+  };
+}
+
+function getTaskChangedFields(current, proposed) {
+  const fields = [
+    ["subjectid", "SubjectID"],
+    ["moduleid", "ModuleID"],
+    ["taskname", "TaskName"],
+    ["audiolink", "AudioLink"],
+    ["visuallink", "VisualLink"],
+    ["videolink", "VideoLink"],
+    ["pdflink", "PDFLink"],
+    ["active", "Active"]
+  ];
+  return fields.filter(([key]) => current[key] !== proposed[key]).map(([, label]) => label);
 }
 
 function findRowIndexById(rows, columnIndex, id) {

@@ -26,7 +26,7 @@ assert.match(timetableUi, /user\.studentid[\s\S]*user\.adminid/);
 assert.match(timetableUi, /user\.classgroup \?\?[\s\S]*user\.assignedgroup/);
 
 for (const html of [adminHtml, studentHtml, rootHtml]) {
-  assert.match(html, /m4l-shell\.js\?v=100\.8/);
+  assert.match(html, /m4l-shell\.js\?v=101\.4/);
   assert.match(html, /m4l-timetable\.js\?v=101\.2/);
 }
 assert.match(adminHtml, /m4l-manage-students\.js\?v=100\.9/);

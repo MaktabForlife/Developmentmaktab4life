@@ -1,3 +1,30 @@
+# V101.4 — Desktop Timetable Builder and curriculum workspace
+
+- Adds an ADMIN-only, desktop-first Monday-to-Sunday timetable grid with the
+  time column fixed first and course-specific start/end time slots.
+- Adds audited create/modify workflows for courses, time slots, sessions,
+  subjects, modules, and tasks in one tabbed Admin workspace.
+- Supports optional modules, numbered or `ALL` groups, teachers, and optional
+  per-session Zoom overrides; blank overrides use `SystemConfig.GlobalZoomLink`.
+- Adds exact-schema `Courses`, `TimeSlots`, and `TimetableSessions` Sheet tabs.
+- Generates all new identifiers from authoritative rows without Sheet counters.
+- Blocks invalid time ranges, inactive dependencies, teacher overlaps, and
+  same-course group overlaps (`ALL` conflicts with every numbered group).
+- Retains `TeacherAssign` and `TimeTable` as the live timetable source. Builder
+  rows are explicitly marked as draft and are not silently published.
+- Extends the existing curriculum backend with header-driven Module CRUD and
+  production-compatible optional Module fields for Task CRUD.
+- Records authenticated Admin name/ID and server date on every builder or
+  curriculum write and appends the action to `AdminAuditLog`.
+- Adds focused backend, UI, router, module, conflict, and audit regression tests.
+- Bumps application and Worker metadata to `101.4`.
+
+Create the three new Sheet tabs before deploying the V101.4 Worker. The exact
+headers and safe deployment order are in
+`docs/V101.4-TIMETABLE-BUILDER-MIGRATION.md`.
+
+---
+
 # V101.3 — Authenticated administrative audit trail
 
 - Adds a shared audit module for authenticated actor attribution, row creation

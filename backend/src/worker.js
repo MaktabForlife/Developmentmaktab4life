@@ -1,4 +1,4 @@
-/* M4L V101.3 - authenticated row attribution and append-only Admin auditing.
+/* M4L V101.4 - audited Timetable Builder and curriculum management.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "101.3"
+          version: "101.4"
         });
       }
 

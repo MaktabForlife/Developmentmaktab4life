@@ -134,6 +134,9 @@ try {
   assert.deepEqual(tasks.data.tasks[0], {
     taskid: "TASK2",
     subjectid: "SUB1",
+    subjectname: "",
+    moduleid: "",
+    modulename: "",
     taskname: "Lesson B",
     audiolink: "audio-b",
     visuallink: "",
