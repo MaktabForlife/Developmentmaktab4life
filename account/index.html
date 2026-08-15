@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex,nofollow" />
   <title>Maktabhelper Account</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
-  <link rel="stylesheet" href="/css/m4l-23-account.css?v=102.3" />
+  <link rel="stylesheet" href="/css/m4l-23-account.css?v=102.4" />
 </head>
 <body>
   <main class="account-shell">
@@ -28,7 +28,7 @@
 
     <section class="account-panel" aria-labelledby="account-panel-title">
       <div class="account-panel-topline">
-        <span class="account-version">V102.3</span>
+        <span class="account-version">V102.4</span>
         <button id="logout-button" class="account-text-button hidden" type="button">Log out</button>
       </div>
 
@@ -104,12 +104,16 @@
         </section>
 
         <div class="account-release-boundary" role="status">
-          <strong>Central account verified</strong>
+          <strong>Account and course verified</strong>
           <span>
-            V102.3 validates account and context switching. Existing Admin and Student
-            links remain the operational entry points until course-sheet routing is enabled.
+            V102.4 securely opens the selected course workspace. Every operational request
+            is routed from the authenticated course context.
           </span>
         </div>
+
+        <button id="open-workspace-button" class="account-primary-button hidden" type="button">
+          Open current course
+        </button>
 
         <div class="account-switch-heading">
           <div>
@@ -125,7 +129,7 @@
     </section>
   </main>
 
-  <script src="/js/m4l-config.js?v=102.3"></script>
-  <script src="/js/m4l-account.js?v=102.3"></script>
+  <script src="/js/m4l-config.js?v=102.4"></script>
+  <script src="/js/m4l-account.js?v=102.4"></script>
 </body>
 </html>

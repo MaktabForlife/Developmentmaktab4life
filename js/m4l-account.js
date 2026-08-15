@@ -1,17 +1,22 @@
-/* M4L V102.3 - Unified central account verification UI. */
+/* M4L V102.4 - Unified account login, context switching and workspace launch. */
 (function () {
   "use strict";
 
   const API_BASE = String(window.M4L_CONFIG?.API_BASE || "").replace(/\/$/, "");
   const TOKEN_KEY = "m4l_account_token";
   const CONTEXT_KEY = "m4l_account_context";
+  const WORKSPACE_KEY = "m4l_account_workspace";
+  const APP_TOKEN_KEY = "maktab_token";
+  const APP_USER_TYPE_KEY = "maktab_user_type";
   const uniqueId = getUniqueIdFromPath();
+  const switcherMode = new URLSearchParams(window.location.search).get("switch") === "1";
   const state = {
     token: localStorage.getItem(TOKEN_KEY) || "",
     account: null,
     context: null,
     contexts: [],
-    busy: false
+    busy: false,
+    workspaceOpening: false
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -36,6 +41,7 @@
     byId("login-form").addEventListener("submit", submitLogin);
     byId("setup-form").addEventListener("submit", submitSetup);
     byId("logout-button").addEventListener("click", logout);
+    byId("open-workspace-button").addEventListener("click", () => openCurrentWorkspace());
     document.querySelectorAll("[data-toggle-pin]").forEach(button => {
       button.addEventListener("click", () => togglePin(button));
     });
@@ -53,7 +59,7 @@
     try {
       const result = await api("/api/account/session", {}, state.token);
       if (!result.success || normalize(result.account?.uniqueid) !== normalize(uniqueId)) return false;
-      acceptSession(result, false);
+      await acceptSession(result, false, { autoOpen: !switcherMode });
       return true;
     } catch (error) {
       return false;
@@ -89,7 +95,7 @@
     showFormError("login-error", "");
     try {
       const result = await api("/api/account/login", { uniqueid: uniqueId, pin });
-      acceptSession(result, true);
+      await acceptSession(result, true, { autoOpen: !switcherMode });
     } catch (error) {
       showFormError("login-error", error.message);
       byId("login-pin").select();
@@ -120,7 +126,7 @@
         pin,
         pinConfirmation
       });
-      acceptSession(result, true);
+      await acceptSession(result, true, { autoOpen: !switcherMode });
     } catch (error) {
       showFormError("setup-error", error.message);
     } finally {
@@ -128,7 +134,8 @@
     }
   }
 
-  function acceptSession(result, storeToken) {
+  async function acceptSession(result, storeToken, options = {}) {
+    const previousContext = readStoredContext();
     if (storeToken && result.token) {
       state.token = result.token;
       localStorage.setItem(TOKEN_KEY, result.token);
@@ -137,7 +144,13 @@
     state.context = result.context;
     state.contexts = Array.isArray(result.contexts) ? result.contexts : [];
     localStorage.setItem(CONTEXT_KEY, JSON.stringify(state.context));
+    if (previousContext && !sameContext(previousContext, state.context)) {
+      clearCourseDataCaches();
+    }
     renderContextView();
+    if (options.autoOpen !== false && state.context?.scope === "COURSE") {
+      await openCurrentWorkspace();
+    }
   }
 
   function renderContextView() {
@@ -146,6 +159,10 @@
     byId("current-scope").textContent = state.context?.scope === "PLATFORM" ? "Platform" : "Course";
     byId("current-role").textContent = roleLabel(state.context?.role);
     byId("logout-button").classList.remove("hidden");
+    byId("open-workspace-button").classList.toggle(
+      "hidden",
+      state.context?.scope !== "COURSE"
+    );
     renderContextList();
     showView("context-view");
   }
@@ -194,14 +211,50 @@
         courseId: context.courseId,
         role: context.role
       }, state.token);
-      acceptSession(result, true);
-      byId("service-message").textContent = "Course and role context switched securely.";
+      await acceptSession(result, true, { autoOpen: false });
+      if (state.context?.scope === "COURSE") {
+        await openCurrentWorkspace();
+      } else {
+        byId("service-message").textContent = "Platform context selected securely.";
+      }
     } catch (error) {
       showFormError("context-error", error.message);
       byId("service-message").textContent = "";
       button.disabled = false;
     } finally {
       state.busy = false;
+    }
+  }
+
+  async function openCurrentWorkspace() {
+    if (state.workspaceOpening || state.context?.scope !== "COURSE" || !state.token) return false;
+    state.workspaceOpening = true;
+    const openButton = byId("open-workspace-button");
+    openButton.disabled = true;
+    showFormError("context-error", "");
+    byId("service-message").textContent = "Opening the selected course…";
+    try {
+      const result = await api("/api/account/workspace", {}, state.token);
+      const path = String(result.workspace?.path || "").trim();
+      const portalType = String(result.workspace?.portalType || "").trim().toLowerCase();
+      if (!/^\/(admin|student)\/[A-Za-z0-9._~%-]+\/?$/.test(path)) {
+        throw new Error("The course workspace route is invalid.");
+      }
+      if (!["admin", "student"].includes(portalType)) {
+        throw new Error("The course workspace role is invalid.");
+      }
+      localStorage.setItem(APP_TOKEN_KEY, state.token);
+      localStorage.setItem(APP_USER_TYPE_KEY, portalType);
+      localStorage.setItem(WORKSPACE_KEY, "true");
+      window.location.assign(path);
+      return true;
+    } catch (error) {
+      showFormError("context-error", error.message || "The course workspace could not be opened.");
+      byId("service-message").textContent = "";
+      return false;
+    } finally {
+      state.workspaceOpening = false;
+      openButton.disabled = false;
     }
   }
 
@@ -238,6 +291,39 @@
     state.contexts = [];
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(CONTEXT_KEY);
+    localStorage.removeItem(WORKSPACE_KEY);
+    localStorage.removeItem(APP_TOKEN_KEY);
+    localStorage.removeItem(APP_USER_TYPE_KEY);
+    clearCourseDataCaches();
+  }
+
+  function readStoredContext() {
+    try {
+      const value = JSON.parse(localStorage.getItem(CONTEXT_KEY) || "null");
+      return value && typeof value === "object" ? value : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function clearCourseDataCaches() {
+    const prefixes = ["m4l_app_cache_", "maktab_timetable_cache_"];
+    try {
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key && prefixes.some(prefix => key.startsWith(prefix))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (error) {}
+    try {
+      for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+        const key = sessionStorage.key(index);
+        if (key && key.startsWith("m4l_admin_progress_dashboard_")) {
+          sessionStorage.removeItem(key);
+        }
+      }
+    } catch (error) {}
   }
 
   function showView(id) {

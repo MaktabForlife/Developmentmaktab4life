@@ -1,4 +1,4 @@
-/* M4L V102.3 - Central account authentication and fail-closed context switching. */
+/* M4L V102.4 - Central account authentication, context switching and workspace handoff. */
 
 import {
   createAuthRateLimitKey,
@@ -173,6 +173,62 @@ export async function accountSessionEndpoint(request, env) {
         context: contextFromAuthUser(authUser)
       }, false)
     });
+  } catch (error) {
+    return accountServiceError(error, env);
+  }
+}
+
+export async function accountWorkspaceEndpoint(request, env) {
+  try {
+    // The course-scoped router has already revalidated the central account,
+    // resolved CourseRegistry and attached the matching local course identity.
+    const authUser = await getAuthUser(request, env);
+    if (!authUser || authUser.sessiontype !== "account" || !authUser.courseid) {
+      return json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    const portalType = authUser.type === "student" ? "student" : "admin";
+    const account = {
+      displayName: String(authUser.username || "Account holder").trim(),
+      uniqueid: String(authUser.uniqueid || "").trim()
+    };
+    const context = {
+      scope: "COURSE",
+      courseId: String(authUser.courseid || "").trim(),
+      courseName: String(authUser.coursename || "").trim(),
+      role: String(authUser.centralrole || authUser.role || "").trim().toUpperCase()
+    };
+    const workspace = {
+      portalType,
+      path: `/${portalType}/${encodeURIComponent(account.uniqueid)}`
+    };
+    const response = {
+      success: true,
+      sessionType: "account",
+      operationalAccessActive: true,
+      account,
+      context,
+      workspace
+    };
+
+    if (portalType === "student") {
+      response.student = {
+        studentid: String(authUser.studentid || "").trim(),
+        username: String(authUser.username || "Student").trim(),
+        classgroup: String(authUser.classgroup ?? "").trim()
+      };
+    } else {
+      response.admin = {
+        adminid: String(authUser.adminid || "").trim(),
+        username: String(authUser.username || "Admin").trim(),
+        uniqueid: account.uniqueid,
+        role: String(authUser.role || "ADMIN").trim().toUpperCase(),
+        assignedgroup: String(authUser.assignedgroup ?? "").trim(),
+        platformrole: String(authUser.platformrole || "").trim().toUpperCase()
+      };
+    }
+
+    return json(response);
   } catch (error) {
     return accountServiceError(error, env);
   }
@@ -399,7 +455,7 @@ function sessionResponse(state, session, includeToken = true) {
     account: publicAccount(state.account, false),
     context: session.context,
     contexts: state.contexts,
-    operationalAccessActive: false
+    operationalAccessActive: session.context.scope === "COURSE"
   };
   if (includeToken) response.token = session.token;
   return response;

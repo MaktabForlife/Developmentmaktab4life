@@ -11,21 +11,26 @@ assert.match(html, /id="login-form"/);
 assert.match(html, /id="setup-form"/);
 assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
+assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /Existing Admin and Student\s+links remain the operational entry points/);
-assert.match(html, /m4l-account\.js\?v=102\.3/);
-assert.match(html, /m4l-23-account\.css\?v=102\.3/);
+assert.match(html, /Every operational request\s+is routed from the authenticated course context/);
+assert.match(html, /m4l-account\.js\?v=102\.4/);
+assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
   "/api/account/check",
   "/api/account/setup-pin",
   "/api/account/login",
   "/api/account/session",
-  "/api/account/switch-context"
+  "/api/account/switch-context",
+  "/api/account/workspace"
 ]) {
   assert.ok(script.includes(endpoint), `Account UI must call ${endpoint}`);
 }
 assert.match(script, /m4l_account_token/);
+assert.match(script, /maktab_token/);
+assert.match(script, /window\.location\.assign\(path\)/);
+assert.match(script, /clearCourseDataCaches/);
 assert.match(script, /localStorage\.removeItem\(TOKEN_KEY\)/);
 assert.match(script, /Authorization: `Bearer \$\{token\}`/);
 assert.match(script, /replace\(\/\\D\/g, ""\)\.slice\(0, 4\)/);
@@ -35,4 +40,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.3 unified account UI tests passed.");
+console.log("V102.4 unified account UI tests passed.");

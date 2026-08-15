@@ -8,6 +8,7 @@ import {
   isActivePlatformValue,
   normalizePlatformIdentifier
 } from "./platform-schema.js";
+import { getRequestAuthUser } from "./request-context.js";
 
 const PIN_HASH_VERSION = "v2";
 const PIN_HASH_ALGORITHM = "pbkdf2-sha256";
@@ -152,6 +153,9 @@ export async function requireSystemAdmin(request, env) {
 }
 
 export async function getAuthUser(request, env) {
+  const requestUser = getRequestAuthUser(request);
+  if (requestUser) return requestUser;
+
   const auth = request.headers.get("Authorization");
 
   if (!auth || !auth.startsWith("Bearer ")) {
@@ -516,6 +520,7 @@ async function validateCentralAccountSession(payload, env) {
       scope: "COURSE",
       courseid: course.courseId,
       coursename: course.courseName,
+      coursespreadsheetid: course.spreadsheetId,
       courserecordid: "",
       accessid: ""
     };
@@ -552,6 +557,7 @@ async function validateCentralAccountSession(payload, env) {
     scope: "COURSE",
     courseid: course.courseId,
     coursename: course.courseName,
+    coursespreadsheetid: course.spreadsheetId,
     courserecordid: courseRecordId,
     accessid: String(accessRow[0] || "").trim()
   };

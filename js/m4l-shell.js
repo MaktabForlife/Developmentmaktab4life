@@ -2691,11 +2691,27 @@ const USER_BAND_MENU_ITEMS = {
 
 function getUserBandMenuItems(role) {
   const key = String(role || getBottomNavRole() || "student").toLowerCase() === "admin" ? "admin" : "student";
-  return USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student;
+  const items = [...(USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student)];
+  const unifiedAccount = state.authMode === "account" || (
+    window.M4LAuth &&
+    typeof window.M4LAuth.hasUnifiedAccountWorkspaceSession === "function" &&
+    window.M4LAuth.hasUnifiedAccountWorkspaceSession()
+  );
+  if (unifiedAccount) {
+    const logoutIndex = items.findIndex(item => item.action === "logout");
+    items.splice(logoutIndex < 0 ? items.length : logoutIndex, 0, {
+      action: "switch-context",
+      label: "Switch course or role",
+      icon: "/icons/user.svg"
+    });
+  }
+  return items;
 }
 
 function getUserBandMenuProfileMarkup(username, role) {
-  const detail = role === "student" ? getCurrentUserGroupLabel() : getCurrentUserRoleLabel();
+  const courseName = String(state.accountContext?.courseName || "").trim();
+  const roleDetail = role === "student" ? getCurrentUserGroupLabel() : getCurrentUserRoleLabel();
+  const detail = courseName ? `${courseName} · ${roleDetail}` : roleDetail;
   const safeName = escapeHtml(username || (role === "admin" ? "Admin" : "Student"));
   const safeDetail = escapeHtml(detail || (role === "admin" ? "Admin" : ""));
 
@@ -2910,6 +2926,16 @@ function handleUserBandMenuAction(action, role, triggerButton) {
     }
 
     console.warn("Logout function is missing.");
+    return false;
+  }
+
+  if (actionKey === "switch-context") {
+    if (
+      window.M4LAuth &&
+      typeof window.M4LAuth.openUnifiedAccountSwitcher === "function"
+    ) {
+      return window.M4LAuth.openUnifiedAccountSwitcher();
+    }
     return false;
   }
 

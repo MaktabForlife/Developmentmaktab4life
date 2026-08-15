@@ -1,3 +1,43 @@
+V102.4
+
+# Open the authorised course workspace after unified login
+
+- Sends a migrated user from `/account/<uniqueid>` into the correct Admin or
+  Student application workspace without a second PIN.
+- Adds a protected `/api/account/workspace` handoff that validates the selected
+  course and exact course-local profile before navigation.
+- Dynamically resolves the course Sheet from the authenticated central token
+  and active `CourseRegistry` row. A URL, request body CourseID or submitted
+  role cannot choose a different Sheet.
+- Revalidates the central account, credential version, active course access,
+  CourseRecordID, role and local course record on every course-scoped request.
+- Lets `GLOBAL_ADMIN` enter any active registered course as an unrestricted
+  Admin workspace without adding artificial membership rows.
+- Adds **Switch course or role** to the in-app Profile menu and issues a newly
+  scoped token before reopening the selected workspace.
+- Separates course caches by CourseID and clears timetable, resource, progress
+  and user-data caches when context changes.
+- Adds an `X-M4L-Course-ID` response header to dynamically routed requests for
+  safe development verification.
+- Keeps direct legacy Admin and Student links active as a rollback path.
+- Does not rerun account migration, alter Sheet headers, add Worker settings or
+  change the Platform schema from `102.0.3`.
+- Adds fail-closed routing, local-profile, GlobalAdmin, UI handoff and cache
+  isolation tests. All 41 backend regression test files pass.
+
+V102.4 activates course operations only for accounts already present in
+`UserAccounts` and `UserCourseAccess`. Central provisioning for newly created
+course users, per-course Drive-root/Apps-Script routing, full confirmed Teacher
+capabilities, global-curriculum merging, legacy-route retirement and the
+published-timetable read cutover remain later releases.
+
+Install only the files in
+`Rebootyourmaktab-V102.4-GITHUB-UPDATE-FROM-V102.3.zip`, deploy the Worker first,
+then deploy the complete Pages frontend. Follow `UPDATE-TODO.md` and
+`docs/V102.4-OPERATIONAL-ACCOUNT-ROUTING.md`.
+
+---
+
 V102.3
 
 # Verify one account, one PIN and scoped course/role switching

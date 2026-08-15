@@ -152,7 +152,7 @@ try {
     courseName: "Aalimiyah",
     role: "ADMIN"
   });
-  assert.equal(login.data.operationalAccessActive, false);
+  assert.equal(login.data.operationalAccessActive, true);
   assert.equal(login.data.contexts.length, 3);
   const loginToken = await verifySessionToken(login.data.token, env);
   assert.equal(loginToken.type, "account");
@@ -229,7 +229,7 @@ try {
     {},
     globalLogin.data.token
   );
-  assert.equal(centralTokenOnLegacyAdmin.response.status, 401);
+  assert.equal(centralTokenOnLegacyAdmin.response.status, 403);
 
   const switchedRequest = new Request("https://worker.test/api/account/session", {
     method: "POST",
@@ -255,7 +255,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.3 central account authentication tests passed.");
+console.log("V102.4 central account authentication tests passed.");
 
 async function post(path, body, token = "") {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

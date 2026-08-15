@@ -2549,7 +2549,13 @@ function ensureAdminProgressClassDefaultExpandedModules(modules) {
   return true;
 }
   
-const ADMIN_PROGRESS_DASHBOARD_CACHE_KEY = "m4l_admin_progress_dashboard_v77";  
+const ADMIN_PROGRESS_DASHBOARD_CACHE_PREFIX = "m4l_admin_progress_dashboard_v102_4";
+function getAdminProgressDashboardCacheKey() {
+  const course = typeof getM4LCourseCacheScope === "function"
+    ? getM4LCourseCacheScope()
+    : "LEGACY";
+  return `${ADMIN_PROGRESS_DASHBOARD_CACHE_PREFIX}_${String(course).replace(/[^A-Za-z0-9_-]/g, "_")}`;
+}
 let adminProgressLeaveGuardBound = false;  
 let adminProgressBackgroundSaveInFlight = null;  
   
@@ -2578,7 +2584,7 @@ function readAdminProgressDashboardCache() {
   if (typeof window === "undefined" || !window.sessionStorage) return null;  
   
   try {  
-    const raw = window.sessionStorage.getItem(ADMIN_PROGRESS_DASHBOARD_CACHE_KEY);  
+    const raw = window.sessionStorage.getItem(getAdminProgressDashboardCacheKey());  
     if (!raw) return null;  
   
     const parsed = JSON.parse(raw);  
@@ -2599,7 +2605,7 @@ function writeAdminProgressDashboardCache(modules, rows) {
   if (typeof window === "undefined" || !window.sessionStorage) return false;  
   
   try {  
-    window.sessionStorage.setItem(ADMIN_PROGRESS_DASHBOARD_CACHE_KEY, JSON.stringify({  
+    window.sessionStorage.setItem(getAdminProgressDashboardCacheKey(), JSON.stringify({  
       savedAt: Date.now(),  
       modules: Array.isArray(modules) ? modules : [],  
       rows: Array.isArray(rows) ? rows : []  
@@ -2615,7 +2621,7 @@ function clearAdminProgressDashboardCache() {
   if (typeof window === "undefined" || !window.sessionStorage) return false;  
   
   try {  
-    window.sessionStorage.removeItem(ADMIN_PROGRESS_DASHBOARD_CACHE_KEY);  
+    window.sessionStorage.removeItem(getAdminProgressDashboardCacheKey());  
     return true;  
   } catch (err) {  
     return false;  

@@ -198,8 +198,13 @@ function getTimetableViewerCachePart() {
     user.AssignedGroup ??
     "ALL"
   );
+  const course = normalizeTimetableCachePart(
+    typeof getM4LCourseCacheScope === "function"
+      ? getM4LCourseCacheScope()
+      : "LEGACY"
+  );
 
-  return `${portal}_${userId}_${accountGroup}`;
+  return `${course}_${portal}_${userId}_${accountGroup}`;
 }
 
 function getTimetableCacheKey(options = {}) {

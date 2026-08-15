@@ -93,10 +93,12 @@ import { platformAccountMigrationEndpoint } from "./routes/platform-account-migr
 import {
   accountLoginEndpoint,
   accountSessionEndpoint,
+  accountWorkspaceEndpoint,
   checkAccountEndpoint,
   setupAccountPinEndpoint,
   switchAccountContextEndpoint
 } from "./routes/account-auth.js";
+import { resolveCourseScopedRequest } from "./lib/course-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
   BACKEND_GOOGLE_SHEETS,
@@ -112,6 +114,9 @@ const ROUTES = new Map([
   ["/api/account/login", workerRoute("account-auth", accountLoginEndpoint)],
   ["/api/account/session", workerRoute("account-auth", accountSessionEndpoint)],
   ["/api/account/switch-context", workerRoute("account-auth", switchAccountContextEndpoint)],
+  ["/api/account/workspace", workerRoute("account-auth", accountWorkspaceEndpoint, {
+    courseScoped: true
+  })],
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
@@ -119,8 +124,8 @@ const ROUTES = new Map([
   ["/api/admin/resources/create", googleSheetsRoute("resource-management", createDriveResourceEndpoint)],
   ["/api/admin/resources/manage-list", googleSheetsRoute("resource-management", listManagedResourcesEndpoint)],
   ["/api/admin/resources/update", googleSheetsRoute("resource-management", updateDriveResourceEndpoint)],
-  ["/api/admin/drive/browse", workerRoute("drive-library", browseDriveFolderEndpoint)],
-  ["/api/library/drive/access", workerRoute("drive-library", createDriveFileAccessEndpoint)],
+  ["/api/admin/drive/browse", workerRoute("drive-library", browseDriveFolderEndpoint, { courseScoped: true })],
+  ["/api/library/drive/access", workerRoute("drive-library", createDriveFileAccessEndpoint, { courseScoped: true })],
 
   ["/api/timetable/get", googleSheetsRoute("timetable-read", getTimetableGoogleSheetsEndpoint)],
   ["/api/student/timetable/get", googleSheetsRoute("timetable-read", getTimetableGoogleSheetsEndpoint)],
@@ -143,15 +148,15 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/week-records", googleSheetsRoute("weekly-planner", weeklyPlannerWeekRecordsEndpoint)],
   ["/api/admin/weekly-planner/teacher-history", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherHistoryEndpoint)],
   ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
-  ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
-  ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint)],
-  ["/api/admin/platform/accounts/migrate", workerRoute("platform-account-migration", platformAccountMigrationEndpoint)],
+  ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint, { courseScoped: true })],
+  ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint, { courseScoped: true })],
+  ["/api/admin/platform/accounts/migrate", workerRoute("platform-account-migration", platformAccountMigrationEndpoint, { courseScoped: true })],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],
 
-  ["/api/admin/check-admin", googleSheetsRoute("auth", checkAdminGoogleSheetsEndpoint)],
-  ["/api/admin/setup-pin", googleSheetsRoute("auth", setupAdminPinGoogleSheetsEndpoint)],
-  ["/api/admin/login", googleSheetsRoute("auth", adminLoginGoogleSheetsEndpoint)],
+  ["/api/admin/check-admin", googleSheetsRoute("auth", checkAdminGoogleSheetsEndpoint, { courseScoped: false })],
+  ["/api/admin/setup-pin", googleSheetsRoute("auth", setupAdminPinGoogleSheetsEndpoint, { courseScoped: false })],
+  ["/api/admin/login", googleSheetsRoute("auth", adminLoginGoogleSheetsEndpoint, { courseScoped: false })],
   ["/api/admin/reset-pin", googleSheetsRoute("auth", resetStudentPinGoogleSheetsEndpoint)],
 
   ["/api/admin/admins/search", googleSheetsRoute("admin-management-read", searchAdminsGoogleSheetsEndpoint)],
@@ -159,9 +164,9 @@ const ROUTES = new Map([
   ["/api/admin/update-admin", googleSheetsRoute("admin-management-update", updateAdminGoogleSheetsEndpoint)],
   ["/api/admin/reset-admin-pin", googleSheetsRoute("admin-management-update", resetAdminPinGoogleSheetsEndpoint)],
 
-  ["/api/check-student", googleSheetsRoute("auth", checkStudentGoogleSheetsEndpoint)],
-  ["/api/setup-pin", googleSheetsRoute("auth", setupStudentPinGoogleSheetsEndpoint)],
-  ["/api/login", googleSheetsRoute("auth", studentLoginGoogleSheetsEndpoint)],
+  ["/api/check-student", googleSheetsRoute("auth", checkStudentGoogleSheetsEndpoint, { courseScoped: false })],
+  ["/api/setup-pin", googleSheetsRoute("auth", setupStudentPinGoogleSheetsEndpoint, { courseScoped: false })],
+  ["/api/login", googleSheetsRoute("auth", studentLoginGoogleSheetsEndpoint, { courseScoped: false })],
 
   ["/api/attendance/submit-absent", googleSheetsRoute("attendance-write", submitAbsentAttendanceGoogleSheetsEndpoint)],
   ["/api/attendance/students", googleSheetsRoute("attendance-read", attendanceStudentsGoogleSheetsEndpoint)],
@@ -248,30 +253,44 @@ async function executeRoute(route, request, env, pathname) {
     });
   }
 
-  const response = await handler(request, env);
-  return withBackendHeaders(response, selection);
+  let requestEnv = env;
+  let course = null;
+  if (route.courseScoped) {
+    const routed = await resolveCourseScopedRequest(request, env);
+    if (!routed.ok) return withBackendHeaders(routed.response, selection, routed.course);
+    requestEnv = routed.env;
+    course = routed.course;
+  }
+
+  const response = await handler(request, requestEnv);
+  return withBackendHeaders(response, selection, course);
 }
 
-function appsScriptRoute(feature, handler) {
-  return backendRoute(feature, { [BACKEND_APPS_SCRIPT]: handler });
+function appsScriptRoute(feature, handler, options = {}) {
+  return backendRoute(feature, { [BACKEND_APPS_SCRIPT]: handler }, {
+    courseScoped: options.courseScoped !== false
+  });
 }
 
-function googleSheetsRoute(feature, handler) {
-  return backendRoute(feature, { [BACKEND_GOOGLE_SHEETS]: handler });
+function googleSheetsRoute(feature, handler, options = {}) {
+  return backendRoute(feature, { [BACKEND_GOOGLE_SHEETS]: handler }, {
+    courseScoped: options.courseScoped !== false
+  });
 }
 
-function workerRoute(feature, handler) {
-  return backendRoute(feature, { [BACKEND_WORKER]: handler });
+function workerRoute(feature, handler, options = {}) {
+  return backendRoute(feature, { [BACKEND_WORKER]: handler }, options);
 }
 
-function backendRoute(feature, handlers) {
+function backendRoute(feature, handlers, options = {}) {
   return Object.freeze({
     feature,
+    courseScoped: options.courseScoped === true,
     handlers: Object.freeze({ ...handlers })
   });
 }
 
-function withBackendHeaders(response, selection) {
+function withBackendHeaders(response, selection, course = null) {
   const headers = new Headers(response.headers);
   headers.set("X-M4L-Feature", selection.feature || "unknown");
   headers.set("X-M4L-Backend", selection.backend || "invalid");
@@ -281,6 +300,10 @@ function withBackendHeaders(response, selection) {
     "X-M4L-Backend",
     "X-M4L-Backend-Source"
   ]);
+  if (course?.courseId) {
+    headers.set("X-M4L-Course-ID", course.courseId);
+    appendExposedHeaders(headers, ["X-M4L-Course-ID"]);
+  }
 
   return new Response(response.body, {
     status: response.status,

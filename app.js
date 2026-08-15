@@ -49,6 +49,8 @@ const state = {
   token: localStorage.getItem("maktab_token") || "",
   userType: localStorage.getItem("maktab_user_type") || "",
   user: null,
+  authMode: "",
+  accountContext: null,
   loginSubmitting: false
 };
 
@@ -216,7 +218,7 @@ window.addEventListener("keydown", event => {
   }
 });
 
-function initApp() {
+async function initApp() {
   try {
     checkForAppUpdate();
 
@@ -227,6 +229,7 @@ function initApp() {
       state.portalType = "admin";
       state.uniqueid = route.uniqueid;
       setAuthTheme("admin");
+      if (await restoreUnifiedWorkspaceIfPresent(route)) return;
       callBootstrapFunction("checkAdmin", [], {
         label: "admin link check",
         required: true
@@ -238,6 +241,7 @@ function initApp() {
       state.portalType = "student";
       state.uniqueid = route.uniqueid;
       setAuthTheme("student");
+      if (await restoreUnifiedWorkspaceIfPresent(route)) return;
       callBootstrapFunction("checkStudent", [], {
         label: "student link check",
         required: true
@@ -250,6 +254,37 @@ function initApp() {
     console.error("App startup failed:", error);
     showStartupErrorMessage();
   }
+}
+
+async function restoreUnifiedWorkspaceIfPresent(route) {
+  const hasSession = getGlobalFunction("hasUnifiedAccountWorkspaceSession");
+  if (!hasSession || hasSession() !== true) return false;
+
+  const restore = getGlobalFunction("restoreUnifiedAccountWorkspace");
+  if (!restore) {
+    throw new Error("Unified account workspace bootstrap is missing");
+  }
+
+  // A detected central account session owns this page load. Even when restore
+  // fails, the account handler displays the error or returns to /account/;
+  // the app must never fall through to a second legacy PIN prompt.
+  await restore(route);
+  return true;
+}
+
+function getM4LAccountContext() {
+  try {
+    const context = JSON.parse(localStorage.getItem("m4l_account_context") || "null");
+    return context && typeof context === "object" ? context : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getM4LCourseCacheScope() {
+  const context = getM4LAccountContext();
+  const courseId = String(context?.courseId || "").trim().toUpperCase();
+  return courseId || "LEGACY";
 }
 
 function getSafePathSegment(segment) {

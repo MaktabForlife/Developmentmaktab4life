@@ -1,12 +1,12 @@
-/* M4L v93.0 - Shared online-first application cache.
+/* M4L V102.4 - Course-isolated online-first application cache.
    Provides memory + localStorage caching, TTLs, stale-while-revalidate,
    in-flight request deduplication, manual invalidation, and scoped keys.
    This is a classic script and must load after app.js, before feature modules. */
 (() => {
   "use strict";
 
-  const CACHE_VERSION = "93.0";
-  const STORAGE_PREFIX = "m4l_app_cache_v93";
+  const CACHE_VERSION = "102.4";
+  const STORAGE_PREFIX = "m4l_app_cache_v102_4";
   const memory = new Map();
   const inFlight = new Map();
 
@@ -37,11 +37,19 @@
     const path = String(window.location && window.location.pathname || "app");
     let userType = "";
     try { userType = String(localStorage.getItem("maktab_user_type") || ""); } catch (error) {}
-    return `${path}:${userType}`;
+    const course = typeof getM4LCourseCacheScope === "function"
+      ? getM4LCourseCacheScope()
+      : "LEGACY";
+    return `${course}:${path}:${userType}`;
   }
 
   function normalizeScope(scope) {
-    if (scope === "shared") return "shared";
+    if (scope === "shared") {
+      const course = typeof getM4LCourseCacheScope === "function"
+        ? getM4LCourseCacheScope()
+        : "LEGACY";
+      return simpleHash(`shared:${course}`);
+    }
     return simpleHash(scope || getDefaultScope());
   }
 

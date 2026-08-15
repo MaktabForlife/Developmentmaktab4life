@@ -1,3 +1,38 @@
+# V102.4 — Unified account operational routing
+
+- Connects the V102.3 central account session to the existing Admin and Student
+  workspaces without a second PIN.
+- Adds authenticated CourseID-to-SpreadsheetID routing for course-scoped Worker
+  APIs and never trusts a submitted CourseID or role to select a Sheet.
+- Revalidates central identity, credential version, course membership, role,
+  CourseRecordID and active CourseRegistry data on every operational request.
+- Resolves the corresponding active `AdminRecords` or `StudentRecords` row
+  exactly once before adapting the central identity to existing course
+  authorization code.
+- Allows GLOBAL_ADMIN to enter every active registered course with unrestricted
+  Admin authority while preserving membership-scoped access for ordinary
+  Admins.
+- Adds the protected `/api/account/workspace` endpoint, automatic workspace
+  launch and a manual **Open current course** recovery action.
+- Adds **Switch course or role** to the signed-in application Profile menu and
+  returns to the central switcher without another PIN.
+- Adds CourseID to application, timetable and progress cache scopes and clears
+  course data caches after a context change.
+- Emits `X-M4L-Course-ID` only after authenticated dynamic course routing.
+- Preserves legacy direct login routes for rollback and makes no Sheet schema,
+  environment-variable or account-migration change.
+- Adds dedicated course-routing and unified-workspace tests; all 41 test files
+  pass.
+- Bumps application and Worker metadata to `102.4`; Platform schema remains
+  `102.0.3`.
+
+See `docs/V102.4-OPERATIONAL-ACCOUNT-ROUTING.md`. New-user central provisioning,
+per-course Drive and Apps Script configuration, final role-capability work,
+global curriculum, legacy-route retirement and timetable-source cutover remain
+explicitly deferred.
+
+---
+
 # V102.3 — Unified central account and context verification
 
 - Adds one personal `/account/<uniqueid>` route for central account check,

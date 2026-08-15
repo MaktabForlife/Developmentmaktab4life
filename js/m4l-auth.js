@@ -243,16 +243,45 @@ function resetSetupPinCreationFlow() {
 }
 
 
+function hasUnifiedAccountWorkspaceSession() {
+  try {
+    const workspace = localStorage.getItem("m4l_account_workspace") === "true";
+    const accountToken = String(localStorage.getItem("m4l_account_token") || "");
+    const appToken = String(localStorage.getItem("maktab_token") || "");
+    return workspace && !!accountToken && accountToken === appToken;
+  } catch (error) {
+    return false;
+  }
+}
+
+function getUnifiedAccountPath(options = {}) {
+  const uniqueId = String(state.uniqueid || "").trim();
+  const suffix = options.switcher === true ? "?switch=1" : "";
+  return uniqueId ? `/account/${encodeURIComponent(uniqueId)}${suffix}` : "/";
+}
+
+function clearUnifiedAccountStorage() {
+  localStorage.removeItem("m4l_account_token");
+  localStorage.removeItem("m4l_account_context");
+  localStorage.removeItem("m4l_account_workspace");
+}
+
 function invalidateActiveSession() {
+  const unifiedAccount = hasUnifiedAccountWorkspaceSession() || state.authMode === "account";
   localStorage.removeItem("maktab_token");
   localStorage.removeItem("maktab_user_type");
+  if (unifiedAccount) clearUnifiedAccountStorage();
   state.token = "";
   state.userType = "";
 
   setError("Your session is no longer valid. Please log in again.");
 
   window.setTimeout(() => {
-    location.reload();
+    if (unifiedAccount) {
+      window.location.replace(getUnifiedAccountPath());
+    } else {
+      location.reload();
+    }
   }, 80);
 }
 
@@ -490,8 +519,10 @@ function finishAuthInitialDataStatus(token, success = true) {
 
 function completeAuthenticatedSession(result) {
   state.token = result.token;
-  state.userType = state.portalType;
-  state.user = state.portalType === "admin" ? result.admin : result.student;
+  state.userType = String(result.workspace?.portalType || state.portalType || "").toLowerCase();
+  state.user = state.userType === "admin" ? result.admin : result.student;
+  state.authMode = result.sessionType === "account" ? "account" : "legacy";
+  state.accountContext = result.context || null;
 
   localStorage.setItem("maktab_token", state.token);
   localStorage.setItem("maktab_user_type", state.userType);
@@ -501,7 +532,7 @@ function completeAuthenticatedSession(result) {
 
   const initialDataStatusToken = beginAuthInitialDataStatus();
 
-  if (state.portalType === "admin") {
+  if (state.userType === "admin") {
     const adminWelcome = document.getElementById("admin-welcome");
     if (adminWelcome) {
       adminWelcome.innerText = "";
@@ -522,6 +553,57 @@ function completeAuthenticatedSession(result) {
   }
 
   finishAuthInitialDataStatus(initialDataStatusToken, true);
+}
+
+async function restoreUnifiedAccountWorkspace(route = {}) {
+  if (!hasUnifiedAccountWorkspaceSession()) return false;
+
+  try {
+    const result = await apiPost("/api/account/workspace", {}, state.token);
+    if (!result.success || !result.token && !state.token) {
+      if (!result.sessionInvalidated) {
+        setError(result.error || "The selected course workspace could not be opened.");
+        showScreen("auth-screen");
+      }
+      return true;
+    }
+
+    const expectedUniqueId = String(result.account?.uniqueid || "").trim().toUpperCase();
+    const routeUniqueId = String(route.uniqueid || state.uniqueid || "").trim().toUpperCase();
+    const portalType = String(result.workspace?.portalType || "").trim().toLowerCase();
+    if (!expectedUniqueId || expectedUniqueId !== routeUniqueId) {
+      clearUnifiedAccountStorage();
+      localStorage.removeItem("maktab_token");
+      localStorage.removeItem("maktab_user_type");
+      setError("This course workspace does not match the signed-in account.");
+      showScreen("auth-screen");
+      return true;
+    }
+    if (!["admin", "student"].includes(portalType)) {
+      throw new Error("The selected course role does not have an operational workspace.");
+    }
+    if (portalType !== String(route.portalType || state.portalType || "").toLowerCase()) {
+      window.location.replace(String(result.workspace.path || getUnifiedAccountPath({ switcher: true })));
+      return true;
+    }
+
+    completeAuthenticatedSession({
+      ...result,
+      token: state.token,
+      sessionType: "account"
+    });
+    return true;
+  } catch (error) {
+    setError(error.message || "The selected course workspace could not be opened.");
+    showScreen("auth-screen");
+    return true;
+  }
+}
+
+function openUnifiedAccountSwitcher() {
+  if (!hasUnifiedAccountWorkspaceSession() && state.authMode !== "account") return false;
+  window.location.assign(getUnifiedAccountPath({ switcher: true }));
+  return true;
 }
 
 async function submitLogin() {
@@ -566,8 +648,14 @@ async function submitLogin() {
 }
 
 function logout() {
+  const unifiedAccount = hasUnifiedAccountWorkspaceSession() || state.authMode === "account";
   localStorage.removeItem("maktab_token");
   localStorage.removeItem("maktab_user_type");
+  if (unifiedAccount) {
+    clearUnifiedAccountStorage();
+    window.location.replace(getUnifiedAccountPath());
+    return;
+  }
   location.reload();
 }
 
@@ -596,6 +684,9 @@ window.M4LAuth = {
   beginAuthInitialDataStatus,
   finishAuthInitialDataStatus,
   completeAuthenticatedSession,
+  hasUnifiedAccountWorkspaceSession,
+  restoreUnifiedAccountWorkspace,
+  openUnifiedAccountSwitcher,
   checkStudent,
   checkAdmin,
   submitSetupPin,
@@ -603,3 +694,7 @@ window.M4LAuth = {
   logout,
   goHome
 };
+
+window.hasUnifiedAccountWorkspaceSession = hasUnifiedAccountWorkspaceSession;
+window.restoreUnifiedAccountWorkspace = restoreUnifiedAccountWorkspace;
+window.openUnifiedAccountSwitcher = openUnifiedAccountSwitcher;
