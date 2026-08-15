@@ -8,16 +8,28 @@ const settingsCss = readFileSync(new URL("../../css/m4l-18-system-settings.css",
 assert.match(adminHtml, /id="system-settings-platform-heading"[^>]*>Platform Sheet</);
 assert.match(adminHtml, /data-system-settings-action="validate-platform"/);
 assert.match(adminHtml, /id="system-settings-platform-status"/);
-assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.1/);
+assert.match(adminHtml, /data-system-settings-action="preview-account-migration"/);
+assert.match(adminHtml, /data-system-settings-action="commit-account-migration"/);
+assert.match(adminHtml, /id="system-settings-grant-global-admin"[^>]*checked/);
+assert.match(adminHtml, /id="system-settings-migration-confirm"/);
+assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.2/);
 
 assert.match(settingsJs, /async function validatePlatformSheet\(\)/);
 assert.match(settingsJs, /"\/api\/admin\/platform\/validate"/);
 assert.match(settingsJs, /action === "validate-platform"/);
 assert.match(settingsJs, /readyForUnifiedLogin/);
+assert.match(settingsJs, /async function previewAccountMigration\(\)/);
+assert.match(settingsJs, /async function commitAccountMigration\(\)/);
+assert.match(settingsJs, /"\/api\/admin\/platform\/accounts\/migrate"/);
+assert.match(settingsJs, /action: "PREVIEW"/);
+assert.match(settingsJs, /action: "COMMIT"/);
+assert.match(settingsJs, /previewToken: accountMigrationPreview\.previewToken/);
 assert.equal(settingsJs.includes("SpreadsheetID"), false);
 assert.equal(settingsJs.includes("PLATFORM_SPREADSHEET_ID"), false);
 
 assert.match(settingsCss, /\.system-settings-validate/);
 assert.match(settingsCss, /\.system-settings-platform-status\[data-kind="error"\]/);
+assert.match(settingsCss, /\.system-settings-migration-summary/);
+assert.match(settingsCss, /\.system-settings-migrate/);
 
 console.log("Platform Sheet validation UI integration tests passed.");

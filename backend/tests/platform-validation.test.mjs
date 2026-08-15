@@ -36,7 +36,7 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.2"],
+  ["PlatformSchemaVersion", "102.0.3"],
   ["GlobalCurriculumVersion", 1]
 ];
 
@@ -90,7 +90,7 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.2",
+    platformSchemaVersion: "102.0.3",
     globalCurriculumVersion: 1,
     tabCount: 9,
     rowCounts: {
@@ -127,8 +127,19 @@ try {
   assert.equal(badSpreadsheetId.status, 503);
   assert.match((await badSpreadsheetId.json()).detail, /invalid SpreadsheetID/);
 
+  tables = structuredClone(baseTables);
+  tables.UserAccounts.push([
+    "ACCOUNT1", "Admin User", "ADMINURL", false, "", true, "", "", "", "", "", "", "", ""
+  ]);
+  tables.UserCourseAccess.push([
+    "ACCESS1", "ACCOUNT1", "COURSE1", "ADMIN", true, true, "", "", "", "", "", "", "", ""
+  ]);
+  const missingCourseRecord = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(missingCourseRecord.status, 503);
+  assert.match((await missingCourseRecord.json()).detail, /requires CourseRecordID/);
+
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 27);
+  assert.equal(sheetsCalls.length, 36);
 } finally {
   globalThis.fetch = originalFetch;
 }

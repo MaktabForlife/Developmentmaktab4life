@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=102.1">
+<link rel="stylesheet" href="/styles.css?v=102.2">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -417,6 +417,54 @@
             role="status"
             aria-live="polite"
           ></p>
+
+          <div class="system-settings-migration" aria-labelledby="system-settings-migration-heading">
+            <h4 id="system-settings-migration-heading">Central account migration</h4>
+            <p class="system-settings-help">
+              Preview current course AdminRecords and StudentRecords before writing UserAccounts or UserCourseAccess.
+              Existing login routes remain active.
+            </p>
+            <label class="system-settings-migration-option" for="system-settings-grant-global-admin">
+              <input id="system-settings-grant-global-admin" type="checkbox" checked />
+              <span>Grant the currently signed-in Admin unrestricted GLOBAL_ADMIN authority.</span>
+            </label>
+            <button
+              type="button"
+              class="system-settings-validate"
+              data-system-settings-action="preview-account-migration"
+            >
+              <span class="app-icon" aria-hidden="true"></span>
+              <span>Preview Account Migration</span>
+            </button>
+            <div id="system-settings-migration-summary" class="system-settings-migration-summary hidden"></div>
+            <label
+              id="system-settings-migration-confirm-label"
+              class="system-settings-field hidden"
+              for="system-settings-migration-confirm"
+            >
+              <span id="system-settings-migration-confirm-prompt">Confirmation</span>
+              <input
+                id="system-settings-migration-confirm"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+            <button
+              type="button"
+              class="system-settings-migrate hidden"
+              data-system-settings-action="commit-account-migration"
+            >
+              <span class="app-icon" aria-hidden="true"></span>
+              <span>Migrate Central Accounts</span>
+            </button>
+            <p
+              id="system-settings-migration-status"
+              class="system-settings-platform-status"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </div>
         </section>
 
         <button type="submit" class="system-settings-save" data-system-settings-action="save">
@@ -1527,7 +1575,7 @@
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
-<script src="/js/m4l-system-settings.js?v=102.1"></script>
+<script src="/js/m4l-system-settings.js?v=102.2"></script>
 <script src="/js/m4l-timetable-builder.js?v=101.4.3"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>

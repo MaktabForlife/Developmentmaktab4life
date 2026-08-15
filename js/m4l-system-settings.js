@@ -1,10 +1,11 @@
-/* M4L V102.1 - ADMIN SystemConfig and central Platform Sheet validation. */
+/* M4L V102.2 - ADMIN settings, Platform validation and account migration. */
 (function () {
   "use strict";
 
   const SCREEN_ID = "system-settings-screen";
   let handlersBound = false;
   let loading = false;
+  let accountMigrationPreview = null;
 
   function getActiveAdminRole() {
     if (typeof state === "undefined" || !state || !state.user) return "";
@@ -172,6 +173,166 @@
     }
   }
 
+  async function previewAccountMigration() {
+    if (loading || !isSystemSettingsAdmin()) return false;
+
+    clearAccountMigrationPreview();
+    loading = true;
+    setSystemSettingsBusy(true);
+    setAccountMigrationMessage("Checking current course accounts...", "loading");
+
+    try {
+      const result = await postSystemSettings("/api/admin/platform/accounts/migrate", {
+        action: "PREVIEW",
+        grantGlobalAdmin: isGlobalAdminGrantSelected()
+      });
+      if (!result.success) {
+        throw new Error(result.detail || result.error || "Unable to preview account migration");
+      }
+
+      renderAccountMigrationPreview(result);
+      setAccountMigrationMessage(
+        result.migrationCurrent
+          ? "No migration writes are needed; this course's central accounts and memberships are already present."
+          : result.canCommit
+          ? `Preview ready. Enter ${result.confirmationText} to enable the migration.`
+          : `${Number(result.blockerCount || 0)} blocking issue${Number(result.blockerCount || 0) === 1 ? "" : "s"} must be corrected before migration.`,
+        result.migrationCurrent || result.canCommit ? "success" : "error"
+      );
+      return true;
+    } catch (error) {
+      console.error("Could not preview central account migration", error);
+      setAccountMigrationMessage(
+        error && error.message ? error.message : "Unable to preview account migration.",
+        "error"
+      );
+      return false;
+    } finally {
+      loading = false;
+      setSystemSettingsBusy(false);
+    }
+  }
+
+  async function commitAccountMigration() {
+    if (loading || !isSystemSettingsAdmin() || !accountMigrationPreview) return false;
+
+    const confirmationText = getInputValue("system-settings-migration-confirm").toUpperCase();
+    if (confirmationText !== accountMigrationPreview.confirmationText) {
+      setAccountMigrationMessage(
+        `Enter ${accountMigrationPreview.confirmationText} exactly before migrating.`,
+        "error"
+      );
+      return false;
+    }
+
+    const confirmed = typeof window.confirm !== "function" || window.confirm(
+      "Create the previewed central accounts and course memberships? Existing login routes will remain active."
+    );
+    if (!confirmed) return false;
+
+    loading = true;
+    setSystemSettingsBusy(true);
+    setAccountMigrationMessage("Migrating central accounts...", "loading");
+
+    try {
+      const result = await postSystemSettings("/api/admin/platform/accounts/migrate", {
+        action: "COMMIT",
+        grantGlobalAdmin: accountMigrationPreview.grantGlobalAdmin,
+        previewToken: accountMigrationPreview.previewToken,
+        confirmationText
+      });
+      if (!result.success) {
+        throw new Error(result.detail || result.error || "Central account migration failed");
+      }
+
+      clearAccountMigrationPreview();
+      setAccountMigrationMessage(
+        `Migration completed: ${Number(result.accountsCreated || 0)} accounts and ` +
+        `${Number(result.courseAccessCreated || 0)} course memberships created. Existing logins remain active.`,
+        "success"
+      );
+      return true;
+    } catch (error) {
+      console.error("Could not migrate central accounts", error);
+      setAccountMigrationMessage(
+        error && error.message ? error.message : "Central account migration failed.",
+        "error"
+      );
+      return false;
+    } finally {
+      loading = false;
+      setSystemSettingsBusy(false);
+    }
+  }
+
+  function renderAccountMigrationPreview(result) {
+    const summary = document.getElementById("system-settings-migration-summary");
+    if (!summary) return;
+
+    summary.replaceChildren();
+    summary.classList.remove("hidden");
+    const counts = document.createElement("p");
+    counts.className = "system-settings-migration-counts";
+    counts.textContent =
+      `${Number(result.sourceCounts?.staff || 0)} staff, ` +
+      `${Number(result.sourceCounts?.students || 0)} students; ` +
+      `${Number(result.plannedWrites?.userAccounts || 0)} accounts and ` +
+      `${Number(result.plannedWrites?.courseAccess || 0)} memberships planned.`;
+    summary.appendChild(counts);
+
+    appendMigrationIssues(summary, "Blocking issues", result.blockers, "error");
+    appendMigrationIssues(summary, "Warnings", result.warnings, "warning");
+
+    const canCommit = result.canCommit === true && Boolean(result.previewToken);
+    accountMigrationPreview = canCommit ? {
+      previewToken: String(result.previewToken),
+      confirmationText: String(result.confirmationText || "").toUpperCase(),
+      grantGlobalAdmin: isGlobalAdminGrantSelected()
+    } : null;
+    const label = document.getElementById("system-settings-migration-confirm-label");
+    const button = document.querySelector('[data-system-settings-action="commit-account-migration"]');
+    const prompt = document.getElementById("system-settings-migration-confirm-prompt");
+    if (label) label.classList.toggle("hidden", !canCommit);
+    if (button) button.classList.toggle("hidden", !canCommit);
+    if (prompt && canCommit) prompt.textContent = `Type ${accountMigrationPreview.confirmationText} to confirm`;
+  }
+
+  function appendMigrationIssues(container, heading, issues, kind) {
+    if (!Array.isArray(issues) || issues.length === 0) return;
+    const section = document.createElement("section");
+    section.className = `system-settings-migration-issues system-settings-migration-issues--${kind}`;
+    const title = document.createElement("h5");
+    title.textContent = heading;
+    const list = document.createElement("ul");
+    for (const issue of issues) {
+      const item = document.createElement("li");
+      item.textContent = String(issue && issue.message ? issue.message : "Migration issue");
+      list.appendChild(item);
+    }
+    section.append(title, list);
+    container.appendChild(section);
+  }
+
+  function clearAccountMigrationPreview() {
+    accountMigrationPreview = null;
+    const summary = document.getElementById("system-settings-migration-summary");
+    const label = document.getElementById("system-settings-migration-confirm-label");
+    const button = document.querySelector('[data-system-settings-action="commit-account-migration"]');
+    const input = document.getElementById("system-settings-migration-confirm");
+    if (summary) {
+      summary.replaceChildren();
+      summary.classList.add("hidden");
+    }
+    if (label) label.classList.add("hidden");
+    if (button) button.classList.add("hidden");
+    if (input) input.value = "";
+  }
+
+  function isGlobalAdminGrantSelected() {
+    const checkbox = document.getElementById("system-settings-grant-global-admin");
+    return Boolean(checkbox && checkbox.checked);
+  }
+
   function renderSystemSettings(settings) {
     setInputValue("system-settings-student-login-url", settings.studentLoginBaseUrl || "");
     setInputValue(
@@ -218,6 +379,14 @@
     element.dataset.kind = String(kind || "");
   }
 
+  function setAccountMigrationMessage(message, kind) {
+    const element = document.getElementById("system-settings-migration-status");
+    if (!element) return;
+
+    element.textContent = String(message || "");
+    element.dataset.kind = String(kind || "");
+  }
+
   function getInputValue(id) {
     const input = document.getElementById(id);
     return input ? String(input.value || "").trim() : "";
@@ -257,6 +426,10 @@
       saveSystemSettings();
     } else if (action === "validate-platform") {
       validatePlatformSheet();
+    } else if (action === "preview-account-migration") {
+      previewAccountMigration();
+    } else if (action === "commit-account-migration") {
+      commitAccountMigration();
     }
   }
 
@@ -274,6 +447,14 @@
       });
     }
 
+    const globalAdminGrant = document.getElementById("system-settings-grant-global-admin");
+    if (globalAdminGrant) {
+      globalAdminGrant.addEventListener("change", () => {
+        clearAccountMigrationPreview();
+        setAccountMigrationMessage("Run the preview again after changing GLOBAL_ADMIN authority.", "warning");
+      });
+    }
+
     syncSystemSettingsAccess();
     return true;
   }
@@ -284,7 +465,9 @@
     open: showSystemSettings,
     load: loadSystemSettings,
     save: saveSystemSettings,
-    validatePlatform: validatePlatformSheet
+    validatePlatform: validatePlatformSheet,
+    previewAccountMigration,
+    commitAccountMigration
   });
   window.showSystemSettings = showSystemSettings;
 

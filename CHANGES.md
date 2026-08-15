@@ -22,6 +22,11 @@
 - Adds central authentication, revocation, context-switch and account UI tests.
 - Requires no Platform Sheet schema change after `102.0.3` and no new Worker
   variable, secret, binding or Apps Script deployment.
+- Establishes `UPDATE-TODO.md` as a required root-level file in every release,
+  covering all actions needed to complete and verify that update.
+- Establishes repository-specific `GITHUB-UPDATE` ZIPs as the supported
+  GitHub-dashboard delivery method. Each is built against a reviewed repository
+  export and verified by applying it to that exact baseline before release.
 - Bumps application and Worker metadata to `102.3`.
 
 Use `docs/V102.3-UNIFIED-ACCOUNT-VERIFICATION.md` for the development deployment

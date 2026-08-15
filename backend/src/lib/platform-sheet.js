@@ -108,6 +108,7 @@ export function selectAutomaticAccountContext(accountRecord, accessRecords) {
       accessId: "",
       accountId: String(accountRecord.AccountID || "").trim(),
       courseId: "",
+      courseRecordId: "",
       role: "GLOBAL_ADMIN",
       scope: "PLATFORM"
     });
@@ -158,6 +159,7 @@ export function assertCourseContextAccess(
       accessId: "",
       accountId: String(accountRecord.AccountID || "").trim(),
       courseId: String(courseId || "").trim(),
+      courseRecordId: "",
       role: "GLOBAL_ADMIN",
       scope: "COURSE"
     });
@@ -174,6 +176,7 @@ function normalizeContext(record) {
     accessId: String(record.AccessID || "").trim(),
     accountId: String(record.AccountID || "").trim(),
     courseId: String(record.CourseID || "").trim(),
+    courseRecordId: String(record.CourseRecordID || "").trim(),
     role: normalizePlatformIdentifier(record.Role)
   });
 }

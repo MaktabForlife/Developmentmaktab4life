@@ -1,54 +1,44 @@
-V102.3 — unified central account and context verification
+V102.3 — GitHub dashboard repair update
 
-Frontend
-- account/index.html
-- css/m4l-23-account.css
-- js/m4l-account.js
-- _redirects
-- _headers
+This update is tailored to the reviewed GitHub repository export
+`Rebootyourmaktab-development(20260815-154243).zip`.
 
-Backend / Worker
-- backend/src/lib/auth.js
-- backend/src/lib/backend-routing.js
-- backend/src/routes/account-auth.js
-- backend/src/routes/platform-account-migration.js
-- backend/src/router.js
-- backend/src/worker.js
-- backend/package.json
-- backend/WORKER-SETTINGS.md
+Upload/add or replace exactly these repository paths:
 
-Tests
-- backend/tests/account-auth.test.mjs
-- backend/tests/account-ui.test.mjs
-- backend/tests/platform-account-migration.test.mjs
-- backend/tests/backend-routing.test.mjs
-- backend/tests/router.test.mjs
-
-Documentation
-- docs/V102.3-UNIFIED-ACCOUNT-VERIFICATION.md
-- docs/V102-PLATFORM-SHEET-MIGRATION.md
-
-Release metadata
-- version.json
-- js/version.json
+Release instructions and metadata
+- UPDATE-TODO.md (new)
+- CHANGED-FILES.txt
+- CHANGES.md
 - README.md
 - RELEASE-NOTES.md
-- CHANGES.md
-- CHANGED-FILES.txt
-- DELETE-FILES.txt
 
-Important boundaries
-1. Complete V102.2 account migration before testing V102.3 central login.
-2. Keep Platform schema `102.0.3`; no Sheet header change is required.
-3. Keep both PLATFORM_SPREADSHEET_ID and GOOGLE_SPREADSHEET_ID.
-4. Deploy Worker and Pages to development before production.
-5. Test `/account/<uniqueid>` with migrated test accounts.
-6. Keep `/admin/<uniqueid>` and `/student/<uniqueid>` operational.
-7. Central account tokens remain blocked from legacy course-data endpoints.
-8. Keep every course Library and resource record course-specific.
-9. Keep TeacherAssign and TimeTable as the live timetable source.
+Admin account-migration UI
+- admin/index.html
+- css/m4l-18-system-settings.css
+- js/m4l-system-settings.js
+- styles.css
 
-Rollback
-Reverting the Worker and Pages to V102.2 removes the central account route/API
-without affecting legacy operational logins. Central account rows and updated
-LastLoginDate, LastUsedDate or upgraded PIN hashes may remain safely.
+Platform schema and validation
+- backend/src/lib/platform-schema.js
+- backend/src/lib/platform-sheet.js
+- backend/src/routes/platform-validation.js
+- docs/V102-PlatformConfig-template.csv
+- docs/V102-UserCourseAccess-template.csv
+
+Regression tests aligned with the repaired V102.2/V102.3 source
+- backend/tests/admin-management-ui.test.mjs
+- backend/tests/platform-sheet.test.mjs
+- backend/tests/platform-validation-ui.test.mjs
+- backend/tests/platform-validation.test.mjs
+- backend/tests/student-task-assignment-ui.test.mjs
+- backend/tests/timetable-teacher-ui.test.mjs
+
+Important
+- This ZIP is the supported GitHub-dashboard update for the reviewed export.
+- It repairs the V102.2 migration files that were missing from that repository.
+- The repository already contains the matching V102.3 account API and account
+  frontend files, so they are not duplicated here.
+- Do not upload the full-source ZIP into the repository.
+- Do not use the earlier V102.3 modified-files ZIP.
+- After committing these files, download a fresh GitHub ZIP for verification
+  before deploying the Worker or Pages frontend.

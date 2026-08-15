@@ -1,4 +1,4 @@
-/* M4L V102.1 - ADMIN-only live validation of the central Platform Sheet. */
+/* M4L V102.2 - ADMIN-only validation of Platform schema V102.0.3. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { json } from "../lib/http.js";
@@ -9,7 +9,7 @@ import {
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.2";
+const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.3";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 
 export async function platformValidationEndpoint(request, env) {
@@ -115,10 +115,12 @@ export function validatePlatformTables(tables) {
   }
 
   const accessKeys = new Set();
+  const courseRecordKeys = new Set();
   for (const access of tables.UserCourseAccess) {
     const accountId = normalizePlatformIdentifier(access.AccountID);
     const courseId = normalizePlatformIdentifier(access.CourseID);
     const role = normalizePlatformIdentifier(access.Role);
+    const courseRecordId = normalizePlatformIdentifier(access.CourseRecordID);
     const accessKey = `${accountId}|${courseId}|${role}`;
     if (!normalizePlatformIdentifier(access.AccessID) || !accountIds.has(accountId)) {
       throw new Error(`UserCourseAccess row ${access._rowNumber} has an invalid account reference`);
@@ -126,10 +128,18 @@ export function validatePlatformTables(tables) {
     if (!courseIds.has(courseId) || !COURSE_ROLES.has(role)) {
       throw new Error(`UserCourseAccess row ${access._rowNumber} has an invalid course or role`);
     }
+    if (!courseRecordId) {
+      throw new Error(`UserCourseAccess row ${access._rowNumber} requires CourseRecordID`);
+    }
     if (accessKeys.has(accessKey)) {
       throw new Error(`UserCourseAccess row ${access._rowNumber} duplicates an account/course/role`);
     }
+    const courseRecordKey = `${courseId}|${role}|${courseRecordId}`;
+    if (courseRecordKeys.has(courseRecordKey)) {
+      throw new Error(`UserCourseAccess row ${access._rowNumber} duplicates a course-local record mapping`);
+    }
     accessKeys.add(accessKey);
+    courseRecordKeys.add(courseRecordKey);
   }
 
   return Object.freeze({

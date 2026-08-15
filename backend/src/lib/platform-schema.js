@@ -1,4 +1,4 @@
-/* M4L V102 - Authoritative central Platform Sheet schema and context rules. */
+/* M4L V102.2 - Authoritative central Platform Sheet schema and context rules. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -51,7 +51,8 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "CreatedByAccountName",
     "ModifiedByAccountID",
     "ModifiedByAccountName",
-    "ModifiedDate"
+    "ModifiedDate",
+    "CourseRecordID"
   ]),
   GlobalSubjectList: Object.freeze([
     "SubjectID",

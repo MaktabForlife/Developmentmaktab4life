@@ -20,6 +20,11 @@ V102.3
 - Keeps `/admin/<uniqueid>` and `/student/<uniqueid>` operational. They are not
   redirected in this release.
 - Adds no Sheet tab, header, Worker binding, secret or schema-version change.
+- Adds a root-level `UPDATE-TODO.md` with the complete prerequisite, deployment,
+  migration, verification, safety-boundary, completion and rollback checklist.
+- Replaces the ambiguous incremental-install process with a repository-specific
+  `V102.3-GITHUB-UPDATE` package. The full-source ZIP remains a complete
+  backup/reference snapshot rather than a dashboard upload.
 - Application and Worker metadata are `102.3`; Platform schema remains `102.0.3`.
 
 Deploy to development only after V102.2 account migration is complete. Follow

@@ -13,3 +13,10 @@ release. No Platform Sheet header change is required after V102.2.
 
 See `RELEASE-NOTES.md`, `docs/V102.3-UNIFIED-ACCOUNT-VERIFICATION.md` and
 `docs/V102-PLATFORM-SHEET-MIGRATION.md` before deployment.
+
+Start every installation with the root-level `UPDATE-TODO.md`. Beginning with
+V102.3, each release package includes this deployment and completion checklist.
+
+For GitHub-dashboard updates, use the specifically named `GITHUB-UPDATE` ZIP.
+The full-source ZIP is a complete backup/reference snapshot. A generic
+modified-files archive is not a deployment package.

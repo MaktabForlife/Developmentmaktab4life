@@ -30,6 +30,8 @@ assert.deepEqual(Object.keys(PLATFORM_SHEET_HEADERS), [
 ]);
 assert.equal(PLATFORM_SHEET_HEADERS.UserAccounts.at(-1), "PlatformRole");
 assert.equal(PLATFORM_SHEET_HEADERS.UserAccounts.length, 14);
+assert.equal(PLATFORM_SHEET_HEADERS.UserCourseAccess.at(-1), "CourseRecordID");
+assert.equal(PLATFORM_SHEET_HEADERS.UserCourseAccess.length, 14);
 
 const courseHeaders = PLATFORM_SHEET_HEADERS.CourseRegistry;
 const courseRows = [
@@ -91,6 +93,7 @@ assert.deepEqual(selectAutomaticAccountContext(globalAdminAccount, []), {
   accessId: "",
   accountId: "ACCOUNT-GLOBAL",
   courseId: "",
+  courseRecordId: "",
   role: "GLOBAL_ADMIN",
   scope: "PLATFORM"
 });
@@ -100,6 +103,7 @@ assert.deepEqual(
     accessId: "",
     accountId: "ACCOUNT-GLOBAL",
     courseId: "COURSE9",
+    courseRecordId: "",
     role: "GLOBAL_ADMIN",
     scope: "COURSE"
   }
@@ -124,6 +128,7 @@ assert.deepEqual(defaultContext, {
   accessId: "ACCESS3",
   accountId: "ACCOUNT1",
   courseId: "COURSE3",
+  courseRecordId: "ADMIN-COURSE3",
   role: "ADMIN"
 });
 
@@ -161,6 +166,7 @@ assert.deepEqual(
     accessId: "ACCESS2",
     accountId: "ACCOUNT1",
     courseId: "COURSE2",
+    courseRecordId: "ADMIN-COURSE2",
     role: "ADMIN",
     scope: "COURSE"
   }
@@ -255,7 +261,8 @@ function access(accessId, accountId, courseId, role, isDefault, lastUsedDate) {
     Role: role,
     Active: true,
     IsDefault: isDefault,
-    LastUsedDate: lastUsedDate
+    LastUsedDate: lastUsedDate,
+    CourseRecordID: `${role === "STUDENT" ? "STUDENT" : "ADMIN"}-${courseId}`
   };
 }
 

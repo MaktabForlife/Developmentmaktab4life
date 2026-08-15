@@ -1,4 +1,4 @@
-/* M4L V102.1 - UI-managed configuration and Platform Sheet validation. */
+/* M4L V102.2 - Platform validation and controlled central account migration. */
 
 #system-settings-screen {
   width: 100%;
@@ -109,6 +109,85 @@
 
 .system-settings-validate .app-icon {
   --app-icon-url: url('/icons/refresh.svg');
+}
+
+.system-settings-migration {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--surface-track);
+}
+
+.system-settings-migration h4,
+.system-settings-migration h5 {
+  margin: 0 0 8px;
+}
+
+.system-settings-migration-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.system-settings-migration-option input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.system-settings-migration-summary {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--surface-track);
+}
+
+.system-settings-migration-counts {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.system-settings-migration-issues {
+  margin-top: 12px;
+}
+
+.system-settings-migration-issues ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.system-settings-migration-issues li + li {
+  margin-top: 6px;
+}
+
+.system-settings-migration-issues--error {
+  color: var(--error);
+}
+
+.system-settings-migration-issues--warning {
+  color: var(--text);
+}
+
+.system-settings-migrate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  color: #fff;
+  background: var(--error);
+  font-weight: 700;
+}
+
+.system-settings-migrate .app-icon {
+  --app-icon-url: url('/icons/save.svg');
 }
 
 .system-settings-platform-status {
