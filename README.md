@@ -1,8 +1,9 @@
 # Maktabhelper
 
-Current release: V101.4.1.
+Current release: V101.4.2.
 
-V101.4.1 adds multi-day and multi-group session creation, detailed in-dialog
-conflict feedback, and 24-hour time display to the audited ADMIN-only builder.
+V101.4.2 adds repeatable Subject/Module/Teacher/Zoom lesson rows to the audited
+ADMIN-only builder. One save validates and creates every selected
+lesson–day–group combination without changing the V101.4 Sheet schema.
 See `RELEASE-NOTES.md` and
 `docs/V101.4-TIMETABLE-BUILDER-MIGRATION.md` before deployment.

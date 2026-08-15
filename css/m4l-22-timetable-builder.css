@@ -1,4 +1,4 @@
-/* M4L V101.4.1 - desktop-first Timetable Builder with bulk session choices. */
+/* M4L V101.4.2 - desktop-first Timetable Builder with atomic multi-lesson saves. */
 
 body:has(#timetable-builder-screen.active) .app-shell {
   width: min(100%, 1500px);
@@ -527,7 +527,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-dialog {
-  width: min(760px, calc(100vw - 36px));
+  width: min(900px, calc(100vw - 36px));
   max-height: calc(100dvh - 36px);
   padding: 0;
   overflow: auto;
@@ -632,6 +632,81 @@ body:has(#timetable-builder-screen.active) .app-shell {
   outline-offset: 2px;
 }
 
+.timetable-session-lessons-section {
+  min-width: 0;
+}
+
+.timetable-session-lessons-heading,
+.timetable-session-lesson-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.timetable-session-lessons-heading {
+  margin-bottom: 9px;
+}
+
+.timetable-session-lessons-heading h4,
+.timetable-session-lessons-heading p {
+  margin: 0;
+}
+
+.timetable-session-lessons-heading h4 {
+  color: var(--text, #2f312e);
+  font-size: 0.94rem;
+}
+
+.timetable-session-lessons-heading p {
+  margin-top: 3px;
+  color: var(--text-muted, #70736c);
+  font-size: 0.76rem;
+}
+
+.timetable-session-lessons-heading button {
+  flex: 0 0 auto;
+}
+
+.timetable-session-lessons {
+  display: grid;
+  gap: 10px;
+}
+
+.timetable-session-lesson {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface-track, #f4f1ef) 54%, white);
+}
+
+.timetable-session-lesson-heading {
+  margin-bottom: 10px;
+}
+
+.timetable-session-lesson-heading strong {
+  color: var(--primary, #31513f);
+  font-size: 0.82rem;
+}
+
+.timetable-session-lesson-heading button {
+  padding: 3px 7px;
+  border: 0;
+  background: transparent;
+  color: #9a3232;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.timetable-session-lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .timetable-session-message {
   display: none;
   margin-top: 16px;
@@ -709,6 +784,15 @@ body:has(#timetable-builder-screen.active) .app-shell {
   }
 
   .timetable-builder-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timetable-session-lessons-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .timetable-session-lesson-grid {
     grid-template-columns: 1fr;
   }
 

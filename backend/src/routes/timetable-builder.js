@@ -1,4 +1,4 @@
-/* M4L V101.4.1 - audited multi-day and multi-group timetable builder. */
+/* M4L V101.4.2 - audited multi-lesson, multi-day and multi-group timetable builder. */
 
 import {
   appendAdminAuditLog,
@@ -381,18 +381,13 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
   const daySelection = normalizeDaySelection(
     body.daysofweek ?? body.days ?? body.dayofweek ?? body.dayOfWeek ?? body.day
   );
-  const subjectId = clean(body.subjectid || body.subjectId);
-  const moduleId = clean(body.moduleid || body.moduleId);
   const groupSelection = normalizeGroupSelection(
     body.groupnos ?? body.groups ?? body.groupno ?? body.groupNo ?? body.group
   );
-  const teacherId = clean(body.teacherid || body.teacherId);
-  let zoomLink;
+  const lessonSelection = normalizeLessonSelection(body);
 
-  try {
-    zoomLink = normalizeOptionalHttpsUrl(body.zoomlink || body.zoomLink);
-  } catch (error) {
-    return json({ success: false, error: error.message }, 400);
+  if (lessonSelection.error) {
+    return json({ success: false, error: lessonSelection.error }, 400);
   }
 
   if (daySelection.invalid.length > 0) {
@@ -407,19 +402,39 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Select ALL by itself, or select one or more numbered groups" }, 400);
   }
 
-  if (sessionId && (daySelection.values.length !== 1 || groupSelection.values.length !== 1)) {
-    return json({ success: false, error: "An existing session must be modified one day and one group at a time" }, 400);
+  if (sessionId && (
+    daySelection.values.length !== 1 ||
+    groupSelection.values.length !== 1 ||
+    lessonSelection.values.length !== 1
+  )) {
+    return json({ success: false, error: "An existing session must be modified one lesson, one day and one group at a time" }, 400);
   }
 
-  const combinationCount = daySelection.values.length * groupSelection.values.length;
-  if (combinationCount > 70) {
-    return json({ success: false, error: "Select no more than 70 day and group combinations at once" }, 400);
+  const combinationCount = daySelection.values.length * groupSelection.values.length * lessonSelection.values.length;
+  if (combinationCount > 100) {
+    return json({ success: false, error: "Create no more than 100 lesson, day and group combinations at once" }, 400);
   }
 
-  if (!courseId || !timeSlotId || !daySelection.values.length || !subjectId || !groupSelection.values.length || !teacherId) {
+  if (!courseId || !timeSlotId || !daySelection.values.length || !groupSelection.values.length || !lessonSelection.values.length) {
     return json({
       success: false,
-      error: "Course, time slot, at least one day, subject, at least one group and teacher are required"
+      error: "Course, time slot, at least one day, at least one group and at least one lesson are required"
+    }, 400);
+  }
+
+  const incompleteLesson = lessonSelection.values.find(lesson => !lesson.subjectid || !lesson.teacherid);
+  if (incompleteLesson) {
+    return json({
+      success: false,
+      error: `Lesson ${incompleteLesson.lessonindex} needs a subject and teacher`
+    }, 400);
+  }
+
+  const duplicateLesson = findDuplicateLesson(lessonSelection.values);
+  if (duplicateLesson) {
+    return json({
+      success: false,
+      error: `Lesson ${duplicateLesson.duplicateIndex} duplicates lesson ${duplicateLesson.originalIndex}`
     }, 400);
   }
 
@@ -449,44 +464,67 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
 
   const course = courses.find(item => item.courseid === courseId);
   const timeSlot = timeSlots.find(item => item.timeslotid === timeSlotId);
-  const subject = subjects.find(item => item.subjectid === subjectId);
-  const module = moduleId ? modules.find(item => item.moduleid === moduleId) : null;
-  const teacher = teachers.find(item => item.teacherid === teacherId);
   const active = normalizeRequestedBoolean(body.active, existing ? existing.active : true);
 
   if (!course) return json({ success: false, error: "Course not found" }, 404);
   if (!timeSlot || timeSlot.courseid !== courseId) {
     return json({ success: false, error: "The selected time slot does not belong to this course" }, 409);
   }
-  if (!subject) return json({ success: false, error: "Subject not found" }, 404);
-  if (moduleId && (!module || module.subjectid !== subjectId)) {
-    return json({ success: false, error: "The selected module does not belong to this subject" }, 409);
+
+  const validatedLessons = [];
+  for (const lesson of lessonSelection.values) {
+    const subject = subjects.find(item => item.subjectid === lesson.subjectid);
+    const module = lesson.moduleid ? modules.find(item => item.moduleid === lesson.moduleid) : null;
+    const teacher = teachers.find(item => item.teacherid === lesson.teacherid);
+    const label = `Lesson ${lesson.lessonindex}`;
+
+    if (!subject) return json({ success: false, error: `${label}: subject not found` }, 404);
+    if (lesson.moduleid && (!module || module.subjectid !== lesson.subjectid)) {
+      return json({ success: false, error: `${label}: the selected module does not belong to this subject` }, 409);
+    }
+    if (!teacher) return json({ success: false, error: `${label}: teacher not found` }, 404);
+
+    if (active) {
+      if (!subject.active) return json({ success: false, error: `${label}: activate the subject first` }, 409);
+      if (module && !module.active) return json({ success: false, error: `${label}: activate the module first` }, 409);
+      if (!teacher.active) return json({ success: false, error: `${label}: activate the teacher first` }, 409);
+    }
+
+    validatedLessons.push({
+      ...lesson,
+      subjectname: subject.subjectname,
+      modulename: module?.modulename || "",
+      teachername: teacher.teachername
+    });
   }
-  if (!teacher) return json({ success: false, error: "Teacher not found" }, 404);
 
   if (active) {
     if (!course.active) return json({ success: false, error: "Activate the course first" }, 409);
     if (!timeSlot.active) return json({ success: false, error: "Activate the time slot first" }, 409);
-    if (!subject.active) return json({ success: false, error: "Activate the subject first" }, 409);
-    if (module && !module.active) return json({ success: false, error: "Activate the module first" }, 409);
-    if (!teacher.active) return json({ success: false, error: "Activate the teacher first" }, 409);
 
     const conflicts = daySelection.values.flatMap(dayOfWeek => (
-      groupSelection.values.flatMap(groupNo => findSessionConflicts({
-        sessionId,
-        courseId,
-        timeSlot,
-        dayOfWeek,
-        groupNo,
-        subjectId,
-        moduleId,
-        teacherId,
-        teacherName: teacher.teachername,
-        zoomLink,
-        sessions,
-        timeSlots,
-        courses
-      }))
+      groupSelection.values.flatMap(groupNo => (
+        validatedLessons.flatMap(lesson => findSessionConflicts({
+          sessionId,
+          courseId,
+          timeSlot,
+          dayOfWeek,
+          groupNo,
+          subjectId: lesson.subjectid,
+          subjectName: lesson.subjectname,
+          moduleId: lesson.moduleid,
+          moduleName: lesson.modulename,
+          teacherId: lesson.teacherid,
+          teacherName: lesson.teachername,
+          zoomLink: lesson.zoomlink,
+          lessonIndex: lesson.lessonindex,
+          lessonCount: validatedLessons.length,
+          batchCreatedDate: existing?.createddate || "",
+          sessions,
+          timeSlots,
+          courses
+        }))
+      ))
     ));
 
     if (conflicts.length > 0) {
@@ -508,7 +546,9 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
 
   if (!existing) {
     const combinations = daySelection.values.flatMap(dayofweek => (
-      groupSelection.values.map(groupno => ({ dayofweek, groupno }))
+      groupSelection.values.flatMap(groupno => (
+        validatedLessons.map(lesson => ({ dayofweek, groupno, lesson }))
+      ))
     ));
     const sessionIds = nextSequentialIds(data.sessionRows, "SESSION", combinations.length);
     const proposedSessions = combinations.map((combination, index) => ({
@@ -516,11 +556,11 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
       courseid: courseId,
       timeslotid: timeSlotId,
       dayofweek: combination.dayofweek,
-      subjectid: subjectId,
-      moduleid: moduleId,
+      subjectid: combination.lesson.subjectid,
+      moduleid: combination.lesson.moduleid,
       groupno: combination.groupno,
-      teacherid: teacherId,
-      zoomlink: zoomLink,
+      teacherid: combination.lesson.teacherid,
+      zoomlink: combination.lesson.zoomlink,
       active,
       createddate: audit.timestamp
     }));
@@ -548,21 +588,24 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
         ? "Session created"
         : `${proposedSessions.length} sessions created`,
       count: proposedSessions.length,
+      lessoncount: validatedLessons.length,
       session: proposedSessions[0],
       sessions: proposedSessions
     });
   }
+
+  const lesson = validatedLessons[0];
 
   const proposed = {
     sessionid: existing.sessionid,
     courseid: courseId,
     timeslotid: timeSlotId,
     dayofweek: daySelection.values[0],
-    subjectid: subjectId,
-    moduleid: moduleId,
+    subjectid: lesson.subjectid,
+    moduleid: lesson.moduleid,
     groupno: groupSelection.values[0],
-    teacherid: teacherId,
-    zoomlink: zoomLink,
+    teacherid: lesson.teacherid,
+    zoomlink: lesson.zoomlink,
     active,
     createddate: existing.createddate
   };
@@ -820,6 +863,17 @@ function findSessionConflicts(options) {
     const courseName = courseMap.get(session.courseid)?.coursename || session.courseid;
     const range = `${otherSlot.starttime}–${otherSlot.endtime}`;
     const sharedAssignment = isSameSharedTeacherAssignment(session, options);
+    const relatedBatchLesson = Boolean(
+      options.batchCreatedDate &&
+      session.createddate === options.batchCreatedDate &&
+      session.courseid === options.courseId &&
+      session.timeslotid === options.timeSlot.timeslotid &&
+      !sharedAssignment
+    );
+    if (relatedBatchLesson) return;
+    const lessonPrefix = options.lessonCount > 1
+      ? `${formatRequestedLessonLabel(options)}: `
+      : "";
 
     if (session.teacherid === options.teacherId && !sharedAssignment) {
       conflicts.push({
@@ -832,7 +886,10 @@ function findSessionConflicts(options) {
         coursename: courseName,
         groupno: session.groupno,
         teacherid: session.teacherid,
-        message: `${options.teacherName || "This teacher"} is already assigned on ${options.dayOfWeek} at ${range} (${courseName}, group ${session.groupno}).`
+        lessonindex: options.lessonIndex,
+        subjectid: options.subjectId,
+        moduleid: options.moduleId,
+        message: `${lessonPrefix}${options.teacherName || "This teacher"} is already assigned on ${options.dayOfWeek} at ${range} (${courseName}, group ${session.groupno}).`
       });
     }
 
@@ -848,12 +905,20 @@ function findSessionConflicts(options) {
         coursename: courseName,
         groupno: session.groupno,
         teacherid: session.teacherid,
-        message: `${requestedGroup} already has a session on ${options.dayOfWeek} at ${range} (${courseName}).`
+        lessonindex: options.lessonIndex,
+        subjectid: options.subjectId,
+        moduleid: options.moduleId,
+        message: `${lessonPrefix}${requestedGroup} already has a session on ${options.dayOfWeek} at ${range} (${courseName}).`
       });
     }
   });
 
   return conflicts;
+}
+
+function formatRequestedLessonLabel(options) {
+  const curriculum = [options.subjectName, options.moduleName].filter(Boolean).join(" / ");
+  return `Lesson ${options.lessonIndex}${curriculum ? ` (${curriculum})` : ""}`;
 }
 
 function isSameSharedTeacherAssignment(session, options) {
@@ -873,12 +938,68 @@ function deduplicateConflicts(conflicts) {
       conflict.sessionid,
       conflict.dayofweek,
       conflict.groupno,
+      conflict.lessonindex,
       conflict.message
     ].join("|");
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function normalizeLessonSelection(body) {
+  const rawLessons = Array.isArray(body.lessons)
+    ? body.lessons
+    : [{
+        subjectid: body.subjectid ?? body.subjectId,
+        moduleid: body.moduleid ?? body.moduleId,
+        teacherid: body.teacherid ?? body.teacherId,
+        zoomlink: body.zoomlink ?? body.zoomLink
+      }];
+
+  if (rawLessons.length > 20) {
+    return { values: [], error: "Add no more than 20 lesson rows at once" };
+  }
+
+  const values = [];
+  for (let index = 0; index < rawLessons.length; index += 1) {
+    const raw = rawLessons[index];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { values: [], error: `Lesson ${index + 1} is invalid` };
+    }
+
+    let zoomlink;
+    try {
+      zoomlink = normalizeOptionalHttpsUrl(raw.zoomlink ?? raw.zoomLink);
+    } catch (error) {
+      return { values: [], error: `Lesson ${index + 1}: ${error.message}` };
+    }
+
+    values.push({
+      lessonindex: index + 1,
+      subjectid: clean(raw.subjectid ?? raw.subjectId),
+      moduleid: clean(raw.moduleid ?? raw.moduleId),
+      teacherid: clean(raw.teacherid ?? raw.teacherId),
+      zoomlink
+    });
+  }
+
+  return { values, error: "" };
+}
+
+function findDuplicateLesson(lessons) {
+  const seen = new Map();
+  for (const lesson of lessons) {
+    const key = [lesson.subjectid, lesson.moduleid, lesson.teacherid, lesson.zoomlink].join("|");
+    if (seen.has(key)) {
+      return {
+        originalIndex: seen.get(key),
+        duplicateIndex: lesson.lessonindex
+      };
+    }
+    seen.set(key, lesson.lessonindex);
+  }
+  return null;
 }
 
 function getSessionChangedFields(existing, proposed) {

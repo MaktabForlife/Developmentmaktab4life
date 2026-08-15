@@ -226,6 +226,27 @@ try {
     "One conflicting combination must prevent the complete bulk write"
   );
 
+  const multiLessonConflict = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    daysofweek: ["Mon"],
+    groupnos: ["2"],
+    lessons: [
+      { subjectid: "SUB2", teacherid: "TEACH2", zoomlink: "" },
+      { subjectid: "SUB2", teacherid: "TEACH1", zoomlink: "" }
+    ],
+    active: true
+  });
+  assert.equal(multiLessonConflict.response.status, 409);
+  assert.equal(multiLessonConflict.data.conflict, true);
+  assert.ok(multiLessonConflict.data.conflicts.some(item => item.lessonindex === 2));
+  assert.ok(multiLessonConflict.data.conflicts.some(item => /Lesson 2 \(Islamic Studies\)/.test(item.message)));
+  assert.equal(
+    writes.filter(write => write.range === "TimetableSessions!A:P").length,
+    sessionWritesBeforeConflict,
+    "A conflict in one lesson must prevent every lesson in the batch from being written"
+  );
+
   const invalidAllSelection = await post("/api/admin/timetable-builder/session/save", adminToken, {
     courseid: "COURSE1",
     timeslotid: "SLOT2",
@@ -281,11 +302,78 @@ try {
   ]);
   assert.ok(sessionRows.slice(-4).every(row => row[11] === "ADMIN1" && row[12] === "Admin User"));
 
+  const sessionWritesBeforeDuplicateLessons = writes.filter(write => write.range === "TimetableSessions!A:P").length;
+  const duplicateLessons = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    daysofweek: ["Fri"],
+    groupnos: ["1"],
+    lessons: [
+      { subjectid: "SUB1", moduleid: "MOD1", teacherid: "TEACH1", zoomlink: "" },
+      { subjectid: "SUB1", moduleid: "MOD1", teacherid: "TEACH1", zoomlink: "" }
+    ],
+    active: true
+  });
+  assert.equal(duplicateLessons.response.status, 400);
+  assert.match(duplicateLessons.data.error, /Lesson 2 duplicates lesson 1/);
+  assert.equal(
+    writes.filter(write => write.range === "TimetableSessions!A:P").length,
+    sessionWritesBeforeDuplicateLessons
+  );
+
+  const multiLesson = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    daysofweek: ["Fri"],
+    groupnos: ["2", "1"],
+    lessons: [
+      { subjectid: "SUB1", moduleid: "MOD1", teacherid: "TEACH1", zoomlink: "" },
+      { subjectid: "SUB2", moduleid: "", teacherid: "TEACH2", zoomlink: "https://zoom.test/j/islamic" }
+    ],
+    active: true
+  });
+  assert.equal(multiLesson.response.status, 200);
+  assert.equal(multiLesson.data.success, true);
+  assert.equal(multiLesson.data.count, 4);
+  assert.equal(multiLesson.data.lessoncount, 2);
+  assert.equal(multiLesson.data.message, "4 sessions created");
+  assert.deepEqual(multiLesson.data.sessions.map(item => [
+    item.sessionid, item.dayofweek, item.groupno, item.subjectid, item.moduleid, item.teacherid
+  ]), [
+    ["SESSION7", "Fri", "1", "SUB1", "MOD1", "TEACH1"],
+    ["SESSION8", "Fri", "1", "SUB2", "", "TEACH2"],
+    ["SESSION9", "Fri", "2", "SUB1", "MOD1", "TEACH1"],
+    ["SESSION10", "Fri", "2", "SUB2", "", "TEACH2"]
+  ]);
+  assert.equal(multiLesson.data.sessions[1].zoomlink, "https://zoom.test/j/islamic");
+  assert.equal(
+    writes.filter(write => write.range === "TimetableSessions!A:P").length,
+    sessionWritesBeforeDuplicateLessons + 1,
+    "Every generated lesson/day/group row must be appended in one Sheet write"
+  );
+  assert.ok(sessionRows.slice(-4).every(row => row[11] === "ADMIN1" && row[12] === "Admin User"));
+
+  const existingBatchLesson = await post("/api/admin/timetable-builder/session/save", adminToken, {
+    sessionid: "SESSION7",
+    courseid: "COURSE1",
+    timeslotid: "SLOT2",
+    dayofweek: "Fri",
+    groupno: "1",
+    lessons: [
+      { subjectid: "SUB1", moduleid: "MOD1", teacherid: "TEACH1", zoomlink: "" }
+    ],
+    active: true
+  });
+  assert.equal(existingBatchLesson.response.status, 200);
+  assert.equal(existingBatchLesson.data.success, true);
+  assert.equal(existingBatchLesson.data.message, "No session changes requested");
+
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[6] === "COURSE" && row[7] === "COURSE2"));
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[6] === "TIME_SLOT" && row[7] === "SLOT2"));
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[6] === "TIMETABLE_SESSION" && row[7] === "SESSION2"));
   assert.equal(auditRows.filter(row => /^SESSION[3-6]$/.test(row[7])).length, 4);
-  assert.equal(writes.filter(write => write.range === "TimetableSessions!A:P").length, 2);
+  assert.equal(auditRows.filter(row => /^SESSION(?:7|8|9|10)$/.test(row[7])).length, 4);
+  assert.equal(writes.filter(write => write.range === "TimetableSessions!A:P").length, 3);
 } finally {
   globalThis.fetch = originalFetch;
 }

@@ -1,4 +1,4 @@
-/* M4L V101.4.1 - multi-day/group Timetable Builder refinement.
+/* M4L V101.4.2 - multi-lesson Timetable Builder refinement.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "101.4.1"
+          version: "101.4.2"
         });
       }
 

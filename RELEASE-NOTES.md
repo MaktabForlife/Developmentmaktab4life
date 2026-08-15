@@ -1,3 +1,26 @@
+V101.4.2
+
+# Add multiple subjects/modules in one timetable save
+
+- New sessions use repeatable lesson rows containing Subject, optional Module,
+  Teacher, and optional Zoom override.
+- Course, 24-hour time slot, selected days, selected groups, and Active status
+  are shared across the lesson rows.
+- One save creates every selected lesson–day–group combination in one session
+  data append after validating the complete batch.
+- Incomplete or exactly duplicated lesson rows are rejected before writing.
+- Conflict feedback identifies the affected lesson and its subject/module.
+- If any lesson, day, or group conflicts, none of the requested sessions are
+  written.
+- Existing sessions remain single-record edits.
+- Every created session receives its own authenticated Admin audit event.
+- Application and Worker metadata are bumped to `101.4.2`.
+
+This package is cumulative and includes V101.4 and V101.4.1. No new Google Sheet,
+Apps Script, Worker binding, or Cloudflare-variable change is required.
+
+---
+
 V101.4.1
 
 # Multi-day and multi-group Timetable Builder sessions

@@ -1,3 +1,26 @@
+# V101.4.2 — Multi-lesson timetable session creation
+
+- Replaces the single Subject/Module/Teacher/Zoom fields for new sessions with
+  repeatable lesson rows.
+- Gives each lesson row its own Subject, optional Module, Teacher, and optional
+  Zoom override while sharing Course, Time Slot, Days, Groups, and Active state.
+- Creates every lesson–day–group combination in one `TimetableSessions` append
+  only after the entire request passes validation.
+- Rejects incomplete and exactly duplicated lesson rows before any write.
+- Identifies the affected lesson number and curriculum name when one lesson has
+  a teacher or group conflict; one conflict prevents the complete batch save.
+- Keeps existing-session modification intentionally limited to one lesson row,
+  one day, and one group.
+- Appends a separate authenticated Admin audit event for every session created.
+- Adds multi-lesson combination, duplicate, labelled-conflict, atomic-write, and
+  UI regression coverage.
+- Bumps application and Worker metadata to `101.4.2`.
+
+No Google Sheet header, Apps Script, binding, or environment-variable change is
+required after V101.4.
+
+---
+
 # V101.4.1 — Multi-day and multi-group session creation
 
 - Replaces the new-session Day and Group dropdowns with clear selectable tiles.
