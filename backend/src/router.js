@@ -88,6 +88,7 @@ import {
   saveSystemSettingsGoogleSheetsEndpoint
 } from "./routes/system-settings.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
+import { platformValidationEndpoint } from "./routes/platform-validation.js";
 import {
   BACKEND_APPS_SCRIPT,
   BACKEND_GOOGLE_SHEETS,
@@ -130,6 +131,7 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teacher-history", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherHistoryEndpoint)],
   ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
+  ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],
 

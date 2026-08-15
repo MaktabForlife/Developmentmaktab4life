@@ -100,6 +100,11 @@ const driveLibrary = getBackendSelection({ M4L_BACKEND_RESOURCES: "apps-script" 
 assert.equal(driveLibrary.backend, BACKEND_WORKER);
 assert.equal(driveLibrary.source, "fixed");
 
+const platformValidation = getBackendSelection({}, "platform-validation");
+assert.equal(platformValidation.valid, true);
+assert.equal(platformValidation.backend, BACKEND_WORKER);
+assert.equal(platformValidation.source, "fixed");
+
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "true" }), true);
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "false" }), false);
 assert.equal(defaults.routingLogsEnabled, false);

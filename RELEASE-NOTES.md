@@ -1,3 +1,56 @@
+V102.1
+
+# Validate the live Platform Sheet safely
+
+- Adds an ADMIN-only live validation endpoint for the central Platform Sheet.
+- Validates all nine headers and the configured account URL, schema version,
+  curriculum version, active courses, unique IDs and membership references.
+- Shows the result from a new `Validate Platform Sheet` button in System
+  Settings.
+- Returns counts and readiness only; no Sheet IDs, identities, hashes or secrets
+  are sent to the browser.
+- Existing logins and application-data routes remain on the V101.4.3 Reboot
+  Sheet.
+- Application and Worker metadata are bumped to `102.1`; the Platform Sheet
+  schema remains `102.0.2`.
+
+Deploy to development before production and validate the empty-account Platform
+Sheet before beginning the controlled identity migration.
+
+---
+
+V102.0.2
+
+# Central Platform Sheet foundation
+
+- Adds the exact central Platform Sheet contract for courses, accounts,
+  course/role access, global curriculum, platform audit and
+  cross-course teacher schedule indexing.
+- Uses roles directly for authorization: Admin has everything including global
+  administration; Senior can modify assigned courses; Teacher handles
+  attendance, planners, resources, tasks and progress for assigned classes.
+- Removes the separate PlatformPermissions tab.
+- Adds `GLOBAL_ADMIN` as a central UserAccounts platform role with unrestricted
+  access to every active course.
+- Keeps ordinary Admin course-data access membership-scoped.
+- Rejects CourseRegistry SpreadsheetIDs containing a trailing slash or URL
+  characters.
+- Confirms that each Library belongs to a course. Library roots, resource rows
+  and files remain course-specific even when linked to global curriculum.
+- Adds fail-closed course registry resolution and highest-authority automatic
+  context selection helpers.
+- Allows the Google Sheets client to address an explicit spreadsheet without
+  changing any current V101.4.3 route.
+- Retains the current Reboot `GOOGLE_SPREADSHEET_ID`, role-specific login routes,
+  `TeacherAssign` live timetable and all rollback boundaries.
+- Application and Worker metadata are bumped to `102.0.2`.
+
+Create the separate Platform Sheet only after reviewing
+`docs/V102-PLATFORM-SHEET-MIGRATION.md`. This foundation package is not the
+unified account-route or production data cutover.
+
+---
+
 V101.4.3
 
 # Per-group assignments and safe timetable publication

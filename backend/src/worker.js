@@ -1,4 +1,4 @@
-/* M4L V101.4.3 - staged Timetable Builder and immutable snapshots.
+/* M4L V102.1 - live central Platform Sheet validation.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "101.4.3"
+          version: "102.1"
         });
       }
 

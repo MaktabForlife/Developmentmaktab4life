@@ -1,47 +1,46 @@
-V101.4.3 — cumulative deployment package from V101.3
+V102.1 — live Platform Sheet validation and V102 foundation
 
 Frontend
 - admin/index.html
-- index.html
-- student/index.html
 - styles.css
-- css/m4l-02-home-common-and-shared-cards.css
-- css/m4l-22-timetable-builder.css
-- js/m4l-shell.js
-- js/m4l-timetable-builder.js
+- css/m4l-18-system-settings.css
+- js/m4l-system-settings.js
 
 Backend / Worker
-- backend/src/lib/admin-audit.js
-- backend/src/lib/backend-routing.js
 - backend/src/lib/google-sheets.js
-- backend/src/routes/curriculum.js
-- backend/src/routes/timetable-builder.js
+- backend/src/lib/authorization.js
+- backend/src/lib/platform-schema.js
+- backend/src/lib/platform-sheet.js
+- backend/src/lib/backend-routing.js
+- backend/src/routes/platform-validation.js
 - backend/src/router.js
 - backend/src/worker.js
 - backend/package.json
+- backend/WORKER-SETTINGS.md
 
 Tests
-- backend/tests/admin-management-ui.test.mjs
-- backend/tests/admin-menu-home.test.mjs
-- backend/tests/curriculum.test.mjs
-- backend/tests/curriculum-write.test.mjs
-- backend/tests/group-zero-access.test.mjs
 - backend/tests/google-sheets-client.test.mjs
+- backend/tests/authorization.test.mjs
+- backend/tests/platform-sheet.test.mjs
+- backend/tests/platform-validation.test.mjs
+- backend/tests/platform-validation-ui.test.mjs
+- backend/tests/backend-routing.test.mjs
 - backend/tests/router.test.mjs
+- backend/tests/admin-management-ui.test.mjs
 - backend/tests/student-task-assignment-ui.test.mjs
-- backend/tests/timetable-builder.test.mjs
-- backend/tests/timetable-builder-ui.test.mjs
 - backend/tests/timetable-teacher-ui.test.mjs
 
-Google Sheet migration
-- docs/V101.4.3-TIMETABLE-PUBLICATION-MIGRATION.md
-- docs/V101.4.3-TimetableCourseState-template.csv
-- docs/V101.4.3-TimetablePublications-template.csv
-- docs/V101.4.3-PublishedTimetableSessions-template.csv
-- docs/V101.4-TIMETABLE-BUILDER-MIGRATION.md
-- docs/V101.4-Courses-template.csv
-- docs/V101.4-TimeSlots-template.csv
-- docs/V101.4-TimetableSessions-template.csv
+Central Platform Sheet migration
+- docs/V102-PLATFORM-SHEET-MIGRATION.md
+- docs/V102-CourseRegistry-template.csv
+- docs/V102-UserAccounts-template.csv
+- docs/V102-UserCourseAccess-template.csv
+- docs/V102-GlobalSubjectList-template.csv
+- docs/V102-GlobalModuleList-template.csv
+- docs/V102-GlobalTaskList-template.csv
+- docs/V102-PlatformConfig-template.csv
+- docs/V102-PlatformAuditLog-template.csv
+- docs/V102-TeacherScheduleIndex-template.csv
 
 Release metadata
 - version.json
@@ -52,26 +51,18 @@ Release metadata
 - CHANGED-FILES.txt
 - DELETE-FILES.txt
 
-Deployment order
-1. Back up the Google Sheet.
-2. Confirm Courses, TimeSlots and TimetableSessions use the exact V101.4 templates.
-3. Create TimetableCourseState, TimetablePublications and
-   PublishedTimetableSessions using the exact V101.4.3 templates.
-4. Confirm V101.3 AdminAuditLog and existing curriculum attribution columns.
-5. Deploy the Worker/backend.
-6. Deploy the frontend and version metadata.
-7. Build, validate and publish one course snapshot without changing the existing
-   live timetable source.
+Important boundaries
+1. Create a new, separate Platform Sheet from the nine exact templates.
+2. Add PLATFORM_SPREADSHEET_ID without removing GOOGLE_SPREADSHEET_ID.
+3. Deploy development and run Validate Platform Sheet from ADMIN System Settings.
+4. Keep all current V101.4.3 application-data routes on the Reboot Sheet.
+5. Keep each course Library and its resources course-specific.
+6. Do not activate /account/<uniqueid> until central authentication and
+   CourseID/role-scoped tokens are implemented.
+7. Keep TeacherAssign and TimeTable as the live timetable source until the
+   published read cutover is separately verified.
 
-V101.4 does not publish builder sessions. TeacherAssign and TimeTable remain the
-live read source. No Apps Script deployment, Worker binding, or Cloudflare
-variable change is required.
-
-V101.4.1 adds no Sheet headers. It adds multi-day/group creation, detailed
-in-dialog conflict feedback and 24-hour time display.
-
-V101.4.2 adds repeatable lesson rows and creates every lesson/day/group
-combination in one validated session append. It adds no Sheet headers.
-
-V101.4.3 replaces lesson rows with per-group assignments and adds three Sheet
-tabs for stage, publication metadata and immutable session snapshots.
+Rollback
+V102.1 adds only the ADMIN validation read. It does not redirect existing
+application-data endpoints through CourseRegistry. Reverting the Worker leaves
+V101.4.3 data routing unchanged.

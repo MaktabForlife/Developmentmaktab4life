@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=101.4.3">
+<link rel="stylesheet" href="/styles.css?v=102.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -396,6 +396,27 @@
             />
             <span class="system-settings-help">Used when a timetable session does not have its own Zoom link.</span>
           </label>
+        </section>
+
+        <section class="system-settings-card" aria-labelledby="system-settings-platform-heading">
+          <h3 id="system-settings-platform-heading">Platform Sheet</h3>
+          <p class="system-settings-help">
+            Check the central registry, exact tab headers and migration readiness without displaying Sheet IDs or secrets.
+          </p>
+          <button
+            type="button"
+            class="system-settings-validate"
+            data-system-settings-action="validate-platform"
+          >
+            <span class="app-icon" aria-hidden="true"></span>
+            <span>Validate Platform Sheet</span>
+          </button>
+          <p
+            id="system-settings-platform-status"
+            class="system-settings-platform-status"
+            role="status"
+            aria-live="polite"
+          ></p>
         </section>
 
         <button type="submit" class="system-settings-save" data-system-settings-action="save">
@@ -1506,7 +1527,7 @@
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
-<script src="/js/m4l-system-settings.js?v=101.2"></script>
+<script src="/js/m4l-system-settings.js?v=102.1"></script>
 <script src="/js/m4l-timetable-builder.js?v=101.4.3"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>

@@ -72,6 +72,10 @@ try {
     () => readGoogleSheetValues({ ...env, GOOGLE_SPREADSHEET_ID: "" }, "Data!A:B"),
     /Missing GOOGLE_SPREADSHEET_ID/
   );
+  await assert.rejects(
+    () => readGoogleSheetValues(env, "Data!A:B", { spreadsheetId: "" }),
+    /Missing explicit Google Spreadsheet ID/
+  );
 
   const rows = await readGoogleSheetValues(env, "Data!A:B");
   assert.deepEqual(rows, [["Header"], ["Value"]]);
@@ -100,6 +104,9 @@ try {
       range: { sheetId: 7, dimension: "ROWS", startIndex: 2, endIndex: 3 }
     }
   }]);
+  await readGoogleSheetValues(env, "CourseRegistry!A:K", {
+    spreadsheetId: "platform-spreadsheet"
+  });
   await assert.rejects(
     () => batchUpdateGoogleSheetValues(env, []),
     /requires at least one range/
@@ -112,7 +119,7 @@ try {
   assert.equal(oauthCalls, 1, "The reusable client should reuse a valid access token");
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 6);
+  assert.equal(sheetsCalls.length, 7);
 
   assert.equal(sheetsCalls[0].method, "GET");
   assert.equal(sheetsCalls[0].url.pathname.endsWith("/values/Data!A%3AB"), true);
@@ -165,6 +172,12 @@ try {
       }
     }]
   });
+  assert.equal(
+    sheetsCalls[6].url.pathname.startsWith("/v4/spreadsheets/platform-spreadsheet/values/"),
+    true,
+    "An explicit spreadsheet target must override the legacy course Sheet variable"
+  );
+  assert.equal(sheetsCalls[6].url.pathname.endsWith("/values/CourseRegistry!A%3AK"), true);
 } finally {
   globalThis.fetch = originalFetch;
 }

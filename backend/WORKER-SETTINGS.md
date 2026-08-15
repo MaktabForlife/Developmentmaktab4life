@@ -1,6 +1,6 @@
 # M4L Worker Settings
 
-V100.6
+V102.1
 
 Cloudflare Worker **Variables and Secrets** are the source of truth for values that differ between development and production. `backend/wrangler.jsonc` contains deployment structure and bindings only; it must not contain environment-specific URLs, IDs, account emails, or application settings.
 
@@ -10,8 +10,14 @@ Configure these separately on `devrebootworker` and `rebootworker`:
 
 - `APPS_SCRIPT_URL` — Weekly Planner PNG-to-Drive Apps Script web-app URL.
 - `GOOGLE_SPREADSHEET_ID` — spreadsheet used by that Worker environment.
+- `PLATFORM_SPREADSHEET_ID` — separate central Platform Sheet containing the
+  V102 course registry, identities, memberships and global curriculum. V102.1
+  validates this target through the ADMIN-only Platform Sheet validator but
+  does not yet move existing application-data routes to it.
 - `M4L_DRIVE_ACCESS_TTL_SECONDS` — private Drive access lifetime, currently expected to be `3600` unless intentionally changed.
-- `M4L_GOOGLE_DRIVE_ROOT_FOLDER_ID` — root folder exposed to the M4L Library browser.
+- `M4L_GOOGLE_DRIVE_ROOT_FOLDER_ID` — temporary Reboot Library root fallback.
+  The Library is course-specific; a later V102 cutover reads
+  `LibraryRootFolderID` from the authenticated course's local `SystemConfig`.
 - `M4L_GOOGLE_SERVICE_ACCOUNT_EMAIL` — human-readable expected service-account identity. It must match `GOOGLE_SERVICE_ACCOUNT_JSON.client_email` once configured.
 - `M4L_STUDENT_LOGIN_BASE` — environment-specific Student personal-link base URL.
 - `M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS` — normally `true`.

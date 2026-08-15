@@ -1,4 +1,4 @@
-/* M4L V101.2 - ADMIN-only UI-managed SystemConfig settings. */
+/* M4L V102.1 - ADMIN SystemConfig and central Platform Sheet validation. */
 (function () {
   "use strict";
 
@@ -134,6 +134,44 @@
     }
   }
 
+  async function validatePlatformSheet() {
+    if (loading || !isSystemSettingsAdmin()) return false;
+
+    loading = true;
+    setSystemSettingsBusy(true);
+    setPlatformValidationMessage("Validating Platform Sheet...", "loading");
+
+    try {
+      const result = await postSystemSettings("/api/admin/platform/validate", {});
+      if (!result.success) {
+        throw new Error(result.detail || result.error || "Platform Sheet validation failed");
+      }
+
+      const tabCount = Number(result.tabCount || 0);
+      const courseCount = Number(result.activeCourseCount || 0);
+      const accountCount = Number(result.accountCount || 0);
+      const migrationState = result.readyForUnifiedLogin
+        ? "Unified-login data is present."
+        : "Ready for account migration; unified login is not active yet.";
+      setPlatformValidationMessage(
+        `Ready: ${tabCount} tabs, ${courseCount} active course${courseCount === 1 ? "" : "s"}, ` +
+        `${accountCount} central account${accountCount === 1 ? "" : "s"}. ${migrationState}`,
+        "success"
+      );
+      return true;
+    } catch (error) {
+      console.error("Could not validate Platform Sheet", error);
+      setPlatformValidationMessage(
+        error && error.message ? error.message : "Platform Sheet validation failed.",
+        "error"
+      );
+      return false;
+    } finally {
+      loading = false;
+      setSystemSettingsBusy(false);
+    }
+  }
+
   function renderSystemSettings(settings) {
     setInputValue("system-settings-student-login-url", settings.studentLoginBaseUrl || "");
     setInputValue(
@@ -166,6 +204,14 @@
 
   function setSystemSettingsMessage(message, kind) {
     const element = document.getElementById("system-settings-message");
+    if (!element) return;
+
+    element.textContent = String(message || "");
+    element.dataset.kind = String(kind || "");
+  }
+
+  function setPlatformValidationMessage(message, kind) {
+    const element = document.getElementById("system-settings-platform-status");
     if (!element) return;
 
     element.textContent = String(message || "");
@@ -209,6 +255,8 @@
       loadSystemSettings();
     } else if (action === "save") {
       saveSystemSettings();
+    } else if (action === "validate-platform") {
+      validatePlatformSheet();
     }
   }
 
@@ -235,7 +283,8 @@
     syncAccess: syncSystemSettingsAccess,
     open: showSystemSettings,
     load: loadSystemSettings,
-    save: saveSystemSettings
+    save: saveSystemSettings,
+    validatePlatform: validatePlatformSheet
   });
   window.showSystemSettings = showSystemSettings;
 

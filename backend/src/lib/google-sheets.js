@@ -12,18 +12,19 @@ let accessTokenCache = {
 };
 let accessTokenPromise = null;
 
-export async function readGoogleSheetValues(env, range) {
+export async function readGoogleSheetValues(env, range, target = {}) {
   const result = await callGoogleSheetsValuesApi(env, range, {
     method: "GET",
     query: {
       majorDimension: "ROWS"
-    }
+    },
+    spreadsheetId: getGoogleSpreadsheetId(env, target)
   });
 
   return Array.isArray(result.values) ? result.values : [];
 }
 
-export async function updateGoogleSheetValues(env, range, values) {
+export async function updateGoogleSheetValues(env, range, values, target = {}) {
   return callGoogleSheetsValuesApi(env, range, {
     method: "PUT",
     query: {
@@ -33,11 +34,12 @@ export async function updateGoogleSheetValues(env, range, values) {
       range,
       majorDimension: "ROWS",
       values
-    }
+    },
+    spreadsheetId: getGoogleSpreadsheetId(env, target)
   });
 }
 
-export async function appendGoogleSheetValues(env, range, values) {
+export async function appendGoogleSheetValues(env, range, values, target = {}) {
   return callGoogleSheetsValuesApi(env, range, {
     method: "POST",
     action: "append",
@@ -49,16 +51,13 @@ export async function appendGoogleSheetValues(env, range, values) {
       range,
       majorDimension: "ROWS",
       values
-    }
+    },
+    spreadsheetId: getGoogleSpreadsheetId(env, target)
   });
 }
 
-export async function batchUpdateGoogleSheetValues(env, data) {
-  const spreadsheetId = String(env.GOOGLE_SPREADSHEET_ID || "").trim();
-
-  if (!spreadsheetId) {
-    throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
-  }
+export async function batchUpdateGoogleSheetValues(env, data, target = {}) {
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
 
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error("Google Sheets batch update requires at least one range");
@@ -85,8 +84,8 @@ export async function batchUpdateGoogleSheetValues(env, data) {
   return parseGoogleSheetsResponse(response);
 }
 
-export async function readGoogleSpreadsheetSheetProperties(env) {
-  const spreadsheetId = getGoogleSpreadsheetId(env);
+export async function readGoogleSpreadsheetSheetProperties(env, target = {}) {
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
   const accessToken = await getGoogleSheetsAccessToken(env);
   const url = [
     "https://sheets.googleapis.com/v4/spreadsheets/",
@@ -107,8 +106,8 @@ export async function readGoogleSpreadsheetSheetProperties(env) {
   })).filter(sheet => Number.isInteger(sheet.sheetId) && sheet.title);
 }
 
-export async function batchUpdateGoogleSpreadsheet(env, requests) {
-  const spreadsheetId = getGoogleSpreadsheetId(env);
+export async function batchUpdateGoogleSpreadsheet(env, requests, target = {}) {
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
 
   if (!Array.isArray(requests) || requests.length === 0) {
     throw new Error("Google Sheets spreadsheet batch update requires at least one request");
@@ -131,10 +130,16 @@ export async function batchUpdateGoogleSpreadsheet(env, requests) {
   return parseGoogleSheetsResponse(response);
 }
 
-function getGoogleSpreadsheetId(env) {
-  const spreadsheetId = String(env.GOOGLE_SPREADSHEET_ID || "").trim();
+function getGoogleSpreadsheetId(env, target = {}) {
+  const hasExplicitTarget = Object.prototype.hasOwnProperty.call(target, "spreadsheetId");
+  const spreadsheetId = String(
+    hasExplicitTarget ? target.spreadsheetId : env.GOOGLE_SPREADSHEET_ID || ""
+  ).trim();
 
   if (!spreadsheetId) {
+    if (hasExplicitTarget) {
+      throw new Error("Missing explicit Google Spreadsheet ID");
+    }
     throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
   }
 
@@ -313,11 +318,7 @@ function base64urlBytes(bytes) {
 }
 
 async function callGoogleSheetsValuesApi(env, range, options = {}) {
-  const spreadsheetId = String(env.GOOGLE_SPREADSHEET_ID || "").trim();
-
-  if (!spreadsheetId) {
-    throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
-  }
+  const spreadsheetId = options.spreadsheetId;
 
   const accessToken = await getGoogleSheetsAccessToken(env);
   const query = new URLSearchParams(options.query || {});

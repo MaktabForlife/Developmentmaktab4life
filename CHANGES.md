@@ -1,3 +1,64 @@
+# V102.1 — Live Platform Sheet validation
+
+- Adds `/api/admin/platform/validate`, restricted to authenticated `ADMIN`
+  sessions and fixed to the Worker backend.
+- Reads the actual `PLATFORM_SPREADSHEET_ID` and validates all nine exact tab
+  schemas, PlatformConfig values, active course registry rows, SpreadsheetID
+  format, account uniqueness and course-access references.
+- Returns counts and readiness states only; Spreadsheet IDs, central account
+  identities, PIN hashes, secrets and row contents are never returned.
+- Adds a `Validate Platform Sheet` action to ADMIN System Settings with concise
+  migration-readiness feedback.
+- Keeps every existing application-data route on `GOOGLE_SPREADSHEET_ID` and
+  retains V101.4.3 live login/timetable behaviour.
+- Adds backend, authorization, routing and frontend integration coverage.
+- Bumps application and Worker metadata to `102.1` while retaining Platform
+  schema version `102.0.2`.
+
+Deploy to development first, sign in as ADMIN, open System Settings and run
+`Validate Platform Sheet`. Do not populate central accounts yet.
+
+---
+
+# V102.0.2 — GlobalAdmin, authorization and multi-Sheet routing foundation
+
+- Defines nine exact, fail-closed Platform Sheet schemas for the course registry,
+  central identity/access, global curriculum, platform
+  configuration/audit and the cross-course teacher schedule index.
+- Makes authorization role-based: Admin includes every global/platform
+  capability; Senior has course-level modification capabilities; Teacher has
+  attendance, planner, resource, task and progress capabilities limited to
+  assigned classes; Student is limited to own data and progress.
+- Removes the separate `PlatformPermissions` design.
+- Adds central `UserAccounts.PlatformRole=GLOBAL_ADMIN` for unrestricted access
+  to every active course without creating repeated course-membership rows.
+- Keeps Admin course operations membership-scoped while retaining Admin global
+  curriculum and platform-management authority.
+- Opens GlobalAdmin in a platform-level context and requires a fresh
+  CourseID-scoped context when entering a course.
+- Rejects malformed CourseRegistry SpreadsheetIDs, including pasted IDs with a
+  trailing slash.
+- Keeps Libraries and all resource records course-specific, including resources
+  attached to a central GLOBAL subject, module or task.
+- Adds explicit spreadsheet targeting to every reusable Google Sheets value and
+  spreadsheet operation while preserving `GOOGLE_SPREADSHEET_ID` as the legacy
+  default for all current routes.
+- Resolves one active course registration from the central Platform Sheet and
+  rejects missing, inactive, duplicate or un-routable records.
+- Implements the automatic context selection rule: highest authority first,
+  then latest use, then one designated default; ambiguous ties fail closed.
+- Adds exact membership revalidation helpers for AccountID, CourseID and role.
+- Adds central schema, course routing, context selection and backward-
+  compatibility regression coverage.
+- Does not activate unified account login, dynamic live API routing or the
+  published-timetable read cutover in this foundation release.
+- Bumps application and Worker metadata to `102.0.2`.
+
+See `docs/V102-PLATFORM-SHEET-MIGRATION.md` before configuration. Keep
+`GOOGLE_SPREADSHEET_ID`, `TeacherAssign` and `TimeTable` unchanged.
+
+---
+
 # V101.4.3 — Group assignments and staged timetable publication
 
 - Replaces repeatable Lessons with one Subject, one optional Module, multiple

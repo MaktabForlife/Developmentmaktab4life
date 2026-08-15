@@ -1,0 +1,156 @@
+import assert from "node:assert/strict";
+import { createSessionToken } from "../src/lib/auth.js";
+import { PLATFORM_SHEET_HEADERS } from "../src/lib/platform-schema.js";
+import worker from "../src/worker.js";
+
+const keyPair = await crypto.subtle.generateKey(
+  {
+    name: "RSASSA-PKCS1-v1_5",
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: "SHA-256"
+  },
+  true,
+  ["sign", "verify"]
+);
+const pkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", keyPair.privateKey));
+const env = {
+  GOOGLE_SPREADSHEET_ID: "legacy-course-sheet",
+  PLATFORM_SPREADSHEET_ID: "central-platform-sheet",
+  SESSION_SECRET: "platform-validation-session-secret",
+  GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+    type: "service_account",
+    client_email: "platform-validation@example.iam.gserviceaccount.com",
+    private_key_id: "platform-validation-key",
+    private_key: toPem(pkcs8, "PRIVATE KEY"),
+    token_uri: "https://oauth2.googleapis.com/token"
+  })
+};
+const baseTables = Object.fromEntries(Object.entries(PLATFORM_SHEET_HEADERS).map(([name, headers]) => (
+  [name, [headers]]
+)));
+baseTables.CourseRegistry = [
+  PLATFORM_SHEET_HEADERS.CourseRegistry,
+  ["COURSE1", "Reboot Your Maktab", "reboot-course-sheet", true, "101.4.3"]
+];
+baseTables.PlatformConfig = [
+  PLATFORM_SHEET_HEADERS.PlatformConfig,
+  ["AccountLoginBaseUrl", "https://development.example.test/account/"],
+  ["PlatformSchemaVersion", "102.0.2"],
+  ["GlobalCurriculumVersion", 1]
+];
+
+let tables = structuredClone(baseTables);
+const calls = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (input, init = {}) => {
+  const url = new URL(String(input));
+  calls.push({ url, init });
+  if (url.hostname === "oauth2.googleapis.com") {
+    return response({ access_token: "platform-validation-token", expires_in: 3600 });
+  }
+  if (url.hostname === "sheets.googleapis.com") {
+    assert.equal(
+      url.pathname.startsWith("/v4/spreadsheets/central-platform-sheet/values/"),
+      true,
+      "Validation must read only PLATFORM_SPREADSHEET_ID"
+    );
+    const range = decodeURIComponent(url.pathname.split("/values/")[1]);
+    const match = /^'([^']+)'!/.exec(range);
+    assert.ok(match, `Unexpected Platform Sheet range: ${range}`);
+    return response({ values: tables[match[1]] });
+  }
+  throw new Error(`Unexpected fetch: ${url}`);
+};
+
+try {
+  const adminToken = await createSessionToken({
+    type: "admin",
+    role: "ADMIN",
+    uniqueid: "admin-platform-validator"
+  }, env);
+  const seniorToken = await createSessionToken({
+    type: "admin",
+    role: "SENIOR",
+    uniqueid: "senior-platform-validator"
+  }, env);
+
+  const unauthorized = await worker.fetch(validationRequest(""), env);
+  assert.equal(unauthorized.status, 401);
+
+  const forbidden = await worker.fetch(validationRequest(seniorToken), env);
+  assert.equal(forbidden.status, 403);
+
+  const valid = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(valid.status, 200);
+  assert.equal(valid.headers.get("X-M4L-Feature"), "platform-validation");
+  assert.equal(valid.headers.get("X-M4L-Backend"), "worker");
+  const result = await valid.json();
+  assert.deepEqual(result, {
+    success: true,
+    service: "platform-validation",
+    status: "ready",
+    platformSchemaVersion: "102.0.2",
+    globalCurriculumVersion: 1,
+    tabCount: 9,
+    rowCounts: {
+      CourseRegistry: 1,
+      UserAccounts: 0,
+      UserCourseAccess: 0,
+      GlobalSubjectList: 0,
+      GlobalModuleList: 0,
+      GlobalTaskList: 0,
+      PlatformConfig: 3,
+      PlatformAuditLog: 0,
+      TeacherScheduleIndex: 0
+    },
+    activeCourseCount: 1,
+    accountCount: 0,
+    courseAccessCount: 0,
+    globalAdminCount: 0,
+    readyForAccountMigration: true,
+    readyForUnifiedLogin: false
+  });
+  const serialized = JSON.stringify(result);
+  assert.equal(serialized.includes("central-platform-sheet"), false);
+  assert.equal(serialized.includes("reboot-course-sheet"), false);
+
+  tables = structuredClone(baseTables);
+  tables.CourseRegistry[0][0] = "CourseId";
+  const badHeader = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(badHeader.status, 503);
+  assert.match((await badHeader.json()).detail, /header A1 must be CourseID/);
+
+  tables = structuredClone(baseTables);
+  tables.CourseRegistry[1][2] = "reboot-course-sheet/";
+  const badSpreadsheetId = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(badSpreadsheetId.status, 503);
+  assert.match((await badSpreadsheetId.json()).detail, /invalid SpreadsheetID/);
+
+  const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
+  assert.equal(sheetsCalls.length, 27);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
+console.log("Live Platform Sheet validation endpoint tests passed.");
+
+function validationRequest(token) {
+  return new Request("https://worker.test/api/admin/platform/validate", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+}
+
+function toPem(bytes, label) {
+  const base64 = Buffer.from(bytes).toString("base64");
+  const lines = base64.match(/.{1,64}/g).join("\n");
+  return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----\n`;
+}
+
+function response(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+}

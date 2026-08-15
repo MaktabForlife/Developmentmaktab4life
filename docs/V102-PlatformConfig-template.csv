@@ -1,0 +1,4 @@
+ConfigKey,ConfigValue,UpdatedDate,UpdatedByAccountID,UpdatedByAccountName
+AccountLoginBaseUrl,,,,
+PlatformSchemaVersion,102.0.2,,,
+GlobalCurriculumVersion,1,,,

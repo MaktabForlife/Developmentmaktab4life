@@ -1,4 +1,4 @@
-/* M4L V98.12 - UI-managed application configuration. */
+/* M4L V102.1 - UI-managed configuration and Platform Sheet validation. */
 
 #system-settings-screen {
   width: 100%;
@@ -93,6 +93,39 @@
   color: var(--text);
   background: var(--surface-chip);
   font-weight: 700;
+}
+
+.system-settings-validate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: 14px;
+  color: var(--text);
+  background: var(--surface-chip);
+  font-weight: 700;
+}
+
+.system-settings-validate .app-icon {
+  --app-icon-url: url('/icons/refresh.svg');
+}
+
+.system-settings-platform-status {
+  min-height: 22px;
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.system-settings-platform-status[data-kind="success"] {
+  color: var(--primary);
+}
+
+.system-settings-platform-status[data-kind="error"] {
+  color: var(--error);
 }
 
 .system-settings-save .app-icon {
