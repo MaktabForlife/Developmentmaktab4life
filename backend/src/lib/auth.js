@@ -1,5 +1,13 @@
 import { readGoogleSheetValues } from "./google-sheets.js";
 import { json } from "./http.js";
+import {
+  getPlatformSpreadsheetId,
+  resolveActiveCourseRegistration
+} from "./platform-sheet.js";
+import {
+  isActivePlatformValue,
+  normalizePlatformIdentifier
+} from "./platform-schema.js";
 
 const PIN_HASH_VERSION = "v2";
 const PIN_HASH_ALGORITHM = "pbkdf2-sha256";
@@ -155,6 +163,12 @@ export async function getAuthUser(request, env) {
 
   if (!payload) {
     return null;
+  }
+
+  // Central V102 account tokens are always revalidated. The legacy feature flag
+  // remains only for the pre-V102 admin/student sessions during staged cutover.
+  if (payload.type === "account") {
+    return validateCredentialBoundSession(payload, env);
   }
 
   if (!requiresCredentialBoundSessions(env)) {
@@ -359,6 +373,10 @@ async function validateCredentialBoundSession(payload, env) {
     return null;
   }
 
+  if (payload.type === "account") {
+    return validateCentralAccountSession(payload, env);
+  }
+
   let range;
   let expectedId;
   let pinSetupColumn;
@@ -430,6 +448,112 @@ async function validateCredentialBoundSession(payload, env) {
     ...payload,
     role: currentRole,
     assignedgroup: currentAssignedGroup
+  };
+}
+
+async function validateCentralAccountSession(payload, env) {
+  const platformSpreadsheetId = getPlatformSpreadsheetId(env);
+  const accountId = normalizePlatformIdentifier(payload.accountid);
+  const uniqueId = String(payload.uniqueid || "").trim();
+  const tokenRole = normalizePlatformIdentifier(payload.role);
+  const tokenScope = normalizePlatformIdentifier(payload.scope);
+  if (!accountId || !uniqueId || !["PLATFORM", "COURSE"].includes(tokenScope)) {
+    return null;
+  }
+
+  const accountRows = await readGoogleSheetValues(
+    env,
+    `UserAccounts!A${payload.authrow}:N${payload.authrow}`,
+    { spreadsheetId: platformSpreadsheetId }
+  );
+  const accountRow = Array.isArray(accountRows[0]) ? accountRows[0] : [];
+  const currentAccountId = normalizePlatformIdentifier(accountRow[0]);
+  const currentUniqueId = String(accountRow[2] || "").trim();
+  const currentHash = String(accountRow[4] || "").trim();
+  const platformRole = normalizePlatformIdentifier(accountRow[13]);
+
+  if (
+    currentAccountId !== accountId ||
+    currentUniqueId !== uniqueId ||
+    !normalizeBooleanCell(accountRow[3]) ||
+    !isActivePlatformValue(accountRow[5]) ||
+    !currentHash
+  ) {
+    return null;
+  }
+
+  const currentVersion = await createCredentialVersion(currentHash, env.SESSION_SECRET);
+  if (!constantTimeEqual(payload.cv, currentVersion)) {
+    return null;
+  }
+
+  const isGlobalAdmin = platformRole === "GLOBAL_ADMIN";
+  if (tokenScope === "PLATFORM") {
+    if (!isGlobalAdmin || tokenRole !== "GLOBAL_ADMIN") return null;
+    return {
+      ...payload,
+      accountid: String(accountRow[0] || "").trim(),
+      username: String(accountRow[1] || "").trim(),
+      role: "GLOBAL_ADMIN",
+      scope: "PLATFORM",
+      courseid: "",
+      courserecordid: "",
+      accessid: ""
+    };
+  }
+
+  const courseId = String(payload.courseid || "").trim();
+  if (!courseId) return null;
+  const course = await resolveActiveCourseRegistration(env, courseId);
+
+  if (isGlobalAdmin) {
+    if (tokenRole !== "GLOBAL_ADMIN") return null;
+    return {
+      ...payload,
+      accountid: String(accountRow[0] || "").trim(),
+      username: String(accountRow[1] || "").trim(),
+      role: "GLOBAL_ADMIN",
+      scope: "COURSE",
+      courseid: course.courseId,
+      coursename: course.courseName,
+      courserecordid: "",
+      accessid: ""
+    };
+  }
+
+  if (!Number.isInteger(payload.accessrow) || payload.accessrow < 2) return null;
+  const accessRows = await readGoogleSheetValues(
+    env,
+    `UserCourseAccess!A${payload.accessrow}:N${payload.accessrow}`,
+    { spreadsheetId: platformSpreadsheetId }
+  );
+  const accessRow = Array.isArray(accessRows[0]) ? accessRows[0] : [];
+  const currentRole = normalizePlatformIdentifier(accessRow[3]);
+  const currentCourseId = normalizePlatformIdentifier(accessRow[2]);
+  const courseRecordId = String(accessRow[13] || "").trim();
+
+  if (
+    normalizePlatformIdentifier(accessRow[1]) !== accountId ||
+    currentCourseId !== normalizePlatformIdentifier(course.courseId) ||
+    currentRole !== tokenRole ||
+    !isActivePlatformValue(accessRow[4]) ||
+    String(accessRow[0] || "").trim() !== String(payload.accessid || "").trim() ||
+    courseRecordId !== String(payload.courserecordid || "").trim() ||
+    !courseRecordId
+  ) {
+    return null;
+  }
+
+  return {
+    ...payload,
+    accountid: String(accountRow[0] || "").trim(),
+    username: String(accountRow[1] || "").trim(),
+    role: currentRole,
+    scope: "COURSE",
+    courseid: course.courseId,
+    coursename: course.courseName,
+    courserecordid: courseRecordId,
+    accessid: String(accessRow[0] || "").trim()
   };
 }
 

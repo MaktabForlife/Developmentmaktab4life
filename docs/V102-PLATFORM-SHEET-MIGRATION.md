@@ -1,11 +1,17 @@
-# V102.1 implementation with Platform schema V102.0.2
+# V102.2 implementation with Platform schema V102.0.3
 
-V102.1 adds live ADMIN validation to the fail-closed V102.0.2 schema, role
-authorization and low-level routing foundation for the
-multi-course platform. It does **not** activate `/account/<uniqueid>`, switch
-current live API routes to dynamic course Sheets, or replace `TeacherAssign` as
-the live timetable source. Those cutovers follow after central identities and
-course access have been migrated and verified.
+> V102.3 note: after completing this migration, the central account can now be
+> verified at `/account/<uniqueid>`. V102.3 still keeps operational Admin and
+> Student routes on the Reboot Sheet. See
+> `V102.3-UNIFIED-ACCOUNT-VERIFICATION.md` before testing the new route.
+
+V102.2 adds a preview-first, explicitly confirmed migration from the current
+course's `AdminRecords` and `StudentRecords` into central `UserAccounts` and
+`UserCourseAccess`. V102.2 itself does **not** activate `/account/<uniqueid>`,
+switch current live API routes to dynamic course Sheets, or replace
+`TeacherAssign` as the live timetable source. V102.3 subsequently activates the
+central account verification route while existing operational logins remain
+available.
 
 ## Confirmed architecture boundaries
 
@@ -20,6 +26,9 @@ course access have been migrated and verified.
   CourseID and role membership. A submitted CourseID or URL is never authority.
 - One central `UserAccounts` row owns authentication identity and one personal
   UniqueID. `UserCourseAccess` owns course/role memberships.
+- `UserCourseAccess.CourseRecordID` stores the course-local `AdminID` or
+  `StudentID`. This link is required to load class assignment, enrolment,
+  attendance, planner and progress records after unified login.
 - Authorization is role-based. `GLOBAL_ADMIN` and `ADMIN` include
   platform/global authority; no
   separate `PlatformPermissions` tab or permission grant is required.
@@ -58,9 +67,16 @@ Create the following tabs from the exact CSV templates in this directory:
 8. `PlatformAuditLog`
 9. `TeacherScheduleIndex`
 
-Header spelling, order and capitalisation are enforced by the Worker. V102.1
+Header spelling, order and capitalisation are enforced by the Worker. V102.2
 fails closed on a missing tab, missing header, duplicate course lookup, inactive
 course or blank SpreadsheetID.
+
+If the Platform Sheet was created for V102.1, make these two exact changes
+before deploying V102.2:
+
+1. Enter `CourseRecordID` in `UserCourseAccess!N1`.
+2. Enter `102.0.3` in the `ConfigValue` cell for
+   `PlatformConfig.PlatformSchemaVersion` (normally `PlatformConfig!B3`).
 
 ## Authorization matrix
 
@@ -95,7 +111,7 @@ curriculum, but Teacher resource visibility and assignment remain class-scoped.
 | ConfigKey | Initial value |
 | --- | --- |
 | `AccountLoginBaseUrl` | The environment-specific `/account/` base URL when the unified route is deployed |
-| `PlatformSchemaVersion` | `102.0.2` |
+| `PlatformSchemaVersion` | `102.0.3` |
 | `GlobalCurriculumVersion` | `1` |
 
 ## ID and uniqueness rules
@@ -107,6 +123,9 @@ curriculum, but Teacher resource visibility and assignment remain class-scoped.
 - `UserAccounts.UniqueID` must be globally unique across all active and inactive
   account rows so a retired URL cannot be reassigned accidentally.
 - `UserCourseAccess` must be unique by `AccountID + CourseID + Role`.
+- `UserCourseAccess.CourseRecordID` must contain the matching course-local
+  `AdminRecords.AdminID` for staff roles or `StudentRecords.StudentID` for the
+  Student role.
 - One account may have several roles and several courses.
 - Test Admin and Student records that currently share a UniqueID must be given
   separate test UniqueIDs before central account migration. This does not block
@@ -142,13 +161,49 @@ silently choosing a course.
    actual SpreadsheetID and current local schema version `101.4.3`.
    Paste only the Spreadsheet ID; do not include a trailing slash or URL.
 7. Run central schema/routing validation before importing identities.
-8. Migrate identities and memberships in a later cutover step; do not activate
-   `/account/<uniqueid>` until central login and context-scoped tokens are ready.
+8. Select `Preview Account Migration` in ADMIN System Settings. Correct every
+   blocking issue before writing anything.
+9. The first migration must retain the checked GLOBAL_ADMIN option so the
+   platform has one unrestricted recovery authority.
+10. Type the displayed `MIGRATE <COURSEID>` confirmation and run the migration.
+11. Validate the Platform Sheet again and verify central account/access counts.
+12. Deploy V102.3 to development and verify `/account/<uniqueid>` using
+    `V102.3-UNIFIED-ACCOUNT-VERIFICATION.md`. Do not redirect the legacy routes
+    or enable central-token application-data access yet.
+
+## V102.2 migration rules
+
+- The current course Sheet must resolve exactly once in active
+  `CourseRegistry`; a legacy Admin session cannot select another course merely
+  by submitting a CourseID.
+- `SYSTEM` student rows are excluded. Other incomplete account rows block the
+  migration.
+- Duplicate legacy UniqueIDs block the migration and identify their source
+  sheet, row and local record ID. Accounts are never merged by display name.
+- Matching display names across AdminRecords and StudentRecords with different
+  UniqueIDs are flagged as possible mixed-role identities and block automatic
+  migration until reviewed.
+- When later courses are migrated, a course record whose display name matches a
+  central account but whose UniqueID differs is also blocked for manual identity
+  linking. V102.2 never guesses that two names represent the same person.
+- Supported existing PIN hashes are copied without returning them to the
+  browser. `PINSetup=TRUE` without a supported hash becomes a warning and the
+  central account is marked for PIN setup.
+- Preview creates no UUIDs and writes no cells. Commit requires the exact
+  preview token and confirmation text; any source or central-data change makes
+  the preview stale.
+- UserAccounts, UserCourseAccess and one PlatformAuditLog event are written in
+  one Google Sheets values batch.
+- The first migration grants `GLOBAL_ADMIN` only to the currently authenticated
+  Admin when the checked option is explicitly included in both preview and
+  commit.
 
 ## Rollback boundary
 
-V102.1 does not route any existing application-data endpoint through
-`CourseRegistry`; only `/api/admin/platform/validate` reads the Platform Sheet.
-Removing `PLATFORM_SPREADSHEET_ID` or reverting the Worker leaves all V101.4.3 live routes
-on `GOOGLE_SPREADSHEET_ID`. Do not delete `TeacherAssign`, `TimeTable`,
+V102.2 does not route any existing application-data endpoint through
+`CourseRegistry`. The validation route reads the Platform Sheet; the migration
+route writes only explicitly confirmed central identities, memberships and its
+central audit record. Reverting the Worker leaves all V101.4.3 live routes on
+`GOOGLE_SPREADSHEET_ID`; committed central rows may remain and are consumed by
+the V102.3 account-verification stage. Do not delete `TeacherAssign`, `TimeTable`,
 `AdminRecords`, `StudentRecords`, or any current timetable publication tab.

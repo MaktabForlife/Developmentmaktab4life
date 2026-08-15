@@ -105,6 +105,16 @@ assert.equal(platformValidation.valid, true);
 assert.equal(platformValidation.backend, BACKEND_WORKER);
 assert.equal(platformValidation.source, "fixed");
 
+const platformAccountMigration = getBackendSelection({}, "platform-account-migration");
+assert.equal(platformAccountMigration.valid, true);
+assert.equal(platformAccountMigration.backend, BACKEND_WORKER);
+assert.equal(platformAccountMigration.source, "fixed");
+
+const accountAuth = getBackendSelection({}, "account-auth");
+assert.equal(accountAuth.valid, true);
+assert.equal(accountAuth.backend, BACKEND_WORKER);
+assert.equal(accountAuth.source, "fixed");
+
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "true" }), true);
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "false" }), false);
 assert.equal(defaults.routingLogsEnabled, false);

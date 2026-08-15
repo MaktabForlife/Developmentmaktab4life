@@ -1,3 +1,55 @@
+V102.3
+
+# Verify one account, one PIN and scoped course/role switching
+
+- Adds `/account/<uniqueid>` with central PIN setup, login and session restore.
+- Fresh PIN login selects `GLOBAL_ADMIN -> ADMIN -> SENIOR -> TEACHER -> STUDENT`,
+  then most recently used highest-role course, then the designated default.
+- Lists every active authorised context and switches course/role without another
+  PIN, issuing a new scoped token each time.
+- Revalidates central account status, PIN credential version, active membership,
+  role, CourseRecordID and active CourseRegistry entry on every central request.
+- Lets GLOBAL_ADMIN open Platform scope and switch to any active course without
+  repeated membership rows.
+- Uses separate browser storage for central sessions and does not overwrite
+  current Admin/Student sessions.
+- Centrally audits first PIN setup and legacy-hash upgrades without recording a
+  PIN or hash value.
+- Deliberately rejects the new central token at every legacy course-data route;
+  dynamic spreadsheet routing is the next cutover boundary.
+- Keeps `/admin/<uniqueid>` and `/student/<uniqueid>` operational. They are not
+  redirected in this release.
+- Adds no Sheet tab, header, Worker binding, secret or schema-version change.
+- Application and Worker metadata are `102.3`; Platform schema remains `102.0.3`.
+
+Deploy to development only after V102.2 account migration is complete. Follow
+`docs/V102.3-UNIFIED-ACCOUNT-VERIFICATION.md` and verify the account/context
+flow before beginning dynamic course-Sheet routing.
+
+---
+
+V102.2
+
+# Preview and migrate central accounts safely
+
+- Adds a preview-first account migration under ADMIN System Settings.
+- Migrates the current course's staff and students into central UserAccounts
+  and UserCourseAccess only after all blocking issues are resolved.
+- Adds `CourseRecordID` to UserCourseAccess so each membership retains its
+  course-local AdminID or StudentID link.
+- Blocks duplicate UniqueIDs and reports exact source rows without exposing the
+  UniqueID value or any PIN hash.
+- Requires GLOBAL_ADMIN bootstrap, an unchanged preview token and exact typed
+  confirmation before the one-batch write.
+- Existing role-specific login routes and all live course-data routes remain
+  active after migration.
+- Application and Worker metadata are `102.2`; Platform schema is `102.0.3`.
+
+Before deploying, enter `CourseRecordID` in `UserCourseAccess!N1`, change the
+PlatformConfig schema value to `102.0.3`, and validate the Platform Sheet.
+
+---
+
 V102.1
 
 # Validate the live Platform Sheet safely
@@ -12,7 +64,7 @@ V102.1
 - Existing logins and application-data routes remain on the V101.4.3 Reboot
   Sheet.
 - Application and Worker metadata are bumped to `102.1`; the Platform Sheet
-  schema remains `102.0.2`.
+  schema at that release remained `102.0.2`.
 
 Deploy to development before production and validate the empty-account Platform
 Sheet before beginning the controlled identity migration.

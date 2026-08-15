@@ -10,10 +10,16 @@
 /admin/*
   Cache-Control: no-cache
 
+/account/*
+  Cache-Control: no-cache
+
 /student/index.html
   Cache-Control: no-cache
 
 /admin/index.html
+  Cache-Control: no-cache
+
+/account/index.html
   Cache-Control: no-cache
 
 /app.js

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#8b4f91" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Maktabhelper Account</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
+  <link rel="stylesheet" href="/css/m4l-23-account.css?v=102.3" />
+</head>
+<body>
+  <main class="account-shell">
+    <section class="account-brand" aria-labelledby="account-brand-title">
+      <p class="account-bismillah" aria-label="Bismillah">﷽</p>
+      <img src="/logo.png" alt="Maktabhelper" class="account-logo" />
+      <p class="account-eyebrow">One account · every course</p>
+      <h1 id="account-brand-title">Maktabhelper</h1>
+      <p class="account-brand-copy">
+        Use your personal account link and one PIN. Your authorised course and role
+        contexts stay attached to this account.
+      </p>
+      <div class="account-security-note">
+        <span class="account-security-icon" aria-hidden="true">✓</span>
+        <span>Each switch is checked centrally and receives a new scoped session.</span>
+      </div>
+    </section>
+
+    <section class="account-panel" aria-labelledby="account-panel-title">
+      <div class="account-panel-topline">
+        <span class="account-version">V102.3</span>
+        <button id="logout-button" class="account-text-button hidden" type="button">Log out</button>
+      </div>
+
+      <div id="loading-view" class="account-view">
+        <div class="account-loader" aria-hidden="true"></div>
+        <h2 id="account-panel-title">Checking your account link</h2>
+        <p>Please wait a moment.</p>
+      </div>
+
+      <div id="invalid-view" class="account-view hidden" role="alert">
+        <span class="account-status-mark account-status-mark--error" aria-hidden="true">!</span>
+        <h2>Account link unavailable</h2>
+        <p id="invalid-message">This account link could not be verified.</p>
+      </div>
+
+      <form id="login-form" class="account-view hidden" novalidate>
+        <p class="account-kicker">Welcome back</p>
+        <h2 id="login-title">Enter your PIN</h2>
+        <p id="login-name" class="account-subtitle"></p>
+        <label class="account-field-label" for="login-pin">4-digit PIN</label>
+        <div class="account-pin-field">
+          <input id="login-pin" name="pin" type="password" inputmode="numeric"
+            pattern="[0-9]{4}" maxlength="4" autocomplete="current-password"
+            aria-describedby="login-error" required />
+          <button class="account-pin-toggle" type="button" data-toggle-pin="login-pin"
+            aria-label="Show PIN">Show</button>
+        </div>
+        <p id="login-error" class="account-error" aria-live="polite"></p>
+        <button class="account-primary-button" type="submit">Continue</button>
+      </form>
+
+      <form id="setup-form" class="account-view hidden" novalidate>
+        <p class="account-kicker">First sign-in</p>
+        <h2>Create your account PIN</h2>
+        <p id="setup-name" class="account-subtitle"></p>
+        <label class="account-field-label" for="setup-pin">Create a 4-digit PIN</label>
+        <div class="account-pin-field">
+          <input id="setup-pin" name="pin" type="password" inputmode="numeric"
+            pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required />
+          <button class="account-pin-toggle" type="button" data-toggle-pin="setup-pin"
+            aria-label="Show PIN">Show</button>
+        </div>
+        <label class="account-field-label" for="setup-pin-confirmation">Confirm the PIN</label>
+        <div class="account-pin-field">
+          <input id="setup-pin-confirmation" name="pinConfirmation" type="password"
+            inputmode="numeric" pattern="[0-9]{4}" maxlength="4"
+            autocomplete="new-password" required />
+          <button class="account-pin-toggle" type="button" data-toggle-pin="setup-pin-confirmation"
+            aria-label="Show confirmation PIN">Show</button>
+        </div>
+        <p id="setup-error" class="account-error" aria-live="polite"></p>
+        <button class="account-primary-button" type="submit">Create PIN and continue</button>
+      </form>
+
+      <div id="context-view" class="account-view account-context-view hidden">
+        <div class="account-context-heading">
+          <div>
+            <p class="account-kicker">Signed in as</p>
+            <h2 id="context-account-name">Account</h2>
+          </div>
+          <span class="account-status-mark" aria-label="Verified">✓</span>
+        </div>
+
+        <section class="account-current-context" aria-labelledby="current-context-heading">
+          <p id="current-context-heading" class="account-field-label">Current context</p>
+          <div class="account-current-line">
+            <div>
+              <strong id="current-course">M4L Platform</strong>
+              <span id="current-scope" class="account-scope-label">Platform</span>
+            </div>
+            <span id="current-role" class="account-role-badge">GLOBAL ADMIN</span>
+          </div>
+        </section>
+
+        <div class="account-release-boundary" role="status">
+          <strong>Central account verified</strong>
+          <span>
+            V102.3 validates account and context switching. Existing Admin and Student
+            links remain the operational entry points until course-sheet routing is enabled.
+          </span>
+        </div>
+
+        <div class="account-switch-heading">
+          <div>
+            <h3>Switch course or role</h3>
+            <p>No additional PIN is required.</p>
+          </div>
+        </div>
+        <div id="context-list" class="account-context-list" aria-live="polite"></div>
+        <p id="context-error" class="account-error" aria-live="polite"></p>
+      </div>
+
+      <p id="service-message" class="account-service-message" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="/js/m4l-config.js?v=102.3"></script>
+  <script src="/js/m4l-account.js?v=102.3"></script>
+</body>
+</html>

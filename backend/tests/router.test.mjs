@@ -3,6 +3,11 @@ import { ROUTE_PATHS } from "../src/router.js";
 import worker from "../src/worker.js";
 
 const expectedPaths = [
+  "/api/account/check",
+  "/api/account/setup-pin",
+  "/api/account/login",
+  "/api/account/session",
+  "/api/account/switch-context",
   "/api/resources/list",
   "/api/student/resources/list",
   "/api/admin/resources/list",
@@ -34,6 +39,7 @@ const expectedPaths = [
   "/api/admin/weekly-planner/teacher-week-records",
   "/api/admin/backend-routing",
   "/api/admin/platform/validate",
+  "/api/admin/platform/accounts/migrate",
   "/api/admin/system-settings/get",
   "/api/admin/system-settings/save",
   "/api/admin/check-admin",
@@ -84,7 +90,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.1"
+  version: "102.3"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

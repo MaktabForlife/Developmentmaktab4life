@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "102.1",
+  "version": "102.3",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -13,6 +13,9 @@
     "test:google-sheets": "node tests/google-sheets-client.test.mjs",
     "test:platform-sheet": "node tests/platform-sheet.test.mjs",
     "test:platform-validation": "node tests/platform-validation.test.mjs",
+    "test:platform-account-migration": "node tests/platform-account-migration.test.mjs",
+    "test:account-auth": "node tests/account-auth.test.mjs",
+    "test:account-ui": "node tests/account-ui.test.mjs",
     "test:sequential-ids": "node tests/sequential-ids.test.mjs",
     "test:admin-audit": "node tests/admin-audit.test.mjs",
     "test:resources": "node tests/resources.test.mjs",

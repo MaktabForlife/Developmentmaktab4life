@@ -1,3 +1,61 @@
+# V102.3 — Unified central account and context verification
+
+- Adds one personal `/account/<uniqueid>` route for central account check,
+  first-time PIN setup, PIN login and credential-bound session restoration.
+- Implements fresh-login authority selection in the confirmed order:
+  `GLOBAL_ADMIN`, `ADMIN`, `SENIOR`, `TEACHER`, `STUDENT`.
+- Resolves equal highest-role contexts by most recent `LastUsedDate`, then the
+  one designated default when no history exists; ambiguity fails closed.
+- Adds Profile-style course/role selection without another PIN. Every switch
+  rereads central records and issues a new CourseID/role-scoped token.
+- Always revalidates central account activity, credential version, platform
+  role, membership activity, CourseRecordID and active course registration,
+  independent of the legacy credential-session feature flag.
+- Gives GLOBAL_ADMIN a Platform context plus access to every active registered
+  course without duplicated membership rows.
+- Keeps central tokens separate in browser storage and prevents their use on
+  all existing Admin/Student application-data routes.
+- Audits self-service PIN setup and legacy-hash upgrade centrally using only the
+  non-sensitive `AuthenticationCredential` changed-field label.
+- Keeps legacy `/admin/<uniqueid>` and `/student/<uniqueid>` routes operational
+  for the complete V102.3 verification period.
+- Adds central authentication, revocation, context-switch and account UI tests.
+- Requires no Platform Sheet schema change after `102.0.3` and no new Worker
+  variable, secret, binding or Apps Script deployment.
+- Bumps application and Worker metadata to `102.3`.
+
+Use `docs/V102.3-UNIFIED-ACCOUNT-VERIFICATION.md` for the development deployment
+and verification sequence. Dynamic course-Sheet routing remains the next
+release boundary.
+
+---
+
+# V102.2 — Controlled central account migration
+
+- Adds an ADMIN-only Preview Account Migration action for the current course's
+  `AdminRecords` and `StudentRecords`.
+- Adds `UserCourseAccess.CourseRecordID` so each central membership resolves
+  its course-local AdminID or StudentID; Platform schema becomes `102.0.3`.
+- Excludes explicit SYSTEM student rows and blocks incomplete identities,
+  unsupported roles, duplicate record IDs, duplicate UniqueIDs and central
+  membership conflicts before any write. Exact cross-role display-name matches
+  with different UniqueIDs are blocked for manual identity review.
+- Preserves supported salted or legacy PIN hashes without returning hashes to
+  the browser. A claimed PIN setup without a supported hash is migrated as PIN
+  not set and reported as a warning.
+- Requires the first migration to grant GLOBAL_ADMIN to the signed-in Admin.
+- Requires an HMAC-bound preview token and exact `MIGRATE <COURSEID>` text for
+  commit; a changed source or central table invalidates the preview.
+- Writes UserAccounts, UserCourseAccess and one central PlatformAuditLog event
+  in a single values batch.
+- Keeps all existing login routes and application-data routing active.
+- Bumps application and Worker metadata to `102.2`.
+
+Before deployment, enter `CourseRecordID` in `UserCourseAccess!N1`, change the
+PlatformConfig schema value to `102.0.3`, and rerun Validate Platform Sheet.
+
+---
+
 # V102.1 — Live Platform Sheet validation
 
 - Adds `/api/admin/platform/validate`, restricted to authenticated `ADMIN`
@@ -12,8 +70,8 @@
 - Keeps every existing application-data route on `GOOGLE_SPREADSHEET_ID` and
   retains V101.4.3 live login/timetable behaviour.
 - Adds backend, authorization, routing and frontend integration coverage.
-- Bumps application and Worker metadata to `102.1` while retaining Platform
-  schema version `102.0.2`.
+- Bumps application and Worker metadata to `102.1` while retaining the then
+  current Platform schema version `102.0.2`.
 
 Deploy to development first, sign in as ADMIN, open System Settings and run
 `Validate Platform Sheet`. Do not populate central accounts yet.

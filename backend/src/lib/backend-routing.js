@@ -43,6 +43,8 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "weekly-planner": defineFixedFeature(BACKEND_GOOGLE_SHEETS),
   "weekly-planner-drive": defineFixedFeature(BACKEND_APPS_SCRIPT),
   "platform-validation": defineFixedFeature(BACKEND_WORKER),
+  "platform-account-migration": defineFixedFeature(BACKEND_WORKER),
+  "account-auth": defineFixedFeature(BACKEND_WORKER),
   routing: defineFixedFeature(BACKEND_WORKER)
 });
 

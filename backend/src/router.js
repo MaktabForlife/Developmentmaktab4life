@@ -89,6 +89,14 @@ import {
 } from "./routes/system-settings.js";
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import { platformValidationEndpoint } from "./routes/platform-validation.js";
+import { platformAccountMigrationEndpoint } from "./routes/platform-account-migration.js";
+import {
+  accountLoginEndpoint,
+  accountSessionEndpoint,
+  checkAccountEndpoint,
+  setupAccountPinEndpoint,
+  switchAccountContextEndpoint
+} from "./routes/account-auth.js";
 import {
   BACKEND_APPS_SCRIPT,
   BACKEND_GOOGLE_SHEETS,
@@ -99,6 +107,11 @@ import {
 import { json } from "./lib/http.js";
 
 const ROUTES = new Map([
+  ["/api/account/check", workerRoute("account-auth", checkAccountEndpoint)],
+  ["/api/account/setup-pin", workerRoute("account-auth", setupAccountPinEndpoint)],
+  ["/api/account/login", workerRoute("account-auth", accountLoginEndpoint)],
+  ["/api/account/session", workerRoute("account-auth", accountSessionEndpoint)],
+  ["/api/account/switch-context", workerRoute("account-auth", switchAccountContextEndpoint)],
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
@@ -132,6 +145,7 @@ const ROUTES = new Map([
   ["/api/admin/weekly-planner/teacher-week-records", googleSheetsRoute("weekly-planner", weeklyPlannerTeacherWeekRecordsEndpoint)],
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint)],
   ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint)],
+  ["/api/admin/platform/accounts/migrate", workerRoute("platform-account-migration", platformAccountMigrationEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],
 
