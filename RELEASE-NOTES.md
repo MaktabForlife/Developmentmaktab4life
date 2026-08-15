@@ -1,3 +1,26 @@
+V101.4.3
+
+# Per-group assignments and safe timetable publication
+
+- A save now has one Subject and optional Module across all selected Days.
+- Select `ALL` alone, or select individual Groups and assign a required Teacher
+  and optional Zoom override to each group.
+- The builder reports the exact teacher or group conflict that prevents save.
+- Publish creates an immutable, versioned snapshot and marks the course
+  `PUBLISHED`; any later draft edit returns it to `DEVELOPMENT` without changing
+  the last snapshot.
+- Never-published development sessions can be permanently deleted. Anything
+  ever published is only made inactive and can be restored after conflict
+  validation.
+- `TeacherAssign` remains the live timetable read source in V101.4.3.
+- Application and Worker metadata are bumped to `101.4.3`.
+
+Before deployment, add `TimetableCourseState`, `TimetablePublications`, and
+`PublishedTimetableSessions` using the exact CSV templates in `docs/`. No Apps
+Script, Worker binding, or Cloudflare-variable change is required.
+
+---
+
 V101.4.2
 
 # Add multiple subjects/modules in one timetable save

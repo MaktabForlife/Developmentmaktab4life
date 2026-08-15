@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {
   appendGoogleSheetValues,
+  batchUpdateGoogleSpreadsheet,
   batchUpdateGoogleSheetValues,
   readGoogleSheetValues,
+  readGoogleSpreadsheetSheetProperties,
   updateGoogleSheetValues
 } from "../src/lib/google-sheets.js";
 
@@ -48,8 +50,15 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-google-token");
 
-    if (method === "GET") {
+    if (method === "GET" && url.pathname.includes("/values/")) {
       return response({ values: [["Header"], ["Value"]] });
+    }
+
+    if (method === "GET") {
+      return response({ sheets: [
+        { properties: { sheetId: 7, title: "Data" } },
+        { properties: { sheetId: 8, title: "Audit" } }
+      ] });
     }
 
     return response({ updatedRows: 1 });
@@ -81,15 +90,29 @@ try {
       values: [[true]]
     }
   ]);
+  const properties = await readGoogleSpreadsheetSheetProperties(env);
+  assert.deepEqual(properties, [
+    { sheetId: 7, title: "Data" },
+    { sheetId: 8, title: "Audit" }
+  ]);
+  await batchUpdateGoogleSpreadsheet(env, [{
+    deleteDimension: {
+      range: { sheetId: 7, dimension: "ROWS", startIndex: 2, endIndex: 3 }
+    }
+  }]);
   await assert.rejects(
     () => batchUpdateGoogleSheetValues(env, []),
     /requires at least one range/
+  );
+  await assert.rejects(
+    () => batchUpdateGoogleSpreadsheet(env, []),
+    /requires at least one request/
   );
 
   assert.equal(oauthCalls, 1, "The reusable client should reuse a valid access token");
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 4);
+  assert.equal(sheetsCalls.length, 6);
 
   assert.equal(sheetsCalls[0].method, "GET");
   assert.equal(sheetsCalls[0].url.pathname.endsWith("/values/Data!A%3AB"), true);
@@ -130,6 +153,17 @@ try {
         values: [[true]]
       }
     ]
+  });
+  assert.equal(sheetsCalls[4].method, "GET");
+  assert.equal(sheetsCalls[4].url.searchParams.get("fields"), "sheets(properties(sheetId,title))");
+  assert.equal(sheetsCalls[5].method, "POST");
+  assert.equal(sheetsCalls[5].url.pathname.endsWith(":batchUpdate"), true);
+  assert.deepEqual(JSON.parse(sheetsCalls[5].body), {
+    requests: [{
+      deleteDimension: {
+        range: { sheetId: 7, dimension: "ROWS", startIndex: 2, endIndex: 3 }
+      }
+    }]
   });
 } finally {
   globalThis.fetch = originalFetch;

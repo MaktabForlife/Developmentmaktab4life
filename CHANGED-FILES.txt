@@ -1,4 +1,4 @@
-V101.4.2 — cumulative deployment package from V101.3
+V101.4.3 — cumulative deployment package from V101.3
 
 Frontend
 - admin/index.html
@@ -11,7 +11,9 @@ Frontend
 - js/m4l-timetable-builder.js
 
 Backend / Worker
+- backend/src/lib/admin-audit.js
 - backend/src/lib/backend-routing.js
+- backend/src/lib/google-sheets.js
 - backend/src/routes/curriculum.js
 - backend/src/routes/timetable-builder.js
 - backend/src/router.js
@@ -24,6 +26,7 @@ Tests
 - backend/tests/curriculum.test.mjs
 - backend/tests/curriculum-write.test.mjs
 - backend/tests/group-zero-access.test.mjs
+- backend/tests/google-sheets-client.test.mjs
 - backend/tests/router.test.mjs
 - backend/tests/student-task-assignment-ui.test.mjs
 - backend/tests/timetable-builder.test.mjs
@@ -31,6 +34,10 @@ Tests
 - backend/tests/timetable-teacher-ui.test.mjs
 
 Google Sheet migration
+- docs/V101.4.3-TIMETABLE-PUBLICATION-MIGRATION.md
+- docs/V101.4.3-TimetableCourseState-template.csv
+- docs/V101.4.3-TimetablePublications-template.csv
+- docs/V101.4.3-PublishedTimetableSessions-template.csv
 - docs/V101.4-TIMETABLE-BUILDER-MIGRATION.md
 - docs/V101.4-Courses-template.csv
 - docs/V101.4-TimeSlots-template.csv
@@ -47,11 +54,14 @@ Release metadata
 
 Deployment order
 1. Back up the Google Sheet.
-2. Create Courses, TimeSlots and TimetableSessions using the exact templates.
-3. Confirm V101.3 AdminAuditLog and existing curriculum attribution columns.
-4. Deploy the Worker/backend.
-5. Deploy the frontend and version metadata.
-6. Build and verify one course without changing the existing live timetable.
+2. Confirm Courses, TimeSlots and TimetableSessions use the exact V101.4 templates.
+3. Create TimetableCourseState, TimetablePublications and
+   PublishedTimetableSessions using the exact V101.4.3 templates.
+4. Confirm V101.3 AdminAuditLog and existing curriculum attribution columns.
+5. Deploy the Worker/backend.
+6. Deploy the frontend and version metadata.
+7. Build, validate and publish one course snapshot without changing the existing
+   live timetable source.
 
 V101.4 does not publish builder sessions. TeacherAssign and TimeTable remain the
 live read source. No Apps Script deployment, Worker binding, or Cloudflare
@@ -62,3 +72,6 @@ in-dialog conflict feedback and 24-hour time display.
 
 V101.4.2 adds repeatable lesson rows and creates every lesson/day/group
 combination in one validated session append. It adds no Sheet headers.
+
+V101.4.3 replaces lesson rows with per-group assignments and adds three Sheet
+tabs for stage, publication metadata and immutable session snapshots.

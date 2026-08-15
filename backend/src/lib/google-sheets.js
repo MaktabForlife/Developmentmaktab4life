@@ -85,6 +85,62 @@ export async function batchUpdateGoogleSheetValues(env, data) {
   return parseGoogleSheetsResponse(response);
 }
 
+export async function readGoogleSpreadsheetSheetProperties(env) {
+  const spreadsheetId = getGoogleSpreadsheetId(env);
+  const accessToken = await getGoogleSheetsAccessToken(env);
+  const url = [
+    "https://sheets.googleapis.com/v4/spreadsheets/",
+    encodeURIComponent(spreadsheetId),
+    "?fields=sheets(properties(sheetId,title))"
+  ].join("");
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json;charset=UTF-8"
+    }
+  });
+  const data = await parseGoogleSheetsResponse(response);
+  return (Array.isArray(data.sheets) ? data.sheets : []).map(sheet => ({
+    sheetId: Number(sheet?.properties?.sheetId),
+    title: String(sheet?.properties?.title || "").trim()
+  })).filter(sheet => Number.isInteger(sheet.sheetId) && sheet.title);
+}
+
+export async function batchUpdateGoogleSpreadsheet(env, requests) {
+  const spreadsheetId = getGoogleSpreadsheetId(env);
+
+  if (!Array.isArray(requests) || requests.length === 0) {
+    throw new Error("Google Sheets spreadsheet batch update requires at least one request");
+  }
+
+  const accessToken = await getGoogleSheetsAccessToken(env);
+  const url = [
+    "https://sheets.googleapis.com/v4/spreadsheets/",
+    encodeURIComponent(spreadsheetId),
+    ":batchUpdate"
+  ].join("");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json;charset=UTF-8"
+    },
+    body: JSON.stringify({ requests })
+  });
+  return parseGoogleSheetsResponse(response);
+}
+
+function getGoogleSpreadsheetId(env) {
+  const spreadsheetId = String(env.GOOGLE_SPREADSHEET_ID || "").trim();
+
+  if (!spreadsheetId) {
+    throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
+  }
+
+  return spreadsheetId;
+}
+
 function getGoogleServiceAccountConfig(env) {
   const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON;
 

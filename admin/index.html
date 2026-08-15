@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=101.4.2">
+<link rel="stylesheet" href="/styles.css?v=101.4.3">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -670,7 +670,7 @@
       </div>
     </section>
 
-    <!-- ADMIN TIMETABLE BUILDER - V101.4.2 -->
+    <!-- ADMIN TIMETABLE BUILDER - V101.4.3 -->
     <section id="timetable-builder-screen" class="screen admin-theme timetable-builder-screen" aria-labelledby="timetable-builder-title">
       <header class="timetable-builder-header">
         <div>
@@ -690,8 +690,9 @@
       </header>
 
       <div class="timetable-builder-status-band">
-        <strong>Builder draft</strong>
-        <span>The live student and teacher timetable still reads from TeacherAssign.</span>
+        <strong id="timetable-builder-stage-label">Development draft</strong>
+        <span id="timetable-builder-stage-detail">The live student and teacher timetable still reads from TeacherAssign.</span>
+        <button id="timetable-builder-publish" type="button" class="timetable-builder-primary" data-ttb-action="publish-timetable" hidden>Publish Timetable</button>
       </div>
 
       <nav class="timetable-builder-tabs" aria-label="Timetable Builder sections">
@@ -730,28 +731,32 @@
               <span>Time slot</span>
               <select id="ttb-session-slot" required></select>
             </label>
+            <label class="timetable-builder-field">
+              <span>Subject</span>
+              <select id="ttb-session-subject" required></select>
+            </label>
+            <label class="timetable-builder-field">
+              <span>Module <small>optional</small></span>
+              <select id="ttb-session-module"></select>
+            </label>
             <fieldset class="timetable-builder-choice-field timetable-builder-field--wide">
               <legend>Groups</legend>
               <p id="ttb-session-groups-help">Select one or more groups. ALL must be selected by itself.</p>
               <div id="ttb-session-groups" class="timetable-builder-choice-grid timetable-builder-choice-grid--groups"></div>
             </fieldset>
-            <section class="timetable-session-lessons-section timetable-builder-field--wide" aria-labelledby="timetable-session-lessons-title">
-              <div class="timetable-session-lessons-heading">
-                <div>
-                  <h4 id="timetable-session-lessons-title">Lessons</h4>
-                  <p>Each lesson creates a separate timetable session for every selected day and group.</p>
-                </div>
-                <button id="ttb-add-session-lesson" type="button" class="timetable-builder-secondary" data-ttb-action="add-session-lesson">Add subject/module</button>
+            <section class="timetable-session-group-assignments-section timetable-builder-field--wide" aria-labelledby="timetable-session-group-assignments-title">
+              <div class="timetable-session-group-assignments-heading">
+                <h4 id="timetable-session-group-assignments-title">Teacher and Zoom for each group</h4>
+                <p>The same subject/module and selected days apply to every group below.</p>
               </div>
-              <div id="ttb-session-lessons" class="timetable-session-lessons"></div>
+              <div id="ttb-session-group-assignments" class="timetable-session-group-assignments"></div>
             </section>
-            <label class="timetable-builder-check timetable-builder-field--wide">
-              <input id="ttb-session-active" type="checkbox" checked />
-              <span>Active session</span>
-            </label>
           </div>
           <div id="timetable-session-message" class="timetable-session-message" role="alert" aria-live="assertive"></div>
           <div class="timetable-builder-dialog-actions">
+            <button id="ttb-delete-session" type="button" class="timetable-builder-danger" data-ttb-action="delete-session" hidden>Delete Session</button>
+            <button id="ttb-restore-session" type="button" class="timetable-builder-secondary" data-ttb-action="restore-session" hidden>Restore Session</button>
+            <span class="timetable-builder-dialog-actions-spacer"></span>
             <button type="button" class="timetable-builder-secondary" data-ttb-action="close-session">Cancel</button>
             <button id="ttb-save-session" type="button" class="timetable-builder-primary" data-ttb-action="save-session">Save Sessions</button>
           </div>
@@ -1502,7 +1507,7 @@
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
 <script src="/js/m4l-system-settings.js?v=101.2"></script>
-<script src="/js/m4l-timetable-builder.js?v=101.4.2"></script>
+<script src="/js/m4l-timetable-builder.js?v=101.4.3"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=96.5"></script>

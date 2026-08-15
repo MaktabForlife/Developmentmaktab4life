@@ -1,9 +1,10 @@
 # Maktabhelper
 
-Current release: V101.4.2.
+Current release: V101.4.3.
 
-V101.4.2 adds repeatable Subject/Module/Teacher/Zoom lesson rows to the audited
-ADMIN-only builder. One save validates and creates every selected
-lesson–day–group combination without changing the V101.4 Sheet schema.
+V101.4.3 gives each selected group its own Teacher and Zoom assignment while
+sharing one Subject/Module across multiple Days. It adds safe draft/published
+states, immutable snapshots, permanent deletion for never-published drafts,
+and soft deletion/restoration for published history.
 See `RELEASE-NOTES.md` and
-`docs/V101.4-TIMETABLE-BUILDER-MIGRATION.md` before deployment.
+`docs/V101.4.3-TIMETABLE-PUBLICATION-MIGRATION.md` before deployment.

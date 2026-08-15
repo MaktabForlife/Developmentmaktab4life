@@ -1,8 +1,10 @@
-/* M4L V101.4.2 - audited multi-lesson, multi-day and multi-group timetable builder. */
+/* M4L V101.4.3 - group-assigned sessions, publication snapshots and staged deletion. */
 
 import {
   appendAdminAuditLog,
   appendAdminAuditLogs,
+  ADMIN_AUDIT_LOG_SHEET,
+  buildAdminAuditRows,
   columnIndexToA1,
   getRequiredRowAuditColumns,
   prepareAdminAudit,
@@ -12,11 +14,13 @@ import {
 import { requireSystemAdmin } from "../lib/auth.js";
 import {
   appendGoogleSheetValues,
+  batchUpdateGoogleSpreadsheet,
   readGoogleSheetValues,
+  readGoogleSpreadsheetSheetProperties,
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
-import { nextSequentialId, nextSequentialIds } from "../lib/sequential-ids.js";
+import { nextSequentialId } from "../lib/sequential-ids.js";
 import {
   GLOBAL_ZOOM_LINK_KEY,
   getSystemConfigValue,
@@ -26,6 +30,9 @@ import {
 export const COURSE_SHEET = "Courses";
 export const TIME_SLOT_SHEET = "TimeSlots";
 export const TIMETABLE_SESSION_SHEET = "TimetableSessions";
+export const TIMETABLE_STATE_SHEET = "TimetableCourseState";
+export const TIMETABLE_PUBLICATION_SHEET = "TimetablePublications";
+export const PUBLISHED_TIMETABLE_SESSION_SHEET = "PublishedTimetableSessions";
 
 export const COURSE_HEADERS = Object.freeze([
   "CourseID",
@@ -72,12 +79,53 @@ export const TIMETABLE_SESSION_HEADERS = Object.freeze([
   "ModifiedDate"
 ]);
 
+export const TIMETABLE_STATE_HEADERS = Object.freeze([
+  "CourseID",
+  "Stage",
+  "CurrentPublicationID",
+  "CreatedDate",
+  "CreatedByAdminID",
+  "CreatedByAdminName",
+  "ModifiedByAdminID",
+  "ModifiedByAdminName",
+  "ModifiedDate"
+]);
+
+export const TIMETABLE_PUBLICATION_HEADERS = Object.freeze([
+  "PublicationID",
+  "CourseID",
+  "VersionNo",
+  "PublishedDate",
+  "PublishedByAdminID",
+  "PublishedByAdminName",
+  "SessionCount"
+]);
+
+export const PUBLISHED_TIMETABLE_SESSION_HEADERS = Object.freeze([
+  "PublishedSessionID",
+  "PublicationID",
+  "SourceSessionID",
+  "CourseID",
+  "TimeSlotID",
+  "DayOfWeek",
+  "SubjectID",
+  "ModuleID",
+  "GroupNo",
+  "TeacherID",
+  "ZoomLink",
+  "PublishedDate",
+  "PublishedByAdminID",
+  "PublishedByAdminName"
+]);
+
 const SUBJECT_SHEET = "SubjectList";
 const MODULE_SHEET = "ModuleList";
 const ADMIN_SHEET = "AdminRecords";
 const STUDENT_SHEET = "StudentRecords";
 const FULL_RANGE = "A:ZZ";
 const DAY_ORDER = Object.freeze(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+const DEVELOPMENT_STAGE = "DEVELOPMENT";
+const PUBLISHED_STAGE = "PUBLISHED";
 
 export async function getTimetableBuilderGoogleSheetsEndpoint(request, env) {
   const permission = await requireBuilderAdmin(request, env);
@@ -202,6 +250,7 @@ export async function saveTimetableCourseGoogleSheetsEndpoint(request, env) {
   row[2] = active;
   stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
 
+  await markCourseTimetableDevelopment(env, data, existing.courseid, audit);
   await updateGoogleSheetValues(
     env,
     updateRange(COURSE_SHEET, existing.rowindex + 1, row.length),
@@ -325,6 +374,7 @@ export async function saveTimetableTimeSlotGoogleSheetsEndpoint(request, env) {
     row[5] = created.createddate;
     stampCreatedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
 
+    await markCourseTimetableDevelopment(env, data, requestedCourseId, audit);
     await appendGoogleSheetValues(env, appendRange(TIME_SLOT_SHEET, row.length), [row]);
     await appendAdminAuditLog(env, audit, {
       action: "CREATE",
@@ -351,6 +401,7 @@ export async function saveTimetableTimeSlotGoogleSheetsEndpoint(request, env) {
   row[4] = active;
   stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
 
+  await markCourseTimetableDevelopment(env, data, requestedCourseId, audit);
   await updateGoogleSheetValues(
     env,
     updateRange(TIME_SLOT_SHEET, existing.rowindex + 1, row.length),
@@ -381,60 +432,45 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
   const daySelection = normalizeDaySelection(
     body.daysofweek ?? body.days ?? body.dayofweek ?? body.dayOfWeek ?? body.day
   );
-  const groupSelection = normalizeGroupSelection(
-    body.groupnos ?? body.groups ?? body.groupno ?? body.groupNo ?? body.group
-  );
-  const lessonSelection = normalizeLessonSelection(body);
+  const subjectId = clean(body.subjectid || body.subjectId);
+  const moduleId = clean(body.moduleid || body.moduleId);
+  const assignmentSelection = normalizeGroupAssignments(body, { subjectId, moduleId });
 
-  if (lessonSelection.error) {
-    return json({ success: false, error: lessonSelection.error }, 400);
-  }
+  if (assignmentSelection.error) return json({ success: false, error: assignmentSelection.error }, 400);
 
   if (daySelection.invalid.length > 0) {
     return json({ success: false, error: `Invalid day selection: ${daySelection.invalid.join(", ")}` }, 400);
   }
 
-  if (groupSelection.invalid.length > 0) {
-    return json({ success: false, error: `Invalid group selection: ${groupSelection.invalid.join(", ")}` }, 400);
-  }
-
-  if (groupSelection.values.includes("ALL") && groupSelection.values.length > 1) {
+  const assignmentGroups = assignmentSelection.values.map(assignment => assignment.groupno);
+  if (assignmentGroups.includes("ALL") && assignmentGroups.length > 1) {
     return json({ success: false, error: "Select ALL by itself, or select one or more numbered groups" }, 400);
   }
 
   if (sessionId && (
     daySelection.values.length !== 1 ||
-    groupSelection.values.length !== 1 ||
-    lessonSelection.values.length !== 1
+    assignmentSelection.values.length !== 1
   )) {
-    return json({ success: false, error: "An existing session must be modified one lesson, one day and one group at a time" }, 400);
+    return json({ success: false, error: "An existing session must be modified one day and one group at a time" }, 400);
   }
 
-  const combinationCount = daySelection.values.length * groupSelection.values.length * lessonSelection.values.length;
+  const combinationCount = daySelection.values.length * assignmentSelection.values.length;
   if (combinationCount > 100) {
-    return json({ success: false, error: "Create no more than 100 lesson, day and group combinations at once" }, 400);
+    return json({ success: false, error: "Create no more than 100 day and group combinations at once" }, 400);
   }
 
-  if (!courseId || !timeSlotId || !daySelection.values.length || !groupSelection.values.length || !lessonSelection.values.length) {
+  if (!courseId || !timeSlotId || !daySelection.values.length || !subjectId || !assignmentSelection.values.length) {
     return json({
       success: false,
-      error: "Course, time slot, at least one day, at least one group and at least one lesson are required"
+      error: "Course, time slot, at least one day, subject and at least one group assignment are required"
     }, 400);
   }
 
-  const incompleteLesson = lessonSelection.values.find(lesson => !lesson.subjectid || !lesson.teacherid);
-  if (incompleteLesson) {
+  const incompleteAssignment = assignmentSelection.values.find(assignment => !assignment.teacherid);
+  if (incompleteAssignment) {
     return json({
       success: false,
-      error: `Lesson ${incompleteLesson.lessonindex} needs a subject and teacher`
-    }, 400);
-  }
-
-  const duplicateLesson = findDuplicateLesson(lessonSelection.values);
-  if (duplicateLesson) {
-    return json({
-      success: false,
-      error: `Lesson ${duplicateLesson.duplicateIndex} duplicates lesson ${duplicateLesson.originalIndex}`
+      error: `Select a teacher for group ${incompleteAssignment.groupno}`
     }, 400);
   }
 
@@ -464,67 +500,67 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
 
   const course = courses.find(item => item.courseid === courseId);
   const timeSlot = timeSlots.find(item => item.timeslotid === timeSlotId);
+  const subject = subjects.find(item => item.subjectid === subjectId);
+  const module = moduleId ? modules.find(item => item.moduleid === moduleId) : null;
   const active = normalizeRequestedBoolean(body.active, existing ? existing.active : true);
+
+  if (existing && active !== existing.active) {
+    return json({
+      success: false,
+      error: active ? "Use Restore Session to reactivate this session" : "Use Delete Session to remove this session"
+    }, 409);
+  }
+  if (!existing && !active) {
+    return json({ success: false, error: "New sessions must be active" }, 400);
+  }
 
   if (!course) return json({ success: false, error: "Course not found" }, 404);
   if (!timeSlot || timeSlot.courseid !== courseId) {
     return json({ success: false, error: "The selected time slot does not belong to this course" }, 409);
   }
+  if (!subject) return json({ success: false, error: "Subject not found" }, 404);
+  if (moduleId && (!module || module.subjectid !== subjectId)) {
+    return json({ success: false, error: "The selected module does not belong to this subject" }, 409);
+  }
 
-  const validatedLessons = [];
-  for (const lesson of lessonSelection.values) {
-    const subject = subjects.find(item => item.subjectid === lesson.subjectid);
-    const module = lesson.moduleid ? modules.find(item => item.moduleid === lesson.moduleid) : null;
-    const teacher = teachers.find(item => item.teacherid === lesson.teacherid);
-    const label = `Lesson ${lesson.lessonindex}`;
-
-    if (!subject) return json({ success: false, error: `${label}: subject not found` }, 404);
-    if (lesson.moduleid && (!module || module.subjectid !== lesson.subjectid)) {
-      return json({ success: false, error: `${label}: the selected module does not belong to this subject` }, 409);
+  const validatedAssignments = [];
+  for (const assignment of assignmentSelection.values) {
+    const teacher = teachers.find(item => item.teacherid === assignment.teacherid);
+    if (!teacher) return json({ success: false, error: `Teacher for group ${assignment.groupno} was not found` }, 404);
+    if (active && !teacher.active) {
+      return json({ success: false, error: `Activate ${teacher.teachername} before assigning group ${assignment.groupno}` }, 409);
     }
-    if (!teacher) return json({ success: false, error: `${label}: teacher not found` }, 404);
+    validatedAssignments.push({ ...assignment, teachername: teacher.teachername });
+  }
 
-    if (active) {
-      if (!subject.active) return json({ success: false, error: `${label}: activate the subject first` }, 409);
-      if (module && !module.active) return json({ success: false, error: `${label}: activate the module first` }, 409);
-      if (!teacher.active) return json({ success: false, error: `${label}: activate the teacher first` }, 409);
-    }
-
-    validatedLessons.push({
-      ...lesson,
-      subjectname: subject.subjectname,
-      modulename: module?.modulename || "",
-      teachername: teacher.teachername
-    });
+  const repeatedTeacher = findRepeatedAssignmentTeacher(validatedAssignments);
+  if (repeatedTeacher) {
+    return json({
+      success: false,
+      conflict: true,
+      error: `${repeatedTeacher.teachername || repeatedTeacher.teacherid} cannot teach groups ${repeatedTeacher.groups.join(" and ")} at the same time. Select ALL only when every group is taught together.`
+    }, 409);
   }
 
   if (active) {
     if (!course.active) return json({ success: false, error: "Activate the course first" }, 409);
     if (!timeSlot.active) return json({ success: false, error: "Activate the time slot first" }, 409);
+    if (!subject.active) return json({ success: false, error: "Activate the subject first" }, 409);
+    if (module && !module.active) return json({ success: false, error: "Activate the module first" }, 409);
 
     const conflicts = daySelection.values.flatMap(dayOfWeek => (
-      groupSelection.values.flatMap(groupNo => (
-        validatedLessons.flatMap(lesson => findSessionConflicts({
-          sessionId,
-          courseId,
-          timeSlot,
-          dayOfWeek,
-          groupNo,
-          subjectId: lesson.subjectid,
-          subjectName: lesson.subjectname,
-          moduleId: lesson.moduleid,
-          moduleName: lesson.modulename,
-          teacherId: lesson.teacherid,
-          teacherName: lesson.teachername,
-          zoomLink: lesson.zoomlink,
-          lessonIndex: lesson.lessonindex,
-          lessonCount: validatedLessons.length,
-          batchCreatedDate: existing?.createddate || "",
-          sessions,
-          timeSlots,
-          courses
-        }))
-      ))
+      validatedAssignments.flatMap(assignment => findSessionConflicts({
+        sessionId,
+        courseId,
+        timeSlot,
+        dayOfWeek,
+        groupNo: assignment.groupno,
+        teacherId: assignment.teacherid,
+        teacherName: assignment.teachername,
+        sessions,
+        timeSlots,
+        courses
+      }))
     ));
 
     if (conflicts.length > 0) {
@@ -546,21 +582,18 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
 
   if (!existing) {
     const combinations = daySelection.values.flatMap(dayofweek => (
-      groupSelection.values.flatMap(groupno => (
-        validatedLessons.map(lesson => ({ dayofweek, groupno, lesson }))
-      ))
+      validatedAssignments.map(assignment => ({ dayofweek, assignment }))
     ));
-    const sessionIds = nextSequentialIds(data.sessionRows, "SESSION", combinations.length);
     const proposedSessions = combinations.map((combination, index) => ({
-      sessionid: sessionIds[index],
+      sessionid: createTimetableId("SESSION"),
       courseid: courseId,
       timeslotid: timeSlotId,
       dayofweek: combination.dayofweek,
-      subjectid: combination.lesson.subjectid,
-      moduleid: combination.lesson.moduleid,
-      groupno: combination.groupno,
-      teacherid: combination.lesson.teacherid,
-      zoomlink: combination.lesson.zoomlink,
+      subjectid: subjectId,
+      moduleid: moduleId,
+      groupno: combination.assignment.groupno,
+      teacherid: combination.assignment.teacherid,
+      zoomlink: combination.assignment.zoomlink,
       active,
       createddate: audit.timestamp
     }));
@@ -579,6 +612,7 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
       ]
     }));
 
+    await markCourseTimetableDevelopment(env, data, courseId, audit);
     await appendGoogleSheetValues(env, appendRange(TIMETABLE_SESSION_SHEET, rows[0].length), rows);
     await appendAdminAuditLogs(env, audit, auditEvents);
 
@@ -588,24 +622,23 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
         ? "Session created"
         : `${proposedSessions.length} sessions created`,
       count: proposedSessions.length,
-      lessoncount: validatedLessons.length,
       session: proposedSessions[0],
       sessions: proposedSessions
     });
   }
 
-  const lesson = validatedLessons[0];
+  const assignment = validatedAssignments[0];
 
   const proposed = {
     sessionid: existing.sessionid,
     courseid: courseId,
     timeslotid: timeSlotId,
     dayofweek: daySelection.values[0],
-    subjectid: lesson.subjectid,
-    moduleid: lesson.moduleid,
-    groupno: groupSelection.values[0],
-    teacherid: lesson.teacherid,
-    zoomlink: lesson.zoomlink,
+    subjectid: subjectId,
+    moduleid: moduleId,
+    groupno: assignment.groupno,
+    teacherid: assignment.teacherid,
+    zoomlink: assignment.zoomlink,
     active,
     createddate: existing.createddate
   };
@@ -620,6 +653,7 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
   row[rowAudit.columns.createdByAdminName] = getCell(data.sessionRows[existing.rowindex], rowAudit.columns.createdByAdminName);
   stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
 
+  await markCourseTimetableDevelopment(env, data, courseId, audit);
   await updateGoogleSheetValues(
     env,
     updateRange(TIMETABLE_SESSION_SHEET, existing.rowindex + 1, row.length),
@@ -633,6 +667,239 @@ export async function saveTimetableSessionGoogleSheetsEndpoint(request, env) {
   });
 
   return json({ success: true, message: "Session updated", session: proposed });
+}
+
+export async function deleteTimetableSessionGoogleSheetsEndpoint(request, env) {
+  const permission = await requireBuilderAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  const body = await readJsonBody(request);
+  const sessionId = clean(body.sessionid || body.sessionId);
+  if (!sessionId) return json({ success: false, error: "Session ID is required" }, 400);
+
+  let data;
+  try {
+    data = await readBuilderData(env, { includeReferences: true });
+  } catch (error) {
+    return builderSetupResponse();
+  }
+
+  const schema = validateBuilderData(data);
+  if (!schema.ok) return json({ success: false, error: schema.error }, 503);
+
+  const sessions = parseSessions(data.sessionRows);
+  const session = sessions.find(item => item.sessionid === sessionId);
+  if (!session) return json({ success: false, error: "Timetable session not found" }, 404);
+
+  const state = getCourseTimetableState(data, session.courseid);
+  const everPublished = hasSessionEverBeenPublished(data, sessionId);
+  const requestedMode = clean(body.mode).toUpperCase();
+  if (requestedMode && !new Set(["HARD", "SOFT"]).has(requestedMode)) {
+    return json({ success: false, error: "Deletion mode must be HARD or SOFT" }, 400);
+  }
+  const mode = requestedMode || (state.stage === DEVELOPMENT_STAGE && !everPublished ? "HARD" : "SOFT");
+
+  if (mode === "HARD" && (state.stage !== DEVELOPMENT_STAGE || everPublished)) {
+    return json({
+      success: false,
+      error: "This session has been published and can only be soft-deleted",
+      deletionmode: "SOFT"
+    }, 409);
+  }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+  if (!audit.ok) return json({ success: false, error: audit.error }, 503);
+
+  if (mode === "HARD") {
+    await hardDeleteTimetableSession(env, session, audit);
+    return json({ success: true, message: "Draft session permanently deleted", deletionmode: "HARD", sessionid: sessionId });
+  }
+
+  if (!session.active) {
+    return json({ success: true, message: "Session is already inactive", deletionmode: "SOFT", session });
+  }
+
+  const rowAudit = getRequiredRowAuditColumns(TIMETABLE_SESSION_HEADERS);
+  if (!rowAudit.ok) return json({ success: false, error: rowAudit.error }, 503);
+  const row = copyRow(data.sessionRows[session.rowindex], TIMETABLE_SESSION_HEADERS.length);
+  row[9] = false;
+  stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
+
+  await markCourseTimetableDevelopment(env, data, session.courseid, audit);
+  await updateGoogleSheetValues(env, updateRange(TIMETABLE_SESSION_SHEET, session.rowindex + 1, row.length), [row]);
+  await appendAdminAuditLog(env, audit, {
+    action: "DEACTIVATE",
+    recordType: "TIMETABLE_SESSION",
+    recordId: sessionId,
+    changedFields: ["Active"]
+  });
+
+  return json({
+    success: true,
+    message: "Published session removed from the development timetable",
+    deletionmode: "SOFT",
+    session: { ...session, active: false }
+  });
+}
+
+export async function restoreTimetableSessionGoogleSheetsEndpoint(request, env) {
+  const permission = await requireBuilderAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  const body = await readJsonBody(request);
+  const sessionId = clean(body.sessionid || body.sessionId);
+  if (!sessionId) return json({ success: false, error: "Session ID is required" }, 400);
+
+  let data;
+  try {
+    data = await readBuilderData(env, { includeReferences: true });
+  } catch (error) {
+    return builderSetupResponse();
+  }
+
+  const schema = validateBuilderData(data);
+  if (!schema.ok) return json({ success: false, error: schema.error }, 503);
+
+  const sessions = parseSessions(data.sessionRows);
+  const session = sessions.find(item => item.sessionid === sessionId);
+  if (!session) return json({ success: false, error: "Timetable session not found" }, 404);
+  if (session.active) return json({ success: true, message: "Session is already active", session });
+
+  const courses = parseCourses(data.courseRows);
+  const timeSlots = parseTimeSlots(data.timeSlotRows);
+  const subjects = parseSubjects(data.subjectRows);
+  const modules = parseModules(data.moduleRows);
+  const teachers = parseTeachers(data.adminRows);
+  const course = courses.find(item => item.courseid === session.courseid);
+  const timeSlot = timeSlots.find(item => item.timeslotid === session.timeslotid);
+  const subject = subjects.find(item => item.subjectid === session.subjectid);
+  const module = session.moduleid ? modules.find(item => item.moduleid === session.moduleid) : null;
+  const teacher = teachers.find(item => item.teacherid === session.teacherid);
+
+  if (!course?.active || !timeSlot?.active || !subject?.active || (session.moduleid && !module?.active) || !teacher?.active) {
+    return json({ success: false, error: "Activate the session's course, time slot, subject, module and teacher before restoring it" }, 409);
+  }
+
+  const conflicts = findSessionConflicts({
+    sessionId,
+    courseId: session.courseid,
+    timeSlot,
+    dayOfWeek: session.dayofweek,
+    groupNo: session.groupno,
+    teacherId: session.teacherid,
+    teacherName: teacher.teachername,
+    sessions,
+    timeSlots,
+    courses
+  });
+  if (conflicts.length) {
+    const uniqueConflicts = deduplicateConflicts(conflicts);
+    return json({ success: false, conflict: true, error: uniqueConflicts[0].message, conflicts: uniqueConflicts }, 409);
+  }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+  if (!audit.ok) return json({ success: false, error: audit.error }, 503);
+  const rowAudit = getRequiredRowAuditColumns(TIMETABLE_SESSION_HEADERS);
+  if (!rowAudit.ok) return json({ success: false, error: rowAudit.error }, 503);
+  const row = copyRow(data.sessionRows[session.rowindex], TIMETABLE_SESSION_HEADERS.length);
+  row[9] = true;
+  stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
+
+  await markCourseTimetableDevelopment(env, data, session.courseid, audit);
+  await updateGoogleSheetValues(env, updateRange(TIMETABLE_SESSION_SHEET, session.rowindex + 1, row.length), [row]);
+  await appendAdminAuditLog(env, audit, {
+    action: "RESTORE",
+    recordType: "TIMETABLE_SESSION",
+    recordId: sessionId,
+    changedFields: ["Active"]
+  });
+
+  return json({ success: true, message: "Session restored to the development timetable", session: { ...session, active: true } });
+}
+
+export async function publishTimetableGoogleSheetsEndpoint(request, env) {
+  const permission = await requireBuilderAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  const body = await readJsonBody(request);
+  const courseId = clean(body.courseid || body.courseId);
+  if (!courseId) return json({ success: false, error: "Course is required" }, 400);
+
+  let data;
+  try {
+    data = await readBuilderData(env, { includeReferences: true });
+  } catch (error) {
+    return builderSetupResponse();
+  }
+
+  const schema = validateBuilderData(data);
+  if (!schema.ok) return json({ success: false, error: schema.error }, 503);
+
+  const courses = parseCourses(data.courseRows);
+  const timeSlots = parseTimeSlots(data.timeSlotRows);
+  const sessions = parseSessions(data.sessionRows);
+  const subjects = parseSubjects(data.subjectRows);
+  const modules = parseModules(data.moduleRows);
+  const teachers = parseTeachers(data.adminRows);
+  const course = courses.find(item => item.courseid === courseId);
+  const activeSessions = sessions.filter(session => session.courseid === courseId && session.active);
+
+  if (!course?.active) return json({ success: false, error: "Activate the course before publishing" }, 409);
+  if (!activeSessions.length) return json({ success: false, error: "Add at least one active session before publishing" }, 409);
+
+  for (const session of activeSessions) {
+    const slot = timeSlots.find(item => item.timeslotid === session.timeslotid);
+    const subject = subjects.find(item => item.subjectid === session.subjectid);
+    const module = session.moduleid ? modules.find(item => item.moduleid === session.moduleid) : null;
+    const teacher = teachers.find(item => item.teacherid === session.teacherid);
+    if (!slot?.active || !subject?.active || (session.moduleid && !module?.active) || !teacher?.active) {
+      return json({ success: false, error: `Session ${session.sessionid} has an inactive or missing time slot, subject, module or teacher` }, 409);
+    }
+  }
+
+  const publicationConflicts = activeSessions.flatMap(session => {
+    const timeSlot = timeSlots.find(item => item.timeslotid === session.timeslotid);
+    const teacher = teachers.find(item => item.teacherid === session.teacherid);
+    return findSessionConflicts({
+      sessionId: session.sessionid,
+      courseId,
+      timeSlot,
+      dayOfWeek: session.dayofweek,
+      groupNo: session.groupno,
+      teacherId: session.teacherid,
+      teacherName: teacher?.teachername || session.teacherid,
+      sessions,
+      timeSlots,
+      courses
+    });
+  });
+  if (publicationConflicts.length) {
+    const uniqueConflicts = deduplicateConflicts(publicationConflicts);
+    return json({ success: false, conflict: true, error: uniqueConflicts[0].message, conflicts: uniqueConflicts }, 409);
+  }
+
+  const audit = await prepareAdminAudit(env, permission.user);
+  if (!audit.ok) return json({ success: false, error: audit.error }, 503);
+
+  const publications = parseTimetablePublications(data.publicationRows);
+  const versionno = publications
+    .filter(item => item.courseid === courseId)
+    .reduce((maximum, item) => Math.max(maximum, item.versionno), 0) + 1;
+  const publicationid = createTimetableId("PUBLICATION");
+  await writePublishedTimetableSnapshot(env, data, {
+    publicationid,
+    courseid: courseId,
+    versionno,
+    sessions: activeSessions,
+    audit
+  });
+
+  return json({
+    success: true,
+    message: `Timetable version ${versionno} published in the builder`,
+    publication: { publicationid, courseid: courseId, versionno, sessioncount: activeSessions.length, stage: PUBLISHED_STAGE },
+    liveSource: "TeacherAssign"
+  });
 }
 
 async function requireBuilderAdmin(request, env) {
@@ -650,7 +917,10 @@ async function readBuilderData(env, options = {}) {
   const requests = [
     readGoogleSheetValues(env, `${COURSE_SHEET}!${FULL_RANGE}`),
     readGoogleSheetValues(env, `${TIME_SLOT_SHEET}!${FULL_RANGE}`),
-    readGoogleSheetValues(env, `${TIMETABLE_SESSION_SHEET}!${FULL_RANGE}`)
+    readGoogleSheetValues(env, `${TIMETABLE_SESSION_SHEET}!${FULL_RANGE}`),
+    readGoogleSheetValues(env, `${TIMETABLE_STATE_SHEET}!${FULL_RANGE}`),
+    readGoogleSheetValues(env, `${TIMETABLE_PUBLICATION_SHEET}!${FULL_RANGE}`),
+    readGoogleSheetValues(env, `${PUBLISHED_TIMETABLE_SESSION_SHEET}!${FULL_RANGE}`)
   ];
 
   if (options.includeReferences) {
@@ -671,7 +941,10 @@ async function readBuilderData(env, options = {}) {
   const data = {
     courseRows: results[index++],
     timeSlotRows: results[index++],
-    sessionRows: results[index++]
+    sessionRows: results[index++],
+    stateRows: results[index++],
+    publicationRows: results[index++],
+    publishedSessionRows: results[index++]
   };
 
   if (options.includeReferences) {
@@ -692,7 +965,10 @@ function validateBuilderData(data) {
   const checks = [
     validateExactHeaders(data.courseRows, COURSE_HEADERS, COURSE_SHEET),
     validateExactHeaders(data.timeSlotRows, TIME_SLOT_HEADERS, TIME_SLOT_SHEET),
-    validateExactHeaders(data.sessionRows, TIMETABLE_SESSION_HEADERS, TIMETABLE_SESSION_SHEET)
+    validateExactHeaders(data.sessionRows, TIMETABLE_SESSION_HEADERS, TIMETABLE_SESSION_SHEET),
+    validateExactHeaders(data.stateRows, TIMETABLE_STATE_HEADERS, TIMETABLE_STATE_SHEET),
+    validateExactHeaders(data.publicationRows, TIMETABLE_PUBLICATION_HEADERS, TIMETABLE_PUBLICATION_SHEET),
+    validateExactHeaders(data.publishedSessionRows, PUBLISHED_TIMETABLE_SESSION_HEADERS, PUBLISHED_TIMETABLE_SESSION_SHEET)
   ];
   return checks.find(check => !check.ok) || { ok: true };
 }
@@ -712,17 +988,24 @@ function buildBuilderResponse(data) {
   const modules = parseModules(data.moduleRows);
   const teachers = parseTeachers(data.adminRows);
   const sessions = parseSessions(data.sessionRows);
+  const states = parseTimetableStates(data.stateRows);
+  const publications = parseTimetablePublications(data.publicationRows);
+  const publishedSessions = parsePublishedTimetableSessions(data.publishedSessionRows);
+  const publishedSourceIds = new Set(publishedSessions.map(session => session.sourcesessionid));
   const subjectMap = new Map(subjects.map(subject => [subject.subjectid, subject]));
   const moduleMap = new Map(modules.map(module => [module.moduleid, module]));
   const teacherMap = new Map(teachers.map(teacher => [teacher.teacherid, teacher]));
   const courseMap = new Map(courses.map(course => [course.courseid, course]));
   const slotMap = new Map(timeSlots.map(slot => [slot.timeslotid, slot]));
+  const stateMap = new Map(states.map(state => [state.courseid, state]));
+  const publicationMap = new Map(publications.map(publication => [publication.publicationid, publication]));
 
   return {
     success: true,
     liveSource: "TeacherAssign",
     builderSource: TIMETABLE_SESSION_SHEET,
-    published: false,
+    publishedSnapshotSource: PUBLISHED_TIMETABLE_SESSION_SHEET,
+    published: states.some(state => state.stage === PUBLISHED_STAGE),
     days: DAY_ORDER,
     courses,
     timeslots: timeSlots,
@@ -735,8 +1018,24 @@ function buildBuilderResponse(data) {
       modulename: session.moduleid
         ? moduleMap.get(session.moduleid)?.modulename || session.moduleid
         : "",
-      teachername: teacherMap.get(session.teacherid)?.teachername || session.teacherid
+      teachername: teacherMap.get(session.teacherid)?.teachername || session.teacherid,
+      everpublished: publishedSourceIds.has(session.sessionid)
     })),
+    timetablestates: courses.map(course => {
+      const state = stateMap.get(course.courseid);
+      const publication = state?.currentpublicationid
+        ? publicationMap.get(state.currentpublicationid)
+        : null;
+      return {
+        courseid: course.courseid,
+        stage: state?.stage || DEVELOPMENT_STAGE,
+        currentpublicationid: state?.currentpublicationid || "",
+        versionno: publication?.versionno || 0,
+        publisheddate: publication?.publisheddate || "",
+        publishedbyadminname: publication?.publishedbyadminname || ""
+      };
+    }),
+    publications,
     subjects,
     modules,
     teachers,
@@ -789,6 +1088,248 @@ function parseSessions(rows = []) {
     active: normalizeBoolean(row[9]),
     createddate: clean(row[10])
   })).filter(session => session.sessionid && session.courseid && session.timeslotid && session.dayofweek);
+}
+
+function parseTimetableStates(rows = []) {
+  return rows.slice(1).map((row, index) => ({
+    rowindex: index + 1,
+    courseid: clean(row[0]),
+    stage: normalizeTimetableStage(row[1]),
+    currentpublicationid: clean(row[2]),
+    createddate: clean(row[3]),
+    modifieddate: clean(row[8])
+  })).filter(state => state.courseid);
+}
+
+function parseTimetablePublications(rows = []) {
+  return rows.slice(1).map(row => ({
+    publicationid: clean(row[0]),
+    courseid: clean(row[1]),
+    versionno: Number(row[2]) || 0,
+    publisheddate: clean(row[3]),
+    publishedbyadminid: clean(row[4]),
+    publishedbyadminname: clean(row[5]),
+    sessioncount: Number(row[6]) || 0
+  })).filter(publication => publication.publicationid && publication.courseid);
+}
+
+function parsePublishedTimetableSessions(rows = []) {
+  return rows.slice(1).map(row => ({
+    publishedsessionid: clean(row[0]),
+    publicationid: clean(row[1]),
+    sourcesessionid: clean(row[2]),
+    courseid: clean(row[3]),
+    timeslotid: clean(row[4]),
+    dayofweek: normalizeDay(row[5]),
+    subjectid: clean(row[6]),
+    moduleid: clean(row[7]),
+    groupno: normalizeGroup(row[8]),
+    teacherid: clean(row[9]),
+    zoomlink: clean(row[10]),
+    publisheddate: clean(row[11])
+  })).filter(session => session.publishedsessionid && session.publicationid && session.sourcesessionid);
+}
+
+function normalizeTimetableStage(value) {
+  return clean(value).toUpperCase() === PUBLISHED_STAGE ? PUBLISHED_STAGE : DEVELOPMENT_STAGE;
+}
+
+function getCourseTimetableState(data, courseId) {
+  return parseTimetableStates(data.stateRows).find(state => state.courseid === courseId) || {
+    courseid: courseId,
+    stage: DEVELOPMENT_STAGE,
+    currentpublicationid: "",
+    rowindex: -1
+  };
+}
+
+function hasSessionEverBeenPublished(data, sessionId) {
+  return parsePublishedTimetableSessions(data.publishedSessionRows)
+    .some(session => session.sourcesessionid === sessionId);
+}
+
+function createTimetableId(prefix) {
+  const randomId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+  return `${clean(prefix).toUpperCase()}-${randomId}`;
+}
+
+async function markCourseTimetableDevelopment(env, data, courseId, audit) {
+  const state = getCourseTimetableState(data, courseId);
+  if (state.rowindex >= 0 && state.stage === DEVELOPMENT_STAGE) return;
+
+  const rowAudit = getRequiredRowAuditColumns(TIMETABLE_STATE_HEADERS);
+  if (!rowAudit.ok) throw new Error(rowAudit.error);
+
+  if (state.rowindex < 0) {
+    const row = new Array(TIMETABLE_STATE_HEADERS.length).fill("");
+    row[0] = courseId;
+    row[1] = DEVELOPMENT_STAGE;
+    row[2] = "";
+    stampCreatedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
+    await appendGoogleSheetValues(env, appendRange(TIMETABLE_STATE_SHEET, row.length), [row]);
+    await appendAdminAuditLog(env, audit, {
+      action: "CREATE",
+      recordType: "TIMETABLE_COURSE_STATE",
+      recordId: courseId,
+      changedFields: ["Stage"]
+    });
+    return;
+  }
+
+  const row = copyRow(data.stateRows[state.rowindex], TIMETABLE_STATE_HEADERS.length);
+  row[1] = DEVELOPMENT_STAGE;
+  stampModifiedRow(row, rowAudit.columns, audit.actor, audit.timestamp);
+  await updateGoogleSheetValues(
+    env,
+    updateRange(TIMETABLE_STATE_SHEET, state.rowindex + 1, row.length),
+    [row]
+  );
+  await appendAdminAuditLog(env, audit, {
+    action: "UPDATE",
+    recordType: "TIMETABLE_COURSE_STATE",
+    recordId: courseId,
+    changedFields: ["Stage"]
+  });
+}
+
+async function hardDeleteTimetableSession(env, session, audit) {
+  const sheetIds = await getRequiredSheetIds(env, [TIMETABLE_SESSION_SHEET, ADMIN_AUDIT_LOG_SHEET]);
+  const auditRows = buildAdminAuditRows(audit, [{
+    action: "HARD_DELETE",
+    recordType: "TIMETABLE_SESSION",
+    recordId: session.sessionid,
+    changedFields: TIMETABLE_SESSION_HEADERS
+  }]);
+
+  await batchUpdateGoogleSpreadsheet(env, [
+    buildAppendCellsRequest(sheetIds.get(ADMIN_AUDIT_LOG_SHEET), auditRows),
+    {
+      deleteDimension: {
+        range: {
+          sheetId: sheetIds.get(TIMETABLE_SESSION_SHEET),
+          dimension: "ROWS",
+          startIndex: session.rowindex,
+          endIndex: session.rowindex + 1
+        }
+      }
+    }
+  ]);
+}
+
+async function writePublishedTimetableSnapshot(env, data, options) {
+  const requiredSheets = [
+    TIMETABLE_STATE_SHEET,
+    TIMETABLE_PUBLICATION_SHEET,
+    PUBLISHED_TIMETABLE_SESSION_SHEET,
+    ADMIN_AUDIT_LOG_SHEET
+  ];
+  const sheetIds = await getRequiredSheetIds(env, requiredSheets);
+  const { audit, publicationid, courseid, versionno, sessions } = options;
+  const publicationRow = [
+    publicationid,
+    courseid,
+    versionno,
+    audit.timestamp,
+    audit.actor.adminid,
+    audit.actor.adminname,
+    sessions.length
+  ];
+  const snapshotRows = sessions.map(session => [
+    createTimetableId("PUBLISHED-SESSION"),
+    publicationid,
+    session.sessionid,
+    courseid,
+    session.timeslotid,
+    session.dayofweek,
+    session.subjectid,
+    session.moduleid,
+    session.groupno,
+    session.teacherid,
+    session.zoomlink,
+    audit.timestamp,
+    audit.actor.adminid,
+    audit.actor.adminname
+  ]);
+  const state = getCourseTimetableState(data, courseid);
+  const rowAudit = getRequiredRowAuditColumns(TIMETABLE_STATE_HEADERS);
+  if (!rowAudit.ok) throw new Error(rowAudit.error);
+  let stateRow;
+  let stateRequest;
+
+  if (state.rowindex < 0) {
+    stateRow = new Array(TIMETABLE_STATE_HEADERS.length).fill("");
+    stateRow[0] = courseid;
+    stateRow[1] = PUBLISHED_STAGE;
+    stateRow[2] = publicationid;
+    stampCreatedRow(stateRow, rowAudit.columns, audit.actor, audit.timestamp);
+    stateRequest = buildAppendCellsRequest(sheetIds.get(TIMETABLE_STATE_SHEET), [stateRow]);
+  } else {
+    stateRow = copyRow(data.stateRows[state.rowindex], TIMETABLE_STATE_HEADERS.length);
+    stateRow[1] = PUBLISHED_STAGE;
+    stateRow[2] = publicationid;
+    stampModifiedRow(stateRow, rowAudit.columns, audit.actor, audit.timestamp);
+    stateRequest = buildUpdateCellsRequest(
+      sheetIds.get(TIMETABLE_STATE_SHEET),
+      state.rowindex,
+      stateRow
+    );
+  }
+
+  const auditRows = buildAdminAuditRows(audit, [{
+    action: "PUBLISH",
+    recordType: "TIMETABLE",
+    recordId: publicationid,
+    changedFields: ["CourseID", "VersionNo", "PublishedDate", "SessionCount", "Stage"]
+  }]);
+  const requests = [
+    buildAppendCellsRequest(sheetIds.get(TIMETABLE_PUBLICATION_SHEET), [publicationRow]),
+    buildAppendCellsRequest(sheetIds.get(PUBLISHED_TIMETABLE_SESSION_SHEET), snapshotRows),
+    stateRequest,
+    buildAppendCellsRequest(sheetIds.get(ADMIN_AUDIT_LOG_SHEET), auditRows)
+  ];
+  await batchUpdateGoogleSpreadsheet(env, requests);
+}
+
+async function getRequiredSheetIds(env, titles) {
+  const properties = await readGoogleSpreadsheetSheetProperties(env);
+  const byTitle = new Map(properties.map(sheet => [sheet.title, sheet.sheetId]));
+  const missing = titles.filter(title => !byTitle.has(title));
+  if (missing.length) throw new Error(`Missing Google Sheet tabs: ${missing.join(", ")}`);
+  return byTitle;
+}
+
+function buildAppendCellsRequest(sheetId, rows) {
+  return {
+    appendCells: {
+      sheetId,
+      rows: rows.map(row => ({ values: row.map(value => ({ userEnteredValue: toSheetExtendedValue(value) })) })),
+      fields: "userEnteredValue"
+    }
+  };
+}
+
+function buildUpdateCellsRequest(sheetId, rowIndex, row) {
+  return {
+    updateCells: {
+      range: {
+        sheetId,
+        startRowIndex: rowIndex,
+        endRowIndex: rowIndex + 1,
+        startColumnIndex: 0,
+        endColumnIndex: row.length
+      },
+      rows: [{ values: row.map(value => ({ userEnteredValue: toSheetExtendedValue(value) })) }],
+      fields: "userEnteredValue"
+    }
+  };
+}
+
+function toSheetExtendedValue(value) {
+  if (typeof value === "boolean") return { boolValue: value };
+  if (typeof value === "number" && Number.isFinite(value)) return { numberValue: value };
+  return { stringValue: clean(value) };
 }
 
 function parseSubjects(rows = []) {
@@ -862,20 +1403,7 @@ function findSessionConflicts(options) {
 
     const courseName = courseMap.get(session.courseid)?.coursename || session.courseid;
     const range = `${otherSlot.starttime}–${otherSlot.endtime}`;
-    const sharedAssignment = isSameSharedTeacherAssignment(session, options);
-    const relatedBatchLesson = Boolean(
-      options.batchCreatedDate &&
-      session.createddate === options.batchCreatedDate &&
-      session.courseid === options.courseId &&
-      session.timeslotid === options.timeSlot.timeslotid &&
-      !sharedAssignment
-    );
-    if (relatedBatchLesson) return;
-    const lessonPrefix = options.lessonCount > 1
-      ? `${formatRequestedLessonLabel(options)}: `
-      : "";
-
-    if (session.teacherid === options.teacherId && !sharedAssignment) {
+    if (session.teacherid === options.teacherId) {
       conflicts.push({
         type: "TEACHER",
         sessionid: session.sessionid,
@@ -886,10 +1414,7 @@ function findSessionConflicts(options) {
         coursename: courseName,
         groupno: session.groupno,
         teacherid: session.teacherid,
-        lessonindex: options.lessonIndex,
-        subjectid: options.subjectId,
-        moduleid: options.moduleId,
-        message: `${lessonPrefix}${options.teacherName || "This teacher"} is already assigned on ${options.dayOfWeek} at ${range} (${courseName}, group ${session.groupno}).`
+        message: `${options.teacherName || "This teacher"} is already assigned on ${options.dayOfWeek} at ${range} (${courseName}, group ${session.groupno}).`
       });
     }
 
@@ -905,29 +1430,12 @@ function findSessionConflicts(options) {
         coursename: courseName,
         groupno: session.groupno,
         teacherid: session.teacherid,
-        lessonindex: options.lessonIndex,
-        subjectid: options.subjectId,
-        moduleid: options.moduleId,
-        message: `${lessonPrefix}${requestedGroup} already has a session on ${options.dayOfWeek} at ${range} (${courseName}).`
+        message: `${requestedGroup} already has a session on ${options.dayOfWeek} at ${range} (${courseName}).`
       });
     }
   });
 
   return conflicts;
-}
-
-function formatRequestedLessonLabel(options) {
-  const curriculum = [options.subjectName, options.moduleName].filter(Boolean).join(" / ");
-  return `Lesson ${options.lessonIndex}${curriculum ? ` (${curriculum})` : ""}`;
-}
-
-function isSameSharedTeacherAssignment(session, options) {
-  return session.courseid === options.courseId &&
-    session.timeslotid === options.timeSlot.timeslotid &&
-    session.subjectid === options.subjectId &&
-    session.moduleid === options.moduleId &&
-    session.teacherid === options.teacherId &&
-    session.zoomlink === options.zoomLink;
 }
 
 function deduplicateConflicts(conflicts) {
@@ -938,7 +1446,6 @@ function deduplicateConflicts(conflicts) {
       conflict.sessionid,
       conflict.dayofweek,
       conflict.groupno,
-      conflict.lessonindex,
       conflict.message
     ].join("|");
     if (seen.has(key)) return false;
@@ -947,57 +1454,88 @@ function deduplicateConflicts(conflicts) {
   });
 }
 
-function normalizeLessonSelection(body) {
-  const rawLessons = Array.isArray(body.lessons)
-    ? body.lessons
-    : [{
-        subjectid: body.subjectid ?? body.subjectId,
-        moduleid: body.moduleid ?? body.moduleId,
-        teacherid: body.teacherid ?? body.teacherId,
-        zoomlink: body.zoomlink ?? body.zoomLink
-      }];
-
-  if (rawLessons.length > 20) {
-    return { values: [], error: "Add no more than 20 lesson rows at once" };
+function normalizeGroupAssignments(body) {
+  if (Array.isArray(body.lessons)) {
+    return {
+      values: [],
+      error: "Refresh Timetable Builder. Multi-lesson saves have been replaced by one Subject/Module with a Teacher and Zoom assignment for each group."
+    };
   }
 
-  const values = [];
-  for (let index = 0; index < rawLessons.length; index += 1) {
-    const raw = rawLessons[index];
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return { values: [], error: `Lesson ${index + 1} is invalid` };
+  const rawAssignments = Array.isArray(body.groupassignments)
+    ? body.groupassignments
+    : Array.isArray(body.groupAssignments)
+      ? body.groupAssignments
+      : null;
+  let candidates = rawAssignments;
+
+  if (!candidates) {
+    const groups = normalizeGroupSelection(body.groupnos ?? body.groups ?? body.groupno ?? body.groupNo ?? body.group);
+    if (groups.invalid.length) {
+      return { values: [], error: `Invalid group selection: ${groups.invalid.join(", ")}` };
     }
+    if (groups.values.length > 1) {
+      return { values: [], error: "Refresh Timetable Builder and select a Teacher and Zoom assignment for each group" };
+    }
+    candidates = groups.values.map(groupno => ({
+      groupno,
+      teacherid: body.teacherid ?? body.teacherId,
+      zoomlink: body.zoomlink ?? body.zoomLink
+    }));
+  }
+
+  if (candidates.length > 20) return { values: [], error: "Select no more than 20 group assignments at once" };
+
+  const values = [];
+  const seenGroups = new Set();
+  for (let index = 0; index < candidates.length; index += 1) {
+    const raw = candidates[index];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { values: [], error: `Group assignment ${index + 1} is invalid` };
+    }
+    const groupno = normalizeGroup(raw.groupno ?? raw.groupNo ?? raw.group);
+    if (!groupno) return { values: [], error: `Group assignment ${index + 1} has an invalid group` };
+    if (seenGroups.has(groupno)) return { values: [], error: `Group ${groupno} appears more than once` };
+    seenGroups.add(groupno);
 
     let zoomlink;
     try {
       zoomlink = normalizeOptionalHttpsUrl(raw.zoomlink ?? raw.zoomLink);
     } catch (error) {
-      return { values: [], error: `Lesson ${index + 1}: ${error.message}` };
+      return { values: [], error: `Group ${groupno}: ${error.message}` };
     }
 
     values.push({
-      lessonindex: index + 1,
-      subjectid: clean(raw.subjectid ?? raw.subjectId),
-      moduleid: clean(raw.moduleid ?? raw.moduleId),
+      groupno,
       teacherid: clean(raw.teacherid ?? raw.teacherId),
       zoomlink
     });
   }
 
+  values.sort((left, right) => {
+    if (left.groupno === "ALL") return -1;
+    if (right.groupno === "ALL") return 1;
+    return Number(left.groupno) - Number(right.groupno);
+  });
   return { values, error: "" };
 }
 
-function findDuplicateLesson(lessons) {
-  const seen = new Map();
-  for (const lesson of lessons) {
-    const key = [lesson.subjectid, lesson.moduleid, lesson.teacherid, lesson.zoomlink].join("|");
-    if (seen.has(key)) {
+function findRepeatedAssignmentTeacher(assignments) {
+  const groupsByTeacher = new Map();
+  assignments.forEach(assignment => {
+    if (!assignment.teacherid || assignment.groupno === "ALL") return;
+    const groups = groupsByTeacher.get(assignment.teacherid) || [];
+    groups.push(assignment.groupno);
+    groupsByTeacher.set(assignment.teacherid, groups);
+  });
+  for (const [teacherid, groups] of groupsByTeacher.entries()) {
+    if (groups.length > 1) {
       return {
-        originalIndex: seen.get(key),
-        duplicateIndex: lesson.lessonindex
+        teacherid,
+        teachername: assignments.find(assignment => assignment.teacherid === teacherid)?.teachername || "",
+        groups
       };
     }
-    seen.set(key, lesson.lessonindex);
   }
   return null;
 }
@@ -1208,7 +1746,7 @@ async function readJsonBody(request) {
 function builderSetupResponse() {
   return json({
     success: false,
-    error: "Timetable Builder Sheet setup is incomplete. Create Courses, TimeSlots and TimetableSessions using the V101.4 migration headers."
+    error: "Timetable Builder Sheet setup is incomplete. Create Courses, TimeSlots, TimetableSessions, TimetableCourseState, TimetablePublications and PublishedTimetableSessions using the V101.4.3 migration headers."
   }, 503);
 }
 

@@ -1,4 +1,4 @@
-/* M4L V101.4.2 - desktop-first Timetable Builder with atomic multi-lesson saves. */
+/* M4L V101.4.3 - desktop-first staged Timetable Builder with per-group assignments. */
 
 body:has(#timetable-builder-screen.active) .app-shell {
   width: min(100%, 1500px);
@@ -79,6 +79,15 @@ body:has(#timetable-builder-screen.active) .app-shell {
 .timetable-builder-status-band strong {
   color: var(--primary, #31513f);
   white-space: nowrap;
+}
+
+.timetable-builder-status-band > span {
+  flex: 1 1 auto;
+}
+
+.timetable-builder-status-band > button {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .timetable-builder-tabs {
@@ -212,6 +221,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
 
 .timetable-builder-primary,
 .timetable-builder-secondary,
+.timetable-builder-danger,
 .timetable-builder-panel-heading > button,
 .ttb-grid-time button {
   min-height: 40px;
@@ -229,6 +239,12 @@ body:has(#timetable-builder-screen.active) .app-shell {
   color: #fff;
 }
 
+.timetable-builder-danger {
+  border-color: #a43636;
+  background: #fff;
+  color: #982f2f;
+}
+
 .timetable-builder-secondary,
 .timetable-builder-panel-heading > button,
 .ttb-grid-time button {
@@ -237,7 +253,8 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-primary:disabled,
-.timetable-builder-secondary:disabled {
+.timetable-builder-secondary:disabled,
+.timetable-builder-danger:disabled {
   cursor: wait;
   opacity: 0.55;
 }
@@ -259,7 +276,13 @@ body:has(#timetable-builder-screen.active) .app-shell {
   font-size: 0.82rem;
 }
 
-.timetable-builder-grid-title > span {
+.timetable-builder-grid-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timetable-builder-grid-title-actions > span {
   flex: 0 0 auto;
   padding: 5px 9px;
   border-radius: 999px;
@@ -632,48 +655,36 @@ body:has(#timetable-builder-screen.active) .app-shell {
   outline-offset: 2px;
 }
 
-.timetable-session-lessons-section {
+.timetable-session-group-assignments-section {
   min-width: 0;
 }
 
-.timetable-session-lessons-heading,
-.timetable-session-lesson-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.timetable-session-lessons-heading {
+.timetable-session-group-assignments-heading {
   margin-bottom: 9px;
 }
 
-.timetable-session-lessons-heading h4,
-.timetable-session-lessons-heading p {
+.timetable-session-group-assignments-heading h4,
+.timetable-session-group-assignments-heading p {
   margin: 0;
 }
 
-.timetable-session-lessons-heading h4 {
+.timetable-session-group-assignments-heading h4 {
   color: var(--text, #2f312e);
   font-size: 0.94rem;
 }
 
-.timetable-session-lessons-heading p {
+.timetable-session-group-assignments-heading p {
   margin-top: 3px;
   color: var(--text-muted, #70736c);
   font-size: 0.76rem;
 }
 
-.timetable-session-lessons-heading button {
-  flex: 0 0 auto;
-}
-
-.timetable-session-lessons {
+.timetable-session-group-assignments {
   display: grid;
   gap: 10px;
 }
 
-.timetable-session-lesson {
+.timetable-session-group-assignment {
   min-width: 0;
   padding: 13px;
   border: 1px solid var(--border, #e4dadd);
@@ -681,27 +692,14 @@ body:has(#timetable-builder-screen.active) .app-shell {
   background: color-mix(in srgb, var(--surface-track, #f4f1ef) 54%, white);
 }
 
-.timetable-session-lesson-heading {
+.timetable-session-group-assignment > strong {
+  display: block;
   margin-bottom: 10px;
-}
-
-.timetable-session-lesson-heading strong {
   color: var(--primary, #31513f);
   font-size: 0.82rem;
 }
 
-.timetable-session-lesson-heading button {
-  padding: 3px 7px;
-  border: 0;
-  background: transparent;
-  color: #9a3232;
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 680;
-  cursor: pointer;
-}
-
-.timetable-session-lesson-grid {
+.timetable-session-group-assignment-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -753,6 +751,10 @@ body:has(#timetable-builder-screen.active) .app-shell {
   border-top: 1px solid var(--border, #e4dadd);
 }
 
+.timetable-builder-dialog-actions-spacer {
+  flex: 1 1 auto;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .timetable-builder-tabs button:hover:not(.is-active),
   .timetable-builder-secondary:hover,
@@ -787,12 +789,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
     grid-template-columns: 1fr;
   }
 
-  .timetable-session-lessons-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .timetable-session-lesson-grid {
+  .timetable-session-group-assignment-grid {
     grid-template-columns: 1fr;
   }
 

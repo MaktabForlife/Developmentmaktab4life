@@ -179,7 +179,21 @@ export async function appendAdminAuditLogs(env, preparedAudit, events = []) {
   const validEvents = events.filter(Boolean);
   if (validEvents.length === 0) return;
 
-  const rows = validEvents.map((event, index) => {
+  const rows = buildAdminAuditRows(preparedAudit, validEvents);
+
+  await appendGoogleSheetValues(
+    env,
+    `${ADMIN_AUDIT_LOG_SHEET}!A:I`,
+    rows
+  );
+}
+
+export function buildAdminAuditRows(preparedAudit, events = []) {
+  if (!preparedAudit || preparedAudit.ok !== true || !preparedAudit.actor) {
+    throw new Error("Admin audit was not prepared before the data write");
+  }
+
+  return events.filter(Boolean).map((event, index) => {
     const action = clean(event.action).toUpperCase();
     const recordType = clean(event.recordType).toUpperCase();
     const recordId = clean(event.recordId);
@@ -200,12 +214,6 @@ export async function appendAdminAuditLogs(env, preparedAudit, events = []) {
       normalizeChangedFields(event.changedFields)
     ];
   });
-
-  await appendGoogleSheetValues(
-    env,
-    `${ADMIN_AUDIT_LOG_SHEET}!A:I`,
-    rows
-  );
 }
 
 export function columnIndexToA1(index) {

@@ -20,6 +20,9 @@ const expectedPaths = [
   "/api/admin/timetable-builder/course/save",
   "/api/admin/timetable-builder/time-slot/save",
   "/api/admin/timetable-builder/session/save",
+  "/api/admin/timetable-builder/session/delete",
+  "/api/admin/timetable-builder/session/restore",
+  "/api/admin/timetable-builder/publish",
   "/api/admin/weekly-planner/health",
   "/api/admin/weekly-planner/teachers",
   "/api/admin/weekly-planner/get",
@@ -80,7 +83,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "101.4.2"
+  version: "101.4.3"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

@@ -1,4 +1,4 @@
-V101.4.2
+V101.4.3
 
 No repository files or Google Sheet tabs should be deleted in this release.
 
@@ -9,3 +9,6 @@ Create `Courses`, `TimeSlots`, and `TimetableSessions`. Keep `SystemConfig`,
 V101.4.1 introduces no additional tabs and deletes no V101.4 data.
 
 V101.4.2 introduces no additional tabs and deletes no V101.4 data.
+
+V101.4.3 adds three tabs but deletes no existing repository files, Sheet tabs,
+or historical timetable data. Published snapshot rows must never be deleted.

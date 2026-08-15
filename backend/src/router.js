@@ -67,7 +67,10 @@ import {
   updateTaskGoogleSheetsEndpoint
 } from "./routes/curriculum.js";
 import {
+  deleteTimetableSessionGoogleSheetsEndpoint,
   getTimetableBuilderGoogleSheetsEndpoint,
+  publishTimetableGoogleSheetsEndpoint,
+  restoreTimetableSessionGoogleSheetsEndpoint,
   saveTimetableCourseGoogleSheetsEndpoint,
   saveTimetableSessionGoogleSheetsEndpoint,
   saveTimetableTimeSlotGoogleSheetsEndpoint
@@ -113,6 +116,9 @@ const ROUTES = new Map([
   ["/api/admin/timetable-builder/course/save", googleSheetsRoute("timetable-builder", saveTimetableCourseGoogleSheetsEndpoint)],
   ["/api/admin/timetable-builder/time-slot/save", googleSheetsRoute("timetable-builder", saveTimetableTimeSlotGoogleSheetsEndpoint)],
   ["/api/admin/timetable-builder/session/save", googleSheetsRoute("timetable-builder", saveTimetableSessionGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/session/delete", googleSheetsRoute("timetable-builder", deleteTimetableSessionGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/session/restore", googleSheetsRoute("timetable-builder", restoreTimetableSessionGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/publish", googleSheetsRoute("timetable-builder", publishTimetableGoogleSheetsEndpoint)],
 
   ["/api/admin/weekly-planner/health", googleSheetsRoute("weekly-planner", weeklyPlannerHealthEndpoint)],
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],

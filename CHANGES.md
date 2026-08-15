@@ -1,3 +1,24 @@
+# V101.4.3 — Group assignments and staged timetable publication
+
+- Replaces repeatable Lessons with one Subject, one optional Module, multiple
+  Days, and either `ALL` or multiple individual Groups.
+- Requires one Teacher and permits one Zoom override for each selected group.
+- Creates every day–group combination only after complete validation and gives
+  clear teacher/group conflict feedback in 24-hour time.
+- Adds `DEVELOPMENT` and `PUBLISHED` course states with immutable, versioned
+  publication snapshots.
+- Adds permanent deletion for never-published development rows and enforced
+  soft deletion plus restoration for anything ever published.
+- Uses UUID-based session/publication IDs to prevent ID reuse after hard delete.
+- Keeps `TeacherAssign` as the live student/teacher timetable source in this
+  release; publishing prepares snapshots without a silent cutover.
+- Adds three required Sheet tabs and comprehensive backend/UI regression tests.
+- Bumps application and Worker metadata to `101.4.3`.
+
+See `docs/V101.4.3-TIMETABLE-PUBLICATION-MIGRATION.md` before deployment.
+
+---
+
 # V101.4.2 — Multi-lesson timetable session creation
 
 - Replaces the single Subject/Module/Teacher/Zoom fields for new sessions with
