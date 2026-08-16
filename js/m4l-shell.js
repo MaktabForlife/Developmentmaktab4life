@@ -1,4 +1,5 @@
-/* M4L v93.0 - Shell / Navigation / User Band module.
+/* M4L V102.8 - Direct Profile course/role switching and global-only menu filtering.
+   M4L v93.0 - Shell / Navigation / User Band module.
    Owns app browser-back history, cover-home navigation, banner Zoom,
    slide-down menu grid, and shared refresh feedback.
    V92.3 keeps the Recorder Pages → Record → Preview history stack, contains
@@ -2266,14 +2267,21 @@ function getUserBandProfileMarkup(username, role) {
     const courseName = String(context.courseName || context.coursename || "M4L Platform").trim();
     const contextRole = getDisplayRoleLabel(context.role);
     const isCurrent = accountContextMatches(context, current);
+    const elementName = isCurrent ? "div" : "button";
+    const switchAttributes = isCurrent ? "" : `
+        type="button"
+        data-user-profile-context
+        data-context-scope="${escapeForAttribute(context.scope || "COURSE")}"
+        data-context-course-id="${escapeForAttribute(context.courseId || context.courseid || "")}"
+        data-context-role="${escapeForAttribute(context.role || "")}"`;
     return `
-      <div class="app-user-profile-menu__context${isCurrent ? " is-current" : ""}">
+      <${elementName} class="app-user-profile-menu__context${isCurrent ? " is-current" : " is-switchable"}"${switchAttributes}>
         <span>
           <strong>${escapeHtml(courseName)}</strong>
           <small>${escapeHtml(contextRole || "Role unavailable")}</small>
         </span>
-        ${isCurrent ? '<em>Current</em>' : ""}
-      </div>
+        ${isCurrent ? '<em>Current</em>' : '<em>Switch</em>'}
+      </${elementName}>
     `;
   }).join("") : `
     <div class="app-user-profile-menu__context is-current">
@@ -2298,13 +2306,9 @@ function getUserBandProfileMarkup(username, role) {
         <span class="app-user-profile-menu__value">${escapeHtml(groupLabel)}</span>
       </div>
     ` : ""}
-    <p class="app-user-profile-menu__section-label">Courses and roles</p>
+    <p class="app-user-profile-menu__section-label">Switch course or role</p>
     <div class="app-user-profile-menu__contexts">${contextMarkup}</div>
-    ${hasUnifiedAccountProfile() ? `
-      <button type="button" class="app-user-profile-menu__switch" data-user-profile-switch>
-        Switch course or role
-      </button>
-    ` : ""}
+    <p class="app-user-profile-menu__feedback" data-user-profile-feedback role="status" aria-live="polite"></p>
   `;
 }
 
@@ -2747,7 +2751,10 @@ const USER_BAND_MENU_ITEMS = {
 
 function getUserBandMenuItems(role) {
   const key = String(role || getBottomNavRole() || "student").toLowerCase() === "admin" ? "admin" : "student";
-  return [...(USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student)];
+  const items = [...(USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student)];
+  return isGlobalLibraryOnlyContext()
+    ? items.filter(item => ["library", "refresh", "logout"].includes(item.action))
+    : items;
 }
 
 function getUserBandMenuProfileMarkup(username, role) {
@@ -3033,18 +3040,28 @@ function attachUserBandProfileHandler(band) {
   bindUserBandMenuDismissHandler();
 
   menu.addEventListener("click", event => {
-    const switchButton = event.target && typeof event.target.closest === "function"
-      ? event.target.closest("[data-user-profile-switch]")
+    const contextButton = event.target && typeof event.target.closest === "function"
+      ? event.target.closest("[data-user-profile-context]")
       : null;
-    if (!switchButton) return;
+    if (!contextButton || contextButton.disabled) return;
     event.preventDefault();
     event.stopPropagation();
-    closeUserBandProfileMenu();
+    const feedback = menu.querySelector("[data-user-profile-feedback]");
+    const context = {
+      scope: String(contextButton.dataset.contextScope || "COURSE"),
+      courseId: String(contextButton.dataset.contextCourseId || ""),
+      role: String(contextButton.dataset.contextRole || "")
+    };
     if (
       window.M4LAuth &&
-      typeof window.M4LAuth.openUnifiedAccountSwitcher === "function"
+      typeof window.M4LAuth.switchUnifiedAccountContext === "function"
     ) {
-      window.M4LAuth.openUnifiedAccountSwitcher();
+      contextButton.disabled = true;
+      if (feedback) feedback.textContent = "Validating the selected course and role…";
+      window.M4LAuth.switchUnifiedAccountContext(context).catch(error => {
+        contextButton.disabled = false;
+        if (feedback) feedback.textContent = error.message || "The selected context could not be opened.";
+      });
     }
   });
 
@@ -3111,7 +3128,7 @@ function updateUserBand(screenId) {
         <span class="app-user-band__name">${escapeHtml(username)}</span>
       </span>
     </div>
-    <button
+    ${isGlobalLibraryOnlyContext() ? "" : `<button
       type="button"
       class="app-user-band__zoom-btn"
       data-user-band-zoom
@@ -3120,7 +3137,7 @@ function updateUserBand(screenId) {
     >
       <span class="app-icon app-icon-zoom" aria-hidden="true"></span>
       <span class="app-user-band__action-label">ZOOM</span>
-    </button>
+    </button>`}
     <div class="app-user-band__menu-shell">
       <button
         type="button"
@@ -3262,6 +3279,10 @@ function getBottomNavRole() {
   if (userType === "student" || portalType === "student") return "student";
 
   return "";
+}
+
+function isGlobalLibraryOnlyContext() {
+  return String(state.accountContext?.scope || "").trim().toUpperCase() === "GLOBAL";
 }
 
 
@@ -3553,7 +3574,10 @@ function installBottomNavigationGestureGuard(nav) {
 }
 
 function getBottomNavItems(role) {
-  return Array.isArray(BOTTOM_NAV_ITEMS[role]) ? BOTTOM_NAV_ITEMS[role] : [];
+  const items = Array.isArray(BOTTOM_NAV_ITEMS[role]) ? BOTTOM_NAV_ITEMS[role] : [];
+  return isGlobalLibraryOnlyContext()
+    ? items.filter(item => item.key === "library")
+    : items;
 }
 
 function isBottomNavItemAvailable(item) {

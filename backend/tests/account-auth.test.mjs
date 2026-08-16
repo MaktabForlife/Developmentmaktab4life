@@ -13,6 +13,7 @@ const sessionSecret = "account-session-secret";
 const adminHash = await createSaltedPinHash("4321", pinSecret);
 const globalHash = await createSaltedPinHash("2468", pinSecret);
 const disabledHash = await createSaltedPinHash("9999", pinSecret);
+const subscriberHash = await createSaltedPinHash("8642", pinSecret);
 
 const tables = {
   CourseRegistry: [
@@ -26,7 +27,8 @@ const tables = {
     ["ACCOUNT1", "Admin One", "ADMIN-LINK", true, adminHash, true, "", "2026-08-15T00:00:00.000Z", "", "", "", "", "", ""],
     ["ACCOUNT2", "Global Admin", "GLOBAL-LINK", true, globalHash, true, "", "2026-08-15T00:00:00.000Z", "", "", "", "", "", "GLOBAL_ADMIN"],
     ["ACCOUNT3", "Disabled", "DISABLED-LINK", true, disabledHash, false, "", "2026-08-15T00:00:00.000Z", "", "", "", "", "", ""],
-    ["ACCOUNT4", "New Student", "SETUP-LINK", false, "", true, "", "2026-08-15T00:00:00.000Z", "", "", "", "", "", ""]
+    ["ACCOUNT4", "New Student", "SETUP-LINK", false, "", true, "", "2026-08-15T00:00:00.000Z", "", "", "", "", "", ""],
+    ["ACCOUNT5", "Global Subscriber", "GLOBAL-SUBSCRIBER", true, subscriberHash, true, "", "2026-08-15T00:00:00.000Z", "", "", "", "", "", ""]
   ],
   UserCourseAccess: [
     PLATFORM_SHEET_HEADERS.UserCourseAccess,
@@ -34,6 +36,14 @@ const tables = {
     ["ACCESS2", "ACCOUNT1", "COURSE2", "ADMIN", true, true, "2026-08-14T12:00:00.000Z", "", "", "", "", "", "", "ADMIN9"],
     ["ACCESS3", "ACCOUNT1", "COURSE1", "TEACHER", true, false, "2026-08-15T12:00:00.000Z", "", "", "", "", "", "", "ADMIN1"],
     ["ACCESS4", "ACCOUNT4", "COURSE1", "STUDENT", true, true, "", "", "", "", "", "", "", "STUDENT4"]
+  ],
+  UserGlobalSubjectAccess: [
+    PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess,
+    ["GSACCESS1", "ACCOUNT5", "GSUBJ1", true, "", "", ""]
+  ],
+  GlobalSubjectList: [
+    PLATFORM_SHEET_HEADERS.GlobalSubjectList,
+    ["GSUBJ1", "Global Subject", true, "", "", "", "", "", "", ""]
   ],
   PlatformConfig: [
     PLATFORM_SHEET_HEADERS.PlatformConfig,
@@ -66,6 +76,19 @@ assert.deepEqual(globalContexts.map(context => `${context.scope}:${context.cours
   "COURSE:COURSE1:GLOBAL_ADMIN",
   "COURSE:COURSE2:GLOBAL_ADMIN"
 ]);
+const subscriberContexts = buildAvailableContexts(
+  record(tables.UserAccounts, 6),
+  [],
+  [record(tables.CourseRegistry, 2), record(tables.CourseRegistry, 3), record(tables.CourseRegistry, 4)],
+  [record(tables.UserGlobalSubjectAccess, 2)],
+  [record(tables.GlobalSubjectList, 2)]
+);
+assert.deepEqual(subscriberContexts, [{
+  scope: "GLOBAL",
+  courseId: "",
+  courseName: "Global Subjects",
+  role: "STUDENT"
+}]);
 
 const keyPair = await crypto.subtle.generateKey({
   name: "RSASSA-PKCS1-v1_5",
@@ -116,7 +139,7 @@ globalThis.fetch = async (input, init = {}) => {
   reads.push(range);
   const fullMatch = /^'([^']+)'!A:([A-Z]+)$/.exec(range);
   if (fullMatch && tables[fullMatch[1]]) return response({ values: tables[fullMatch[1]] });
-  const rowMatch = /^(UserAccounts|UserCourseAccess)!A(\d+):[A-Z]+\2$/.exec(range);
+  const rowMatch = /^(UserAccounts|UserCourseAccess|UserGlobalSubjectAccess)!A(\d+):[A-Z]+\2$/.exec(range);
   if (rowMatch) {
     return response({ values: [tables[rowMatch[1]][Number(rowMatch[2]) - 1] || []] });
   }
@@ -209,6 +232,40 @@ try {
   assert.equal(globalCourse.data.context.courseId, "COURSE1");
   assert.equal(globalCourse.data.context.role, "GLOBAL_ADMIN");
 
+  const subscriberLogin = await post("/api/account/login", {
+    uniqueid: "GLOBAL-SUBSCRIBER",
+    pin: "8642"
+  });
+  assert.equal(subscriberLogin.response.status, 200, JSON.stringify(subscriberLogin.data));
+  assert.deepEqual(subscriberLogin.data.context, {
+    scope: "GLOBAL",
+    courseId: "",
+    courseName: "Global Subjects",
+    role: "STUDENT"
+  });
+  assert.equal(subscriberLogin.data.operationalAccessActive, true);
+  const globalWorkspace = await post(
+    "/api/account/global-workspace",
+    {},
+    subscriberLogin.data.token
+  );
+  assert.equal(globalWorkspace.response.status, 200, JSON.stringify(globalWorkspace.data));
+  assert.equal(globalWorkspace.data.workspace.path, "/student/GLOBAL-SUBSCRIBER?global=1");
+  assert.equal(globalWorkspace.data.student.classgroup, "GLOBAL");
+
+  const globalSubscriberRequest = new Request("https://worker.test/api/account/session", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${subscriberLogin.data.token}` }
+  });
+  assert.equal((await getAuthUser(globalSubscriberRequest, env)).scope, "GLOBAL");
+  tables.GlobalSubjectList[1][2] = false;
+  assert.equal(
+    await getAuthUser(globalSubscriberRequest, env),
+    null,
+    "Global-only sessions must close when their subscribed subject is inactive"
+  );
+  tables.GlobalSubjectList[1][2] = true;
+
   const setup = await post("/api/account/setup-pin", {
     uniqueid: "SETUP-LINK",
     pin: "1357",
@@ -259,7 +316,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.5 central account authentication compatibility tests passed.");
+console.log("V102.8 central account and global-only authentication tests passed.");
 
 async function post(path, body, token = "") {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

@@ -854,6 +854,8 @@ button:active {
 }
 
 .app-user-profile-menu__context {
+  width: 100%;
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -862,7 +864,26 @@ button:active {
   border: 1px solid rgba(var(--primary-rgb), 0.16);
   border-radius: 10px;
   background: var(--surface);
+  color: var(--text);
+  box-shadow: none;
+  font: inherit;
   text-align: left;
+}
+
+.app-user-profile-menu__context.is-switchable {
+  cursor: pointer;
+}
+
+.app-user-profile-menu__context.is-switchable:hover,
+.app-user-profile-menu__context.is-switchable:focus-visible {
+  border-color: var(--primary);
+  outline: 2px solid rgba(var(--primary-rgb), 0.18);
+  outline-offset: 1px;
+}
+
+.app-user-profile-menu__context.is-switchable:disabled {
+  cursor: wait;
+  opacity: 0.68;
 }
 
 .app-user-profile-menu__context > span {
@@ -898,6 +919,14 @@ button:active {
   background: var(--primary);
   color: var(--white);
   font-size: 0.86rem;
+}
+
+.app-user-profile-menu__feedback {
+  min-height: 1.1em;
+  margin: 0;
+  color: var(--error);
+  font-size: 0.76rem;
+  line-height: 1.3;
 }
 
 .app-user-menu__profile-tile,

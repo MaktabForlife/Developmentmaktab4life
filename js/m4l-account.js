@@ -1,4 +1,4 @@
-/* M4L V102.7 - Unified account login, context switching and Profile details. */
+/* M4L V102.8 - Unified account login, context switching and global-only workspace handoff. */
 (function () {
   "use strict";
 
@@ -157,7 +157,7 @@
       clearCourseDataCaches();
     }
     renderContextView();
-    if (options.autoOpen !== false && state.context?.scope === "COURSE") {
+    if (options.autoOpen !== false && ["COURSE", "GLOBAL"].includes(state.context?.scope)) {
       await openCurrentWorkspace();
     }
   }
@@ -165,12 +165,12 @@
   function renderContextView() {
     byId("context-account-name").textContent = state.account?.displayName || "Account";
     byId("current-course").textContent = state.context?.courseName || "M4L Platform";
-    byId("current-scope").textContent = state.context?.scope === "PLATFORM" ? "Platform" : "Course";
+    byId("current-scope").textContent = contextScopeLabel(state.context?.scope);
     byId("current-role").textContent = roleLabel(state.context?.role);
     byId("logout-button").classList.remove("hidden");
     byId("open-workspace-button").classList.toggle(
       "hidden",
-      state.context?.scope !== "COURSE"
+      !["COURSE", "GLOBAL"].includes(state.context?.scope)
     );
     renderContextList();
     showView("context-view");
@@ -195,8 +195,8 @@
       name.textContent = context.courseName || "M4L Platform";
       const scope = document.createElement("small");
       scope.textContent = current
-        ? `${context.scope === "PLATFORM" ? "Platform" : "Course"} · Current`
-        : (context.scope === "PLATFORM" ? "Platform" : "Course");
+        ? `${contextScopeLabel(context.scope)} · Current`
+        : contextScopeLabel(context.scope);
       label.append(name, scope);
 
       const badge = document.createElement("span");
@@ -221,7 +221,7 @@
         role: context.role
       }, state.token);
       await acceptSession(result, true, { autoOpen: false });
-      if (state.context?.scope === "COURSE") {
+      if (["COURSE", "GLOBAL"].includes(state.context?.scope)) {
         await openCurrentWorkspace();
       } else {
         byId("service-message").textContent = "Platform context selected securely.";
@@ -236,18 +236,21 @@
   }
 
   async function openCurrentWorkspace() {
-    if (state.workspaceOpening || state.context?.scope !== "COURSE" || !state.token) return false;
+    if (state.workspaceOpening || !["COURSE", "GLOBAL"].includes(state.context?.scope) || !state.token) return false;
     state.workspaceOpening = true;
     const openButton = byId("open-workspace-button");
     openButton.disabled = true;
     showFormError("context-error", "");
-    byId("service-message").textContent = "Opening the selected course…";
+    byId("service-message").textContent = "Opening the selected workspace…";
     try {
-      const result = await api("/api/account/workspace", {}, state.token);
+      const endpoint = state.context?.scope === "GLOBAL"
+        ? "/api/account/global-workspace"
+        : "/api/account/workspace";
+      const result = await api(endpoint, {}, state.token);
       const path = String(result.workspace?.path || "").trim();
       const portalType = String(result.workspace?.portalType || "").trim().toLowerCase();
-      if (!/^\/(admin|student)\/[A-Za-z0-9._~%-]+\/?$/.test(path)) {
-        throw new Error("The course workspace route is invalid.");
+      if (!/^\/(admin|student)\/[A-Za-z0-9._~%-]+\/?(?:\?[^\s]*)?$/.test(path)) {
+        throw new Error("The selected workspace route is invalid.");
       }
       if (!["admin", "student"].includes(portalType)) {
         throw new Error("The course workspace role is invalid.");
@@ -377,6 +380,13 @@
     const normalized = normalize(role);
     if (normalized === "SENIOR") return "SENIOR TEACHER";
     return String(role || "").replace(/_/g, " ");
+  }
+
+  function contextScopeLabel(scope) {
+    const normalized = String(scope || "").trim().toUpperCase();
+    if (normalized === "PLATFORM") return "Platform";
+    if (normalized === "GLOBAL") return "Global Library";
+    return "Course";
   }
 
   function getUniqueIdFromPath() {

@@ -533,12 +533,23 @@ function completeAuthenticatedSession(result) {
 
   const initialDataStatusToken = beginAuthInitialDataStatus();
 
+  const isGlobalLibraryContext = String(state.accountContext?.scope || "").trim().toUpperCase() === "GLOBAL";
+
   if (state.userType === "admin") {
     const adminWelcome = document.getElementById("admin-welcome");
     if (adminWelcome) {
       adminWelcome.innerText = "";
     }
     showScreen("admin-home");
+  } else if (isGlobalLibraryContext) {
+    showScreen("student-resources-subjects");
+    window.setTimeout(() => {
+      if (typeof showStudentResources === "function") {
+        showStudentResources({ force: true }).catch(error => {
+          console.error("Global Library opening failed:", error);
+        });
+      }
+    }, 0);
   } else {
     const studentHomeTitle = document.getElementById("student-home-title");
     if (studentHomeTitle) {
@@ -560,7 +571,14 @@ async function restoreUnifiedAccountWorkspace(route = {}) {
   if (!hasUnifiedAccountWorkspaceSession()) return false;
 
   try {
-    const result = await apiPost("/api/account/workspace", {}, state.token);
+    let storedContext = null;
+    try {
+      storedContext = JSON.parse(localStorage.getItem("m4l_account_context") || "null");
+    } catch (error) {}
+    const workspaceEndpoint = String(storedContext?.scope || "").trim().toUpperCase() === "GLOBAL"
+      ? "/api/account/global-workspace"
+      : "/api/account/workspace";
+    const result = await apiPost(workspaceEndpoint, {}, state.token);
     if (!result.success || !result.token && !state.token) {
       if (!result.sessionInvalidated) {
         setError(result.error || "The selected course workspace could not be opened.");
@@ -605,6 +623,100 @@ function openUnifiedAccountSwitcher() {
   if (!hasUnifiedAccountWorkspaceSession() && state.authMode !== "account") return false;
   window.location.assign(getUnifiedAccountPath({ switcher: true }));
   return true;
+}
+
+async function switchUnifiedAccountContext(context) {
+  if (!hasUnifiedAccountWorkspaceSession() && state.authMode !== "account") {
+    throw new Error("The unified account session is not active.");
+  }
+
+  const accountToken = String(localStorage.getItem("m4l_account_token") || state.token || "");
+  const requested = context && typeof context === "object" ? context : {};
+  const scope = String(requested.scope || "COURSE").trim().toUpperCase();
+  const courseId = String(requested.courseId || requested.courseid || "").trim();
+  const role = String(requested.role || "").trim().toUpperCase();
+  if (!accountToken || !scope || !role || (scope === "COURSE" && !courseId)) {
+    throw new Error("The selected course or role is incomplete.");
+  }
+
+  const previousContext = state.accountContext || null;
+  const result = await apiPost("/api/account/switch-context", {
+    scope,
+    courseId,
+    role
+  }, accountToken);
+  if (!result.success || !result.token) {
+    throw new Error(result.error || "The selected course or role could not be opened.");
+  }
+
+  state.token = result.token;
+  state.accountContext = result.context || null;
+  localStorage.setItem("m4l_account_token", result.token);
+  localStorage.setItem("maktab_token", result.token);
+  localStorage.setItem("m4l_account_context", JSON.stringify(state.accountContext));
+  localStorage.setItem("m4l_account_contexts", JSON.stringify(
+    Array.isArray(result.contexts) ? result.contexts : []
+  ));
+
+  if (!sameUnifiedAccountContext(previousContext, state.accountContext)) {
+    clearUnifiedAccountCourseCaches();
+  }
+
+  if (String(state.accountContext?.scope || "").toUpperCase() === "PLATFORM") {
+    localStorage.removeItem("m4l_account_workspace");
+    localStorage.removeItem("maktab_user_type");
+    window.location.assign(getUnifiedAccountPath({ switcher: true }));
+    return true;
+  }
+
+  const workspacePath = String(state.accountContext?.scope || "").toUpperCase() === "GLOBAL"
+    ? "/api/account/global-workspace"
+    : "/api/account/workspace";
+  const workspace = await apiPost(workspacePath, {}, result.token);
+  const path = String(workspace.workspace?.path || "").trim();
+  const portalType = String(workspace.workspace?.portalType || "").trim().toLowerCase();
+  if (!workspace.success || !/^\/(admin|student)\/[A-Za-z0-9._~%-]+\/?(?:\?[^\s]*)?$/.test(path)) {
+    throw new Error(workspace.error || "The selected workspace route is invalid.");
+  }
+  if (!["admin", "student"].includes(portalType)) {
+    throw new Error("The selected workspace role is invalid.");
+  }
+
+  localStorage.setItem("maktab_user_type", portalType);
+  localStorage.setItem("m4l_account_workspace", "true");
+  window.location.assign(path);
+  return true;
+}
+
+function sameUnifiedAccountContext(left, right) {
+  const normalize = value => String(value || "").trim().toUpperCase();
+  return normalize(left?.scope) === normalize(right?.scope) &&
+    normalize(left?.courseId || left?.courseid) === normalize(right?.courseId || right?.courseid) &&
+    normalize(left?.role) === normalize(right?.role);
+}
+
+function clearUnifiedAccountCourseCaches() {
+  try {
+    if (window.M4LResources && typeof window.M4LResources.invalidateCache === "function") {
+      window.M4LResources.invalidateCache();
+    }
+  } catch (error) {}
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key && ["m4l_app_cache_", "maktab_timetable_cache_"].some(prefix => key.startsWith(prefix))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch (error) {}
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index);
+      if (key && key.startsWith("m4l_admin_progress_dashboard_")) {
+        sessionStorage.removeItem(key);
+      }
+    }
+  } catch (error) {}
 }
 
 async function refreshUnifiedAccountProfile() {
@@ -710,6 +822,7 @@ window.M4LAuth = {
   hasUnifiedAccountWorkspaceSession,
   restoreUnifiedAccountWorkspace,
   openUnifiedAccountSwitcher,
+  switchUnifiedAccountContext,
   refreshUnifiedAccountProfile,
   checkStudent,
   checkAdmin,
@@ -722,3 +835,4 @@ window.M4LAuth = {
 window.hasUnifiedAccountWorkspaceSession = hasUnifiedAccountWorkspaceSession;
 window.restoreUnifiedAccountWorkspace = restoreUnifiedAccountWorkspace;
 window.openUnifiedAccountSwitcher = openUnifiedAccountSwitcher;
+window.switchUnifiedAccountContext = switchUnifiedAccountContext;

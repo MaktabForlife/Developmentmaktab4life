@@ -1,26 +1,28 @@
 # Maktabhelper
 
-Current development release: V102.7 protected Global Resources.
+Current development release: V102.8 unified multi-course and global Library.
 
-V102.7 is applied over deployed V102.6.3. A `GLOBAL_ADMIN` designates one private
-Google Drive folder for central global resources. Authorised Admins browse only
-that folder and its descendants when adding or replacing a global resource.
-Resources store a protected Worker file route rather than a public Drive URL,
-and access is issued through a short-lived signed URL after account and
-global-subject entitlement checks.
+V102.8 keeps one **Library** navigation item and adds an in-Library source
+selector: **All**, each authorised active course, and **Global Subjects**.
+Course catalogues are loaded from their registered course Sheets and filtered
+using the account's matching course-local identity. Global content is limited to
+active direct subscriptions. Selecting a Library source does not change the
+operational course or role.
 
-The folder ID is stored centrally under PlatformConfig key
-`GlobalResourceDriveRootFolderID`. No new tab or header is introduced and
-`PlatformConfig!B3` remains `102.0.4`. The first folder configuration and each
-global resource change increment `GlobalCurriculumVersion`; saving the same
-folder again does not. Account migration must not be rerun. No new Worker
-variable, secret, binding, course Sheet or Apps Script deployment is required.
+The Profile card now switches directly between authorised course/role contexts
+without another PIN. Every switch is validated centrally, receives a new scoped
+token and clears course-specific caches. A global-subject-only subscriber can
+open a restricted Global Library workspace without course operational menus.
 
-Start installation with the root-level `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.7-GITHUB-UPDATE-FROM-V102.6.3.zip` directly over the
-deployed V102.6.3 development repository. A full repository upload is not
+Platform schema remains `102.0.4`. V102.8 adds no Sheet tab/header, migration,
+Worker variable, secret, binding or Apps Script change. Account migration must
+not be rerun. Current browser-session persistence is unchanged.
+
+Start installation with `UPDATE-TODO.md`. Apply
+`Rebootyourmaktab-V102.8-GITHUB-UPDATE-FROM-V102.7.zip` directly over the
+deployed V102.7 development repository. A full repository upload is not
 required.
 
-Production remains stable at V101.1. It must not receive this development-only
-incremental package; production will receive a separate, rehearsed merge after
-the V102 development programme is complete.
+Production remains stable at V101.1 and must not receive this development-only
+overlay. A separate production merge plan will be prepared after V102
+development is complete.

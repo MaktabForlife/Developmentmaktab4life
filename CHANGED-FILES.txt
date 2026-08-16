@@ -1,10 +1,10 @@
-V102.7 — GitHub update from deployed V102.6.3
+V102.8 — GitHub update from deployed V102.7
 
 Package:
-- Rebootyourmaktab-V102.7-GITHUB-UPDATE-FROM-V102.6.3.zip
+- Rebootyourmaktab-V102.8-GITHUB-UPDATE-FROM-V102.7.zip
 
 Apply to:
-- Deployed V102.6.3 development repository only.
+- Deployed V102.7 development repository only.
 - This is a modified-files overlay, not a full repository.
 
 Files included:
@@ -17,27 +17,36 @@ Files included:
 - account/index.html
 - admin/index.html
 - backend/package.json
+- backend/src/lib/auth.js
+- backend/src/lib/backend-routing.js
 - backend/src/router.js
-- backend/src/routes/drive-library.js
-- backend/src/routes/platform-global-management.js
-- backend/src/routes/platform-validation.js
+- backend/src/routes/account-auth.js
+- backend/src/routes/library-catalogue.js (new)
+- backend/src/routes/resources.js
 - backend/src/worker.js
+- backend/tests/account-auth.test.mjs
 - backend/tests/account-ui.test.mjs
 - backend/tests/admin-management-ui.test.mjs
-- backend/tests/platform-global-management-ui.test.mjs
-- backend/tests/platform-global-management.test.mjs
-- backend/tests/platform-validation-ui.test.mjs
-- backend/tests/platform-validation.test.mjs
+- backend/tests/backend-routing.test.mjs
+- backend/tests/group-zero-access.test.mjs
+- backend/tests/library-catalogue-ui.test.mjs (new)
+- backend/tests/library-catalogue.test.mjs (new)
+- backend/tests/pdf-split-view.test.mjs
+- backend/tests/resource-management-ui.test.mjs
 - backend/tests/router.test.mjs
 - backend/tests/student-task-assignment-ui.test.mjs
 - backend/tests/timetable-teacher-ui.test.mjs
-- css/m4l-24-global-curriculum.css
-- docs/V102-PlatformConfig-template.csv
-- docs/V102.7-GLOBAL-RESOURCES-DRIVE.md (new)
+- backend/tests/unified-workspace-ui.test.mjs
+- css/m4l-01-foundation-auth-userband.css
+- css/m4l-04-library-resources.css
+- docs/V102.8-UNIFIED-MULTI-LIBRARY.md (new)
+- index.html
 - js/m4l-account.js
-- js/m4l-global-curriculum.js
-- js/m4l-system-settings.js
+- js/m4l-auth.js
+- js/m4l-resources.js
+- js/m4l-shell.js
 - js/version.json
+- student/index.html
 - styles.css
 - version.json
 
@@ -45,12 +54,10 @@ Deleted files:
 - None.
 
 Data/config boundary:
-- PlatformConfig schema remains 102.0.4.
-- Adds ConfigKey GlobalResourceDriveRootFolderID; the application creates or
-  updates this row when GLOBAL_ADMIN saves the folder.
-- First folder configuration and successful folder changes increment
-  GlobalCurriculumVersion; an unchanged save does not.
-- Global resource mutations continue to increment GlobalCurriculumVersion.
-- No account migration rerun.
-- No course Sheet, Worker variable, secret, binding or Apps Script change.
-- Global learner-Library merging, billing and expiry remain deferred.
+- Platform schema remains 102.0.4.
+- No tab, header, migration, account copy or GlobalCurriculumVersion change.
+- No Worker variable, secret, binding or Apps Script change.
+- No course Sheet change is required.
+- Account migration must not be rerun.
+- Current authentication-session persistence is unchanged.
+- Production V101.1 remains untouched.

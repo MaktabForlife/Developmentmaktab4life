@@ -13,9 +13,9 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.7 keeps secure account and course routing active while adding protected global resources/);
-assert.match(html, /Menu visibility and Senior Teacher display remain active/);
-assert.match(html, /m4l-account\.js\?v=102\.7/);
+assert.match(html, /V102\.8 adds one secure Library for authorised courses and subscribed global subjects/);
+assert.match(html, /Switch course or role directly from Profile without entering another PIN/);
+assert.match(html, /m4l-account\.js\?v=102\.8/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
@@ -24,7 +24,8 @@ for (const endpoint of [
   "/api/account/login",
   "/api/account/session",
   "/api/account/switch-context",
-  "/api/account/workspace"
+  "/api/account/workspace",
+  "/api/account/global-workspace"
 ]) {
   assert.ok(script.includes(endpoint), `Account UI must call ${endpoint}`);
 }
@@ -47,4 +48,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.7 unified account UI compatibility tests passed.");
+console.log("V102.8 unified account UI compatibility tests passed.");

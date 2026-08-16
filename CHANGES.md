@@ -1,3 +1,26 @@
+# V102.8 — Unified multi-course and global Library
+
+- Keeps one Library menu item and adds **All**, authorised-course and
+  **Global Subjects** source filters.
+- Resolves each course through active central access and `CourseRegistry`, then
+  applies that course's local identity and Student group restriction.
+- Merges only subscribed, active global subjects and active child resources.
+- Adds protected cross-course resource access without exposing Spreadsheet IDs.
+- Makes Profile contexts directly selectable and issues a new scoped token on
+  every course/role switch.
+- Adds a restricted Global Library workspace for accounts with subscriptions
+  but no course membership.
+- Keeps Platform schema `102.0.4`, existing data, Worker configuration, Apps
+  Script and current authentication-session persistence unchanged.
+- Bumps application and Worker metadata to `102.8`; all 46 backend regression
+  test files pass.
+
+Development only: production remains stable at V101.1. Billing, expiry,
+per-course independent Drive roots and the final production merge remain later
+work.
+
+---
+
 # V102.7 — Protected Global Resources Google Drive
 
 - Adds a private central Google Drive root configurable only by GLOBAL_ADMIN.

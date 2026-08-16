@@ -1,4 +1,4 @@
-/* M4L V102.4 - Central account authentication, context switching and workspace handoff. */
+/* M4L V102.8 - Central account authentication, Profile switching and course/global workspace handoff. */
 
 import {
   createAuthRateLimitKey,
@@ -234,6 +234,46 @@ export async function accountWorkspaceEndpoint(request, env) {
   }
 }
 
+export async function accountGlobalWorkspaceEndpoint(request, env) {
+  try {
+    const authUser = await getAuthUser(request, env);
+    if (
+      !authUser ||
+      authUser.type !== "account" ||
+      normalizePlatformIdentifier(authUser.scope) !== "GLOBAL" ||
+      normalizePlatformIdentifier(authUser.role) !== "STUDENT"
+    ) {
+      return json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    const uniqueId = String(authUser.uniqueid || "").trim();
+    const displayName = String(authUser.username || "Subscriber").trim();
+    return json({
+      success: true,
+      sessionType: "account",
+      operationalAccessActive: true,
+      account: { displayName, uniqueid: uniqueId },
+      context: {
+        scope: "GLOBAL",
+        courseId: "",
+        courseName: "Global Subjects",
+        role: "STUDENT"
+      },
+      workspace: {
+        portalType: "student",
+        path: `/student/${encodeURIComponent(uniqueId)}?global=1`
+      },
+      student: {
+        studentid: `GLOBAL:${String(authUser.accountid || "").trim()}`,
+        username: displayName,
+        classgroup: "GLOBAL"
+      }
+    });
+  } catch (error) {
+    return accountServiceError(error, env);
+  }
+}
+
 export async function switchAccountContextEndpoint(request, env) {
   try {
     const authUser = await getAuthUser(request, env);
@@ -276,6 +316,8 @@ export async function switchAccountContextEndpoint(request, env) {
       );
       selected = attachAccessRow(state, selected);
       await resolveActiveCourseRegistration(env, selected.courseId);
+    } else if (requestedScope === "GLOBAL") {
+      selected = selectGlobalOnlyContext(state);
     } else {
       return json({ success: false, error: "A valid scope and CourseID are required" }, 400);
     }
@@ -300,11 +342,13 @@ export async function switchAccountContextEndpoint(request, env) {
 export async function loadCentralAccountState(env, uniqueId, options = {}) {
   const includeContexts = options.includeContexts !== false;
   const includeAudit = options.includeAudit === true;
-  const [accounts, config, accessRecords, courses, auditRecords] = await Promise.all([
+  const [accounts, config, accessRecords, courses, globalAccessRecords, globalSubjects, auditRecords] = await Promise.all([
     readPlatformSheet(env, "UserAccounts"),
     readPlatformSheet(env, "PlatformConfig"),
     includeContexts ? readPlatformSheet(env, "UserCourseAccess") : Promise.resolve([]),
     includeContexts ? readPlatformSheet(env, "CourseRegistry") : Promise.resolve([]),
+    includeContexts ? readPlatformSheet(env, "UserGlobalSubjectAccess") : Promise.resolve([]),
+    includeContexts ? readPlatformSheet(env, "GlobalSubjectList") : Promise.resolve([]),
     includeAudit ? readPlatformSheet(env, "PlatformAuditLog") : Promise.resolve([])
   ]);
   assertAccountSchemaVersion(config);
@@ -331,18 +375,43 @@ export async function loadCentralAccountState(env, uniqueId, options = {}) {
     }
   }
   if (!account || !includeContexts) {
-    return { account, accessRecords: [], courses: [], contexts: [], auditRecords };
+    return {
+      account,
+      accessRecords: [],
+      courses: [],
+      globalAccessRecords: [],
+      globalSubjects: [],
+      contexts: [],
+      auditRecords
+    };
   }
 
   const accountId = normalizePlatformIdentifier(account.AccountID);
   const accountAccess = accessRecords.filter(access => (
     normalizePlatformIdentifier(access.AccountID) === accountId
   ));
-  const contexts = buildAvailableContexts(account, accountAccess, courses);
-  return { account, accessRecords: accountAccess, courses, contexts, auditRecords };
+  const accountGlobalAccess = globalAccessRecords.filter(access => (
+    normalizePlatformIdentifier(access.AccountID) === accountId
+  ));
+  const contexts = buildAvailableContexts(
+    account,
+    accountAccess,
+    courses,
+    accountGlobalAccess,
+    globalSubjects
+  );
+  return {
+    account,
+    accessRecords: accountAccess,
+    courses,
+    globalAccessRecords: accountGlobalAccess,
+    globalSubjects,
+    contexts,
+    auditRecords
+  };
 }
 
-export function buildAvailableContexts(account, accessRecords, courses) {
+export function buildAvailableContexts(account, accessRecords, courses, globalAccessRecords = [], globalSubjects = []) {
   const activeCourses = uniqueActiveCourses(courses);
   if (isGlobalAdminAccount(account)) {
     return [
@@ -386,15 +455,27 @@ export function buildAvailableContexts(account, accessRecords, courses) {
       role
     });
   }
-  return output.sort((left, right) => (
+  const sorted = output.sort((left, right) => (
     authorityRank(left.role) - authorityRank(right.role) ||
     left.courseName.localeCompare(right.courseName) ||
     left.role.localeCompare(right.role)
   ));
+  if (sorted.length === 0 && hasActiveGlobalSubjectAccess(globalAccessRecords, globalSubjects)) {
+    sorted.push({
+      scope: "GLOBAL",
+      courseId: "",
+      courseName: "Global Subjects",
+      role: "STUDENT"
+    });
+  }
+  return sorted;
 }
 
 function selectUsableAutomaticContext(state) {
   if (!state.account) throw new Error("Central account was not found");
+  if (state.contexts.length === 1 && state.contexts[0].scope === "GLOBAL") {
+    return selectGlobalOnlyContext(state);
+  }
   const activeCourseIds = new Set(state.contexts
     .filter(context => context.scope === "COURSE")
     .map(context => normalizePlatformIdentifier(context.courseId)));
@@ -403,6 +484,31 @@ function selectUsableAutomaticContext(state) {
   ));
   const selected = selectAutomaticAccountContext(state.account, usableAccess);
   return attachAccessRow(state, selected);
+}
+
+function selectGlobalOnlyContext(state) {
+  const activeSubjectIds = new Set((state.globalSubjects || [])
+    .filter(subject => isActivePlatformValue(subject.Active))
+    .map(subject => normalizePlatformIdentifier(subject.SubjectID)));
+  const matches = (state.globalAccessRecords || []).filter(access => (
+    isActivePlatformValue(access.Active) &&
+    activeSubjectIds.has(normalizePlatformIdentifier(access.SubjectID))
+  ));
+  if (!matches.length) throw new Error("An active global-subject subscription is required");
+  const selected = matches[0];
+  if (!Number.isInteger(selected._rowNumber) || selected._rowNumber < 2) {
+    throw new Error("Global-subject access is invalid");
+  }
+  return {
+    accessId: "",
+    accountId: String(state.account.AccountID || "").trim(),
+    courseId: "",
+    courseRecordId: "",
+    role: "STUDENT",
+    scope: "GLOBAL",
+    globalAccessId: String(selected.SubjectAccessID || "").trim(),
+    globalAccessRow: selected._rowNumber
+  };
 }
 
 function attachAccessRow(state, selected) {
@@ -421,6 +527,8 @@ async function createAccountSession(env, state, selected, credentialHash) {
   if (selected.scope === "COURSE") {
     const course = await resolveActiveCourseRegistration(env, selected.courseId);
     courseName = course.courseName;
+  } else if (selected.scope === "GLOBAL") {
+    courseName = "Global Subjects";
   }
 
   const token = await createSessionToken({
@@ -435,6 +543,8 @@ async function createAccountSession(env, state, selected, credentialHash) {
     courseid: selected.courseId || "",
     coursename: courseName,
     courserecordid: selected.courseRecordId || "",
+    globalaccessid: selected.globalAccessId || "",
+    globalaccessrow: selected.globalAccessRow || 0,
     authrow: state.account._rowNumber,
     credentialHash
   }, env);
@@ -455,7 +565,7 @@ function sessionResponse(state, session, includeToken = true) {
     account: publicAccount(state.account, false),
     context: session.context,
     contexts: state.contexts,
-    operationalAccessActive: session.context.scope === "COURSE"
+    operationalAccessActive: ["COURSE", "GLOBAL"].includes(session.context.scope)
   };
   if (includeToken) response.token = session.token;
   return response;
@@ -581,6 +691,16 @@ function uniqueActiveCourses(courses) {
     output.set(courseId, course);
   }
   return output;
+}
+
+function hasActiveGlobalSubjectAccess(accessRecords, subjects) {
+  const activeSubjectIds = new Set((subjects || [])
+    .filter(subject => isActivePlatformValue(subject.Active))
+    .map(subject => normalizePlatformIdentifier(subject.SubjectID)));
+  return (accessRecords || []).some(access => (
+    isActivePlatformValue(access.Active) &&
+    activeSubjectIds.has(normalizePlatformIdentifier(access.SubjectID))
+  ));
 }
 
 function assertAccountSchemaVersion(configRows) {

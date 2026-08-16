@@ -120,6 +120,13 @@ assert.equal(accountAuth.valid, true);
 assert.equal(accountAuth.backend, BACKEND_WORKER);
 assert.equal(accountAuth.source, "fixed");
 
+for (const feature of ["account-library-catalogue", "account-library-access"]) {
+  const selection = getBackendSelection({}, feature);
+  assert.equal(selection.valid, true);
+  assert.equal(selection.backend, BACKEND_WORKER);
+  assert.equal(selection.source, "fixed");
+}
+
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "true" }), true);
 assert.equal(shouldLogBackendRouting({ M4L_BACKEND_ROUTING_LOGS: "false" }), false);
 assert.equal(defaults.routingLogsEnabled, false);

@@ -44,6 +44,10 @@ import {
 } from "./routes/timetable.js";
 import { getResourcesGoogleSheetsEndpoint } from "./routes/resources.js";
 import {
+  createAccountCourseLibraryAccessEndpoint,
+  getAccountLibraryCatalogueEndpoint
+} from "./routes/library-catalogue.js";
+import {
   browseDriveFolderEndpoint,
   createDriveFileAccessEndpoint,
   createDriveResourceEndpoint,
@@ -102,6 +106,7 @@ import {
   savePlatformGlobalTaskEndpoint
 } from "./routes/platform-global-management.js";
 import {
+  accountGlobalWorkspaceEndpoint,
   accountLoginEndpoint,
   accountSessionEndpoint,
   accountWorkspaceEndpoint,
@@ -128,9 +133,12 @@ const ROUTES = new Map([
   ["/api/account/workspace", workerRoute("account-auth", accountWorkspaceEndpoint, {
     courseScoped: true
   })],
+  ["/api/account/global-workspace", workerRoute("account-auth", accountGlobalWorkspaceEndpoint)],
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
+  ["/api/library/catalogue", workerRoute("account-library-catalogue", getAccountLibraryCatalogueEndpoint)],
+  ["/api/library/course-resource/access", workerRoute("account-library-access", createAccountCourseLibraryAccessEndpoint)],
   ["/api/admin/resources/options", googleSheetsRoute("resource-management", getResourceManagementOptionsEndpoint)],
   ["/api/admin/resources/create", googleSheetsRoute("resource-management", createDriveResourceEndpoint)],
   ["/api/admin/resources/manage-list", googleSheetsRoute("resource-management", listManagedResourcesEndpoint)],

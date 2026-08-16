@@ -1,4 +1,5 @@
-/* M4L v100.4.1 - Private Drive PDF.js compatibility
+/* M4L V102.8 - Unified authorised course/global Library source selector.
+   M4L v100.4.1 - Private Drive PDF.js compatibility
    Routes signed M4L Drive PDF URLs through the existing same-origin /pdf-file proxy.
 
    M4L v100.4 - Private Google Drive Library access
@@ -35,6 +36,8 @@ let libraryResourceMap = new Map();
 let libraryResourceSequence = 0;
 let studentResourceViewMode = "student";
 let libraryResourceSessionReady = false;
+let libraryCatalogueResult = null;
+let selectedLibrarySourceId = "ALL";
 
 const PDFJS_VIEWER_PATH = "/pdf-viewer/web/viewer.html";
 const PDFJS_VIEWER_VERSION = "99.0";
@@ -120,8 +123,23 @@ function resetStudentResourceSelection() {
   libraryResourceSequence = 0;
 }
 
-const LIBRARY_CACHE_KEY = "resources:list:v2";
+const LIBRARY_CACHE_KEY = "resources:catalogue:v3";
 const LIBRARY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function hasUnifiedLibraryAccount() {
+  try {
+    return localStorage.getItem("m4l_account_workspace") === "true" &&
+      !!String(localStorage.getItem("m4l_account_token") || "") &&
+      String(localStorage.getItem("m4l_account_token") || "") === String(state.token || "");
+  } catch (error) {
+    return false;
+  }
+}
+
+function getLibraryCacheScope() {
+  const uniqueId = String(state.uniqueid || "").trim().toUpperCase();
+  return `account-library:${uniqueId || "legacy"}`;
+}
 
 function isPrivateDriveResourceLink(link) {
   const value = String(link || "").trim();
@@ -140,9 +158,21 @@ async function resolveLibraryResourceLink(resource) {
     return resource ? String(resource.link || "").trim() : "";
   }
 
-  const result = await apiPost("/api/library/drive/access", {
+  const accessScope = String(resource.accessScope || resource.source?.accessscope || "").trim().toUpperCase();
+  const originResourceId = String(
+    resource.originResourceId ||
+    resource.source?.originresourceid ||
+    getExistingResourceId(resource.source) ||
+    resource.source?.resourceid ||
+    ""
+  ).trim();
+  const endpoint = accessScope === "GLOBAL"
+    ? "/api/platform/global/resources/access"
+    : (accessScope === "COURSE" ? "/api/library/course-resource/access" : "/api/library/drive/access");
+  const result = await apiPost(endpoint, {
     resourceType: resource.type,
-    resourceId: getExistingResourceId(resource.source) || resource.source?.resourceid || ""
+    resourceId: originResourceId,
+    ...(accessScope === "COURSE" ? { courseId: resource.courseId || resource.source?.courseid || "" } : {})
   }, state.token);
 
   if (!result.success || !result.url) {
@@ -156,8 +186,10 @@ function invalidateLibraryResourceCache() {
   libraryResourceSessionReady = false;
   resetStudentResourceSelection();
   studentResourceSubjects = [];
+  libraryCatalogueResult = null;
+  selectedLibrarySourceId = "ALL";
   if (window.M4LCache && typeof window.M4LCache.remove === "function") {
-    window.M4LCache.remove(LIBRARY_CACHE_KEY, { scope: "shared" });
+    window.M4LCache.remove(LIBRARY_CACHE_KEY, { scope: getLibraryCacheScope() });
   }
   return true;
 }
@@ -165,13 +197,21 @@ function invalidateLibraryResourceCache() {
 async function showStudentResources(options = {}) {
   studentResourceViewMode = "student";
   setResourceScreensForStudent();
-  await loadResourceCategories("/api/resources/list", {}, options);
+  await loadResourceCategories(
+    hasUnifiedLibraryAccount() ? "/api/library/catalogue" : "/api/resources/list",
+    {},
+    options
+  );
 }
 
 async function showAdminResources(options = {}) {
   studentResourceViewMode = "admin";
   setResourceScreensForAdmin();
-  await loadResourceCategories("/api/resources/list", {}, options);
+  await loadResourceCategories(
+    hasUnifiedLibraryAccount() ? "/api/library/catalogue" : "/api/resources/list",
+    {},
+    options
+  );
 }
 
 function setResourceScreensForStudent() {
@@ -238,9 +278,6 @@ async function fetchResourceCategories(apiPath, body = {}) {
     throw new Error(result.error || "Failed to load resources");
   }
 
-  studentResourceSubjects = Array.isArray(result.subjects) ? result.subjects : [];
-  libraryResourceSubjects = buildLibraryResourceSubjects(result);
-
   return result;
 }
 
@@ -267,10 +304,11 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
   }
 
   const applyResult = result => {
-    resetStudentResourceSelection();
-    studentResourceSubjects = Array.isArray(result && result.subjects) ? result.subjects : [];
-    libraryResourceSubjects = buildLibraryResourceSubjects(result || {});
-    renderStudentResourceSubjects();
+    libraryCatalogueResult = result || {};
+    const availableSourceIds = new Set((result?.sources || []).map(source => String(source.id || "")));
+    if (!availableSourceIds.has(selectedLibrarySourceId)) selectedLibrarySourceId = "ALL";
+    renderLibrarySourceSelector(result || {});
+    applyLibrarySourceSelection();
     libraryResourceSessionReady = true;
   };
 
@@ -288,7 +326,7 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
     }
 
     const cached = window.M4LCache.getEntry(LIBRARY_CACHE_KEY, {
-      scope: "shared",
+      scope: getLibraryCacheScope(),
       ttl: LIBRARY_CACHE_TTL_MS,
       allowStale: true
     });
@@ -301,7 +339,7 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
       // for the seven-day offline cache TTL.
       if (navigator.onLine !== false) {
         window.M4LCache.fetchAndStore(LIBRARY_CACHE_KEY, fetchFresh, {
-          scope: "shared",
+          scope: getLibraryCacheScope(),
           ttl: LIBRARY_CACHE_TTL_MS,
           onUpdate: fresh => applyResult(fresh)
         }).catch(error => {
@@ -317,7 +355,7 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
 
     let freshResultApplied = false;
     const result = await window.M4LCache.fetchAndStore(LIBRARY_CACHE_KEY, fetchFresh, {
-      scope: "shared",
+      scope: getLibraryCacheScope(),
       ttl: LIBRARY_CACHE_TTL_MS,
       onUpdate: fresh => {
         applyResult(fresh);
@@ -335,6 +373,98 @@ async function loadResourceCategories(apiPath, body = {}, options = {}) {
       console.warn("The Library refresh failed; the existing cached screen was retained.", err);
     }
   }
+}
+
+function renderLibrarySourceSelector(result) {
+  const container = getDomElement("library-source-selector");
+  if (!container) return false;
+  const sources = Array.isArray(result?.sources) ? result.sources : [];
+  if (!sources.length) {
+    container.classList.add("hidden");
+    setDomHtml(container, "");
+    return false;
+  }
+
+  container.classList.remove("hidden");
+  setDomHtml(container, `
+    <div class="library-source-menu" role="tablist" aria-label="Select a Library source">
+      ${sources.map(source => {
+        const sourceId = String(source.id || "");
+        const selected = sourceId === selectedLibrarySourceId;
+        return `
+          <button
+            type="button"
+            class="library-source-menu__item${selected ? " is-active" : ""}"
+            data-library-source-id="${escapeForAttribute(sourceId)}"
+            role="tab"
+            aria-selected="${selected ? "true" : "false"}"
+          >${escapeHtml(source.label || sourceId)}</button>
+        `;
+      }).join("")}
+    </div>
+  `);
+  return true;
+}
+
+function applyLibrarySourceSelection() {
+  resetStudentResourceSelection();
+  const result = buildSelectedLibraryCatalogue(libraryCatalogueResult || {}, selectedLibrarySourceId);
+  studentResourceSubjects = Array.isArray(result.subjects) ? result.subjects : [];
+  libraryResourceSubjects = buildLibraryResourceSubjects(result);
+  renderLibrarySourceSelector(libraryCatalogueResult || {});
+  renderStudentResourceSubjects();
+  return true;
+}
+
+function selectLibrarySource(sourceId) {
+  const requested = String(sourceId || "").trim();
+  const sources = Array.isArray(libraryCatalogueResult?.sources) ? libraryCatalogueResult.sources : [];
+  if (!sources.some(source => String(source.id || "") === requested)) return false;
+  selectedLibrarySourceId = requested;
+  clearInlineResourcePreviews();
+  applyLibrarySourceSelection();
+  return true;
+}
+
+function buildSelectedLibraryCatalogue(result, sourceId) {
+  const libraries = Array.isArray(result?.libraries) ? result.libraries : [];
+  if (!libraries.length) return result || {};
+  const selected = String(sourceId || "ALL") === "ALL"
+    ? libraries.filter(library => library?.available !== false)
+    : libraries.filter(library => library?.available !== false && String(library.id || "") === String(sourceId || ""));
+  const groupMap = new Map();
+  const output = { success: true, count: 0, groups: [] };
+
+  selected.forEach((library, sourceOrder) => {
+    const catalogue = library?.catalogue || {};
+    output.count += Number(catalogue.count || 0);
+    (Array.isArray(catalogue.groups) ? catalogue.groups : []).forEach(group => {
+      const key = String(group.key || group.type || "OTHER").trim().toLowerCase();
+      if (!groupMap.has(key)) {
+        const target = {
+          type: group.type || key,
+          key,
+          label: group.label || key,
+          description: group.description || "",
+          count: 0,
+          subjects: []
+        };
+        groupMap.set(key, target);
+        output.groups.push(target);
+        output[key] = target;
+      }
+      const target = groupMap.get(key);
+      target.count += Number(group.count || 0);
+      target.subjects.push(...(Array.isArray(group.subjects) ? group.subjects.map(subject => ({
+        ...subject,
+        sourceorder: sourceOrder,
+        sourceid: subject.sourceid || library.id,
+        sourcelabel: subject.sourcelabel || library.label,
+        sourcescope: subject.sourcescope || library.scope
+      })) : []));
+    });
+  });
+  return output;
 }
 
 // Compatibility wrapper for older callers. V65 always opens the full direct-resource Library.
@@ -591,7 +721,19 @@ function addLibraryResourceRecord({ subject, module, task, resource, fallbackTyp
   const title = getResourceName(resource);
   const subjectId = getResourceSubjectId(subject);
   const subjectName = getResourceSubjectName(subject);
-  const subjectKey = subjectId ? `id:${subjectId.toUpperCase()}` : `name:${subjectName.toUpperCase()}`;
+  const sourceId = String(
+    resource?.sourceid || subject?.sourceid || "CURRENT_COURSE"
+  ).trim() || "CURRENT_COURSE";
+  const sourceLabel = String(
+    resource?.sourcelabel ||
+    subject?.sourcelabel ||
+    state.accountContext?.courseName ||
+    "Course Library"
+  ).trim();
+  const sourceScope = String(resource?.sourcescope || subject?.sourcescope || "COURSE").trim().toUpperCase();
+  const sourceOrder = Number(subject?.sourceorder ?? resource?.sourceorder ?? 0);
+  const subjectIdentity = subjectId ? `id:${subjectId.toUpperCase()}` : `name:${subjectName.toUpperCase()}`;
+  const subjectKey = `${sourceId.toUpperCase()}|${subjectIdentity}`;
   const moduleId = getResourceModuleId(module) || getResourceModuleId(resource) || getResourceModuleId(task);
   const moduleName = getResourceModuleName(module) || getResourceModuleName(resource) || getResourceModuleName(task) || "General";
   const moduleKey = buildLibraryModuleGroupingKey(moduleName);
@@ -608,6 +750,10 @@ function addLibraryResourceRecord({ subject, module, task, resource, fallbackTyp
       key: subjectKey,
       id: subjectId,
       name: subjectName,
+      sourceId,
+      sourceLabel,
+      sourceScope,
+      sourceOrder: Number.isFinite(sourceOrder) ? sourceOrder : 0,
       headingId: `library-subject-${makeDomSafeId(subjectKey)}`,
       moduleMap: new Map()
     });
@@ -644,6 +790,9 @@ function addLibraryResourceRecord({ subject, module, task, resource, fallbackTyp
     typeClass: getLibraryResourceClassName(type),
     icon: getResourceCategoryIconPath(type),
     link,
+    accessScope: String(resource?.accessscope || sourceScope).trim().toUpperCase(),
+    courseId: String(resource?.courseid || "").trim(),
+    originResourceId: String(resource?.originresourceid || "").trim(),
     format: getResourceFormat(resource, type),
     subjectKey,
     subjectId,
@@ -810,11 +959,36 @@ function renderStudentResourceSubjects() {
     return;
   }
 
+  const sourceGroups = [];
+  const sourceMap = new Map();
+  libraryResourceSubjects.forEach(subject => {
+    const sourceId = String(subject.sourceId || "CURRENT_COURSE");
+    if (!sourceMap.has(sourceId)) {
+      const group = {
+        id: sourceId,
+        label: subject.sourceLabel || "Course Library",
+        scope: subject.sourceScope || "COURSE",
+        subjects: []
+      };
+      sourceMap.set(sourceId, group);
+      sourceGroups.push(group);
+    }
+    sourceMap.get(sourceId).subjects.push(subject);
+  });
+
   setDomHtml(container, `
     <div class="library-resource-browser" aria-label="Library resources">
-      ${libraryResourceSubjects.map(subject => {
-        return subject.modules.map(module => renderLibraryModuleSection(subject, module)).join("");
-      }).join("")}
+      ${sourceGroups.map(source => `
+        <section class="library-source-section" aria-labelledby="library-source-${escapeForAttribute(makeDomSafeId(source.id))}">
+          <div class="library-source-section__header">
+            <h3 id="library-source-${escapeForAttribute(makeDomSafeId(source.id))}">${escapeHtml(source.label)}</h3>
+            ${String(source.scope).toUpperCase() === "GLOBAL" ? '<span class="library-global-badge">GLOBAL</span>' : ""}
+          </div>
+          ${source.subjects.map(subject => (
+            subject.modules.map(module => renderLibraryModuleSection(subject, module)).join("")
+          )).join("")}
+        </section>
+      `).join("")}
     </div>
   `);
 
@@ -828,7 +1002,7 @@ function renderLibraryModuleSection(subject, module) {
   return `
     <section class="library-module-section m4l-ribbon-section" aria-labelledby="${escapeForAttribute(module.headingId)}" data-library-ribbon-section>
       <div class="library-module-header m4l-ribbon-header">
-        <h3 id="${escapeForAttribute(module.headingId)}" class="library-module-title m4l-ribbon-title">${escapeHtml(rowTitle)}</h3>
+        <h4 id="${escapeForAttribute(module.headingId)}" class="library-module-title m4l-ribbon-title">${escapeHtml(rowTitle)}</h4>
         ${renderLibraryResourceDots(resources, rowTitle)}
       </div>
       <div class="library-resource-row m4l-ribbon-track" role="list" aria-label="${escapeForAttribute(`${rowTitle} resources`)}" data-library-resource-row>
@@ -1030,6 +1204,16 @@ function bindResourceUiHandlers() {
   }
 
   document.addEventListener("click", event => {
+    const sourceButton = event.target && event.target.closest
+      ? event.target.closest("[data-library-source-id]")
+      : null;
+
+    if (sourceButton) {
+      event.preventDefault();
+      selectLibrarySource(sourceButton.dataset.librarySourceId || "ALL");
+      return;
+    }
+
     const ribbonDot = event.target && event.target.closest
       ? event.target.closest("[data-library-ribbon-index]")
       : null;
@@ -1150,6 +1334,15 @@ function compareResourceIds(a, b) {
 }
 
 function compareLibrarySubjectGroups(a, b) {
+  const sourceOrderA = Number.isFinite(Number(a?.sourceOrder)) ? Number(a.sourceOrder) : 0;
+  const sourceOrderB = Number.isFinite(Number(b?.sourceOrder)) ? Number(b.sourceOrder) : 0;
+  if (sourceOrderA !== sourceOrderB) return sourceOrderA - sourceOrderB;
+  const sourceComparison = String(a?.sourceLabel || "").localeCompare(String(b?.sourceLabel || ""), undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
+  if (sourceComparison !== 0) return sourceComparison;
+
   if (a.id || b.id) {
     return compareResourceIds(a.id, b.id);
   }

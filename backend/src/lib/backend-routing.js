@@ -46,6 +46,8 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "platform-account-migration": defineFixedFeature(BACKEND_WORKER),
   "platform-global-management": defineFixedFeature(BACKEND_WORKER),
   "account-auth": defineFixedFeature(BACKEND_WORKER),
+  "account-library-catalogue": defineFixedFeature(BACKEND_WORKER),
+  "account-library-access": defineFixedFeature(BACKEND_WORKER),
   routing: defineFixedFeature(BACKEND_WORKER)
 });
 

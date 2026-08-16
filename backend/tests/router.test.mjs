@@ -9,9 +9,12 @@ const expectedPaths = [
   "/api/account/session",
   "/api/account/switch-context",
   "/api/account/workspace",
+  "/api/account/global-workspace",
   "/api/resources/list",
   "/api/student/resources/list",
   "/api/admin/resources/list",
+  "/api/library/catalogue",
+  "/api/library/course-resource/access",
   "/api/admin/resources/options",
   "/api/admin/resources/create",
   "/api/admin/resources/manage-list",
@@ -100,7 +103,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.7"
+  version: "102.8"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

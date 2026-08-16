@@ -1,3 +1,33 @@
+V102.8
+
+# Integrate authorised course Libraries and subscribed global subjects
+
+- Keeps one Library navigation item and provides **All**, one entry for each
+  authorised active course, and **Global Subjects**.
+- Reads each course from its centrally registered SpreadsheetID after
+  validating access, then enforces its local staff/student identity and group.
+- Includes only active global subjects granted by active
+  `UserGlobalSubjectAccess` rows and active global resources.
+- Adds protected cross-course file access and never returns Spreadsheet IDs to
+  the browser.
+- Lets users switch course or role directly from Profile without another PIN;
+  each switch receives a new centrally validated scoped token.
+- Supports a Library-only `GLOBAL/STUDENT` context for subscribers who have no
+  course membership.
+- Keeps Platform schema `102.0.4` and requires no migration, tab/header, Worker
+  configuration, Apps Script or course Sheet change.
+- Does not add billing, expiry, subscription limits, timetable checks or
+  per-course independent Drive roots.
+- Preserves current session persistence; the approved future authentication
+  policy remains documented separately.
+
+Install only
+`Rebootyourmaktab-V102.8-GITHUB-UPDATE-FROM-V102.7.zip` over deployed V102.7
+development and complete every item in `UPDATE-TODO.md`. Production remains
+stable at V101.1.
+
+---
+
 V102.7
 
 # Protect central global resources in a designated Google Drive folder

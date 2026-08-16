@@ -93,6 +93,14 @@ export async function getResourcesGoogleSheetsEndpoint(request, env) {
     return json({ success: false, error: "Unauthorized" }, 401);
   }
 
+  return json(await readResourcesGoogleSheetsCatalogue(env, authUser));
+}
+
+export async function readResourcesGoogleSheetsCatalogue(env, authUser) {
+  if (!authUser) {
+    throw new Error("Authenticated Library user is required");
+  }
+
   const sheets = {};
 
   await Promise.all(RESOURCE_TAB_DEFINITIONS.map(async config => {
@@ -122,7 +130,7 @@ export async function getResourcesGoogleSheetsEndpoint(request, env) {
       }
     : {};
 
-  return json(buildResourcesResponse(sheets, options));
+  return buildResourcesResponse(sheets, options);
 }
 
 export function buildResourcesResponse(sheets = {}, options = {}) {

@@ -2,6 +2,7 @@ import { readGoogleSheetValues } from "./google-sheets.js";
 import { json } from "./http.js";
 import {
   getPlatformSpreadsheetId,
+  readPlatformSheet,
   resolveActiveCourseRegistration
 } from "./platform-sheet.js";
 import {
@@ -484,7 +485,7 @@ async function validateCentralAccountSession(payload, env) {
   const uniqueId = String(payload.uniqueid || "").trim();
   const tokenRole = normalizePlatformIdentifier(payload.role);
   const tokenScope = normalizePlatformIdentifier(payload.scope);
-  if (!accountId || !uniqueId || !["PLATFORM", "COURSE"].includes(tokenScope)) {
+  if (!accountId || !uniqueId || !["PLATFORM", "COURSE", "GLOBAL"].includes(tokenScope)) {
     return null;
   }
 
@@ -524,6 +525,50 @@ async function validateCentralAccountSession(payload, env) {
       role: "GLOBAL_ADMIN",
       scope: "PLATFORM",
       courseid: "",
+      courserecordid: "",
+      accessid: ""
+    };
+  }
+
+
+  if (tokenScope === "GLOBAL") {
+    if (
+      tokenRole !== "STUDENT" ||
+      !Number.isInteger(payload.globalaccessrow) ||
+      payload.globalaccessrow < 2 ||
+      !String(payload.globalaccessid || "").trim()
+    ) {
+      return null;
+    }
+    const accessRows = await readGoogleSheetValues(
+      env,
+      `UserGlobalSubjectAccess!A${payload.globalaccessrow}:J${payload.globalaccessrow}`,
+      { spreadsheetId: platformSpreadsheetId }
+    );
+    const accessRow = Array.isArray(accessRows[0]) ? accessRows[0] : [];
+    const subjectId = normalizePlatformIdentifier(accessRow[2]);
+    if (
+      normalizePlatformIdentifier(accessRow[1]) !== accountId ||
+      String(accessRow[0] || "").trim() !== String(payload.globalaccessid || "").trim() ||
+      !subjectId ||
+      !isActivePlatformValue(accessRow[3])
+    ) {
+      return null;
+    }
+    const matchingSubjects = (await readPlatformSheet(env, "GlobalSubjectList")).filter(subject => (
+      normalizePlatformIdentifier(subject.SubjectID) === subjectId
+    ));
+    if (matchingSubjects.length !== 1 || !isActivePlatformValue(matchingSubjects[0].Active)) {
+      return null;
+    }
+    return {
+      ...payload,
+      accountid: String(accountRow[0] || "").trim(),
+      username: String(accountRow[1] || "").trim(),
+      role: "STUDENT",
+      scope: "GLOBAL",
+      courseid: "",
+      coursename: "Global Subjects",
       courserecordid: "",
       accessid: ""
     };
