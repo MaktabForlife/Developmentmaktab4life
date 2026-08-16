@@ -1,10 +1,11 @@
-/* M4L V102.4 - Unified account login, context switching and workspace launch. */
+/* M4L V102.6.1 - Unified account login, context switching and Profile context details. */
 (function () {
   "use strict";
 
   const API_BASE = String(window.M4L_CONFIG?.API_BASE || "").replace(/\/$/, "");
   const TOKEN_KEY = "m4l_account_token";
   const CONTEXT_KEY = "m4l_account_context";
+  const CONTEXTS_KEY = "m4l_account_contexts";
   const WORKSPACE_KEY = "m4l_account_workspace";
   const APP_TOKEN_KEY = "maktab_token";
   const APP_USER_TYPE_KEY = "maktab_user_type";
@@ -144,6 +145,7 @@
     state.context = result.context;
     state.contexts = Array.isArray(result.contexts) ? result.contexts : [];
     localStorage.setItem(CONTEXT_KEY, JSON.stringify(state.context));
+    localStorage.setItem(CONTEXTS_KEY, JSON.stringify(state.contexts));
     if (previousContext && !sameContext(previousContext, state.context)) {
       clearCourseDataCaches();
     }
@@ -291,6 +293,7 @@
     state.contexts = [];
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(CONTEXT_KEY);
+    localStorage.removeItem(CONTEXTS_KEY);
     localStorage.removeItem(WORKSPACE_KEY);
     localStorage.removeItem(APP_TOKEN_KEY);
     localStorage.removeItem(APP_USER_TYPE_KEY);

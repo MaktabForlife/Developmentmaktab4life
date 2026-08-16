@@ -13,9 +13,9 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.6 keeps secure course routing active while central global curriculum management is added/);
-assert.match(html, /Every operational request is routed from the authenticated course context/);
-assert.match(html, /m4l-account\.js\?v=102\.4/);
+assert.match(html, /V102\.6\.1 keeps secure course routing active while correcting role visibility/);
+assert.match(html, /Profile switching and Global Curriculum controls/);
+assert.match(html, /m4l-account\.js\?v=102\.6\.1/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
@@ -29,6 +29,7 @@ for (const endpoint of [
   assert.ok(script.includes(endpoint), `Account UI must call ${endpoint}`);
 }
 assert.match(script, /m4l_account_token/);
+assert.match(script, /m4l_account_contexts/);
 assert.match(script, /maktab_token/);
 assert.match(script, /window\.location\.assign\(path\)/);
 assert.match(script, /clearCourseDataCaches/);
@@ -41,4 +42,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.6 unified account UI compatibility tests passed.");
+console.log("V102.6.1 unified account UI compatibility tests passed.");

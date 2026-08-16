@@ -1,13 +1,13 @@
-V102.6 — GitHub update from verified V102.5
+V102.6.1 — GitHub update from deployed V102.6
 
 Package
-- Rebootyourmaktab-V102.6-GITHUB-UPDATE-FROM-V102.5.zip
+- Rebootyourmaktab-V102.6.1-GITHUB-UPDATE-FROM-V102.6.zip
 
 Apply over
-- Verified V102.5 development repository only.
+- Deployed V102.6 development repository only.
 - Production remains stable at V101.1 and must not receive this package.
 
-Add or replace these paths
+Add or replace these 42 paths
 
 Release instructions and metadata
 - CHANGED-FILES.txt
@@ -18,43 +18,59 @@ Release instructions and metadata
 - UPDATE-TODO.md
 - version.json
 - js/version.json
-- docs/V102.6-GLOBAL-CURRICULUM-MANAGEMENT.md (new)
-- docs/V102-AUTHENTICATION-SESSION-POLICY.md (new)
+- docs/V102.6.1-PERMISSIONS-PROFILE-UI-CORRECTIONS.md (new)
+- docs/V102-PLATFORM-SHEET-MIGRATION.md
 
 Worker source
 - backend/package.json
-- backend/src/lib/backend-routing.js
-- backend/src/router.js
-- backend/src/routes/platform-global-management.js (new)
+- backend/src/lib/auth.js
+- backend/src/lib/authorization.js
+- backend/src/routes/drive-library.js
 - backend/src/worker.js
 
 Pages frontend
 - account/index.html
 - admin/index.html
-- js/m4l-admin-academics.js
-- js/m4l-global-curriculum.js (new)
+- index.html
+- student/index.html
 - styles.css
-- css/m4l-02-home-common-and-shared-cards.css
-- css/m4l-24-global-curriculum.css (new)
+- css/m4l-01-foundation-auth-userband.css
+- css/m4l-24-global-curriculum.css
+- js/m4l-account.js
+- js/m4l-admin-academics.js
+- js/m4l-auth.js
+- js/m4l-manage-resources.js
+- js/m4l-manage-students.js
+- js/m4l-shell.js
+- js/m4l-system-settings.js
 
 Tests
 - backend/tests/account-ui.test.mjs
+- backend/tests/admin-management-ui.test.mjs
 - backend/tests/admin-menu-home.test.mjs
-- backend/tests/backend-routing.test.mjs
-- backend/tests/platform-global-management.test.mjs (new)
-- backend/tests/platform-global-management-ui.test.mjs (new)
+- backend/tests/authorization.test.mjs
+- backend/tests/drive-library.test.mjs
+- backend/tests/group-zero-access.test.mjs
+- backend/tests/platform-global-management-ui.test.mjs
+- backend/tests/platform-validation-ui.test.mjs
+- backend/tests/resource-management-ui.test.mjs
 - backend/tests/router.test.mjs
+- backend/tests/student-task-assignment-ui.test.mjs
+- backend/tests/timetable-teacher-ui.test.mjs
+- backend/tests/unified-workspace-ui.test.mjs
 
 Repository deletions
 - None.
 
 Important
-- No Platform Sheet header or schema-version change.
-- Keep PlatformConfig!B3 at 102.0.4.
+- Keep `PlatformConfig!B3` at `102.0.4`.
+- Deployment does not change `PlatformConfig!B4`.
 - Do not rerun central account migration.
-- No course Sheet, Worker setting, secret, binding or Apps Script change.
-- Curriculum/resource changes increment GlobalCurriculumVersion; direct-access
-  changes do not.
-- The approved authentication session policy is documented but not active in
-  V102.6.
-- Follow UPDATE-TODO.md from beginning to end.
+- No Sheet header, course Sheet, Worker setting, secret, binding or Apps Script
+  change is required.
+- SENIOR and TEACHER can add course resources; only ADMIN can modify existing
+  resources or access Student Records.
+- Platform validation reports global subjects separately from direct
+  global-subject subscriptions.
+- The approved authentication session policy remains documented but inactive.
+- Follow `UPDATE-TODO.md` from beginning to end.

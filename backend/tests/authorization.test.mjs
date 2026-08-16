@@ -25,6 +25,7 @@ assert.equal(roleHasCapability("SENIOR", CAPABILITIES.TIMETABLE_MANAGE), true);
 assert.equal(roleHasCapability("SENIOR", CAPABILITIES.GLOBAL_CURRICULUM_MANAGE), false);
 assert.equal(roleHasCapability("SENIOR", CAPABILITIES.PLATFORM_MANAGE), false);
 assert.equal(roleHasCapability("SENIOR", CAPABILITIES.COURSE_ACCESS_MANAGE), false);
+assert.equal(roleHasCapability("SENIOR", CAPABILITIES.STUDENT_MANAGE), false);
 
 for (const capability of [
   CAPABILITIES.ATTENDANCE_MANAGE,
@@ -49,6 +50,7 @@ assert.equal(roleHasCapability("TEACHER", CAPABILITIES.TIMETABLE_MANAGE), false)
 assert.equal(roleHasCapability("TEACHER", CAPABILITIES.COURSE_CONFIG_MANAGE), false);
 assert.equal(roleHasCapability("TEACHER", CAPABILITIES.GLOBAL_CURRICULUM_MANAGE), false);
 assert.equal(roleHasCapability("TEACHER", CAPABILITIES.COURSE_DATA_VIEW), false);
+assert.equal(roleHasCapability("TEACHER", CAPABILITIES.STUDENT_MANAGE), false);
 
 assert.equal(roleHasCapability("STUDENT", CAPABILITIES.OWN_DATA_VIEW), true);
 assert.equal(roleHasCapability("STUDENT", CAPABILITIES.OWN_TASK_PROGRESS_UPDATE), true);

@@ -2229,26 +2229,76 @@ function getCurrentUserGroupLabel() {
   return getCurrentStudentGroupLabel(state.user || {});
 }
 
-function getUserBandProfileMarkup(username, role) {
-  const roleLabel = getCurrentUserRoleLabel();
-  const groupLabel = role === "student" ? getCurrentUserGroupLabel() : "";
-  const rows = [
-    { label: "Name", value: username },
-    { label: "Role", value: roleLabel }
-  ];
+function hasUnifiedAccountProfile() {
+  return state.authMode === "account" || (
+    window.M4LAuth &&
+    typeof window.M4LAuth.hasUnifiedAccountWorkspaceSession === "function" &&
+    window.M4LAuth.hasUnifiedAccountWorkspaceSession()
+  );
+}
 
-  if (groupLabel) {
-    rows.push({ label: "Group", value: groupLabel });
-  }
+function getStoredAccountContexts() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("m4l_account_contexts") || "[]");
+    if (Array.isArray(stored) && stored.length) return stored;
+  } catch (error) {}
+
+  return state.accountContext ? [state.accountContext] : [];
+}
+
+function accountContextMatches(left, right) {
+  const normalize = value => String(value || "").trim().toUpperCase();
+  return normalize(left?.scope) === normalize(right?.scope) &&
+    normalize(left?.courseId || left?.courseid) === normalize(right?.courseId || right?.courseid) &&
+    normalize(left?.role) === normalize(right?.role);
+}
+
+function getUserBandProfileMarkup(username, role) {
+  const contexts = getStoredAccountContexts();
+  const current = state.accountContext || null;
+  const contextMarkup = contexts.length ? contexts.map(context => {
+    const courseName = String(context.courseName || context.coursename || "M4L Platform").trim();
+    const contextRole = String(context.role || "").trim().replace(/_/g, " ");
+    const isCurrent = accountContextMatches(context, current);
+    return `
+      <div class="app-user-profile-menu__context${isCurrent ? " is-current" : ""}">
+        <span>
+          <strong>${escapeHtml(courseName)}</strong>
+          <small>${escapeHtml(contextRole || "Role unavailable")}</small>
+        </span>
+        ${isCurrent ? '<em>Current</em>' : ""}
+      </div>
+    `;
+  }).join("") : `
+    <div class="app-user-profile-menu__context is-current">
+      <span>
+        <strong>${escapeHtml(String(state.accountContext?.courseName || "Current course"))}</strong>
+        <small>${escapeHtml(getCurrentUserRoleLabel())}</small>
+      </span>
+      <em>Current</em>
+    </div>
+  `;
+  const groupLabel = role === "student" ? getCurrentUserGroupLabel() : "";
 
   return `
     <p class="app-user-profile-menu__title">Profile</p>
-    ${rows.map(row => `
+    <div class="app-user-profile-menu__row">
+      <span class="app-user-profile-menu__label">Name</span>
+      <span class="app-user-profile-menu__value">${escapeHtml(username)}</span>
+    </div>
+    ${groupLabel ? `
       <div class="app-user-profile-menu__row">
-        <span class="app-user-profile-menu__label">${escapeHtml(row.label)}</span>
-        <span class="app-user-profile-menu__value">${escapeHtml(row.value)}</span>
+        <span class="app-user-profile-menu__label">Group</span>
+        <span class="app-user-profile-menu__value">${escapeHtml(groupLabel)}</span>
       </div>
-    `).join("")}
+    ` : ""}
+    <p class="app-user-profile-menu__section-label">Courses and roles</p>
+    <div class="app-user-profile-menu__contexts">${contextMarkup}</div>
+    ${hasUnifiedAccountProfile() ? `
+      <button type="button" class="app-user-profile-menu__switch" data-user-profile-switch>
+        Switch course or role
+      </button>
+    ` : ""}
   `;
 }
 
@@ -2691,21 +2741,7 @@ const USER_BAND_MENU_ITEMS = {
 
 function getUserBandMenuItems(role) {
   const key = String(role || getBottomNavRole() || "student").toLowerCase() === "admin" ? "admin" : "student";
-  const items = [...(USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student)];
-  const unifiedAccount = state.authMode === "account" || (
-    window.M4LAuth &&
-    typeof window.M4LAuth.hasUnifiedAccountWorkspaceSession === "function" &&
-    window.M4LAuth.hasUnifiedAccountWorkspaceSession()
-  );
-  if (unifiedAccount) {
-    const logoutIndex = items.findIndex(item => item.action === "logout");
-    items.splice(logoutIndex < 0 ? items.length : logoutIndex, 0, {
-      action: "switch-context",
-      label: "Switch course or role",
-      icon: "/icons/user.svg"
-    });
-  }
-  return items;
+  return [...(USER_BAND_MENU_ITEMS[key] || USER_BAND_MENU_ITEMS.student)];
 }
 
 function getUserBandMenuProfileMarkup(username, role) {
@@ -2716,11 +2752,11 @@ function getUserBandMenuProfileMarkup(username, role) {
   const safeDetail = escapeHtml(detail || (role === "admin" ? "Admin" : ""));
 
   return `
-    <div class="app-user-menu__profile-tile" role="group" aria-label="User profile">
+    <button type="button" class="app-user-menu__profile-tile" data-app-menu-action="profile" role="menuitem" aria-label="Open Profile for ${safeName}">
       <span class="app-user-menu__tile-icon" style="--app-menu-icon: url('/icons/user.svg')" aria-hidden="true"></span>
-      <span class="app-user-menu__tile-label">${safeName}</span>
-      ${safeDetail ? `<span class="app-user-menu__tile-subtitle">${safeDetail}</span>` : ""}
-    </div>
+      <span class="app-user-menu__tile-label">Profile</span>
+      ${safeDetail ? `<span class="app-user-menu__tile-subtitle">${safeName} · ${safeDetail}</span>` : `<span class="app-user-menu__tile-subtitle">${safeName}</span>`}
+    </button>
   `;
 }
 
@@ -2818,14 +2854,47 @@ function setUserBandProfileMenuOpen(isOpen) {
   const menu = document.getElementById("app-user-band-profile-menu");
   const toggle = document.querySelector("#app-user-band [data-user-profile-toggle]");
 
-  if (!menu || !toggle) return false;
+  if (!menu) return false;
 
   if (isOpen) {
     closeUserBandMenu();
   }
 
   menu.classList.toggle("hidden", !isOpen);
-  toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  if (toggle) toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  return true;
+}
+
+function renderUserBandProfileMenu(username, role) {
+  const menu = document.getElementById("app-user-band-profile-menu");
+  if (!menu) return false;
+  menu.innerHTML = getUserBandProfileMarkup(username, role);
+  return true;
+}
+
+function openUserBandProfileCard() {
+  const role = getBottomNavRole();
+  const username = getCurrentUserName() || (role === "admin" ? "Admin" : "Student");
+  renderUserBandProfileMenu(username, role);
+  setUserBandProfileMenuOpen(true);
+
+  if (
+    hasUnifiedAccountProfile() &&
+    window.M4LAuth &&
+    typeof window.M4LAuth.refreshUnifiedAccountProfile === "function"
+  ) {
+    window.M4LAuth.refreshUnifiedAccountProfile()
+      .then(() => {
+        const menu = document.getElementById("app-user-band-profile-menu");
+        if (menu && !menu.classList.contains("hidden")) {
+          renderUserBandProfileMenu(username, role);
+        }
+      })
+      .catch(error => {
+        console.warn("Unable to refresh Profile contexts:", error);
+      });
+  }
+
   return true;
 }
 
@@ -2929,14 +2998,8 @@ function handleUserBandMenuAction(action, role, triggerButton) {
     return false;
   }
 
-  if (actionKey === "switch-context") {
-    if (
-      window.M4LAuth &&
-      typeof window.M4LAuth.openUnifiedAccountSwitcher === "function"
-    ) {
-      return window.M4LAuth.openUnifiedAccountSwitcher();
-    }
-    return false;
+  if (actionKey === "profile") {
+    return openUserBandProfileCard();
   }
 
   const actionKeyByMenuAction = {
@@ -2957,19 +3020,26 @@ function handleUserBandMenuAction(action, role, triggerButton) {
 function attachUserBandProfileHandler(band) {
   if (!band) return false;
 
-  const toggle = band.querySelector("[data-user-profile-toggle]");
   const menu = band.querySelector("#app-user-band-profile-menu");
 
-  if (!toggle || !menu) return false;
+  if (!menu) return false;
 
   bindUserBandMenuDismissHandler();
 
-  toggle.addEventListener("click", event => {
+  menu.addEventListener("click", event => {
+    const switchButton = event.target && typeof event.target.closest === "function"
+      ? event.target.closest("[data-user-profile-switch]")
+      : null;
+    if (!switchButton) return;
     event.preventDefault();
     event.stopPropagation();
-
-    const isOpen = toggle.getAttribute("aria-expanded") === "true";
-    setUserBandProfileMenuOpen(!isOpen);
+    closeUserBandProfileMenu();
+    if (
+      window.M4LAuth &&
+      typeof window.M4LAuth.openUnifiedAccountSwitcher === "function"
+    ) {
+      window.M4LAuth.openUnifiedAccountSwitcher();
+    }
   });
 
   return true;
@@ -3062,6 +3132,9 @@ function updateUserBand(screenId) {
         ${getUserBandMenuMarkup(username, role, screenId)}
       </div>
     </div>
+    <div id="app-user-band-profile-menu" class="app-user-profile-menu hidden" aria-label="Profile details">
+      ${getUserBandProfileMarkup(username, role)}
+    </div>
     <div id="app-user-band-loading" class="app-user-band__loading" role="status" aria-live="polite" aria-hidden="true">
       <span class="app-user-band__loading-bar" aria-hidden="true"></span>
       <span class="app-user-band__loading-text" data-user-band-loading-text></span>
@@ -3071,6 +3144,7 @@ function updateUserBand(screenId) {
   syncUserBandLoadingIndicator();
   attachUserBandZoomHandler(band);
   attachUserBandMenuHandlers(band);
+  attachUserBandProfileHandler(band);
   return true;
 }
 

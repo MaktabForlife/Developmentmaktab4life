@@ -1,11 +1,10 @@
-V102.6
+V102.6.1
 
 No repository file, Platform Sheet tab, course Sheet tab, account, membership,
-curriculum, resource, access, audit or historical record should be deleted in
-this release.
+curriculum, resource, subscription, audit or historical record should be
+deleted in this release.
 
-Keep every V102.5 Platform tab. Keep the unused live `TeacherScheduleIndex` tab
-until the wider V102 rollback period is deliberately closed. Keep all legacy
-operational routes and all V101.4.3 timetable tabs.
+Keep `PlatformConfig!B3` at `102.0.4`. Do not reduce or manually change
+`PlatformConfig!B4`. Do not rerun central account migration.
 
 Production remains untouched at V101.1.

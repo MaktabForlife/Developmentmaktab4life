@@ -263,6 +263,7 @@ function getUnifiedAccountPath(options = {}) {
 function clearUnifiedAccountStorage() {
   localStorage.removeItem("m4l_account_token");
   localStorage.removeItem("m4l_account_context");
+  localStorage.removeItem("m4l_account_contexts");
   localStorage.removeItem("m4l_account_workspace");
 }
 
@@ -606,6 +607,28 @@ function openUnifiedAccountSwitcher() {
   return true;
 }
 
+async function refreshUnifiedAccountProfile() {
+  if (!hasUnifiedAccountWorkspaceSession() && state.authMode !== "account") {
+    return { account: null, context: state.accountContext || null, contexts: [] };
+  }
+
+  const result = await apiPost("/api/account/session", {}, state.token);
+  if (!result.success) {
+    throw new Error(result.error || "Unable to load account Profile.");
+  }
+
+  state.accountContext = result.context || state.accountContext || null;
+  const contexts = Array.isArray(result.contexts) ? result.contexts : [];
+  localStorage.setItem("m4l_account_context", JSON.stringify(state.accountContext));
+  localStorage.setItem("m4l_account_contexts", JSON.stringify(contexts));
+
+  return {
+    account: result.account || null,
+    context: state.accountContext,
+    contexts
+  };
+}
+
 async function submitLogin() {
   if (state.loginSubmitting) return;
 
@@ -687,6 +710,7 @@ window.M4LAuth = {
   hasUnifiedAccountWorkspaceSession,
   restoreUnifiedAccountWorkspace,
   openUnifiedAccountSwitcher,
+  refreshUnifiedAccountProfile,
   checkStudent,
   checkAdmin,
   submitSetupPin,

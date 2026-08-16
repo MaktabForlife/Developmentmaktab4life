@@ -1,5 +1,9 @@
 /* M4L V101.3 - ModuleList-backed Library management with Admin auditing. */
-import { getAuthUser, requireSystemAdmin } from "../lib/auth.js";
+import {
+  getAuthUser,
+  requireResourceCreator,
+  requireSystemAdmin
+} from "../lib/auth.js";
 import {
   appendAdminAuditLog,
   getRequiredRowAuditColumns,
@@ -99,7 +103,7 @@ const RESOURCE_CONFIGS = Object.freeze({
 const RESOURCE_CONFIG_LIST = Object.freeze(Object.values(RESOURCE_CONFIGS));
 
 export async function browseDriveFolderEndpoint(request, env) {
-  const permission = await requireSystemAdmin(request, env);
+  const permission = await requireResourceCreator(request, env);
   if (!permission.ok) return permission.response;
 
   const body = await request.json();
@@ -148,7 +152,7 @@ export async function browseDriveFolderEndpoint(request, env) {
 }
 
 export async function getResourceManagementOptionsEndpoint(request, env) {
-  const permission = await requireSystemAdmin(request, env);
+  const permission = await requireResourceCreator(request, env);
   if (!permission.ok) return permission.response;
 
   const [subjectRows, moduleRows, taskRows] = await Promise.all([
@@ -168,7 +172,7 @@ export async function getResourceManagementOptionsEndpoint(request, env) {
 }
 
 export async function createDriveResourceEndpoint(request, env) {
-  const permission = await requireSystemAdmin(request, env);
+  const permission = await requireResourceCreator(request, env);
   if (!permission.ok) return permission.response;
 
   const body = await request.json();

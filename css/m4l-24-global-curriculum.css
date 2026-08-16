@@ -107,7 +107,8 @@ body:has(#global-curriculum-screen.active) .app-shell {
 }
 
 .global-curriculum-tabs button {
-  flex: 0 0 auto;
+  flex: 1 0 120px;
+  width: auto;
   min-width: 120px;
   min-height: 42px;
   padding: 8px 16px;
@@ -187,6 +188,7 @@ body:has(#global-curriculum-screen.active) .app-shell {
 .global-curriculum-secondary,
 .global-curriculum-primary,
 .global-curriculum-empty button {
+  width: auto;
   min-height: 39px;
   padding: 8px 13px;
   border-radius: 9px;

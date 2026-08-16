@@ -27,7 +27,7 @@ function getAdminAcademicsRole() {
 function syncAdminLandingAccess() {
   const allowed = getAdminAcademicsRole() === "ADMIN";
 
-  document.querySelectorAll("[data-admin-menu-admin-only]").forEach(button => {
+  document.querySelectorAll("[data-admin-menu-admin-only], [data-student-records-admin]").forEach(button => {
     button.classList.toggle("hidden", !allowed);
     button.disabled = !allowed;
     button.setAttribute("aria-hidden", allowed ? "false" : "true");

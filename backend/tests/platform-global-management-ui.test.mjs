@@ -16,7 +16,7 @@ assert.match(html, /data-gcm-tab="modules"/);
 assert.match(html, /data-gcm-tab="tasks"/);
 assert.match(html, /data-gcm-tab="resources"/);
 assert.match(html, /data-gcm-tab="access"/);
-assert.match(html, /m4l-global-curriculum\.js\?v=102\.6/);
+assert.match(html, /m4l-global-curriculum\.js\?v=102\.6\.1/);
 
 assert.match(script, /platformrole/);
 assert.match(script, /ADMIN and GLOBAL_ADMIN/);
@@ -29,8 +29,10 @@ assert.match(script, /\/api\/admin\/platform\/global\/access\/save/);
 assert.match(script, /does not duplicate a course Student subscription/);
 assert.match(academics, /M4LGlobalCurriculum\.syncAccess/);
 
-assert.match(styles, /m4l-24-global-curriculum\.css\?v=102\.6/);
+assert.match(styles, /m4l-24-global-curriculum\.css\?v=102\.6\.1/);
 assert.match(css, /\.global-curriculum-management-grid/);
 assert.match(css, /#global-curriculum-screen\.active/);
+assert.match(css, /\.global-curriculum-tabs button\s*\{[\s\S]*?flex:\s*1 0 120px;[\s\S]*?width:\s*auto;/);
+assert.match(css, /\.global-curriculum-panel-heading > button,[\s\S]*?width:\s*auto;/);
 
-console.log("V102.6 platform global curriculum management UI tests passed.");
+console.log("V102.6.1 platform global curriculum management UI tests passed.");

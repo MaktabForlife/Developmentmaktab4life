@@ -5,13 +5,18 @@ import { createSaltedPinHash, createSessionToken } from "../src/lib/auth.js";
 const pinSecret = "drive-library-pin-secret";
 const sessionSecret = "drive-library-session-secret";
 const adminHash = await createSaltedPinHash("1234", pinSecret);
+const seniorHash = await createSaltedPinHash("5555", pinSecret);
+const teacherHash = await createSaltedPinHash("6666", pinSecret);
 const studentFourHash = await createSaltedPinHash("2222", pinSecret);
 const studentThreeHash = await createSaltedPinHash("3333", pinSecret);
 const studentAllGroupsHash = await createSaltedPinHash("4444", pinSecret);
 const adminRows = [[
   "AdminID", "Username", "UniqueID", "PinSetup", "PinHash", "Role",
   "AssignedGroup", "Active", "CreateDate", "LastLogin"
-], ["ADMIN1", "Main Admin", "MAINLINK", true, adminHash, "ADMIN", "ALL", true, "", ""]];
+],
+["ADMIN1", "Main Admin", "MAINLINK", true, adminHash, "ADMIN", "ALL", true, "", ""],
+["ADMIN2", "Senior User", "SENIORLINK", true, seniorHash, "SENIOR", "ALL", true, "", ""],
+["ADMIN3", "Teacher User", "TEACHERLINK", true, teacherHash, "TEACHER", "1", true, "", ""]];
 const studentRows = [[
   "StudentID", "Username", "WhatsApp", "UniqueID", "PinSetup", "PinHash",
   "ClassGroup", "CreatedDate", "LastLogin", "TaskCount", "Active"
@@ -92,6 +97,24 @@ const adminToken = await createSessionToken({
   authrow: 2,
   credentialHash: adminHash
 }, env);
+const seniorToken = await createSessionToken({
+  type: "admin",
+  adminid: "ADMIN2",
+  username: "Senior User",
+  role: "SENIOR",
+  assignedgroup: "ALL",
+  authrow: 3,
+  credentialHash: seniorHash
+}, env);
+const teacherToken = await createSessionToken({
+  type: "admin",
+  adminid: "ADMIN3",
+  username: "Teacher User",
+  role: "TEACHER",
+  assignedgroup: "1",
+  authrow: 4,
+  credentialHash: teacherHash
+}, env);
 const studentFourToken = await createSessionToken({
   type: "student",
   studentid: "STUDENT4",
@@ -121,6 +144,8 @@ const driveItems = new Map([
   ["ROOT123", { id: "ROOT123", name: "M4L Resources", mimeType: "application/vnd.google-apps.folder", parents: [], trashed: false }],
   ["FOLDER1", { id: "FOLDER1", name: "Fiqh", mimeType: "application/vnd.google-apps.folder", parents: ["ROOT123"], trashed: false }],
   ["FILE123", { id: "FILE123", name: "Fiqh Lesson 1.pdf", mimeType: "application/pdf", size: "26", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }],
+  ["FILESENIOR", { id: "FILESENIOR", name: "Senior Resource.pdf", mimeType: "application/pdf", size: "26", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }],
+  ["FILETEACHER", { id: "FILETEACHER", name: "Teacher Resource.pdf", mimeType: "application/pdf", size: "26", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }],
   ["FILEMP4", { id: "FILEMP4", name: "Fiqh Lesson Video.mp4", mimeType: "application/octet-stream", size: "1024", parents: ["FOLDER1"], trashed: false, capabilities: { canDownload: true } }]
 ]);
 
@@ -296,6 +321,47 @@ try {
   assert.equal(inactiveAccess.data.error, "Resource is inactive");
   assert.ok(auditRows.some(row => row[5] === "CREATE" && row[7] === "EBOOK1"));
   assert.ok(auditRows.some(row => row[5] === "UPDATE" && row[7] === "EBOOK1"));
+
+  const seniorOptions = await post("/api/admin/resources/options", {}, seniorToken);
+  assert.equal(seniorOptions.response.status, 200);
+  const teacherBrowse = await post("/api/admin/drive/browse", { folderId: "FOLDER1" }, teacherToken);
+  assert.equal(teacherBrowse.response.status, 200);
+
+  const seniorCreated = await post("/api/admin/resources/create", {
+    resourceType: "EBOOK",
+    fileId: "FILESENIOR",
+    name: "Senior Resource",
+    subjectId: "SUB1",
+    groupNo: "ALL",
+    active: true
+  }, seniorToken);
+  assert.equal(seniorCreated.response.status, 200);
+  assert.equal(seniorCreated.data.resource.resourceid, "EBOOK2");
+  assert.equal(ebookRows.at(-1)[12], "ADMIN2");
+
+  const teacherCreated = await post("/api/admin/resources/create", {
+    resourceType: "EBOOK",
+    fileId: "FILETEACHER",
+    name: "Teacher Resource",
+    subjectId: "SUB1",
+    groupNo: "1",
+    active: true
+  }, teacherToken);
+  assert.equal(teacherCreated.response.status, 200);
+  assert.equal(teacherCreated.data.resource.resourceid, "EBOOK3");
+  assert.equal(ebookRows.at(-1)[12], "ADMIN3");
+
+  const seniorModifyList = await post("/api/admin/resources/manage-list", {}, seniorToken);
+  assert.equal(seniorModifyList.response.status, 403);
+  const teacherUpdate = await post("/api/admin/resources/update", {
+    resourceType: "EBOOK",
+    resourceId: "EBOOK3",
+    name: "Blocked Teacher Update",
+    subjectId: "SUB1",
+    groupNo: "1",
+    active: true
+  }, teacherToken);
+  assert.equal(teacherUpdate.response.status, 403);
 } finally {
   globalThis.fetch = originalFetch;
 }

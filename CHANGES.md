@@ -1,3 +1,20 @@
+# V102.6.1 — Permission, Profile and Global Curriculum UI corrections
+
+- Shows all five Global Curriculum tabs and restores compact panel actions.
+- Grants SENIOR and TEACHER course-resource creation but keeps modification
+  ADMIN-only.
+- Removes Student Records capability and menu visibility from SENIOR and
+  TEACHER.
+- Hides unavailable Admin Home controls.
+- Makes Profile the single place for account details and course/role switching.
+- Adds global subject count to the Platform validation success summary.
+- Keeps Platform schema `102.0.4` and current session behaviour unchanged.
+- Bumps application and Worker metadata to `102.6.1`.
+
+Development only: production remains stable at V101.1.
+
+---
+
 # V102.6 — Global curriculum and subscription management
 
 - Adds centrally authorised ADMIN/GLOBAL_ADMIN CRUD-style activation

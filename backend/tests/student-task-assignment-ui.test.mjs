@@ -42,8 +42,8 @@ assert.match(assignmentRoute, /All selected tasks were already assigned/);
 assert.match(assignmentRoute, /buildStudentTaskRow/);
 assert.match(assignmentRoute, /columnIndexToA1\(studentTaskHeaders\.length - 1\)/);
 
-assert.match(adminHtml, /styles\.css\?v=102\.2/);
-assert.match(adminHtml, /m4l-manage-students\.js\?v=100\.9/);
+assert.match(adminHtml, /styles\.css\?v=102\.6\.1/);
+assert.match(adminHtml, /m4l-manage-students\.js\?v=102\.6\.1/);
 assert.match(styles, /m4l-07-manage-students\.css\?v=100\.9/);
 
 console.log("Separate student registration and task-assignment UI tests passed.");

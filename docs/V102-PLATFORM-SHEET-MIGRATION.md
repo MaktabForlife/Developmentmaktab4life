@@ -91,7 +91,7 @@ before deploying V102.2:
 | --- | --- |
 | `GLOBAL_ADMIN` | Every platform/global function and unrestricted access to every active course. Course selection still issues a CourseID-scoped token, isolates caches and records the CourseID in audit events. |
 | `ADMIN` | Every function, including Platform Sheet administration, central accounts/access, course registry and GLOBAL curriculum changes. Course operational data still requires membership in that course. |
-| `SENIOR` | Course-level modifications in assigned courses, including course configuration, local curriculum, timetable, students, staff assignments, attendance, planners, resources, tasks and progress. No platform/global administration. |
+| `SENIOR` | Course-level modifications in assigned courses, excluding Student Records. Includes course configuration, local curriculum, timetable, staff assignments, attendance, planners, resource creation, tasks and progress. No platform/global administration. |
 | `TEACHER` | Attendance, weekly-planner creation/viewing, adding course resources and course tasks, task assignment/verification and progress work. Every view and write is restricted to assigned classes/groups. No course-wide or global administration. |
 | `STUDENT` | Own assigned-course information and own task-progress updates only. |
 

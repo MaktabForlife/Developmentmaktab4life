@@ -29,6 +29,11 @@ const manageStudentsState = {
 const ALL_GROUPS_STUDENT_VALUE = "0";
 const ALL_GROUPS_STUDENT_LABEL = "ALL (Group 0)";
 
+function canCurrentUserManageStudentRecords() {
+  const user = typeof state === "object" && state && state.user ? state.user : {};
+  return String(user.role || user.Role || "").trim().toUpperCase() === "ADMIN";
+}
+
 function getManagedStudentGroupValue(value, fallback = String(DEFAULT_STUDENT_GROUP)) {
   if (value === null || value === undefined) return fallback;
 
@@ -308,6 +313,11 @@ function handleManageStudentsUiChange(event) {
 }
 
 function showManageStudents() {
+  if (!canCurrentUserManageStudentRecords()) {
+    alert("Student Records are available to ADMIN accounts only.");
+    return false;
+  }
+
   manageStudentsState.mode = "register";
   manageStudentsState.searchResults = [];
   manageStudentsState.searchQuery = "";

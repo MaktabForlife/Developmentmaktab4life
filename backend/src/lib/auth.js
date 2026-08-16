@@ -152,6 +152,29 @@ export async function requireSystemAdmin(request, env) {
   };
 }
 
+export async function requireResourceCreator(request, env) {
+  const authUser = await getAuthUser(request, env);
+
+  if (!authUser || authUser.type !== "admin") {
+    return {
+      ok: false,
+      response: json({ success: false, error: "Unauthorized" }, 401)
+    };
+  }
+
+  if (!["ADMIN", "SENIOR", "TEACHER"].includes(authUser.role)) {
+    return {
+      ok: false,
+      response: json({ success: false, error: "Forbidden" }, 403)
+    };
+  }
+
+  return {
+    ok: true,
+    user: authUser
+  };
+}
+
 export async function getAuthUser(request, env) {
   const requestUser = getRequestAuthUser(request);
   if (requestUser) return requestUser;

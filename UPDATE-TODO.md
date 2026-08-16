@@ -1,186 +1,142 @@
-# V102.6 update to-do
+# V102.6.1 update to-do
 
-Apply V102.6 only over the verified V102.5 development repository using:
+Apply V102.6.1 only over the deployed V102.6 development repository using:
 
-`Rebootyourmaktab-V102.6-GITHUB-UPDATE-FROM-V102.5.zip`
+`Rebootyourmaktab-V102.6.1-GITHUB-UPDATE-FROM-V102.6.zip`
 
-This is an incremental update. You do not need to upload the entire repository.
-Production remains stable at V101.1 and must not receive this ZIP.
+This is an incremental correction update. Production remains stable at V101.1
+and must not receive this ZIP.
 
-## 1. Confirm and back up V102.5
+## 1. Confirm and back up V102.6
 
-- [ ] Confirm the development Worker root reports `102.5`.
-- [ ] Confirm the account page displays `V102.5`.
-- [ ] Confirm **Validate Platform Sheet** reports:
+- [ ] Confirm the development Worker root reports `102.6`.
+- [ ] Confirm the account page displays `V102.6`.
+- [ ] Confirm unified GLOBAL_ADMIN and Student login still work.
+- [ ] Back up the development GitHub repository, Platform Sheet and course Sheet.
+- [ ] Record the current value of `PlatformConfig!B4`.
 
-```text
-Ready: 10 required tabs, 1 active course, 33 central accounts, 0 global-subject subscriptions. Unified-login data is present.
-```
-
-The counts may differ only when authorised data was deliberately added.
-
-- [ ] Confirm `PlatformConfig!B3` contains exactly `102.0.4`.
-- [ ] Record the current value in `PlatformConfig!B4`
-  (`GlobalCurriculumVersion`).
-- [ ] Confirm GLOBAL_ADMIN, ADMIN and a migrated Student can still sign in.
-- [ ] Back up the development GitHub repository, Platform Sheet and course
-  Sheet.
-
-Do not rerun central account migration.
+Do not rerun account migration. Do not change `PlatformConfig!B3`; it must
+remain exactly `102.0.4`.
 
 ## 2. Update the GitHub development repository
 
-- [ ] Extract
-  `Rebootyourmaktab-V102.6-GITHUB-UPDATE-FROM-V102.5.zip`.
-- [ ] Open the contained `Rebootyourmaktab-development` folder.
+- [ ] Extract `Rebootyourmaktab-V102.6.1-GITHUB-UPDATE-FROM-V102.6.zip`.
 - [ ] Upload every included file to its matching path in the existing GitHub
   development repository.
 - [ ] Replace existing files and add new files while preserving folder names.
-- [ ] Do not delete any repository file; V102.6 `DELETE-FILES.txt` lists no
-  deletion.
-- [ ] Confirm root `version.json` and `js/version.json` both contain `102.6`.
-- [ ] Confirm this V102.6 `UPDATE-TODO.md` is present at repository root.
+- [ ] Do not delete any repository file; `DELETE-FILES.txt` lists no deletion.
+- [ ] Confirm root `version.json` and `js/version.json` both contain `102.6.1`.
+- [ ] Confirm this `UPDATE-TODO.md` is present at repository root.
 
-Cloudflare may automatically deploy the Worker and Pages from this commit. That
-is safe for V102.6: the new Pages screen only calls new endpoints, and the new
-Worker endpoints are unused by V102.5 Pages during the short crossover.
+Cloudflare may deploy Worker and Pages automatically from the same GitHub
+commit. The Worker permits the new SENIOR/TEACHER create calls before the Pages
+controls expose them, so the automatic deployment order is safe.
 
-## 3. Confirm automatic Cloudflare deployment
+## 3. Confirm deployment
 
-- [ ] Wait for both the development Worker and Pages deployments to finish.
-- [ ] Preserve all existing Worker variables, secrets and bindings.
-- [ ] Confirm the Worker root endpoint reports version `102.6`.
-- [ ] Hard-refresh the account page or use a private window.
-- [ ] Confirm the account page displays `V102.6`.
+- [ ] Wait for both development Worker and Pages deployments to finish.
+- [ ] Preserve all Worker variables, secrets and bindings.
+- [ ] Confirm the Worker root reports `102.6.1`.
+- [ ] Hard-refresh Pages or use a private window.
+- [ ] Confirm the account page displays `V102.6.1`.
 
-V102.6 requires no Worker setting, secret, binding or Apps Script deployment.
+V102.6.1 requires no Platform Sheet, course Sheet, Apps Script, Worker setting,
+secret or binding change.
 
-## 4. Verify existing account and course operation first
+## 4. Verify the Global Curriculum tabs
 
-- [ ] Sign in through `/account/<uniqueid>` as GLOBAL_ADMIN.
-- [ ] Switch into `COURSE1` and confirm the Admin workspace opens without a
-  second PIN.
-- [ ] Sign in as an ordinary central ADMIN and confirm the course workspace
-  opens.
-- [ ] Sign in as a migrated Student and confirm Student Home opens.
-- [ ] Confirm Profile → Switch course or role still works.
-- [ ] Confirm timetable, Library, attendance, planners, tasks and progress have
-  the same V102.5 behaviour.
-
-The approved browser-session authentication policy is documented but is not
-active in V102.6. Returning within the existing token lifetime may still open
-without another PIN unless **Log out** was selected.
-
-## 5. Verify Global Curriculum authorization
-
-- [ ] Sign in as GLOBAL_ADMIN or a central ADMIN and open:
+- [ ] Sign in as GLOBAL_ADMIN or ADMIN.
+- [ ] Open **Admin Home → Global Curriculum**.
+- [ ] Confirm all five controls are visible without needing to discover a
+  hidden horizontal scroll:
 
 ```text
-Admin Home → Global Curriculum
+Subjects | Modules | Tasks | Resources | Subscriptions
 ```
 
-- [ ] Confirm the screen displays a `GLOBAL` badge and five sections:
-  Subjects, Modules, Tasks, Resources and Subscriptions.
-- [ ] Confirm the displayed curriculum version equals the value recorded from
-  `PlatformConfig!B4`.
-- [ ] Confirm an authorised SENIOR and TEACHER do not see the Global Curriculum
-  tile.
-- [ ] Confirm manually entering the screen URL cannot bypass Worker
-  authorization.
+- [ ] Open each section and confirm its form and list appear.
+- [ ] Confirm the small `New` controls no longer stretch across the panel.
+- [ ] Confirm existing global subjects and the current value recorded from
+  `PlatformConfig!B4` are unchanged by the update. Each earlier curriculum
+  create, modification, activation or deactivation correctly increased B4 by 1.
 
-## 6. Controlled development write test
+## 5. Verify role-based Admin menu visibility
 
-Use clearly identified test data. Do not convert or copy existing Reboot course
-curriculum during this verification.
+- [ ] As ADMIN, confirm Student Records, Admin Records, Resources, Timetable
+  Builder, Global Curriculum and System Settings appear according to existing
+  ADMIN access.
+- [ ] As SENIOR, confirm **Student Records is hidden**.
+- [ ] As TEACHER, confirm **Student Records is hidden**.
+- [ ] Confirm unavailable Admin Home tiles are hidden rather than displayed as
+  controls that later reject the user.
+- [ ] Confirm direct requests to Student Records write APIs still reject SENIOR
+  and TEACHER; hiding is not the security boundary.
 
-- [ ] Create one test global subject.
-- [ ] Confirm one new row appears in `GlobalSubjectList`.
-- [ ] Confirm it has a namespaced UUID SubjectID, `Active=TRUE`, creator audit
-  values and a CreatedDate.
-- [ ] Confirm `PlatformConfig!B4` increases by exactly 1.
-- [ ] Confirm `PlatformAuditLog` contains `CREATE_GLOBAL_SUBJECT`.
-- [ ] Add one module to that subject and confirm B4 increases by 1.
-- [ ] Add one task to that subject/module and confirm B4 increases by 1.
-- [ ] Add one resource using a complete HTTPS test link and confirm B4 increases
-  by 1.
-- [ ] Modify one record and confirm modified-by fields, ModifiedDate, audit log
-  and B4 are updated.
-- [ ] Deactivate the test subject and confirm dependency feedback is displayed;
-  no module, task, resource or access row is deleted.
+## 6. Verify resource creation
 
-Global resources accept only:
+- [ ] As SENIOR, open **Admin → Resources** and add one clearly named temporary
+  course resource.
+- [ ] As TEACHER, open **Admin → Resources** and add one clearly named temporary
+  course resource for the teacher's intended class/group.
+- [ ] Confirm both rows contain the correct creator ID/name and the course
+  `AdminAuditLog` contains the create actions.
+- [ ] Confirm SENIOR and TEACHER do not see **Modify Resource**.
+- [ ] Confirm a direct SENIOR/TEACHER call to the resource update/list-management
+  endpoints is rejected.
+- [ ] As ADMIN, confirm both **Add Resource** and **Modify Resource** remain
+  available.
 
-```text
-EBOOK, PRINTABLE, AUDIO, VIDEO, OTHER
-```
+V102.6.1 grants SENIOR and TEACHER resource creation only. It does not grant
+permission to modify existing resource rows.
 
-## 7. Verify direct global-subject access
+## 7. Verify Profile and context switching
 
-- [ ] Reactivate the test global subject before granting access.
-- [ ] Open the Subscriptions section.
-- [ ] Select one existing active test account and the test global subject.
-- [ ] Activate access.
-- [ ] Confirm one new `UserGlobalSubjectAccess` row appears.
-- [ ] Confirm it has a namespaced UUID SubjectAccessID and `Active=TRUE`.
-- [ ] Confirm `PlatformAuditLog` contains
-  `ACTIVATE_GLOBAL_SUBJECT_ACCESS`.
-- [ ] Confirm `PlatformConfig!B4` does **not** change for this access-only
-  operation.
-- [ ] Deactivate the access row and confirm it is preserved with
-  `Active=FALSE`, modified audit values and a central audit entry.
-- [ ] Do not expect the subscribed subject to appear in the Student app yet;
-  learner delivery is deliberately deferred.
+- [ ] Open the app menu and confirm there is one **Profile** control.
+- [ ] Confirm there is no separate duplicate **Switch course or role** menu
+  item.
+- [ ] Select **Profile** and confirm the card lists the person's name, courses
+  and roles and identifies the current context.
+- [ ] Select **Switch course or role** inside the Profile card.
+- [ ] Confirm the central account context screen opens without another PIN.
+- [ ] Switch context and confirm the newly scoped course/role workspace opens.
 
-## 8. Validate the Platform Sheet again
+## 8. Regression checks
 
-- [ ] Open **System Settings → Validate Platform Sheet**.
-- [ ] Confirm validation still reports `10 required tabs` and no errors.
-- [ ] Confirm the global-subject and subscription counts reflect the controlled
-  test rows.
-- [ ] Confirm `PlatformConfig!B3` remains exactly `102.0.4`.
-- [ ] Confirm no central account or `UserCourseAccess` row was duplicated,
-  changed or deleted by this update.
+- [ ] Confirm GLOBAL_ADMIN, ADMIN, SENIOR, TEACHER and Student login as available
+  in development.
+- [ ] Confirm timetable, Library viewing, attendance, planner, tasks and progress
+  retain their V102.6 behaviour.
+- [ ] Confirm Teacher progress and other data views remain class-restricted.
+- [ ] Run **Validate Platform Sheet** and confirm it remains ready with ten
+  required tabs.
+- [ ] Confirm the validation summary separately reports the actual global
+  subject count and the global-subject subscription count. With the current
+  test data it should include `3 global subjects, 0 global-subject subscriptions`.
+- [ ] Confirm `PlatformConfig!B3` remains `102.0.4`.
+- [ ] Confirm `PlatformConfig!B4` did not change merely because V102.6.1 was
+  deployed.
 
-## 9. Safety boundaries
+The approved browser-session authentication policy remains documented but is
+not active in V102.6.1.
 
-- [ ] Do not rerun account migration.
-- [ ] Do not create a `UserSubscriptions` tab.
-- [ ] Do not copy editable global curriculum into a course Sheet.
-- [ ] Do not copy course resources into `GlobalResources`.
-- [ ] Do not add billing, payment, expiry or renewal data to access rows.
-- [ ] Do not add timetable, overlap, course-combination or teacher-schedule
-  subscription checks.
-- [ ] Do not expect global-subject-only account navigation or learner delivery.
-- [ ] Do not implement or manually simulate the future authentication storage
-  policy as part of this deployment.
-- [ ] Do not onboard a second production course or modify production V101.1.
+## 9. Completion criteria
 
-## 10. Completion criteria
+V102.6.1 is complete in development when:
 
-V102.6 is complete in development only when:
-
-- [ ] Worker root and account page report `102.6`.
-- [ ] Existing GLOBAL_ADMIN, ADMIN and Student unified login still work.
-- [ ] Existing course operations remain unchanged.
-- [ ] ADMIN/GLOBAL_ADMIN can manage central global curriculum.
-- [ ] SENIOR, TEACHER, STUDENT and legacy-only sessions are rejected from the
-  central management APIs.
-- [ ] Curriculum changes increment `GlobalCurriculumVersion` and access changes
-  do not.
-- [ ] Every change produces a central audit row.
-- [ ] Platform validation succeeds with schema `102.0.4`.
+- [ ] Worker root and account page report `102.6.1`.
+- [ ] All five Global Curriculum sections are visible and open correctly.
+- [ ] SENIOR and TEACHER can add course resources but cannot modify existing
+  resources.
+- [ ] SENIOR and TEACHER cannot see or use Student Records.
+- [ ] Inaccessible Admin Home items are hidden.
+- [ ] Profile is the single place for details and course/role switching.
+- [ ] Platform schema remains `102.0.4` and account migration was not rerun.
 - [ ] Production remains unchanged at V101.1.
 
-## 11. Rollback to V102.5
+## 10. Rollback to V102.6
 
-- [ ] Roll back the development Worker to V102.5.
-- [ ] Roll back the development Pages frontend to V102.5.
+- [ ] Roll back development Worker and Pages to V102.6 together.
 - [ ] Keep `PlatformConfig!B3` at `102.0.4`.
 - [ ] Do not reduce `GlobalCurriculumVersion`.
-- [ ] Do not delete global subject, module, task, resource, access or audit rows
-  created while V102.6 was active.
-- [ ] Run **Validate Platform Sheet** and confirm V102.5 still validates all ten
-  tabs and their retained data.
-
-V102.5 safely validates the V102.6 data even though it does not expose the
-management screen.
+- [ ] Do not delete any resource or audit row created while testing V102.6.1.
+- [ ] Revalidate unified login and the Platform Sheet.

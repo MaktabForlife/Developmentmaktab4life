@@ -1,39 +1,31 @@
 # Maktabhelper
 
-Current development release: V102.6 global curriculum and subscription
-management.
+Current development release: V102.6.1 permission, Profile and Global Curriculum
+UI corrections.
 
-V102.6 builds on the verified V102.5 ten-tab Platform schema. A centrally
-authenticated `ADMIN` or `GLOBAL_ADMIN` can now open **Admin Home → Global
-Curriculum** to add or modify central global subjects, modules, tasks and
-resources, and to activate or deactivate direct account-to-global-subject
-access.
+V102.6.1 is applied over deployed V102.6. It makes all five Global Curriculum
+sections visible, reports global subjects separately from global-subject
+subscriptions in Platform validation, and prevents inherited full-width button
+styles from hiding the remaining tab controls.
 
-Every change is authorised again by the Worker and recorded in
-`PlatformAuditLog`. Global curriculum and resource changes automatically
-increment `PlatformConfig!B4` (`GlobalCurriculumVersion`) so later learner
-caches can be invalidated safely. Direct access changes do not change the
-curriculum version.
+SENIOR and TEACHER can add course resources. Existing-resource modification
+remains ADMIN-only. Student Records are ADMIN-only and their tile is hidden from
+SENIOR and TEACHER. Other inaccessible Admin Home controls are also hidden for
+the active role; Worker authorization remains the security boundary.
 
-V102.6 makes no Platform Sheet header, course Sheet, Worker variable, secret,
-binding or Apps Script change. The Platform schema remains `102.0.4`; the
-central account migration must not be rerun.
+The app menu now has one Profile control. Its card shows the account name,
+courses, roles and current context and contains the course/role switch action.
+The separate duplicate switch menu item is removed.
 
-This release deliberately does not yet:
-
-- deliver subscribed global subjects in the learner application;
-- create a global-subject-only login context;
-- connect billing, payments, renewals or expiry dates;
-- apply timetable, course-combination or teacher-overlap restrictions;
-- implement the approved browser-session authentication policy.
-
-The future authentication policy is recorded in
-`docs/V102-AUTHENTICATION-SESSION-POLICY.md` and does not change V102.6 login
-behaviour.
+V102.6.1 makes no Platform Sheet header, course Sheet, Worker variable, secret,
+binding or Apps Script change. `PlatformConfig!B3` remains `102.0.4`, deployment
+does not change `PlatformConfig!B4`, and central account migration must not be
+rerun. The approved browser-session authentication policy remains documented
+but inactive.
 
 Start installation with the root-level `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.6-GITHUB-UPDATE-FROM-V102.5.zip` directly over the
-verified V102.5 development repository. A full repository upload is not
+`Rebootyourmaktab-V102.6.1-GITHUB-UPDATE-FROM-V102.6.zip` directly over the
+deployed V102.6 development repository. A full repository upload is not
 required.
 
 Production remains stable at V101.1. It must not receive this development-only

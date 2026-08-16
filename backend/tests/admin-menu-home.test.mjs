@@ -22,6 +22,8 @@ assert.match(landing, /onclick="showAdminAcademics\(\)"/);
 assert.match(landing, /aria-current="page"/);
 assert.match(landing, />Admin Home</);
 assert.match(landing, />Student Records</);
+assert.match(landing, /id="open-manage-students-btn"/);
+assert.match(landing, /data-student-records-admin/);
 assert.match(landing, />Admin Records</);
 assert.match(landing, />Resources</);
 assert.match(landing, />Timetable Builder</);
@@ -51,6 +53,7 @@ assert.match(adminHtml, /id="manage-students-screen"[\s\S]*?data-header-target="
 assert.match(academicsJs, /function showAdminSystemMenu\(\)/);
 assert.match(academicsJs, /getAdminAcademicsRole\(\) === "ADMIN"/);
 assert.match(academicsJs, /data-admin-menu-admin-only/);
+assert.match(academicsJs, /data-student-records-admin/);
 assert.match(homeCss, /\.admin-menu-icon-grid/);
 assert.match(homeCss, /\.admin-menu-icon-grid[\s\S]*?grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
 assert.match(shellJs, /"admin-system-menu"/);

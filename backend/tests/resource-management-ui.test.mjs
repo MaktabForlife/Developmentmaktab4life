@@ -11,10 +11,12 @@ const css = readFileSync(new URL("../../css/m4l-21-manage-resources.css", import
 assert.match(adminHtml, /id="open-manage-resources-btn"/);
 assert.match(adminHtml, /id="manage-resources-screen"/);
 assert.match(adminHtml, /id="manage-resources-content"/);
-assert.match(adminHtml, /m4l-manage-resources\.js\?v=100\.4\.4/);
+assert.match(adminHtml, /m4l-manage-resources\.js\?v=102\.6\.1/);
 assert.match(adminHtml, /m4l-resources\.js\?v=100\.4\.1/);
 assert.match(studentHtml, /m4l-resources\.js\?v=100\.4\.1/);
-assert.match(manageJs, /getCurrentRole\(\) === "ADMIN"/);
+assert.match(manageJs, /\["ADMIN", "SENIOR", "TEACHER"\]\.includes\(getCurrentRole\(\)\)/);
+assert.match(manageJs, /function canModifyResources\(\)/);
+assert.match(manageJs, /Only ADMIN accounts can modify existing resources/);
 assert.match(manageJs, /\/api\/admin\/drive\/browse/);
 assert.match(manageJs, /\/api\/admin\/resources\/create/);
 assert.match(manageJs, /\/api\/admin\/resources\/manage-list/);

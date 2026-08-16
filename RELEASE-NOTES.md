@@ -1,3 +1,31 @@
+V102.6.1
+
+# Correct role visibility, resource creation, Profile and Global Curriculum tabs
+
+- Makes Subjects, Modules, Tasks, Resources and Subscriptions simultaneously
+  visible in Global Curriculum instead of placing each full-width tab beyond an
+  undiscoverable horizontal overflow.
+- Restores compact `New` buttons in Global Curriculum panels.
+- Allows SENIOR and TEACHER to add course resources while preserving ADMIN-only
+  modification of existing resources.
+- Makes Student Records ADMIN-only in both the capability model and UI; SENIOR
+  and TEACHER do not see its tile.
+- Hides inaccessible Admin Home controls for the active role.
+- Consolidates account name, courses, roles, current context and switching into
+  one Profile card and removes the duplicate switch menu item.
+- Reports global subject count separately from direct global-subject
+  subscription count in Platform validation.
+- Keeps Platform schema `102.0.4` and does not change GlobalCurriculumVersion,
+  Sheet headers, Worker configuration, Apps Script or current authentication
+  persistence.
+- Adds the exact deployment and verification checklist in `UPDATE-TODO.md`.
+
+Install only
+`Rebootyourmaktab-V102.6.1-GITHUB-UPDATE-FROM-V102.6.zip` over deployed V102.6
+development. Production remains stable at V101.1.
+
+---
+
 V102.6
 
 # Manage central global curriculum and direct subject subscriptions

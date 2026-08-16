@@ -1,5 +1,4 @@
-/* M4L V100.4.4 - Library resource form cleanup. */
-/* M4L V100.4 - ADMIN-only private Google Drive Library management UI. */
+/* M4L V102.6.1 - ADMIN/SENIOR/TEACHER resource creation; ADMIN-only modification. */
 (function () {
   "use strict";
 
@@ -51,6 +50,10 @@
   }
 
   function isAllowed() {
+    return ["ADMIN", "SENIOR", "TEACHER"].includes(getCurrentRole());
+  }
+
+  function canModifyResources() {
     return getCurrentRole() === "ADMIN";
   }
 
@@ -67,7 +70,7 @@
 
   function showManageResources() {
     if (!syncAccess()) {
-      alert("Library management is available to ADMIN accounts only.");
+      alert("Resource creation is available to ADMIN, SENIOR, and TEACHER accounts only.");
       return false;
     }
 
@@ -104,7 +107,13 @@
       if (action === "close") return showScreen("admin-academics");
       if (action === "home") return setView("home");
       if (action === "add") return openAddResource();
-      if (action === "modify") return openModifyResources();
+      if (action === "modify") {
+        if (!canModifyResources()) {
+          alert("Only ADMIN accounts can modify existing resources.");
+          return false;
+        }
+        return openModifyResources();
+      }
       if (action === "view-library") return showAdminResources({ force: true });
       if (action === "browse") return openDriveBrowser();
       if (action === "browse-folder") return loadDriveFolder(actionElement.dataset.folderId || "");
@@ -229,6 +238,11 @@
   }
 
   async function openModifyResources() {
+    if (!canModifyResources()) {
+      alert("Only ADMIN accounts can modify existing resources.");
+      return false;
+    }
+
     stateModel.view = "modify-list";
     stateModel.returnView = "edit";
     stateModel.selectedResource = null;
@@ -400,6 +414,11 @@
   }
 
   async function saveEditedResource() {
+    if (!canModifyResources()) {
+      alert("Only ADMIN accounts can modify existing resources.");
+      return false;
+    }
+
     if (stateModel.submitting || !stateModel.selectedResource) return;
     syncFormFromDom();
     const error = validateForm(false);
@@ -491,10 +510,12 @@
           <strong>Add Resource</strong>
           <span>Browse the private M4L Google folder and add a Library item.</span>
         </button>
-        <button type="button" class="manage-resource-home-card" data-manage-resource-action="modify">
-          <strong>Modify Resource</strong>
-          <span>Edit the file, subject, module, group, or active status.</span>
-        </button>
+        ${canModifyResources() ? `
+          <button type="button" class="manage-resource-home-card" data-manage-resource-action="modify">
+            <strong>Modify Resource</strong>
+            <span>Edit the file, subject, module, group, or active status.</span>
+          </button>
+        ` : ""}
         <button type="button" class="manage-resource-home-card" data-manage-resource-action="view-library">
           <strong>View Library</strong>
           <span>Open the current student-facing Library.</span>

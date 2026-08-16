@@ -151,6 +151,7 @@
       const tabCount = Number(result.tabCount || 0);
       const courseCount = Number(result.activeCourseCount || 0);
       const accountCount = Number(result.accountCount || 0);
+      const globalSubjectCount = Number(result.globalSubjectCount || 0);
       const subjectAccessCount = Number(result.globalSubjectAccessCount || 0);
       const migrationState = result.readyForUnifiedLogin
         ? "Unified-login data is present."
@@ -158,6 +159,7 @@
       setPlatformValidationMessage(
         `Ready: ${tabCount} required tabs, ${courseCount} active course${courseCount === 1 ? "" : "s"}, ` +
         `${accountCount} central account${accountCount === 1 ? "" : "s"}, ` +
+        `${globalSubjectCount} global subject${globalSubjectCount === 1 ? "" : "s"}, ` +
         `${subjectAccessCount} global-subject subscription${subjectAccessCount === 1 ? "" : "s"}. ${migrationState}`,
         "success"
       );
