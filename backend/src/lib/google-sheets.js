@@ -1,6 +1,7 @@
-/* M4L V100.6 - Reusable direct Google Sheets client.
+/* M4L V102.8.2 - Reusable direct Google Sheets client.
    Keeps service-account authentication, token caching and generic Sheets value
-   operations independent from feature-specific Worker routes.
+   operations independent from feature-specific Worker routes. Read requests
+   use bounded retry/backoff, and related ranges can be fetched in one batch.
 */
 
 import { assertGoogleServiceAccountEmailMatches } from "./google-service-account-email.js";
@@ -12,6 +13,31 @@ let accessTokenCache = {
 };
 let accessTokenPromise = null;
 
+const RETRYABLE_GOOGLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const GOOGLE_READ_MAX_ATTEMPTS = 3;
+const GOOGLE_READ_RETRY_BASE_MS = 250;
+const GOOGLE_READ_RETRY_MAX_MS = 2000;
+
+export class GoogleSheetsApiError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "GoogleSheetsApiError";
+    this.status = Number(status) || 0;
+    this.retryable = RETRYABLE_GOOGLE_STATUSES.has(this.status);
+    this.code = this.retryable
+      ? "GOOGLE_SHEETS_TEMPORARILY_UNAVAILABLE"
+      : "GOOGLE_SHEETS_REQUEST_FAILED";
+  }
+}
+
+export function isRetryableGoogleSheetsError(error) {
+  if (error?.retryable === true) return true;
+  const status = Number(error?.status);
+  if (RETRYABLE_GOOGLE_STATUSES.has(status)) return true;
+  const match = /Google Sheets API error\s+(\d{3})/i.exec(String(error?.message || ""));
+  return Boolean(match && RETRYABLE_GOOGLE_STATUSES.has(Number(match[1])));
+}
+
 export async function readGoogleSheetValues(env, range, target = {}) {
   const result = await callGoogleSheetsValuesApi(env, range, {
     method: "GET",
@@ -22,6 +48,42 @@ export async function readGoogleSheetValues(env, range, target = {}) {
   });
 
   return Array.isArray(result.values) ? result.values : [];
+}
+
+export async function batchReadGoogleSheetValues(env, ranges, target = {}) {
+  if (!Array.isArray(ranges) || ranges.length === 0) {
+    throw new Error("Google Sheets batch read requires at least one range");
+  }
+
+  const normalizedRanges = ranges.map(range => String(range || "").trim());
+  if (normalizedRanges.some(range => !range)) {
+    throw new Error("Google Sheets batch read ranges cannot be empty");
+  }
+
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
+  const accessToken = await getGoogleSheetsAccessToken(env);
+  const query = new URLSearchParams({ majorDimension: "ROWS" });
+  normalizedRanges.forEach(range => query.append("ranges", range));
+  const url = [
+    "https://sheets.googleapis.com/v4/spreadsheets/",
+    encodeURIComponent(spreadsheetId),
+    "/values:batchGet?",
+    query.toString()
+  ].join("");
+  const response = await fetchGoogleSheetsReadWithRetry(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json;charset=UTF-8"
+    }
+  });
+  const result = await parseGoogleSheetsResponse(response);
+  const valueRanges = Array.isArray(result.valueRanges) ? result.valueRanges : [];
+
+  return normalizedRanges.map((range, index) => {
+    const valueRange = valueRanges[index];
+    return Array.isArray(valueRange?.values) ? valueRange.values : [];
+  });
 }
 
 export async function updateGoogleSheetValues(env, range, values, target = {}) {
@@ -92,7 +154,7 @@ export async function readGoogleSpreadsheetSheetProperties(env, target = {}) {
     encodeURIComponent(spreadsheetId),
     "?fields=sheets(properties(sheetId,title))"
   ].join("");
-  const response = await fetch(url, {
+  const response = await fetchGoogleSheetsReadWithRetry(url, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -332,16 +394,51 @@ async function callGoogleSheetsValuesApi(env, range, options = {}) {
     actionSuffix,
     queryText ? `?${queryText}` : ""
   ].join("");
-  const response = await fetch(url, {
+  const requestOptions = {
     method: options.method || "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json;charset=UTF-8"
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
+  };
+  const response = String(requestOptions.method).toUpperCase() === "GET"
+    ? await fetchGoogleSheetsReadWithRetry(url, requestOptions)
+    : await fetch(url, requestOptions);
 
   return parseGoogleSheetsResponse(response);
+}
+
+async function fetchGoogleSheetsReadWithRetry(url, init) {
+  let response;
+
+  for (let attempt = 0; attempt < GOOGLE_READ_MAX_ATTEMPTS; attempt += 1) {
+    response = await fetch(url, init);
+    if (!RETRYABLE_GOOGLE_STATUSES.has(response.status) || attempt === GOOGLE_READ_MAX_ATTEMPTS - 1) {
+      return response;
+    }
+
+    try {
+      await response.body?.cancel();
+    } catch (error) {
+      // A response body that cannot be cancelled does not prevent a safe GET retry.
+    }
+
+    await waitForGoogleReadRetry(response, attempt);
+  }
+
+  return response;
+}
+
+async function waitForGoogleReadRetry(response, attempt) {
+  const retryAfter = Number(response.headers.get("Retry-After"));
+  const exponential = GOOGLE_READ_RETRY_BASE_MS * (2 ** attempt);
+  const jitter = Math.floor(Math.random() * GOOGLE_READ_RETRY_BASE_MS);
+  const requestedDelay = Number.isFinite(retryAfter) && retryAfter > 0
+    ? retryAfter * 1000
+    : exponential + jitter;
+  const delay = Math.min(GOOGLE_READ_RETRY_MAX_MS, Math.max(GOOGLE_READ_RETRY_BASE_MS, requestedDelay));
+  await new Promise(resolve => setTimeout(resolve, delay));
 }
 
 async function parseGoogleSheetsResponse(response) {
@@ -351,14 +448,20 @@ async function parseGoogleSheetsResponse(response) {
   try {
     data = text ? JSON.parse(text) : {};
   } catch (error) {
-    throw new Error(`Google Sheets returned invalid JSON (HTTP ${response.status})`);
+    throw new GoogleSheetsApiError(
+      response.status,
+      `Google Sheets returned invalid JSON (HTTP ${response.status})`
+    );
   }
 
   if (!response.ok) {
     const message = data && data.error && data.error.message
       ? data.error.message
       : "Google Sheets request failed";
-    throw new Error(`Google Sheets API error ${response.status}: ${String(message).slice(0, 240)}`);
+    throw new GoogleSheetsApiError(
+      response.status,
+      `Google Sheets API error ${response.status}: ${String(message).slice(0, 240)}`
+    );
   }
 
   return data;

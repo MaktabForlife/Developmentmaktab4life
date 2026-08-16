@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   appendGoogleSheetValues,
+  batchReadGoogleSheetValues,
   batchUpdateGoogleSpreadsheet,
   batchUpdateGoogleSheetValues,
   readGoogleSheetValues,
@@ -31,6 +32,7 @@ const env = {
 };
 const calls = [];
 let oauthCalls = 0;
+let retryReadAttempts = 0;
 const originalFetch = globalThis.fetch;
 
 globalThis.fetch = async (input, init = {}) => {
@@ -50,7 +52,22 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-google-token");
 
+    if (method === "GET" && url.pathname.endsWith("/values:batchGet")) {
+      return response({
+        valueRanges: url.searchParams.getAll("ranges").map(range => ({
+          range,
+          values: range === "Empty!A:B" ? undefined : [[range]]
+        }))
+      });
+    }
+
     if (method === "GET" && url.pathname.includes("/values/")) {
+      if (decodeURIComponent(url.pathname).includes("/values/Retry!A:B")) {
+        retryReadAttempts += 1;
+        if (retryReadAttempts === 1) {
+          return response({ error: { message: "Temporary quota pressure" } }, 503);
+        }
+      }
       return response({ values: [["Header"], ["Value"]] });
     }
 
@@ -107,6 +124,19 @@ try {
   await readGoogleSheetValues(env, "CourseRegistry!A:K", {
     spreadsheetId: "platform-spreadsheet"
   });
+  const batchRows = await batchReadGoogleSheetValues(env, [
+    "Data!A:B",
+    "Empty!A:B",
+    "Audit!A:C"
+  ]);
+  assert.deepEqual(batchRows, [
+    [["Data!A:B"]],
+    [],
+    [["Audit!A:C"]]
+  ]);
+  const retriedRows = await readGoogleSheetValues(env, "Retry!A:B");
+  assert.deepEqual(retriedRows, [["Header"], ["Value"]]);
+  assert.equal(retryReadAttempts, 2, "A retryable GET should be retried once before succeeding");
   await assert.rejects(
     () => batchUpdateGoogleSheetValues(env, []),
     /requires at least one range/
@@ -119,7 +149,7 @@ try {
   assert.equal(oauthCalls, 1, "The reusable client should reuse a valid access token");
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 7);
+  assert.equal(sheetsCalls.length, 10);
 
   assert.equal(sheetsCalls[0].method, "GET");
   assert.equal(sheetsCalls[0].url.pathname.endsWith("/values/Data!A%3AB"), true);
@@ -178,6 +208,15 @@ try {
     "An explicit spreadsheet target must override the legacy course Sheet variable"
   );
   assert.equal(sheetsCalls[6].url.pathname.endsWith("/values/CourseRegistry!A%3AK"), true);
+  assert.equal(sheetsCalls[7].method, "GET");
+  assert.equal(sheetsCalls[7].url.pathname.endsWith("/values:batchGet"), true);
+  assert.deepEqual(sheetsCalls[7].url.searchParams.getAll("ranges"), [
+    "Data!A:B",
+    "Empty!A:B",
+    "Audit!A:C"
+  ]);
+  assert.equal(sheetsCalls[8].url.pathname.endsWith("/values/Retry!A%3AB"), true);
+  assert.equal(sheetsCalls[9].url.pathname.endsWith("/values/Retry!A%3AB"), true);
 } finally {
   globalThis.fetch = originalFetch;
 }

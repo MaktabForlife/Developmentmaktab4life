@@ -1,4 +1,4 @@
-/* M4L V101.4.3 - desktop-first staged Timetable Builder with per-group assignments. */
+/* M4L V102.8.2 - reliable staged Timetable Builder with selective multi-session editing. */
 
 body:has(#timetable-builder-screen.active) .app-shell {
   width: min(100%, 1500px);
@@ -366,6 +366,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .ttb-session-card {
+  position: relative;
   display: grid;
   gap: 3px;
   width: 100%;
@@ -377,6 +378,44 @@ body:has(#timetable-builder-screen.active) .app-shell {
   color: var(--text, #2f312e);
   text-align: left;
   cursor: pointer;
+}
+
+.ttb-session-card.is-selected {
+  border-color: var(--primary, #31513f);
+  border-left-color: var(--primary, #31513f);
+  background: color-mix(in srgb, var(--primary, #31513f) 16%, white);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #31513f) 20%, transparent);
+}
+
+.ttb-session-card:disabled {
+  cursor: not-allowed;
+}
+
+.ttb-session-select-indicator {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  overflow: visible !important;
+  border: 1px solid var(--primary, #31513f);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--primary, #31513f) !important;
+  font-size: 0.73rem !important;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ttb-session-card.is-selected .ttb-session-select-indicator {
+  background: var(--primary, #31513f);
+  color: #fff !important;
+}
+
+.ttb-session-card .ttb-session-select-indicator + strong {
+  padding-right: 24px;
 }
 
 .ttb-session-card strong,
@@ -568,6 +607,74 @@ body:has(#timetable-builder-screen.active) .app-shell {
 
 .timetable-builder-dialog-form {
   padding: 22px;
+}
+
+.timetable-builder-bulk-dialog {
+  width: min(760px, calc(100vw - 36px));
+}
+
+.timetable-builder-dialog-summary {
+  margin: 5px 0 0;
+  color: var(--text-muted, #70736c);
+  font-size: 0.82rem;
+}
+
+.timetable-builder-bulk-help {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary, #31513f) 7%, white);
+  color: var(--text-muted, #70736c);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.timetable-builder-bulk-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.timetable-builder-bulk-fieldset {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface-track, #f4f1ef) 48%, white);
+}
+
+.timetable-builder-bulk-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text, #2f312e);
+  font-size: 0.91rem;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.timetable-builder-bulk-toggle input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--primary, #31513f);
+}
+
+.timetable-builder-bulk-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.timetable-builder-bulk-fieldset :is(input, select):disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.timetable-builder-bulk-note {
+  margin: -3px 0 0;
+  color: var(--text-muted, #70736c);
+  font-size: 0.75rem;
 }
 
 .timetable-builder-dialog-heading {
@@ -786,6 +893,10 @@ body:has(#timetable-builder-screen.active) .app-shell {
   }
 
   .timetable-builder-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timetable-builder-bulk-control-grid {
     grid-template-columns: 1fr;
   }
 

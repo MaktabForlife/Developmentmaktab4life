@@ -29,6 +29,7 @@ const expectedPaths = [
   "/api/admin/timetable-builder/course/save",
   "/api/admin/timetable-builder/time-slot/save",
   "/api/admin/timetable-builder/session/save",
+  "/api/admin/timetable-builder/session/bulk-update",
   "/api/admin/timetable-builder/session/delete",
   "/api/admin/timetable-builder/session/restore",
   "/api/admin/timetable-builder/publish",
@@ -96,14 +97,14 @@ const expectedPaths = [
   "/api/progress/task-detail"
 ];
 
-assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include V101.4 builder routes");
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include V102.8.2 bulk editing");
 
 const root = await worker.fetch(new Request("https://worker.test/"), {});
 assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.8.1"
+  version: "102.8.2"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {
@@ -115,6 +116,29 @@ assert.equal(preflight.headers.get("Access-Control-Allow-Origin"), "*");
 const notFound = await worker.fetch(new Request("https://worker.test/not-a-route"), {});
 assert.equal(notFound.status, 404);
 assert.deepEqual(await notFound.json(), { success: false, error: "Not found" });
+
+const asynchronousRouteFailure = await worker.fetch(new Request(
+  "https://worker.test/api/admin/check-admin",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uniqueid: "ASYNC-FAILURE" })
+  }
+), {
+  GOOGLE_SPREADSHEET_ID: "test-sheet",
+  GOOGLE_SERVICE_ACCOUNT_JSON: "not-valid-json",
+  M4L_BACKEND_AUTH: "google-sheets"
+});
+assert.equal(asynchronousRouteFailure.status, 500);
+assert.equal(
+  asynchronousRouteFailure.headers.get("Access-Control-Allow-Origin"),
+  "*",
+  "An asynchronous route failure must still receive the Worker's JSON/CORS response"
+);
+assert.deepEqual(await asynchronousRouteFailure.json(), {
+  success: false,
+  error: "Worker error"
+});
 
 const routingUnauthorized = await worker.fetch(new Request(
   "https://worker.test/api/admin/backend-routing",

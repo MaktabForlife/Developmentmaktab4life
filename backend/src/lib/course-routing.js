@@ -1,9 +1,13 @@
-/* M4L V102.4 - Authenticated CourseID to SpreadsheetID routing.
+/* M4L V102.8.2 - Authenticated CourseID to SpreadsheetID routing.
    Central account tokens are revalidated before the selected course Sheet is
-   attached to the request. Submitted CourseIDs never select the target Sheet. */
+   attached to the request. Submitted CourseIDs never select the target Sheet.
+   Temporary Sheets failures remain distinct from denied course access. */
 
 import { getAuthUser } from "./auth.js";
-import { readGoogleSheetValues } from "./google-sheets.js";
+import {
+  isRetryableGoogleSheetsError,
+  readGoogleSheetValues
+} from "./google-sheets.js";
 import { json } from "./http.js";
 import { resolveActiveCourseRegistration } from "./platform-sheet.js";
 import { normalizePlatformIdentifier } from "./platform-schema.js";
@@ -16,9 +20,10 @@ export async function resolveCourseScopedRequest(request, env) {
   try {
     authUser = await getAuthUser(request, env);
   } catch (error) {
+    logCourseValidationFailure("central-account", error);
     return {
       ok: false,
-      response: json({ success: false, error: "Course access could not be validated" }, 503)
+      response: temporaryCourseValidationResponse()
     };
   }
 
@@ -59,6 +64,14 @@ export async function resolveCourseScopedRequest(request, env) {
     setRequestAuthUser(request, operationalUser);
     return { ok: true, env: courseEnv, course, user: operationalUser };
   } catch (error) {
+    if (isRetryableGoogleSheetsError(error)) {
+      logCourseValidationFailure("course-profile", error);
+      return {
+        ok: false,
+        response: temporaryCourseValidationResponse()
+      };
+    }
+
     const message = String(error?.message || "");
     const configurationFailure = /sheet|header|spreadsheet|registry|missing/i.test(message);
     return {
@@ -74,6 +87,24 @@ export async function resolveCourseScopedRequest(request, env) {
       }, configurationFailure ? 503 : 403)
     };
   }
+}
+
+function temporaryCourseValidationResponse() {
+  return json({
+    success: false,
+    error: "Course validation is temporarily unavailable. Please wait a moment and try again.",
+    code: "COURSE_VALIDATION_TEMPORARILY_UNAVAILABLE",
+    retryable: true
+  }, 503);
+}
+
+function logCourseValidationFailure(stage, error) {
+  console.warn("M4L course validation temporarily unavailable", {
+    stage,
+    name: String(error?.name || "Error"),
+    code: String(error?.code || ""),
+    status: Number(error?.status) || 0
+  });
 }
 
 export function createCourseEnvironment(env, course) {

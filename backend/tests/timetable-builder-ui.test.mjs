@@ -6,6 +6,7 @@ const builderJs = readFileSync(new URL("../../js/m4l-timetable-builder.js", impo
 const builderCss = readFileSync(new URL("../../css/m4l-22-timetable-builder.css", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../../styles.css", import.meta.url), "utf8");
 const shellJs = readFileSync(new URL("../../js/m4l-shell.js", import.meta.url), "utf8");
+const authJs = readFileSync(new URL("../../js/m4l-auth.js", import.meta.url), "utf8");
 
 assert.match(adminHtml, /id="open-timetable-builder-btn"/);
 assert.match(adminHtml, /data-admin-menu-admin-only/);
@@ -28,7 +29,19 @@ assert.match(adminHtml, /id="ttb-restore-session"/);
 assert.match(adminHtml, /id="timetable-builder-publish"/);
 assert.match(adminHtml, /id="ttb-save-session"/);
 assert.match(adminHtml, /id="timetable-session-message"/);
-assert.match(adminHtml, /m4l-timetable-builder\.js\?v=101\.4\.3/);
+assert.match(adminHtml, /id="timetable-bulk-session-dialog"/);
+assert.match(adminHtml, /id="ttb-bulk-session-count"/);
+assert.match(adminHtml, /id="ttb-bulk-apply-subject-module"[^>]+data-ttb-bulk-apply/);
+assert.match(adminHtml, /id="ttb-bulk-apply-teacher"[^>]+data-ttb-bulk-apply/);
+assert.match(adminHtml, /id="ttb-bulk-apply-zoom"[^>]+data-ttb-bulk-apply/);
+assert.match(adminHtml, /id="ttb-bulk-subject"/);
+assert.match(adminHtml, /id="ttb-bulk-module"/);
+assert.match(adminHtml, /id="ttb-bulk-teacher"/);
+assert.match(adminHtml, /id="ttb-bulk-zoom"/);
+assert.match(adminHtml, /data-ttb-action="save-bulk-sessions"/);
+assert.match(adminHtml, /Leave blank to use the course-default Zoom/);
+assert.match(adminHtml, /m4l-timetable-builder\.js\?v=102\.8\.2/);
+assert.match(adminHtml, /m4l-auth\.js\?v=102\.8\.2/);
 
 assert.match(builderJs, /getTimetableBuilderRole\(\) !== "ADMIN"/);
 assert.match(builderJs, /\["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"\]/);
@@ -36,6 +49,7 @@ assert.match(builderJs, /\/api\/admin\/timetable-builder\/get/);
 assert.match(builderJs, /\/api\/admin\/timetable-builder\/course\/save/);
 assert.match(builderJs, /\/api\/admin\/timetable-builder\/time-slot\/save/);
 assert.match(builderJs, /\/api\/admin\/timetable-builder\/session\/save/);
+assert.match(builderJs, /\/api\/admin\/timetable-builder\/session\/bulk-update/);
 assert.match(builderJs, /\/api\/admin\/timetable-builder\/session\/delete/);
 assert.match(builderJs, /\/api\/admin\/timetable-builder\/session\/restore/);
 assert.match(builderJs, /\/api\/admin\/timetable-builder\/publish/);
@@ -61,15 +75,29 @@ assert.match(builderJs, /result\.conflicts/);
 assert.match(builderJs, /09:00–10:30|padStart\(2, "0"\)/);
 assert.match(builderJs, /lang="en-GB" step="60"/);
 assert.match(builderJs, /TeacherAssign remains the live timetable source/);
+assert.match(builderJs, /startTimetableBulkSelection/);
+assert.match(builderJs, /toggleTimetableSessionSelection/);
+assert.match(builderJs, /applysubjectmodule/);
+assert.match(builderJs, /applyteacher/);
+assert.match(builderJs, /applyzoom/);
+assert.match(builderJs, /applyTimetableSessionUpdates/);
+assert.match(builderJs, /result\.changed !== false/);
+assert.doesNotMatch(builderJs, /apiPost\(\s*"\/api\/admin\/tasks\/list"/);
 
-assert.match(styles, /m4l-22-timetable-builder\.css\?v=101\.4\.3/);
+assert.match(styles, /m4l-22-timetable-builder\.css\?v=102\.8\.2/);
 assert.match(builderCss, /grid-template-columns:\s*132px repeat\(var\(--ttb-day-count\), minmax\(152px, 1fr\)\)/);
 assert.match(builderCss, /min-width:\s*1240px/);
 assert.match(builderCss, /grid-template-columns:\s*minmax\(290px, 360px\) minmax\(520px, 1fr\)/);
 assert.match(builderCss, /\.timetable-builder-choice-grid/);
 assert.match(builderCss, /\.timetable-session-group-assignment-grid/);
 assert.match(builderCss, /\.timetable-session-message\.is-error/);
+assert.match(builderCss, /\.ttb-session-card\.is-selected/);
+assert.match(builderCss, /\.ttb-session-select-indicator/);
+assert.match(builderCss, /\.timetable-builder-bulk-fieldset/);
 assert.match(shellJs, /id === "timetable-builder-screen"/);
+assert.match(authJs, /NETWORK_TEMPORARILY_UNAVAILABLE/);
+assert.match(authJs, /Your session remains active/);
+assert.match(authJs, /response\.status === 429 \|\| response\.status >= 500/);
 
 assert.equal(existsSync(new URL("../../icons/timetable.svg", import.meta.url)), true);
 

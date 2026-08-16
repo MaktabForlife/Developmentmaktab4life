@@ -1,196 +1,206 @@
-# V102.8.1 update to-do
+# V102.8.2 update to-do
 
-Apply V102.8.1 only over the deployed V102.8 development repository using:
+Apply V102.8.2 only over a development repository that already contains
+V102.8.1, using:
 
-`Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip`
+`Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip`
 
-This ZIP is a modified-files overlay, not a complete repository. Production
-remains stable at V101.1 and must not receive this update. V102.8.1 is a focused
-Library/Profile/PDF correction; it does not begin the V102.9 timetable
-integrator.
+This ZIP is a modified-files overlay. It contains every file changed by this
+release; it is not a full repository and you do not need to upload the full
+repository again. Production remains stable at V101.1 and must not receive
+this development update.
 
-## 1. Confirm and back up V102.8
+## 1. Confirm the starting point
 
-- [ ] Confirm the development Worker root reports `102.8`.
-- [ ] Confirm `/account/<uniqueid>` displays `V102.8`.
-- [ ] Confirm V102.8 unified login and Library currently open.
-- [ ] Back up the current development GitHub repository or branch.
-- [ ] Record the current Worker and Pages deployment IDs.
-- [ ] Export or back up the Platform Sheet and active course Sheet(s).
-- [ ] Confirm `PlatformConfig` still reports schema `102.0.4`.
-
-Do not rerun account migration. Do not add, remove or rename a Sheet tab or
-header. V102.8.1 adds no Sheet data and does not change
-`GlobalCurriculumVersion` merely by being deployed.
-
-## 2. Confirm the test account and subscription
-
-Use one ordinary non-GLOBAL_ADMIN account that has both:
-
-- [ ] an active `UserCourseAccess` row for a registered active course; and
-- [ ] an active `UserGlobalSubjectAccess` row referencing an active row in
-  `GlobalSubjectList`.
-
-Record its expected course/role and subscribed global subjects before updating.
-The Profile correction depends on both the access row and referenced subject
-being active. No manual Profile row is required.
-
-## 3. Apply the GitHub overlay
-
-- [ ] Extract `Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip`.
-- [ ] Upload every included file to the matching path in the existing V102.8
-  development repository.
-- [ ] Replace existing files and add the new documentation file while
-  preserving all folder names.
-- [ ] Do not delete any repository file; `DELETE-FILES.txt` confirms none.
-- [ ] Confirm root `UPDATE-TODO.md` is this V102.8.1 checklist.
-- [ ] Confirm root `version.json` and `js/version.json` both contain `102.8.1`.
-- [ ] Confirm `backend/package.json` contains `102.8.1`.
-- [ ] Commit the entire overlay as one development revision.
-
-Cloudflare may deploy Worker and Pages immediately after the GitHub commit.
-Wait until both deployments from the same commit finish before testing. Do not
-change or remove existing Worker variables, secrets or bindings.
-
-## 4. Confirm deployment versions
-
-- [ ] Confirm the Worker deployment succeeds and its root reports `102.8.1`.
-- [ ] Confirm the Pages deployment succeeds.
-- [ ] Hard-refresh Pages or open a private window.
+- [ ] Confirm the development Worker root reports `102.8.1`.
 - [ ] Confirm `/account/<uniqueid>` displays `V102.8.1`.
-- [ ] Confirm GLOBAL_ADMIN, ordinary staff and Student unified login still work.
-- [ ] Confirm existing legacy login links remain available for rollback tests.
+- [ ] Confirm the repository into which the ZIP will be copied already contains
+  the complete V102.8.1 source.
+- [ ] Back up or download the current development branch before replacing files.
+- [ ] Record the current Worker and Pages deployment IDs.
+- [ ] Export or back up the Platform Sheet and Reboot course Sheet.
 
-No Apps Script deployment is required. No Platform Sheet, course Sheet,
-Cloudflare variable, secret or binding change is required.
+Do not rerun account migration. Do not add, remove, rename or manually populate
+any Sheet tab or header for this release.
 
-## 5. Verify Global Subjects in Profile
+## 2. Apply the overlay
 
-- [ ] Sign in through `/account/<uniqueid>` using the prepared account with both
-  course access and a global-subject subscription.
-- [ ] Confirm the fresh login still opens its highest-authority course context;
-  it must not automatically replace that course with the lower STUDENT global
+- [ ] Extract
+  `Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip` locally.
+- [ ] Copy every included file into the matching path of the existing
+  development repository.
+- [ ] Replace files when prompted and preserve the directory structure.
+- [ ] Confirm `docs/V102.8.2-TIMETABLE-RELIABILITY-BULK-EDIT.md` was added.
+- [ ] Confirm `DELETE-FILES.txt` says that no files are deleted.
+- [ ] Confirm root `UPDATE-TODO.md` is this V102.8.2 checklist.
+- [ ] Confirm `version.json`, `js/version.json` and `backend/package.json` all
+  contain `102.8.2`.
+- [ ] Review the changed files and commit the complete overlay as one
+  development revision.
+
+Cloudflare may deploy the Worker and Pages immediately after the GitHub commit.
+Wait until both deployments from the same commit finish before testing. Do not
+change existing Worker variables, secrets or bindings.
+
+## 3. Data and configuration boundary
+
+Confirm all of the following before deployment:
+
+- [ ] Platform schema remains `102.0.4`.
+- [ ] The registered Reboot course schema remains `101.4.3`.
+- [ ] No Platform or course Sheet tab/header change is made.
+- [ ] No account or curriculum migration is run.
+- [ ] No Apps Script deployment is made.
+- [ ] No Cloudflare variable, secret or binding is added, changed or removed.
+- [ ] `GlobalCurriculumVersion` is not manually changed.
+
+V102.8.2 writes normal timetable-session and AdminAuditLog data only when an
+Admin performs an edit. Deployment itself writes no Sheet data.
+
+## 4. Confirm deployments
+
+- [ ] Confirm the Worker deployment succeeds and its root reports `102.8.2`.
+- [ ] Confirm the Pages deployment succeeds from the same GitHub revision.
+- [ ] Hard-refresh Pages or use a private browser window.
+- [ ] Confirm `/account/<uniqueid>` displays `V102.8.2`.
+- [ ] Confirm GLOBAL_ADMIN, course ADMIN and Student unified login still work.
+- [ ] Confirm current Profile course/role switching still works without a
+  second PIN.
+
+## 5. Reproduce and verify the reliability correction
+
+Use a development ADMIN account and a course with several existing Builder
+sessions.
+
+- [ ] Open **Admin → Timetable Builder**.
+- [ ] In browser developer tools, clear the Network log.
+- [ ] Reload the Builder once and confirm the Builder data uses one Worker
+  `/api/admin/timetable-builder/get` request.
+- [ ] Modify and save at least five sessions consecutively without logging out,
+  closing the Builder or waiting between every edit.
+- [ ] Confirm each successful save updates the grid immediately.
+- [ ] Confirm the app does not show **Course access could not be validated**
+  after one or two changes.
+- [ ] Confirm Safari reports a normal JSON API error, not an opaque CORS error,
+  if an unexpected asynchronous Worker route failure occurs.
+- [ ] Confirm a successful session save does not automatically call the full
+  Builder GET again.
+- [ ] Confirm the separate `/api/admin/tasks/list` request is not made by the
+  Builder load.
+- [ ] Confirm the Admin session remains active throughout the test.
+
+If a temporary Google/Worker failure can be safely simulated in development:
+
+- [ ] Confirm the UI reports that the service or Google Sheets is temporarily
+  busy/unavailable.
+- [ ] Confirm the already loaded timetable remains visible.
+- [ ] Confirm the user is not logged out for a network error, HTTP 429 or 5xx.
+- [ ] Confirm **Try Again** or Reload succeeds after the temporary failure ends.
+- [ ] Confirm a genuine expired/invalid token returning HTTP 401 still requires
+  a new login.
+
+## 6. Verify selected-session editing
+
+- [ ] Open the Timetable tab and choose **Select sessions**.
+- [ ] Confirm active sessions display selection circles.
+- [ ] Confirm an inactive session cannot be selected.
+- [ ] Select at least two sessions and confirm the selected count is correct.
+- [ ] Confirm **Edit selected** remains disabled until two sessions are selected.
+- [ ] Confirm **Clear** clears the selection and **Done** exits selection mode.
+- [ ] Re-select two or more sessions and open **Edit selected**.
+- [ ] Confirm all three changes are initially unticked and disabled:
+  **subject/module**, **teacher**, and **Zoom override**.
+- [ ] Confirm unticked fields are explicitly described as unchanged.
+- [ ] Confirm day, time slot, group and active status cannot be edited in this
+  dialog.
+
+## 7. Verify teacher-only bulk editing
+
+Choose sessions that can safely use the same teacher without overlapping.
+
+- [ ] Tick only **Change teacher**.
+- [ ] Select the replacement teacher and save.
+- [ ] Confirm every selected session receives that teacher.
+- [ ] Confirm unselected sessions are unchanged.
+- [ ] Confirm subject, module, Zoom, day, time, group and active status remain
+  unchanged on every selected session.
+- [ ] Confirm the modal closes only after a successful save.
+
+## 8. Verify subject/module bulk editing
+
+- [ ] Select two or more compatible active sessions.
+- [ ] Tick only **Change subject and module**.
+- [ ] Choose a subject and one of its active modules, then save.
+- [ ] Confirm every selected session receives the subject and module.
+- [ ] Repeat using **No module** and confirm the module is cleared.
+- [ ] Confirm teacher and Zoom remain unchanged.
+- [ ] Confirm a module from another subject cannot be applied.
+
+## 9. Verify Zoom bulk editing
+
+- [ ] Select two or more active sessions.
+- [ ] Tick only **Change Zoom override**.
+- [ ] Apply a valid HTTPS Zoom link and confirm it reaches only the selected
+  sessions.
+- [ ] Repeat with the Zoom field blank and confirm each selected override is
+  cleared, returning to the course-default Zoom link.
+- [ ] Confirm a non-HTTPS URL is rejected and no selected row changes.
+
+## 10. Verify conflict atomicity
+
+- [ ] Select two same-time sessions for different groups.
+- [ ] Attempt to apply one teacher to both so that the teacher would overlap.
+- [ ] Confirm the Worker reports detailed timetable conflicts.
+- [ ] Confirm the message states that no selected session was changed.
+- [ ] Check the Sheet and confirm none of the proposed session rows were
+  partially updated.
+- [ ] Test a conflict against an unselected existing session and confirm the
+  same all-or-nothing result.
+- [ ] Confirm selecting more than 100 sessions is rejected.
+
+## 11. Verify stage, publication and audit safety
+
+- [ ] Publish a development timetable snapshot in the development environment.
+- [ ] Record its publication ID and its `PublishedTimetableSessions` rows.
+- [ ] Bulk-edit at least two active source sessions.
+- [ ] Confirm `TimetableCourseState.Stage` changes to `DEVELOPMENT`.
+- [ ] Confirm `CurrentPublicationID` remains unchanged.
+- [ ] Confirm the recorded published snapshot rows remain byte-for-byte
+  unchanged.
+- [ ] Confirm each actually changed session has one `BULK_UPDATE` row in
+  `AdminAuditLog` with the Admin ID, Admin name, date and changed fields.
+- [ ] Confirm a timetable-state audit row is present if the stage changed.
+- [ ] Confirm a rejected conflict creates no session update or bulk audit row.
+- [ ] Confirm existing hard-delete, soft-delete and restore behaviour remains
+  unchanged.
+
+The live timetable still reads from `TeacherAssign`; V102.8.2 does not switch
+the authoritative live source.
+
+## 12. Application regressions
+
+- [ ] Confirm normal single-session add and modify behaviour still supports
+  multiple days and multiple groups with per-group teacher/Zoom assignments.
+- [ ] Confirm course, time-slot, subject, module and task management still load.
+- [ ] Confirm GLOBAL_ADMIN can access the course Builder in an authorised course
   context.
-- [ ] Open the application menu and select **Profile**.
-- [ ] Confirm the Profile shows the current course/role.
-- [ ] Confirm it also shows exactly one **Global Subjects — STUDENT** choice.
-- [ ] Confirm individual global subject names are not duplicated in Profile.
-- [ ] Select **Global Subjects** and confirm no PIN is requested.
-- [ ] Confirm the restricted Global Library workspace opens.
-- [ ] Reopen Profile and confirm **Global Subjects** is marked **Current** and
-  the course context remains available to switch back to.
-- [ ] Switch back to the course and confirm a newly scoped course workspace
-  opens without another PIN.
+- [ ] Confirm TEACHER and SENIOR/SENIOR TEACHER cannot access Timetable Builder.
+- [ ] Confirm inaccessible menu items remain hidden for those roles.
+- [ ] Confirm Library, PDF split view, Global Subjects, Attendance, Weekly
+  Planner and Progress behave as in V102.8.1.
+- [ ] Confirm production V101.1 was not deployed or modified.
 
-Every Profile switch must use the central switch endpoint and receive a new
-validated scope/role token. A displayed name, URL or submitted CourseID must not
-grant access by itself.
+## 13. Rollback
 
-## 6. Verify fail-closed Global Subjects access
-
-- [ ] Temporarily deactivate the prepared account's global-subject access row.
-- [ ] Start a new login/session and confirm **Global Subjects** disappears from
-  Profile if the account has no other active global subscriptions.
-- [ ] Reactivate the row after the negative test.
-- [ ] Temporarily inactivate its referenced global subject and confirm the same
-  fail-closed result.
-- [ ] Reactivate the subject after the test and confirm the Profile context
-  returns on a fresh session.
-- [ ] Confirm a global-only subscriber still logs directly into the restricted
-  Global Library, if such a test account exists.
-
-## 7. Verify the all-visible Library source pill
-
-- [ ] Open **Library** from an account authorised for more than one source.
-- [ ] Confirm one segmented pill displays all eligible choices together, in
-  this order: **All**, each authorised active course, **Global Subjects**.
-- [ ] Confirm desktop/tablet shows the choices in one horizontal row when they
-  fit.
-- [ ] At a compact width, confirm the choices wrap inside the same pill and no
-  option requires a dropdown or horizontal scrolling.
-- [ ] Select **All** and confirm all authorised course resources plus subscribed
-  active global resources appear.
-- [ ] Select each course and confirm only that course's Library appears.
-- [ ] Select **Global Subjects** and confirm only subscribed active global
-  content appears.
-- [ ] Confirm changing a Library filter does not change the Profile's current
-  operational course/role.
-- [ ] Confirm global content retains its clear `GLOBAL` badge.
-
-## 8. Verify protected resource access
-
-- [ ] Open a protected PDF from the current course Library.
-- [ ] Open a subscribed protected Global Resource.
-- [ ] If another course is authorised, open one protected resource from it.
-- [ ] Confirm each item receives its own short-lived authorised access URL.
-- [ ] Confirm an unsubscribed global resource is absent and direct access is
-  rejected.
-- [ ] Confirm an unauthorised course resource is absent and direct access is
-  rejected.
-- [ ] Confirm no SpreadsheetID is exposed in the catalogue response or UI.
-
-## 9. Verify PDF shelf placement
-
-Repeat for a Student and one staff account:
-
-- [ ] Open a Library containing at least two PDFs.
-- [ ] Open one PDF in the PDF.js viewer.
-- [ ] Confirm the `current/total` shelf selector sits immediately to the left of
-  the PDF name.
-- [ ] Confirm **Previous** and **Next** remain in the navigation group to the
-  right.
-- [ ] Confirm the shelf selector still opens the authorised PDF list.
-- [ ] Confirm Previous/Next and direct Open continue to work.
-
-## 10. Verify Student split-PDF viewing
-
-- [ ] Sign in as a Student whose selected Library catalogue contains at least
-  two authorised PDFs.
-- [ ] At a viewport width of 1024px or more, open a PDF and confirm **Split** is
-  available.
-- [ ] Open the second pane and choose another authorised PDF.
-- [ ] Confirm both PDFs load independently and retain independent page/zoom
-  state.
-- [ ] Confirm the pane divider can resize the two views.
-- [ ] From **All**, test a permitted cross-source pair when available (for
-  example one course PDF and one subscribed global PDF).
-- [ ] Confirm closing the second pane returns to the normal single-PDF view.
-- [ ] Below 1024px, confirm the Split control is not shown and the normal
-  single-PDF viewer remains usable.
-- [ ] Confirm Student receives no resource create, modify or delete control.
-
-## 11. Permission and application regressions
-
-- [ ] Confirm SENIOR displays as **SENIOR TEACHER** without changing the stored
-  `SENIOR` role.
-- [ ] Confirm SENIOR and TEACHER can add course resources under the established
-  permissions.
-- [ ] Confirm only ADMIN can modify existing course resources.
-- [ ] Confirm SENIOR and TEACHER cannot see Student Records.
-- [ ] Confirm inaccessible menu items remain hidden for the active role.
-- [ ] Confirm Attendance, Weekly Planner, Progress and timetable behaviour are
-  unchanged in a course context.
-- [ ] Confirm Global Curriculum management and the six existing subscription
-  rows remain unchanged.
-- [ ] Confirm `GlobalCurriculumVersion` was not incremented by deployment,
-  Profile switching or Library filtering.
-
-The approved all-user authentication policy remains documented in
-`docs/V102-AUTHENTICATION-SESSION-POLICY.md`; V102.8.1 does not change the
-current browser-session persistence behaviour.
-
-## 12. Rollback
-
-- [ ] Revert the single V102.8.1 GitHub commit or restore the backed-up V102.8
-  source.
+- [ ] Revert the single V102.8.2 GitHub commit or restore the backed-up V102.8.1
+  development source.
 - [ ] Wait for both Worker and Pages rollback deployments.
-- [ ] Confirm the Worker root and `/account/<uniqueid>` return to `102.8`.
-- [ ] Do not rerun account migration.
-- [ ] Do not delete or edit central accounts, memberships, subscriptions,
-  curriculum, resources or audit rows as part of rollback.
-- [ ] Do not reduce `GlobalCurriculumVersion` manually.
+- [ ] Confirm Worker root and `/account/<uniqueid>` return to `102.8.1`.
+- [ ] Do not rerun account migration or change any Platform/course schema.
+- [ ] Do not delete audit rows created by real development testing.
 
-No data rollback is required because V102.8.1 changes no schema or stored data.
+No schema or migration rollback is required. Timetable data created during
+testing should be reversed only through the normal Builder lifecycle if needed.
 
 ## Completion record
 
@@ -198,11 +208,13 @@ No data rollback is required because V102.8.1 changes no schema or stored data.
 - Worker deployment ID: ____________________
 - Pages deployment ID: ____________________
 - Worker version verified: ____________________
-- Dual course/global Profile account tested: ____________________
-- Library pill sources tested: ____________________
-- Student split-PDF pair tested: ____________________
-- Staff PDF shelf placement tested: ____________________
-- Negative entitlement test completed: ____________________
+- Consecutive single edits completed: ____________________
+- Teacher bulk edit tested: ____________________
+- Subject/module bulk edit tested: ____________________
+- Zoom set/clear tested: ____________________
+- Conflict atomicity tested: ____________________
+- Published snapshot compared: ____________________
+- Audit rows checked: ____________________
 - Verified by: ____________________
 - Verification date: ____________________
 - Result: ____________________

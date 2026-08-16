@@ -295,11 +295,22 @@ async function apiPost(path, body = {}, token = "") {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    return {
+      success: false,
+      error: "The service is temporarily unreachable. Your session remains active; please wait a moment and try again.",
+      code: "NETWORK_TEMPORARILY_UNAVAILABLE",
+      retryable: true,
+      httpStatus: 0
+    };
+  }
 
   let result;
 
@@ -317,11 +328,21 @@ async function apiPost(path, body = {}, token = "") {
     return {
       ...result,
       success: false,
-      sessionInvalidated: true
+      sessionInvalidated: true,
+      httpStatus: response.status
     };
   }
 
-  return result;
+  const retryable = response.status === 429 || response.status >= 500;
+  if (retryable && !result.error) {
+    result.error = "The service is temporarily busy. Your session remains active; please wait a moment and try again.";
+  }
+
+  return {
+    ...result,
+    ...(retryable ? { retryable: true } : {}),
+    httpStatus: response.status
+  };
 }
 
 /* =========================

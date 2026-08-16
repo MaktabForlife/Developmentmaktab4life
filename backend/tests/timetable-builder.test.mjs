@@ -41,7 +41,8 @@ const adminRows = [
   ["AdminID", "Username", "Role", "Active"],
   ["ADMIN1", "Admin User", "ADMIN", true],
   ["TEACH1", "Teacher One", "TEACHER", true],
-  ["TEACH2", "Teacher Two", "TEACHER", true]
+  ["TEACH2", "Teacher Two", "TEACHER", true],
+  ["TEACH3", "Teacher Three", "TEACHER", true]
 ];
 const studentRows = [
   ["StudentID", "StudentName", "ClassGroup", "Active"],
@@ -50,6 +51,10 @@ const studentRows = [
 ];
 const systemConfigRows = [
   ["GlobalZoomLink", "https://zoom.test/j/global", "2026-08-01T00:00:00.000Z", "ADMIN0", "Earlier Admin"]
+];
+const taskRows = [
+  ["TaskID", "SubjectID", "TaskName", "ModuleID", "ModuleName", "Active"],
+  ["TASK1", "SUB1", "Read Qa'idah", "MOD1", "Qa'idah", true]
 ];
 const auditRows = [[
   "AuditID", "DateStamp", "AdminID", "AdminName", "Role", "Action",
@@ -68,6 +73,7 @@ const rangeRows = {
   "AdminRecords!A:ZZ": adminRows,
   "StudentRecords!A:ZZ": studentRows,
   "SystemConfig!A:E": systemConfigRows,
+  "TaskList!A:ZZ": taskRows,
   "AdminAuditLog!A1:I1": [auditRows[0]]
 };
 const appendRows = {
@@ -116,6 +122,7 @@ const teacherToken = await createSessionToken({
 
 const originalFetch = globalThis.fetch;
 const spreadsheetBatches = [];
+const valueBatchGets = [];
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -125,6 +132,17 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.hostname !== "sheets.googleapis.com") throw new Error(`Unexpected fetch: ${url}`);
   assert.equal(init.headers.Authorization, "Bearer mock-timetable-builder-token");
   const method = String(init.method || "GET").toUpperCase();
+
+  if (method === "GET" && url.pathname.endsWith("/values:batchGet")) {
+    const ranges = url.searchParams.getAll("ranges");
+    valueBatchGets.push(ranges);
+    return jsonResponse({
+      valueRanges: ranges.map(range => {
+        if (!rangeRows[range]) throw new Error(`Unexpected Timetable Builder batch read: ${range}`);
+        return { range, values: rangeRows[range] };
+      })
+    });
+  }
 
   if (method === "GET" && !url.pathname.includes("/values/")) {
     return jsonResponse({ sheets: Array.from(sheetIds, ([title, sheetId]) => ({ properties: { title, sheetId } })) });
@@ -167,6 +185,11 @@ try {
   assert.equal(initial.data.timetablestates[0].stage, "DEVELOPMENT");
   assert.deepEqual(initial.data.groups, ["ALL", "1", "2"]);
   assert.equal(initial.data.globalzoomlink, "https://zoom.test/j/global");
+  assert.equal(initial.data.tasks.length, 1);
+  assert.equal(initial.data.tasks[0].taskid, "TASK1");
+  assert.equal(valueBatchGets.length, 1, "The complete builder load should use one Sheets values batch read");
+  assert.equal(valueBatchGets[0].length, 12);
+  assert.ok(valueBatchGets[0].includes("TaskList!A:ZZ"));
 
   const invalidAll = await post("/api/admin/timetable-builder/session/save", adminToken, {
     courseid: "COURSE1", timeslotid: "SLOT2", daysofweek: ["Wed"], subjectid: "SUB1",
@@ -231,6 +254,76 @@ try {
   assert.ok(bulk.data.sessions.every(session => session.subjectid === "SUB1" && session.moduleid === "MOD2"));
   assert.ok(bulk.data.sessions.every(session => /^SESSION-[0-9a-f-]{20,}$/i.test(session.sessionid)));
   assert.equal(bulk.data.sessions.find(session => session.groupno === "2").zoomlink, "https://zoom.test/j/group2");
+
+  const teacherBulkTargets = bulk.data.sessions.filter(session => session.groupno === "1");
+  const teacherOnlyBulk = await post("/api/admin/timetable-builder/session/bulk-update", adminToken, {
+    courseid: "COURSE1",
+    sessionids: teacherBulkTargets.map(session => session.sessionid),
+    applyteacher: true,
+    teacherid: "TEACH3"
+  });
+  assert.equal(teacherOnlyBulk.response.status, 200);
+  assert.equal(teacherOnlyBulk.data.count, 2);
+  assert.ok(teacherOnlyBulk.data.sessions.every(session => session.teacherid === "TEACH3"));
+  assert.ok(teacherOnlyBulk.data.sessions.every(session => session.subjectid === "SUB1"));
+  assert.ok(teacherOnlyBulk.data.sessions.every(session => session.moduleid === "MOD2"));
+  assert.ok(teacherOnlyBulk.data.sessions.every(session => session.zoomlink === ""));
+  assert.ok(auditRows.filter(row => row[5] === "BULK_UPDATE").length >= 2);
+
+  const subjectModuleBulk = await post("/api/admin/timetable-builder/session/bulk-update", adminToken, {
+    courseid: "COURSE1",
+    sessionids: teacherBulkTargets.map(session => session.sessionid),
+    applysubjectmodule: true,
+    subjectid: "SUB2",
+    moduleid: ""
+  });
+  assert.equal(subjectModuleBulk.response.status, 200);
+  assert.ok(subjectModuleBulk.data.sessions.every(session => session.subjectid === "SUB2"));
+  assert.ok(subjectModuleBulk.data.sessions.every(session => session.moduleid === ""));
+  assert.ok(subjectModuleBulk.data.sessions.every(session => session.teacherid === "TEACH3"));
+
+  const zoomBulkTargets = bulk.data.sessions.filter(session => session.groupno === "2");
+  const clearZoomBulk = await post("/api/admin/timetable-builder/session/bulk-update", adminToken, {
+    courseid: "COURSE1",
+    sessionids: zoomBulkTargets.map(session => session.sessionid),
+    applyzoom: true,
+    zoomlink: ""
+  });
+  assert.equal(clearZoomBulk.response.status, 200);
+  assert.ok(clearZoomBulk.data.sessions.every(session => session.zoomlink === ""));
+  assert.ok(clearZoomBulk.data.sessions.every(session => session.subjectid === "SUB1"));
+
+  const batchesBeforeNoOp = spreadsheetBatches.length;
+  const noOpBulk = await post("/api/admin/timetable-builder/session/bulk-update", adminToken, {
+    courseid: "COURSE1",
+    sessionids: zoomBulkTargets.map(session => session.sessionid),
+    applyzoom: true,
+    zoomlink: ""
+  });
+  assert.equal(noOpBulk.response.status, 200);
+  assert.equal(noOpBulk.data.changed, false);
+  assert.equal(noOpBulk.data.count, 0);
+  assert.equal(
+    spreadsheetBatches.length,
+    batchesBeforeNoOp,
+    "A no-op bulk edit must not write rows or move the timetable stage"
+  );
+
+  const wedSessions = sessionRows.slice(1)
+    .filter(row => row[3] === "Wed" && row[2] === "SLOT2")
+    .map(row => row[0]);
+  const conflictingTeacherBefore = sessionRows.find(row => row[0] === wedSessions[1])[7];
+  const batchesBeforeConflict = spreadsheetBatches.length;
+  const conflictBulk = await post("/api/admin/timetable-builder/session/bulk-update", adminToken, {
+    courseid: "COURSE1",
+    sessionids: wedSessions,
+    applyteacher: true,
+    teacherid: "TEACH3"
+  });
+  assert.equal(conflictBulk.response.status, 409);
+  assert.equal(conflictBulk.data.conflict, true);
+  assert.equal(spreadsheetBatches.length, batchesBeforeConflict, "A rejected bulk edit must not write any row");
+  assert.equal(sessionRows.find(row => row[0] === wedSessions[1])[7], conflictingTeacherBefore);
 
   const publish = await post("/api/admin/timetable-builder/publish", adminToken, { courseid: "COURSE1" });
   assert.equal(publish.response.status, 200);

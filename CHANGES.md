@@ -1,3 +1,30 @@
+# V102.8.2 — Timetable reliability and selected-session editing
+
+- Batches all Timetable Builder value reads, including TaskList, into one
+  Google Sheets request.
+- Adds bounded retry/backoff to safe read-only Sheets requests and preserves
+  temporary service failures as retryable HTTP 503 responses.
+- Keeps asynchronous route failures inside the Worker JSON/CORS error boundary.
+- Stops full Builder reloads after successful session save, delete and restore;
+  the local grid is updated from the authoritative write response.
+- Keeps the authenticated browser session on network, 429 and 5xx failures.
+- Adds ADMIN selection of 2–100 active current-course sessions.
+- Adds selective bulk application of subject/module, teacher and Zoom override
+  while protecting day, time, group, course and active status.
+- Validates the complete proposed set and commits session rows, Development
+  stage and audit rows atomically.
+- Adds per-session `BULK_UPDATE` audit events and leaves published snapshots
+  untouched.
+- Adds regression coverage for batched reads, transient routing failures,
+  teacher/subject/module/Zoom bulk changes, conflict atomicity and UI controls.
+- Bumps application and Worker metadata to `102.8.2` without changing Platform
+  schema `102.0.4`, course schema `101.4.3` or deployment configuration.
+
+Development only: production remains stable at V101.1. The authoritative live
+timetable and cross-course timetable integrator remain later work.
+
+---
+
 # V102.8.1 — Library, Profile and PDF corrections
 
 - Adds one `GLOBAL/STUDENT` Profile context whenever an ordinary active account

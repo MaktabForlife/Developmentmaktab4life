@@ -65,6 +65,7 @@ const env = {
 };
 
 const requests = [];
+let temporarySheetsFailure = false;
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -75,6 +76,9 @@ globalThis.fetch = async (input, init = {}) => {
     throw new Error(`Unexpected course-routing fetch: ${url}`);
   }
   assert.equal(init.headers.Authorization, "Bearer mock-course-routing-token");
+  if (temporarySheetsFailure) {
+    return response({ error: { message: "Temporary Google Sheets failure" } }, 503);
+  }
   const spreadsheetId = decodeURIComponent(
     url.pathname.match(/\/spreadsheets\/([^/]+)/)?.[1] || ""
   );
@@ -179,6 +183,14 @@ try {
   assert.equal(globalWorkspace.data.admin.platformrole, "GLOBAL_ADMIN");
   assert.equal(globalWorkspace.data.context.role, "GLOBAL_ADMIN");
   assert.equal(globalWorkspace.response.headers.get("X-M4L-Course-ID"), "COURSE1");
+
+  temporarySheetsFailure = true;
+  const temporarilyUnavailable = await postWorkspace(adminToken);
+  temporarySheetsFailure = false;
+  assert.equal(temporarilyUnavailable.response.status, 503);
+  assert.equal(temporarilyUnavailable.data.code, "COURSE_VALIDATION_TEMPORARILY_UNAVAILABLE");
+  assert.equal(temporarilyUnavailable.data.retryable, true);
+  assert.match(temporarilyUnavailable.data.error, /temporarily unavailable/i);
 } finally {
   globalThis.fetch = originalFetch;
 }

@@ -1,28 +1,28 @@
 # Maktabhelper
 
-Current development release: V102.8.1 Library, Profile and PDF corrections.
+Current development release: V102.8.2 Timetable reliability and selected-session editing.
 
-V102.8.1 corrects the V102.8 unified Library without beginning the timetable
-integrator. An account with course access and active global-subject
-subscriptions now sees both its course/role contexts and one **Global
-Subjects — STUDENT** context in Profile. Switching remains centrally validated,
-issues a new scoped token and does not require another PIN.
+V102.8.2 corrects the Timetable Builder failure seen after one or two Admin
+changes. The Builder now reads all related Sheet ranges in one batch, includes
+Tasks in that response and updates its grid locally after successful session
+changes. Temporary Google Sheets or network failures remain distinct from
+denied course access and do not invalidate a valid account session.
 
-The Library source filters—**All**, every authorised active course, and
-**Global Subjects**—are displayed together as one segmented pill. Selecting a
-segment filters the Library only; it does not switch the operational context.
-Students can use the existing protected two-PDF split view on screens at least
-1024px wide, and the PDF shelf selector now appears immediately before the PDF
-title for all roles.
+ADMIN can select two to one hundred active sessions in the current course and
+apply only the checked fields: subject/module, teacher and/or Zoom override.
+Day, time, group and active status are never bulk changed. All proposed rows
+are conflict-checked first and committed atomically; a failed validation writes
+nothing. Existing published snapshots remain immutable.
 
-Platform schema remains `102.0.4`. V102.8.1 adds no Sheet tab/header, migration,
-Worker variable, secret, binding, Apps Script or course Sheet change. Account
-migration must not be rerun. Current browser-session persistence is unchanged.
+Platform schema remains `102.0.4` and the Reboot course schema remains
+`101.4.3`. V102.8.2 adds no Sheet tab/header, migration, Worker configuration,
+Apps Script or course Sheet change. Account migration must not be rerun.
 
 Start installation with `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip` directly over the
-deployed V102.8 development repository. It is a modified-files overlay; a full
-repository upload is not required.
+`Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip` directly over a
+development repository already containing V102.8.1. It is a modified-files
+overlay containing the complete update; a full repository upload is not
+required.
 
 Production remains stable at V101.1 and must not receive this development-only
 overlay. A separate production merge plan will be prepared after V102

@@ -32,7 +32,11 @@ assert.equal(
 assert.match(read("docs/V102-PlatformConfig-template.csv"), /PlatformSchemaVersion,102\.0\.4/);
 assert.equal(
   existsSync(new URL("../../docs/V102-TeacherScheduleIndex-template.csv", import.meta.url)),
-  false
+  true
+);
+assert.equal(
+  read("docs/V102-TeacherScheduleIndex-template.csv").trim(),
+  "IndexEntryID,SourceSessionID,CourseID,TeacherAccountID,DayOfWeek,StartTime,EndTime,TimeZone,Active,SourceModifiedDate,IndexedDate"
 );
 
 const migration = read("docs/V102.5-SUBSCRIPTION-ACCESS-SCHEMA.md");

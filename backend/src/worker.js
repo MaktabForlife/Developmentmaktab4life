@@ -1,4 +1,4 @@
-/* M4L V102.8.1 - Library profile, selector and Student PDF-view corrections.
+/* M4L V102.8.2 - reliable timetable reads and selective multi-session editing.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,11 +17,14 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.8.1"
+          version: "102.8.2"
         });
       }
 
-      const routedResponse = routeRequest(request, env, url.pathname);
+      // Await the route inside this try block. Returning its promise directly
+      // would let an asynchronous route rejection bypass the JSON/CORS error
+      // response below and surface as an opaque Cloudflare 500 in browsers.
+      const routedResponse = await routeRequest(request, env, url.pathname);
 
       if (routedResponse) {
         return routedResponse;

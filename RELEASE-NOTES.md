@@ -1,3 +1,37 @@
+V102.8.2
+
+# Make Timetable Builder edits reliable and update selected sessions safely
+
+- Replaces the Builder's many individual Google Sheets reads with one
+  `values:batchGet`, including TaskList in the Builder response.
+- Updates the timetable grid locally after successful session save, delete,
+  restore and bulk update operations instead of immediately rereading the
+  entire workbook.
+- Retries safe read-only Sheets requests for temporary quota/service responses
+  and identifies temporary course validation as retryable rather than denied.
+- Awaits route completion inside the Worker error boundary so an asynchronous
+  failure cannot escape as an opaque Safari CORS 500.
+- Keeps a valid browser session for network, 429 and 5xx failures; HTTP 401
+  remains the only API response that invalidates the session.
+- Adds active-session selection and an ADMIN-only bulk editor for independently
+  applying subject/module, teacher and Zoom override changes.
+- Leaves unchecked fields unchanged; blank applied Zoom clears the override and
+  **No module** clears the module.
+- Never changes course, day, time slot, group or active status through bulk
+  editing.
+- Validates every proposed row and all conflicts before one atomic Sheet write.
+  Any failure changes no selected session.
+- Adds one `BULK_UPDATE` AdminAuditLog event per changed session and preserves
+  immutable published snapshots.
+- Requires no Sheet/config/migration/Apps Script change; Platform schema remains
+  `102.0.4` and production remains stable at V101.1.
+
+Install only
+`Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip` over development
+V102.8.1 and complete every item in `UPDATE-TODO.md`.
+
+---
+
 V102.8.1
 
 # Correct Global Subjects switching and Library PDF controls

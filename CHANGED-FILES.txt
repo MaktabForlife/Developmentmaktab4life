@@ -1,11 +1,12 @@
-V102.8.1 — GitHub update from deployed V102.8
+V102.8.2 — GitHub update from V102.8.1 development
 
 Package:
-- Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip
+- Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip
 
 Apply to:
-- Deployed V102.8 development repository only.
-- This is a modified-files overlay, not a full repository.
+- A development repository already containing the complete V102.8.1 source.
+- This is a complete modified-files overlay, not a full repository.
+- Production V101.1 must remain untouched.
 
 Files included:
 - CHANGED-FILES.txt
@@ -17,19 +18,26 @@ Files included:
 - account/index.html
 - admin/index.html
 - backend/package.json
-- backend/src/routes/account-auth.js
+- backend/src/lib/course-routing.js
+- backend/src/lib/google-sheets.js
+- backend/src/router.js
+- backend/src/routes/timetable-builder.js
 - backend/src/worker.js
-- backend/tests/account-auth.test.mjs
 - backend/tests/account-ui.test.mjs
+- backend/tests/course-routing.test.mjs
+- backend/tests/google-sheets-client.test.mjs
 - backend/tests/library-catalogue-ui.test.mjs
-- backend/tests/pdf-split-view.test.mjs
+- backend/tests/platform-global-management-ui.test.mjs
+- backend/tests/platform-validation-ui.test.mjs
 - backend/tests/router.test.mjs
-- css/m4l-04-library-resources.css
-- css/m4l-06-attendance-and-pdf-viewer.css
-- css/m4l-19-pdf-split-view.css
-- docs/V102.8.1-LIBRARY-PROFILE-PDF-CORRECTIONS.md (new)
+- backend/tests/subscription-access-schema.test.mjs
+- backend/tests/timetable-builder-ui.test.mjs
+- backend/tests/timetable-builder.test.mjs
+- css/m4l-22-timetable-builder.css
+- docs/V102.8.2-TIMETABLE-RELIABILITY-BULK-EDIT.md (new)
 - index.html
-- js/m4l-resources.js
+- js/m4l-auth.js
+- js/m4l-timetable-builder.js
 - js/version.json
 - student/index.html
 - styles.css
@@ -40,9 +48,10 @@ Deleted files:
 
 Data/config boundary:
 - Platform schema remains 102.0.4.
-- No tab, header, migration, account copy or GlobalCurriculumVersion change.
+- Reboot course schema remains 101.4.3.
+- No Sheet tab/header, migration or account copy.
 - No Worker variable, secret, binding or Apps Script change.
-- No course Sheet change is required.
+- No GlobalCurriculumVersion change from deployment.
 - Account migration must not be rerun.
-- Current authentication-session persistence is unchanged.
-- Production V101.1 remains untouched.
+- Existing published timetable snapshots are not rewritten.
+- TeacherAssign remains the live timetable read source.

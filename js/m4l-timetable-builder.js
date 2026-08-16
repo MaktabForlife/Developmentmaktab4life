@@ -1,4 +1,5 @@
-/* M4L V101.4.3 - staged timetable publication with per-group session assignments. */
+/* M4L V102.8.2 - reliable staged timetable publication, per-group assignments
+   and selective multi-session editing. */
 
 const timetableBuilderState = {
   loaded: false,
@@ -12,6 +13,8 @@ const timetableBuilderState = {
   editTaskId: "",
   taskFilterSubjectId: "",
   showInactiveSessions: false,
+  bulkSelectionMode: false,
+  selectedSessionIds: [],
   data: {
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     courses: [],
@@ -89,6 +92,13 @@ async function handleTimetableBuilderClick(event) {
   if (action === "save-task") return saveTimetableBuilderTask(target);
   if (action === "add-session") return openTimetableSessionEditor("", target.dataset.timeSlotId, target.dataset.day);
   if (action === "edit-session") return openTimetableSessionEditor(target.dataset.sessionId);
+  if (action === "start-bulk-select") return startTimetableBulkSelection();
+  if (action === "toggle-session-select") return toggleTimetableSessionSelection(target.dataset.sessionId);
+  if (action === "clear-session-selection") return clearTimetableSessionSelection(false);
+  if (action === "cancel-bulk-select") return clearTimetableSessionSelection(true);
+  if (action === "edit-selected-sessions") return openTimetableBulkSessionEditor();
+  if (action === "close-bulk-session") return closeTimetableBulkSessionEditor();
+  if (action === "save-bulk-sessions") return saveTimetableBulkSessions(target);
   if (action === "close-session") return closeTimetableSessionEditor();
   if (action === "save-session") return saveTimetableBuilderSession(target);
   if (action === "delete-session") return deleteTimetableBuilderSession(target);
@@ -112,6 +122,8 @@ function handleTimetableBuilderChange(event) {
     timetableBuilderState.selectedCourseId = target.value;
     timetableBuilderState.editCourseId = target.value;
     timetableBuilderState.editTimeSlotId = "";
+    timetableBuilderState.bulkSelectionMode = false;
+    timetableBuilderState.selectedSessionIds = [];
     renderTimetableBuilder();
     return;
   }
@@ -119,6 +131,22 @@ function handleTimetableBuilderChange(event) {
   if (target.id === "ttb-session-subject") {
     renderTimetableSessionModuleOptions(target.value, "");
     return;
+  }
+
+  if (target.id === "ttb-bulk-subject") {
+    renderTimetableBulkModuleOptions(target.value, "");
+    clearTimetableBulkSessionMessage();
+    return;
+  }
+
+  if (target.matches("[data-ttb-bulk-apply]")) {
+    updateTimetableBulkEditorControls();
+    clearTimetableBulkSessionMessage();
+    return;
+  }
+
+  if (target.closest("#timetable-bulk-session-dialog")) {
+    clearTimetableBulkSessionMessage();
   }
 
   if (target.matches("input[name='ttb-session-group']")) {
@@ -149,23 +177,21 @@ async function loadTimetableBuilder(force = false) {
     return true;
   }
 
+  const hadLoadedData = timetableBuilderState.loaded;
   timetableBuilderState.loading = true;
   setTimetableBuilderMessage("Loading courses, curriculum and sessions…", "");
-  setTimetableBuilderContent('<p class="helper-text">Loading Timetable Builder...</p>');
+  if (!hadLoadedData) {
+    setTimetableBuilderContent('<p class="helper-text">Loading Timetable Builder...</p>');
+  }
 
   try {
-    const [builder, tasks] = await Promise.all([
-      apiPost("/api/admin/timetable-builder/get", {}, state.token),
-      apiPost("/api/admin/tasks/list", { subjectid: "ALL" }, state.token)
-    ]);
-
-    if (!builder.success) throw new Error(builder.error || "Unable to load Timetable Builder");
-    if (!tasks.success) throw new Error(tasks.error || "Unable to load tasks");
+    const builder = await apiPost("/api/admin/timetable-builder/get", {}, state.token);
+    if (!builder.success) throw timetableBuilderApiError(builder, "Unable to load Timetable Builder");
 
     timetableBuilderState.data = {
       ...timetableBuilderState.data,
       ...builder,
-      tasks: Array.isArray(tasks.tasks) ? tasks.tasks : []
+      tasks: Array.isArray(builder.tasks) ? builder.tasks : []
     };
     timetableBuilderState.loaded = true;
     ensureTimetableBuilderSelections();
@@ -174,14 +200,22 @@ async function loadTimetableBuilder(force = false) {
     return true;
   } catch (error) {
     console.error("Could not load Timetable Builder", error);
-    setTimetableBuilderMessage(error?.message || "Unable to load Timetable Builder.", "error");
-    setTimetableBuilderContent(`
-      <div class="timetable-builder-empty">
-        <h3>Builder setup required</h3>
-        <p>${ttbEscape(error?.message || "Unable to load Timetable Builder.")}</p>
-        <button type="button" class="timetable-builder-primary" data-ttb-action="reload">Try Again</button>
-      </div>
-    `);
+    const retryable = error?.retryable === true;
+    const message = retryable
+      ? "Google Sheets is temporarily busy. Your session remains active. Please wait a moment and try again."
+      : error?.message || "Unable to load Timetable Builder.";
+    setTimetableBuilderMessage(message, "error");
+    if (hadLoadedData) {
+      renderTimetableBuilder();
+    } else {
+      setTimetableBuilderContent(`
+        <div class="timetable-builder-empty">
+          <h3>${retryable ? "Timetable temporarily unavailable" : "Builder setup required"}</h3>
+          <p>${ttbEscape(message)}</p>
+          <button type="button" class="timetable-builder-primary" data-ttb-action="reload">Try Again</button>
+        </div>
+      `);
+    }
     return false;
   } finally {
     timetableBuilderState.loading = false;
@@ -288,6 +322,10 @@ function renderTimetableBuilderGrid() {
   const sessions = (timetableBuilderState.data.sessions || []).filter(session => (
     session.active || timetableBuilderState.showInactiveSessions
   ));
+  const selectedIds = new Set(timetableBuilderState.selectedSessionIds || []);
+  const selectedCount = Array.from(selectedIds).filter(sessionId => (
+    sessions.some(session => session.sessionid === sessionId && session.active && session.courseid === courseId)
+  )).length;
 
   if (!courseId) {
     setTimetableBuilderContent(`
@@ -331,9 +369,19 @@ function renderTimetableBuilderGrid() {
       <div class="timetable-builder-grid-title">
         <div>
           <h3>Weekly sessions</h3>
-          <p>Choose a cell to add sessions. One subject/module is repeated across the selected days and groups.</p>
+          <p>${timetableBuilderState.bulkSelectionMode
+            ? "Select 2–100 active sessions, then choose Edit selected."
+            : "Choose a cell to add sessions. One subject/module is repeated across the selected days and groups."}</p>
         </div>
         <div class="timetable-builder-grid-title-actions">
+          ${timetableBuilderState.bulkSelectionMode ? `
+            <span class="ttb-bulk-selection-count">${selectedCount} selected</span>
+            <button type="button" class="timetable-builder-secondary" data-ttb-action="clear-session-selection" ${selectedCount ? "" : "disabled"}>Clear</button>
+            <button type="button" class="timetable-builder-primary" data-ttb-action="edit-selected-sessions" ${selectedCount >= 2 ? "" : "disabled"}>Edit selected</button>
+            <button type="button" class="timetable-builder-secondary" data-ttb-action="cancel-bulk-select">Done</button>
+          ` : `
+            <button type="button" class="timetable-builder-secondary" data-ttb-action="start-bulk-select">Select sessions</button>
+          `}
           <button type="button" class="timetable-builder-secondary" data-ttb-action="toggle-inactive-sessions">${timetableBuilderState.showInactiveSessions ? "Hide inactive" : "Show inactive"}</button>
           <span>${slots.length} ${slots.length === 1 ? "time slot" : "time slots"}</span>
         </div>
@@ -362,13 +410,52 @@ function renderTimetableSessionCard(session) {
     session.teachername,
     session.zoomlink ? "Zoom override" : "Global Zoom"
   ].filter(Boolean).join(" · ");
+  const selectionMode = timetableBuilderState.bulkSelectionMode;
+  const selected = (timetableBuilderState.selectedSessionIds || []).includes(session.sessionid);
+  const selectable = selectionMode && session.active;
+  const action = selectable ? "toggle-session-select" : selectionMode ? "" : "edit-session";
   return `
-    <button type="button" class="ttb-session-card ${session.active ? "" : "is-inactive"}" data-ttb-action="edit-session" data-session-id="${ttbAttr(session.sessionid)}">
+    <button type="button" class="ttb-session-card ${session.active ? "" : "is-inactive"} ${selected ? "is-selected" : ""}" ${action ? `data-ttb-action="${action}"` : ""} data-session-id="${ttbAttr(session.sessionid)}" ${selectable ? `aria-pressed="${selected ? "true" : "false"}"` : ""} ${selectionMode && !session.active ? "disabled" : ""}>
+      ${selectionMode ? `<span class="ttb-session-select-indicator" aria-hidden="true">${selected ? "✓" : ""}</span>` : ""}
       <strong>${ttbEscape(session.subjectname || session.subjectid)}</strong>
       ${session.modulename ? `<span>${ttbEscape(session.modulename)}</span>` : ""}
       <small>${ttbEscape(meta)}</small>
     </button>
   `;
+}
+
+function startTimetableBulkSelection() {
+  timetableBuilderState.bulkSelectionMode = true;
+  timetableBuilderState.selectedSessionIds = [];
+  renderTimetableBuilderGrid();
+  return true;
+}
+
+function toggleTimetableSessionSelection(sessionId) {
+  const session = (timetableBuilderState.data.sessions || []).find(item => (
+    item.sessionid === sessionId &&
+    item.courseid === timetableBuilderState.selectedCourseId &&
+    item.active
+  ));
+  if (!timetableBuilderState.bulkSelectionMode || !session) return false;
+
+  const selected = new Set(timetableBuilderState.selectedSessionIds || []);
+  if (selected.has(sessionId)) selected.delete(sessionId);
+  else if (selected.size >= 100) {
+    setTimetableBuilderMessage("Select no more than 100 sessions at once.", "error");
+    return false;
+  } else selected.add(sessionId);
+  timetableBuilderState.selectedSessionIds = Array.from(selected);
+  setTimetableBuilderMessage("", "");
+  renderTimetableBuilderGrid();
+  return true;
+}
+
+function clearTimetableSessionSelection(exitMode) {
+  timetableBuilderState.selectedSessionIds = [];
+  if (exitMode) timetableBuilderState.bulkSelectionMode = false;
+  renderTimetableBuilderGrid();
+  return true;
 }
 
 function renderTimetableBuilderCourses() {
@@ -776,6 +863,172 @@ function closeTimetableSessionEditor() {
   return true;
 }
 
+function openTimetableBulkSessionEditor() {
+  const selected = getSelectedActiveTimetableSessions();
+  if (selected.length < 2) {
+    setTimetableBuilderMessage("Select at least two active sessions to edit together.", "error");
+    return false;
+  }
+
+  const dialog = document.getElementById("timetable-bulk-session-dialog");
+  if (!dialog) return false;
+  const count = document.getElementById("ttb-bulk-session-count");
+  if (count) count.textContent = `${selected.length} sessions selected`;
+
+  const activeSubjects = (timetableBuilderState.data.subjects || []).filter(subject => subject.active);
+  const defaultSubjectId = activeSubjects.some(subject => subject.subjectid === selected[0]?.subjectid)
+    ? selected[0].subjectid
+    : activeSubjects[0]?.subjectid || "";
+  setSelectOptions("ttb-bulk-subject", activeSubjects.map(subject => ({
+    value: subject.subjectid,
+    label: subject.subjectname
+  })), defaultSubjectId);
+  renderTimetableBulkModuleOptions(defaultSubjectId, selected[0]?.moduleid || "");
+
+  const activeTeachers = (timetableBuilderState.data.teachers || []).filter(teacher => teacher.active);
+  const defaultTeacherId = activeTeachers.some(teacher => teacher.teacherid === selected[0]?.teacherid)
+    ? selected[0].teacherid
+    : activeTeachers[0]?.teacherid || "";
+  setSelectOptions("ttb-bulk-teacher", activeTeachers.map(teacher => ({
+    value: teacher.teacherid,
+    label: `${teacher.teachername} — ${teacher.role}`
+  })), defaultTeacherId);
+
+  ["ttb-bulk-apply-subject-module", "ttb-bulk-apply-teacher", "ttb-bulk-apply-zoom"].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.checked = false;
+  });
+  setValue("ttb-bulk-zoom", "");
+  updateTimetableBulkEditorControls();
+  clearTimetableBulkSessionMessage();
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "");
+  return true;
+}
+
+function getSelectedActiveTimetableSessions() {
+  const selectedIds = new Set(timetableBuilderState.selectedSessionIds || []);
+  return (timetableBuilderState.data.sessions || []).filter(session => (
+    selectedIds.has(session.sessionid) &&
+    session.courseid === timetableBuilderState.selectedCourseId &&
+    session.active
+  ));
+}
+
+function renderTimetableBulkModuleOptions(subjectId, selectedModuleId) {
+  const modules = (timetableBuilderState.data.modules || []).filter(module => (
+    module.subjectid === subjectId && module.active
+  ));
+  setSelectOptions("ttb-bulk-module", [
+    { value: "", label: "No module" },
+    ...modules.map(module => ({ value: module.moduleid, label: module.modulename }))
+  ], modules.some(module => module.moduleid === selectedModuleId) ? selectedModuleId : "");
+}
+
+function updateTimetableBulkEditorControls() {
+  const subjectEnabled = checkedOf("ttb-bulk-apply-subject-module");
+  const teacherEnabled = checkedOf("ttb-bulk-apply-teacher");
+  const zoomEnabled = checkedOf("ttb-bulk-apply-zoom");
+  const controls = [
+    ["ttb-bulk-subject", subjectEnabled],
+    ["ttb-bulk-module", subjectEnabled],
+    ["ttb-bulk-teacher", teacherEnabled],
+    ["ttb-bulk-zoom", zoomEnabled]
+  ];
+  controls.forEach(([id, enabled]) => {
+    const element = document.getElementById(id);
+    if (element) element.disabled = !enabled;
+  });
+  return true;
+}
+
+function closeTimetableBulkSessionEditor() {
+  const dialog = document.getElementById("timetable-bulk-session-dialog");
+  if (!dialog) return false;
+  if (typeof dialog.close === "function") dialog.close();
+  else dialog.removeAttribute("open");
+  clearTimetableBulkSessionMessage();
+  return true;
+}
+
+async function saveTimetableBulkSessions(button) {
+  const selected = getSelectedActiveTimetableSessions();
+  const applysubjectmodule = checkedOf("ttb-bulk-apply-subject-module");
+  const applyteacher = checkedOf("ttb-bulk-apply-teacher");
+  const applyzoom = checkedOf("ttb-bulk-apply-zoom");
+  if (selected.length < 2) {
+    showTimetableBulkSessionMessage("Select at least two active sessions.");
+    return false;
+  }
+  if (!applysubjectmodule && !applyteacher && !applyzoom) {
+    showTimetableBulkSessionMessage("Choose at least one field to change.");
+    return false;
+  }
+  if (applysubjectmodule && !valueOf("ttb-bulk-subject")) {
+    showTimetableBulkSessionMessage("Select the subject to apply.");
+    return false;
+  }
+  if (applyteacher && !valueOf("ttb-bulk-teacher")) {
+    showTimetableBulkSessionMessage("Select the teacher to apply.");
+    return false;
+  }
+
+  const fields = [
+    applysubjectmodule ? "subject/module" : "",
+    applyteacher ? "teacher" : "",
+    applyzoom ? "Zoom override" : ""
+  ].filter(Boolean).join(", ");
+  if (!window.confirm(`Apply ${fields} to ${selected.length} selected sessions?\n\nDays, time slots, groups and active status will not change.`)) {
+    return false;
+  }
+
+  button.disabled = true;
+  showTimetableBulkSessionMessage("Validating every selected session before saving…", "working");
+  const payload = {
+    courseid: timetableBuilderState.selectedCourseId,
+    sessionids: selected.map(session => session.sessionid),
+    applysubjectmodule,
+    subjectid: valueOf("ttb-bulk-subject"),
+    moduleid: valueOf("ttb-bulk-module"),
+    applyteacher,
+    teacherid: valueOf("ttb-bulk-teacher"),
+    applyzoom,
+    zoomlink: valueOf("ttb-bulk-zoom")
+  };
+
+  try {
+    const result = await apiPost(
+      "/api/admin/timetable-builder/session/bulk-update",
+      payload,
+      state.token
+    );
+    if (!result.success) {
+      showTimetableBulkSessionMessage(
+        result.error || "Unable to update the selected sessions",
+        "error",
+        result.conflicts
+      );
+      return false;
+    }
+
+    applyTimetableSessionUpdates(result.sessions || []);
+    if (result.changed !== false) {
+      markLocalTimetableDevelopment(timetableBuilderState.selectedCourseId);
+    }
+    closeTimetableBulkSessionEditor();
+    timetableBuilderState.bulkSelectionMode = false;
+    timetableBuilderState.selectedSessionIds = [];
+    renderTimetableBuilderGrid();
+    setTimetableBuilderMessage(result.message || "Selected sessions updated.", "success");
+    return true;
+  } catch (error) {
+    showTimetableBulkSessionMessage(error?.message || "Unable to update the selected sessions.", "error");
+    return false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function saveTimetableBuilderSession(button) {
   const sessionid = valueOf("ttb-session-id");
   const daysofweek = selectedTimetableBuilderValues("ttb-session-day");
@@ -831,9 +1084,10 @@ async function saveTimetableBuilderSession(button) {
       showTimetableSessionMessage(result.error || "Unable to save session", "error", result.conflicts);
       return false;
     }
+    applyTimetableSessionUpdates(result.sessions || (result.session ? [result.session] : []));
+    if (result.changed !== false) markLocalTimetableDevelopment(payload.courseid);
     closeTimetableSessionEditor();
-    timetableBuilderState.loaded = false;
-    await loadTimetableBuilder(true);
+    renderTimetableBuilderGrid();
     setTimetableBuilderMessage(result.message || "Sessions saved.", "success");
     return true;
   } catch (error) {
@@ -866,9 +1120,15 @@ async function deleteTimetableBuilderSession(button) {
       mode: hardDelete ? "HARD" : "SOFT"
     }, state.token);
     if (!result.success) throw new Error(result.error || "Unable to delete session");
+    if (result.deletionmode === "HARD") {
+      timetableBuilderState.data.sessions = (timetableBuilderState.data.sessions || [])
+        .filter(item => item.sessionid !== sessionid);
+    } else if (result.session) {
+      applyTimetableSessionUpdates([result.session]);
+    }
+    if (result.changed !== false) markLocalTimetableDevelopment(session.courseid);
     closeTimetableSessionEditor();
-    timetableBuilderState.loaded = false;
-    await loadTimetableBuilder(true);
+    renderTimetableBuilderGrid();
     setTimetableBuilderMessage(result.message || "Session deleted.", "success");
     return true;
   } catch (error) {
@@ -889,10 +1149,15 @@ async function restoreTimetableBuilderSession(button) {
       showTimetableSessionMessage(result.error || "Unable to restore session", "error", result.conflicts);
       return false;
     }
+    applyTimetableSessionUpdates(result.session ? [result.session] : []);
+    if (result.changed !== false) {
+      markLocalTimetableDevelopment(
+        result.session?.courseid || timetableBuilderState.selectedCourseId
+      );
+    }
     closeTimetableSessionEditor();
-    timetableBuilderState.loaded = false;
     timetableBuilderState.showInactiveSessions = true;
-    await loadTimetableBuilder(true);
+    renderTimetableBuilderGrid();
     setTimetableBuilderMessage(result.message || "Session restored.", "success");
     return true;
   } catch (error) {
@@ -926,6 +1191,57 @@ async function publishTimetableBuilder(button) {
   } finally {
     button.disabled = false;
   }
+}
+
+function applyTimetableSessionUpdates(updates) {
+  const current = timetableBuilderState.data.sessions || [];
+  const byId = new Map(current.map(session => [session.sessionid, session]));
+  (Array.isArray(updates) ? updates : []).forEach(update => {
+    if (!update?.sessionid) return;
+    byId.set(update.sessionid, enrichTimetableBuilderSession(update, byId.get(update.sessionid)));
+  });
+  timetableBuilderState.data.sessions = Array.from(byId.values());
+  return true;
+}
+
+function enrichTimetableBuilderSession(session, existing = {}) {
+  const course = (timetableBuilderState.data.courses || []).find(item => item.courseid === session.courseid);
+  const slot = (timetableBuilderState.data.timeslots || []).find(item => item.timeslotid === session.timeslotid);
+  const subject = (timetableBuilderState.data.subjects || []).find(item => item.subjectid === session.subjectid);
+  const module = session.moduleid
+    ? (timetableBuilderState.data.modules || []).find(item => item.moduleid === session.moduleid)
+    : null;
+  const teacher = (timetableBuilderState.data.teachers || []).find(item => item.teacherid === session.teacherid);
+  return {
+    ...existing,
+    ...session,
+    coursename: course?.coursename || session.coursename || existing.coursename || session.courseid,
+    starttime: slot?.starttime || session.starttime || existing.starttime || "",
+    endtime: slot?.endtime || session.endtime || existing.endtime || "",
+    subjectname: subject?.subjectname || session.subjectname || session.subjectid,
+    modulename: session.moduleid
+      ? module?.modulename || session.modulename || session.moduleid
+      : "",
+    teachername: teacher?.teachername || session.teachername || session.teacherid,
+    everpublished: existing.everpublished === true || session.everpublished === true
+  };
+}
+
+function markLocalTimetableDevelopment(courseId) {
+  const states = timetableBuilderState.data.timetablestates || [];
+  const existing = states.find(item => item.courseid === courseId);
+  if (existing) existing.stage = "DEVELOPMENT";
+  else states.push({
+    courseid: courseId,
+    stage: "DEVELOPMENT",
+    currentpublicationid: "",
+    versionno: 0,
+    publisheddate: "",
+    publishedbyadminname: ""
+  });
+  timetableBuilderState.data.timetablestates = states;
+  renderTimetableBuilderStatus();
+  return true;
 }
 
 function subjectNameFor(subjectId) {
@@ -997,8 +1313,31 @@ function showTimetableSessionMessage(message, type = "error", conflicts = []) {
   return true;
 }
 
+function showTimetableBulkSessionMessage(message, type = "error", conflicts = []) {
+  const element = document.getElementById("timetable-bulk-session-message");
+  if (!element) return false;
+  const conflictItems = Array.isArray(conflicts) ? conflicts.filter(item => item?.message) : [];
+  const heading = conflictItems.length
+    ? "No selected session was changed because of these timetable conflicts:"
+    : (message || "Unable to update the selected sessions.");
+  element.className = `timetable-session-message is-${ttbAttr(type)}`;
+  element.innerHTML = `
+    <strong>${ttbEscape(heading)}</strong>
+    ${conflictItems.length ? `<ul>${conflictItems.map(item => `<li>${ttbEscape(item.message)}</li>`).join("")}</ul>` : ""}
+  `;
+  return true;
+}
+
 function clearTimetableSessionMessage() {
   const element = document.getElementById("timetable-session-message");
+  if (!element) return false;
+  element.className = "timetable-session-message";
+  element.textContent = "";
+  return true;
+}
+
+function clearTimetableBulkSessionMessage() {
+  const element = document.getElementById("timetable-bulk-session-message");
   if (!element) return false;
   element.className = "timetable-session-message";
   element.textContent = "";
@@ -1031,6 +1370,14 @@ function valueOf(id) {
 
 function checkedOf(id) {
   return document.getElementById(id)?.checked === true;
+}
+
+function timetableBuilderApiError(result, fallbackMessage) {
+  const error = new Error(result?.error || fallbackMessage || "Timetable Builder request failed");
+  error.code = String(result?.code || "");
+  error.retryable = result?.retryable === true;
+  error.httpStatus = Number(result?.httpStatus) || 0;
+  return error;
 }
 
 function setValue(id, value) {
