@@ -1,4 +1,4 @@
-/* M4L V102.5 - ADMIN validation of course and global-subject access schema. */
+/* M4L V102.7 - Platform validation including optional Global Resources Drive configuration. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { json } from "../lib/http.js";
@@ -12,6 +12,7 @@ import {
 const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.4";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
+const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
 
 export async function platformValidationEndpoint(request, env) {
   const auth = await requireSystemAdmin(request, env);
@@ -81,6 +82,9 @@ export function validatePlatformTables(tables) {
   const accountLoginBaseUrl = String(config.get("ACCOUNTLOGINBASEURL")?.ConfigValue || "").trim();
   const schemaVersion = String(config.get("PLATFORMSCHEMAVERSION")?.ConfigValue || "").trim();
   const curriculumVersion = Number(config.get("GLOBALCURRICULUMVERSION")?.ConfigValue);
+  const globalResourceDriveRootFolderId = String(
+    config.get("GLOBALRESOURCEDRIVEROOTFOLDERID")?.ConfigValue || ""
+  ).trim();
   if (!isAccountLoginBaseUrl(accountLoginBaseUrl)) {
     throw new Error("PlatformConfig AccountLoginBaseUrl must be an HTTPS /account/ URL");
   }
@@ -89,6 +93,9 @@ export function validatePlatformTables(tables) {
   }
   if (!Number.isInteger(curriculumVersion) || curriculumVersion < 1) {
     throw new Error("PlatformConfig GlobalCurriculumVersion must be a positive integer");
+  }
+  if (globalResourceDriveRootFolderId && !DRIVE_FOLDER_ID_PATTERN.test(globalResourceDriveRootFolderId)) {
+    throw new Error("PlatformConfig GlobalResourceDriveRootFolderID is invalid");
   }
 
   const accounts = tables.UserAccounts;
@@ -184,6 +191,7 @@ export function validatePlatformTables(tables) {
     activeGlobalSubjectAccessCount,
     globalResourceCount: tables.GlobalResources.length,
     globalAdminCount: globalAdminAccounts,
+    globalResourceDriveConfigured: Boolean(globalResourceDriveRootFolderId),
     readyForAccountMigration: true,
     readyForUnifiedLogin: accounts.length > 0 && globalAdminAccounts > 0
   });

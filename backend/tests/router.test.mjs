@@ -42,11 +42,14 @@ const expectedPaths = [
   "/api/admin/platform/validate",
   "/api/admin/platform/accounts/migrate",
   "/api/admin/platform/global/get",
+  "/api/admin/platform/global/drive-root/save",
+  "/api/admin/platform/global/drive/browse",
   "/api/admin/platform/global/subject/save",
   "/api/admin/platform/global/module/save",
   "/api/admin/platform/global/task/save",
   "/api/admin/platform/global/resource/save",
   "/api/admin/platform/global/access/save",
+  "/api/platform/global/resources/access",
   "/api/admin/system-settings/get",
   "/api/admin/system-settings/save",
   "/api/admin/check-admin",
@@ -97,7 +100,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.6.3"
+  version: "102.7"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

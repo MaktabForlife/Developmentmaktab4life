@@ -91,7 +91,10 @@ import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import { platformValidationEndpoint } from "./routes/platform-validation.js";
 import { platformAccountMigrationEndpoint } from "./routes/platform-account-migration.js";
 import {
+  browsePlatformGlobalDriveFolderEndpoint,
+  createPlatformGlobalDriveAccessEndpoint,
   getPlatformGlobalManagementEndpoint,
+  savePlatformGlobalDriveRootEndpoint,
   savePlatformGlobalModuleEndpoint,
   savePlatformGlobalResourceEndpoint,
   savePlatformGlobalSubjectAccessEndpoint,
@@ -160,11 +163,14 @@ const ROUTES = new Map([
   ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint, { courseScoped: true })],
   ["/api/admin/platform/accounts/migrate", workerRoute("platform-account-migration", platformAccountMigrationEndpoint, { courseScoped: true })],
   ["/api/admin/platform/global/get", workerRoute("platform-global-management", getPlatformGlobalManagementEndpoint)],
+  ["/api/admin/platform/global/drive-root/save", workerRoute("platform-global-management", savePlatformGlobalDriveRootEndpoint)],
+  ["/api/admin/platform/global/drive/browse", workerRoute("platform-global-management", browsePlatformGlobalDriveFolderEndpoint)],
   ["/api/admin/platform/global/subject/save", workerRoute("platform-global-management", savePlatformGlobalSubjectEndpoint)],
   ["/api/admin/platform/global/module/save", workerRoute("platform-global-management", savePlatformGlobalModuleEndpoint)],
   ["/api/admin/platform/global/task/save", workerRoute("platform-global-management", savePlatformGlobalTaskEndpoint)],
   ["/api/admin/platform/global/resource/save", workerRoute("platform-global-management", savePlatformGlobalResourceEndpoint)],
   ["/api/admin/platform/global/access/save", workerRoute("platform-global-management", savePlatformGlobalSubjectAccessEndpoint)],
+  ["/api/platform/global/resources/access", workerRoute("platform-global-management", createPlatformGlobalDriveAccessEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],
 

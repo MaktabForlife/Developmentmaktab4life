@@ -12,7 +12,7 @@ assert.match(adminHtml, /data-system-settings-action="preview-account-migration"
 assert.match(adminHtml, /data-system-settings-action="commit-account-migration"/);
 assert.match(adminHtml, /id="system-settings-grant-global-admin"[^>]*checked/);
 assert.match(adminHtml, /id="system-settings-migration-confirm"/);
-assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.6\.1/);
+assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.7/);
 
 assert.match(settingsJs, /async function validatePlatformSheet\(\)/);
 assert.match(settingsJs, /"\/api\/admin\/platform\/validate"/);
@@ -20,6 +20,9 @@ assert.match(settingsJs, /action === "validate-platform"/);
 assert.match(settingsJs, /readyForUnifiedLogin/);
 assert.match(settingsJs, /globalSubjectAccessCount/);
 assert.match(settingsJs, /globalSubjectCount/);
+assert.match(settingsJs, /globalResourceDriveConfigured/);
+assert.match(settingsJs, /Global Resources folder is configured/);
+assert.match(settingsJs, /Global Resources folder is not configured/);
 assert.match(settingsJs, /global subject/);
 assert.match(settingsJs, /required tabs/);
 assert.match(settingsJs, /async function previewAccountMigration\(\)/);

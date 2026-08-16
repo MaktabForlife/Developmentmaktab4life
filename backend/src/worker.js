@@ -1,4 +1,4 @@
-/* M4L V102.6.3 - account PIN retry re-enabling correction.
+/* M4L V102.7 - protected Global Resources Google Drive integration.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.6.3"
+          version: "102.7"
         });
       }
 

@@ -1,4 +1,4 @@
-/* M4L V102.5 - ADMIN settings, access-schema validation and account migration. */
+/* M4L V102.7 - ADMIN settings, Platform validation and account migration. */
 (function () {
   "use strict";
 
@@ -153,6 +153,9 @@
       const accountCount = Number(result.accountCount || 0);
       const globalSubjectCount = Number(result.globalSubjectCount || 0);
       const subjectAccessCount = Number(result.globalSubjectAccessCount || 0);
+      const globalResourceDriveState = result.globalResourceDriveConfigured
+        ? "Global Resources folder is configured."
+        : "Global Resources folder is not configured.";
       const migrationState = result.readyForUnifiedLogin
         ? "Unified-login data is present."
         : "Ready for account migration; unified login is not active yet.";
@@ -160,7 +163,8 @@
         `Ready: ${tabCount} required tabs, ${courseCount} active course${courseCount === 1 ? "" : "s"}, ` +
         `${accountCount} central account${accountCount === 1 ? "" : "s"}, ` +
         `${globalSubjectCount} global subject${globalSubjectCount === 1 ? "" : "s"}, ` +
-        `${subjectAccessCount} global-subject subscription${subjectAccessCount === 1 ? "" : "s"}. ${migrationState}`,
+        `${subjectAccessCount} global-subject subscription${subjectAccessCount === 1 ? "" : "s"}. ` +
+        `${globalResourceDriveState} ${migrationState}`,
         "success"
       );
       return true;

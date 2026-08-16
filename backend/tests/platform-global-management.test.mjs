@@ -24,9 +24,29 @@ tables.UserCourseAccess.push([
   "ACCESS3", "ACCOUNT3", "COURSE1", "ADMIN", true, true, "", "2026-08-15T00:00:00.000Z",
   "", "", "", "", "", "ADMIN3"
 ]);
+tables.UserCourseAccess.push([
+  "ACCESS2", "ACCOUNT2", "COURSE1", "STUDENT", true, true, "", "2026-08-15T00:00:00.000Z",
+  "", "", "", "", "", "MAKTAB2"
+]);
 tables.PlatformConfig.push(["AccountLoginBaseUrl", "https://development.example.test/account/"]);
 tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.4"]);
 tables.PlatformConfig.push(["GlobalCurriculumVersion", 1]);
+tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", ""]);
+
+const rootFolderId = "GLOBAL_ROOT_FOLDER_123";
+const secondRootFolderId = "GLOBAL_ROOT_FOLDER_456";
+const childFolderId = "GLOBAL_CHILD_FOLDER_123";
+const lessonFileId = "GLOBAL_LESSON_FILE_123";
+const outsideFolderId = "OUTSIDE_FOLDER_123";
+const outsideFileId = "OUTSIDE_FILE_123";
+const driveItems = new Map([
+  [rootFolderId, driveFolder(rootFolderId, "M4L Global Resources")],
+  [secondRootFolderId, driveFolder(secondRootFolderId, "Replacement Global Resources")],
+  [childFolderId, driveFolder(childFolderId, "Tajweed", [rootFolderId])],
+  [lessonFileId, driveFile(lessonFileId, "lesson-one.pdf", "application/pdf", [childFolderId], 4096)],
+  [outsideFolderId, driveFolder(outsideFolderId, "Outside")],
+  [outsideFileId, driveFile(outsideFileId, "outside.pdf", "application/pdf", [outsideFolderId], 2048)]
+]);
 
 const keyPair = await crypto.subtle.generateKey({
   name: "RSASSA-PKCS1-v1_5",
@@ -81,12 +101,41 @@ const centralAdminToken = await createSessionToken({
   authrow: 4,
   credentialHash: globalHash
 }, env);
+const subscriberToken = await createSessionToken({
+  type: "account",
+  accountid: "ACCOUNT2",
+  uniqueid: "STUDENT-LINK",
+  username: "Subscriber",
+  role: "STUDENT",
+  scope: "COURSE",
+  accessid: "ACCESS2",
+  accessrow: 3,
+  courseid: "COURSE1",
+  coursename: "Reboot Your Maktab",
+  courserecordid: "MAKTAB2",
+  authrow: 3,
+  credentialHash: globalHash
+}, env);
 
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
   if (url.hostname === "oauth2.googleapis.com") {
     return response({ access_token: "global-management-token", expires_in: 3600 });
+  }
+  if (url.hostname === "www.googleapis.com") {
+    const fileMatch = /^\/drive\/v3\/files\/([^/]+)$/.exec(url.pathname);
+    if (fileMatch) {
+      const item = driveItems.get(decodeURIComponent(fileMatch[1]));
+      return item ? response(item) : response({ error: { message: "File not found" } }, 404);
+    }
+    if (url.pathname === "/drive/v3/files") {
+      const parentId = /'([^']+)' in parents/.exec(url.searchParams.get("q") || "")?.[1] || "";
+      return response({
+        files: [...driveItems.values()].filter(item => array(item.parents).includes(parentId))
+      });
+    }
+    throw new Error(`Unexpected Drive fetch: ${url}`);
   }
   if (url.hostname !== "sheets.googleapis.com") {
     throw new Error(`Unexpected global-management fetch: ${url}`);
@@ -119,6 +168,7 @@ try {
 
   const centralCourseAdmin = await post("/api/admin/platform/global/get", {}, centralAdminToken);
   assert.equal(centralCourseAdmin.response.status, 200, JSON.stringify(centralCourseAdmin.data));
+  assert.equal(centralCourseAdmin.data.globalResourceDriveRoot.canconfigure, false);
 
   const empty = await post("/api/admin/platform/global/get", {}, globalToken);
   assert.equal(empty.response.status, 200, JSON.stringify(empty.data));
@@ -126,7 +176,46 @@ try {
   assert.equal(empty.data.globalCurriculumVersion, 1);
   assert.equal(empty.data.subjects.length, 0);
   assert.equal(empty.data.accounts.length, 3);
+  assert.deepEqual(empty.data.globalResourceDriveRoot, {
+    configured: false,
+    folderid: "",
+    folderurl: "",
+    foldername: "",
+    canconfigure: true
+  });
   assert.equal(JSON.stringify(empty.data).includes(globalHash), false);
+
+  const courseAdminRootSave = await post("/api/admin/platform/global/drive-root/save", {
+    folderUrl: `https://drive.google.com/drive/folders/${rootFolderId}`
+  }, centralAdminToken);
+  assert.equal(courseAdminRootSave.response.status, 403);
+
+  const rootSave = await post("/api/admin/platform/global/drive-root/save", {
+    folderUrl: `https://drive.google.com/drive/folders/${rootFolderId}`
+  }, globalToken);
+  assert.equal(rootSave.response.status, 200, JSON.stringify(rootSave.data));
+  assert.equal(rootSave.data.globalResourceDriveRoot.folderid, rootFolderId);
+  assert.equal(rootSave.data.globalResourceDriveRoot.foldername, "M4L Global Resources");
+  assert.equal(Number(tables.PlatformConfig[3][1]), 2);
+  assert.equal(tables.PlatformConfig[4][1], rootFolderId);
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "SET_GLOBAL_RESOURCE_DRIVE_ROOT");
+
+  const sameRootSave = await post("/api/admin/platform/global/drive-root/save", {
+    folderId: rootFolderId
+  }, globalToken);
+  assert.equal(sameRootSave.response.status, 200);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 2, "Unchanged folder must not increment curriculum version");
+
+  const rootBrowse = await post("/api/admin/platform/global/drive/browse", {}, centralAdminToken);
+  assert.equal(rootBrowse.response.status, 200, JSON.stringify(rootBrowse.data));
+  assert.deepEqual(rootBrowse.data.breadcrumbs, [{ id: rootFolderId, name: "M4L Global Resources" }]);
+  assert.equal(rootBrowse.data.items[0].id, childFolderId);
+  const childBrowse = await post("/api/admin/platform/global/drive/browse", {
+    folderId: childFolderId
+  }, globalToken);
+  assert.equal(childBrowse.response.status, 200, JSON.stringify(childBrowse.data));
+  assert.equal(childBrowse.data.items[0].id, lessonFileId);
+  assert.deepEqual(childBrowse.data.items[0].supportedTypes, ["EBOOK", "PRINTABLE"]);
 
   const subjectCreate = await post("/api/admin/platform/global/subject/save", {
     subjectName: "Global Tajweed",
@@ -135,7 +224,7 @@ try {
   assert.equal(subjectCreate.response.status, 200, JSON.stringify(subjectCreate.data));
   assert.match(subjectCreate.data.subject.subjectid, /^GSUBJ-[0-9a-f-]{36}$/i);
   assert.equal(subjectCreate.data.subject.scope, "GLOBAL");
-  assert.equal(Number(tables.PlatformConfig[3][1]), 2);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 3);
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT");
   const subjectId = subjectCreate.data.subject.subjectid;
 
@@ -154,7 +243,7 @@ try {
   assert.equal(moduleCreate.response.status, 200, JSON.stringify(moduleCreate.data));
   const moduleId = moduleCreate.data.module.moduleid;
   assert.match(moduleId, /^GMOD-/);
-  assert.equal(Number(tables.PlatformConfig[3][1]), 3);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 4);
 
   const taskCreate = await post("/api/admin/platform/global/task/save", {
     subjectId,
@@ -164,7 +253,7 @@ try {
   }, globalToken);
   assert.equal(taskCreate.response.status, 200, JSON.stringify(taskCreate.data));
   const taskId = taskCreate.data.task.taskid;
-  assert.equal(Number(tables.PlatformConfig[3][1]), 4);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 5);
 
   const resourceCreate = await post("/api/admin/platform/global/resource/save", {
     subjectId,
@@ -172,23 +261,59 @@ try {
     taskId,
     resourceName: "Lesson One PDF",
     resourceType: "EBOOK",
-    resourceFormat: "PDF",
     resourceDescription: "Central learner copy",
-    resourceLink: "https://example.test/global/lesson-one.pdf",
+    fileId: lessonFileId,
     active: true
   }, globalToken);
   assert.equal(resourceCreate.response.status, 200, JSON.stringify(resourceCreate.data));
   assert.match(resourceCreate.data.resource.resourceid, /^GRES-/);
-  assert.equal(Number(tables.PlatformConfig[3][1]), 5);
+  assert.equal(resourceCreate.data.resource.fileid, lessonFileId);
+  assert.equal(resourceCreate.data.resource.resourceformat, "PDF");
+  assert.equal(
+    resourceCreate.data.resource.resourcelink,
+    `https://worker.test/api/library/drive/file/${lessonFileId}`
+  );
+  assert.equal(Number(tables.PlatformConfig[3][1]), 6);
+  const resourceId = resourceCreate.data.resource.resourceid;
 
-  const unsafeResource = await post("/api/admin/platform/global/resource/save", {
+  const missingFileResource = await post("/api/admin/platform/global/resource/save", {
     subjectId,
-    resourceName: "Unsafe",
-    resourceType: "OTHER",
-    resourceLink: "http://example.test/unsafe",
+    resourceName: "Missing File",
+    resourceType: "EBOOK",
     active: true
   }, globalToken);
-  assert.equal(unsafeResource.response.status, 400);
+  assert.equal(missingFileResource.response.status, 400);
+
+  const outsideResource = await post("/api/admin/platform/global/resource/save", {
+    subjectId,
+    resourceName: "Outside File",
+    resourceType: "EBOOK",
+    fileId: outsideFileId,
+    active: true
+  }, globalToken);
+  assert.equal(outsideResource.response.status, 400);
+  assert.match(outsideResource.data.error, /outside the configured Global Resources folder/);
+
+  const duplicateDriveResource = await post("/api/admin/platform/global/resource/save", {
+    subjectId,
+    resourceName: "Duplicate File",
+    resourceType: "EBOOK",
+    fileId: lessonFileId,
+    active: true
+  }, globalToken);
+  assert.equal(duplicateDriveResource.response.status, 409);
+  assert.match(duplicateDriveResource.data.error, /already a global resource/);
+
+  const subscriberDenied = await post("/api/platform/global/resources/access", {
+    resourceId
+  }, subscriberToken);
+  assert.equal(subscriberDenied.response.status, 403);
+
+  const replacementRootBlocked = await post("/api/admin/platform/global/drive-root/save", {
+    folderId: secondRootFolderId
+  }, globalToken);
+  assert.equal(replacementRootBlocked.response.status, 409);
+  assert.equal(tables.PlatformConfig[4][1], rootFolderId);
 
   const accessCreate = await post("/api/admin/platform/global/access/save", {
     accountId: "ACCOUNT2",
@@ -197,8 +322,18 @@ try {
   }, globalToken);
   assert.equal(accessCreate.response.status, 200, JSON.stringify(accessCreate.data));
   assert.match(accessCreate.data.access.subjectaccessid, /^GSACCESS-/);
-  assert.equal(Number(tables.PlatformConfig[3][1]), 5, "Access changes must not change curriculum version");
+  assert.equal(Number(tables.PlatformConfig[3][1]), 6, "Access changes must not change curriculum version");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "ACTIVATE_GLOBAL_SUBJECT_ACCESS");
+
+  const subscriberAccess = await post("/api/platform/global/resources/access", {
+    resourceId
+  }, subscriberToken);
+  assert.equal(subscriberAccess.response.status, 200, JSON.stringify(subscriberAccess.data));
+  assert.match(
+    subscriberAccess.data.url,
+    new RegExp(`^https://worker\\.test/api/library/drive/file/${lessonFileId}\\?access=`)
+  );
+  assert.equal(subscriberAccess.data.filename, "lesson-one.pdf");
 
   const subjectDeactivate = await post("/api/admin/platform/global/subject/save", {
     subjectId,
@@ -212,7 +347,12 @@ try {
     resources: 1,
     subscriptions: 1
   });
-  assert.equal(Number(tables.PlatformConfig[3][1]), 6);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 7);
+
+  const inactiveSubjectAccess = await post("/api/platform/global/resources/access", {
+    resourceId
+  }, subscriberToken);
+  assert.equal(inactiveSubjectAccess.response.status, 403);
 
   const reactivateAccessWhileSubjectInactive = await post("/api/admin/platform/global/access/save", {
     accountId: "ACCOUNT2",
@@ -227,7 +367,7 @@ try {
     active: false
   }, globalToken);
   assert.equal(accessDeactivate.response.status, 200, JSON.stringify(accessDeactivate.data));
-  assert.equal(Number(tables.PlatformConfig[3][1]), 6);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 7);
 
   const finalList = await post("/api/admin/platform/global/get", {}, globalToken);
   assert.equal(finalList.response.status, 200);
@@ -241,7 +381,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.6 platform global curriculum and access management tests passed.");
+console.log("V102.7 platform global curriculum, protected Drive and access management tests passed.");
 
 async function post(path, body, token) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {
@@ -285,4 +425,31 @@ function response(data, status = 200) {
     status,
     headers: { "Content-Type": "application/json" }
   });
+}
+
+function array(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function driveFolder(id, name, parents = []) {
+  return {
+    id,
+    name,
+    mimeType: "application/vnd.google-apps.folder",
+    parents,
+    trashed: false,
+    capabilities: { canDownload: true }
+  };
+}
+
+function driveFile(id, name, mimeType, parents, size) {
+  return {
+    id,
+    name,
+    mimeType,
+    parents,
+    size: String(size),
+    trashed: false,
+    capabilities: { canDownload: true }
+  };
 }

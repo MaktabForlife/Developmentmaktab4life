@@ -1,3 +1,36 @@
+V102.7
+
+# Protect central global resources in a designated Google Drive folder
+
+- Adds a `GLOBAL_ADMIN`-controlled Global Resources Drive root stored in
+  `PlatformConfig` without changing Platform schema `102.0.4`.
+- Replaces manual URL entry for new global resources with a contained Google
+  Drive folder browser consistent with the existing Reboot course Library.
+- Lets centrally authenticated ADMIN accounts browse and manage global
+  resources while reserving root-folder changes for GLOBAL_ADMIN.
+- Revalidates every requested folder/file against the configured root and
+  rejects traversal outside it, unsupported files and duplicate Drive files.
+- Stores a protected Worker file route and derives resource format from Drive;
+  it does not require public Drive sharing.
+- Adds subscription-gated short-lived signed access URLs for active global
+  resources and validates the central account plus active subject entitlement.
+- Blocks a root change that would leave an existing Drive-backed global
+  resource outside the new root.
+- Reports whether the global folder is configured in Platform validation.
+- Increments `GlobalCurriculumVersion` when the root changes or a global
+  resource changes; unchanged root saves and subscription changes remain
+  version-neutral.
+- Adds full deployment, exact-cell, testing and rollback instructions to
+  `UPDATE-TODO.md`.
+- Requires no new Worker variable, secret, binding, Apps Script deployment,
+  account migration or course Sheet change.
+
+Install only
+`Rebootyourmaktab-V102.7-GITHUB-UPDATE-FROM-V102.6.3.zip` over deployed V102.6.3
+development. Production remains stable at V101.1.
+
+---
+
 V102.6.3
 
 # Correct account PIN retry re-enabling

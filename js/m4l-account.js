@@ -1,4 +1,4 @@
-/* M4L V102.6.3 - Unified account login retry, context switching and Profile details. */
+/* M4L V102.7 - Unified account login, context switching and Profile details. */
 (function () {
   "use strict";
 

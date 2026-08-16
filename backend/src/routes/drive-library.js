@@ -548,7 +548,7 @@ function resourceConfig(config) {
   });
 }
 
-function getResourceConfig(value) {
+export function getResourceConfig(value) {
   const type = clean(value).toUpperCase().replace(/[\s-]+/g, "_");
   const aliases = {
     EBOOKS: "EBOOK",
@@ -830,7 +830,7 @@ function mapManagedResource(row, columns, config, sheetRow) {
   };
 }
 
-async function requireItemInsideRoot(env, itemId, rootFolderId, options = {}) {
+export async function requireItemInsideRoot(env, itemId, rootFolderId, options = {}) {
   const item = await getGoogleDriveFileMetadata(env, itemId);
   if (!item || item.trashed === true) throw new Error("Google Drive item was not found or is in Trash");
   if (options.requireFolder && item.mimeType !== GOOGLE_DRIVE_FOLDER_MIME) {
@@ -842,7 +842,7 @@ async function requireItemInsideRoot(env, itemId, rootFolderId, options = {}) {
 
   if (item.id === rootFolderId && options.allowRoot) return item;
   const inside = await isDriveItemDescendant(env, item, rootFolderId);
-  if (!inside) throw new Error("Google Drive item is outside the configured M4L Resources folder");
+  if (!inside) throw new Error(`Google Drive item is outside the configured ${options.rootLabel || "M4L Resources"} folder`);
   return item;
 }
 
@@ -866,7 +866,7 @@ async function isDriveItemDescendant(env, item, rootFolderId) {
   return false;
 }
 
-async function buildDriveBreadcrumbs(env, folder, rootFolderId) {
+export async function buildDriveBreadcrumbs(env, folder, rootFolderId) {
   const breadcrumbs = [{ id: folder.id, name: folder.name || "Folder" }];
   let current = folder;
   const visited = new Set([folder.id]);
@@ -888,7 +888,7 @@ async function buildDriveBreadcrumbs(env, folder, rootFolderId) {
   return breadcrumbs;
 }
 
-function validateFileForResourceType(file, config) {
+export function validateFileForResourceType(file, config) {
   if (!file || file.trashed === true) return { ok: false, error: "The selected Drive file is unavailable" };
   if (file.mimeType === GOOGLE_DRIVE_FOLDER_MIME) return { ok: false, error: "Select a file, not a folder" };
   if (isGoogleDriveNativeMimeType(file.mimeType)) {
@@ -915,7 +915,7 @@ function validateFileForResourceType(file, config) {
     : { ok: false, error: `${file.name || "This file"} is not supported as ${config.label}.` };
 }
 
-function getSupportedResourceTypes(file) {
+export function getSupportedResourceTypes(file) {
   if (!file || file.mimeType === GOOGLE_DRIVE_FOLDER_MIME || isGoogleDriveNativeMimeType(file.mimeType)) return [];
   return RESOURCE_CONFIG_LIST
     .filter(config => validateFileForResourceType(file, config).ok)
@@ -943,7 +943,7 @@ function buildPrivateDriveResourceLink(request, fileId) {
   return `${new URL(request.url).origin}/api/library/drive/file/${encodeURIComponent(fileId)}`;
 }
 
-async function createDriveAccessToken(payload, env) {
+export async function createDriveAccessToken(payload, env) {
   const now = Math.floor(Date.now() / 1000);
   const body = {
     ...payload,
@@ -986,7 +986,7 @@ async function signAccessToken(value, secret) {
   return base64urlBytes(new Uint8Array(signature));
 }
 
-function getDriveAccessTtlSeconds(env) {
+export function getDriveAccessTtlSeconds(env) {
   const requested = Number(env.M4L_DRIVE_ACCESS_TTL_SECONDS || DEFAULT_ACCESS_TTL_SECONDS);
   if (!Number.isFinite(requested)) return DEFAULT_ACCESS_TTL_SECONDS;
   return Math.min(MAX_ACCESS_TTL_SECONDS, Math.max(300, Math.floor(requested)));
@@ -1004,7 +1004,7 @@ function getFileExtension(name) {
   return match ? match[1].toLowerCase() : "";
 }
 
-function deriveFileFormat(name, mimeType) {
+export function deriveFileFormat(name, mimeType) {
   const cleanName = clean(name);
   const extensionMatch = /\.([A-Za-z0-9]{1,12})$/.exec(cleanName);
   if (extensionMatch) return extensionMatch[1].toUpperCase();

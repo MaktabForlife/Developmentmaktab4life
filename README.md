@@ -1,25 +1,24 @@
 # Maktabhelper
 
-Current development release: V102.6.3 PIN-retry correction.
+Current development release: V102.7 protected Global Resources.
 
-V102.6.3 is applied over deployed V102.6.2. It preserves the login form reference
-before the asynchronous account request so a rejected PIN can reliably re-enable
-the controls. The field clears, receives focus and accepts the next attempt
-without a page reload.
+V102.7 is applied over deployed V102.6.3. A `GLOBAL_ADMIN` designates one private
+Google Drive folder for central global resources. Authorised Admins browse only
+that folder and its descendants when adding or replacing a global resource.
+Resources store a protected Worker file route rather than a public Drive URL,
+and access is issued through a short-lived signed URL after account and
+global-subject entitlement checks.
 
-V102.6.2 menu visibility and the display-only `SENIOR TEACHER` label remain
-active. Stored Sheet values, tokens, API permission checks and role constants
-remain `SENIOR`.
-
-V102.6.3 makes no Platform Sheet header, course Sheet, Worker variable, secret,
-binding or Apps Script change. `PlatformConfig!B3` remains `102.0.4`, deployment
-does not change `PlatformConfig!B4`, and central account migration must not be
-rerun. The approved browser-session authentication policy remains documented
-but inactive.
+The folder ID is stored centrally under PlatformConfig key
+`GlobalResourceDriveRootFolderID`. No new tab or header is introduced and
+`PlatformConfig!B3` remains `102.0.4`. The first folder configuration and each
+global resource change increment `GlobalCurriculumVersion`; saving the same
+folder again does not. Account migration must not be rerun. No new Worker
+variable, secret, binding, course Sheet or Apps Script deployment is required.
 
 Start installation with the root-level `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.6.3-GITHUB-UPDATE-FROM-V102.6.2.zip` directly over the
-deployed V102.6.2 development repository. A full repository upload is not
+`Rebootyourmaktab-V102.7-GITHUB-UPDATE-FROM-V102.6.3.zip` directly over the
+deployed V102.6.3 development repository. A full repository upload is not
 required.
 
 Production remains stable at V101.1. It must not receive this development-only

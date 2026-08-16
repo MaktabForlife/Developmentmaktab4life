@@ -1,3 +1,24 @@
+# V102.7 — Protected Global Resources Google Drive
+
+- Adds a private central Google Drive root configurable only by GLOBAL_ADMIN.
+- Adds root-contained folder browsing for global resource creation and
+  replacement.
+- Stores protected Worker file routes instead of public or manually entered
+  links for new global resources.
+- Adds Drive file-type, duplicate and root-change safety checks.
+- Adds entitlement-checked short-lived file access for global-subject
+  subscribers.
+- Adds configured-folder status to Platform validation.
+- Preserves Platform schema `102.0.4`, current account migration, course Sheets,
+  Worker settings and Apps Script.
+- Bumps application and Worker metadata to `102.7`; all 44 backend regression
+  test files pass.
+
+Development only: production remains stable at V101.1. Learner Library merging,
+billing and expiry remain later releases.
+
+---
+
 # V102.6.3 — Account PIN retry correction
 
 - Keeps a stable login-form reference across the asynchronous account request.

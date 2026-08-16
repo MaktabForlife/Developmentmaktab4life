@@ -1,7 +1,12 @@
-/* M4L V102.6 - ADMIN/GLOBAL_ADMIN management of central global curriculum and access. */
+/* M4L V102.7 - Central global curriculum, subscriptions and protected Drive resources. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { batchUpdateGoogleSheetValues } from "../lib/google-sheets.js";
+import {
+  GOOGLE_DRIVE_FOLDER_MIME,
+  isGoogleDriveNativeMimeType,
+  listGoogleDriveFolder
+} from "../lib/google-drive.js";
 import { json } from "../lib/http.js";
 import {
   getPlatformSpreadsheetId,
@@ -12,12 +17,26 @@ import {
   normalizePlatformIdentifier,
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
+import {
+  buildGoogleDriveFolderUrl,
+  extractGoogleDriveFolderId
+} from "../lib/system-config.js";
+import {
+  buildDriveBreadcrumbs,
+  createDriveAccessToken,
+  deriveFileFormat,
+  extractDriveFileId,
+  getDriveAccessTtlSeconds,
+  getResourceConfig,
+  getSupportedResourceTypes,
+  requireItemInsideRoot,
+  validateFileForResourceType
+} from "./drive-library.js";
 
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const MAX_NAME_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 2000;
-const MAX_FORMAT_LENGTH = 40;
-const MAX_LINK_LENGTH = 2000;
+const GLOBAL_RESOURCE_DRIVE_ROOT_KEY = "GlobalResourceDriveRootFolderID";
 
 export async function getPlatformGlobalManagementEndpoint(request, env) {
   const permission = await requireGlobalCurriculumAdmin(request, env);
@@ -25,6 +44,7 @@ export async function getPlatformGlobalManagementEndpoint(request, env) {
 
   try {
     const tables = await readManagementTables(env);
+    const driveRoot = readGlobalResourceDriveRoot(tables.PlatformConfig);
     return json({
       success: true,
       service: "platform-global-management",
@@ -34,10 +54,225 @@ export async function getPlatformGlobalManagementEndpoint(request, env) {
       tasks: tables.GlobalTaskList.map(mapTask),
       resources: tables.GlobalResources.map(mapResource),
       accounts: tables.UserAccounts.map(mapAccount),
-      subjectAccess: tables.UserGlobalSubjectAccess.map(mapSubjectAccess)
+      subjectAccess: tables.UserGlobalSubjectAccess.map(mapSubjectAccess),
+      globalResourceDriveRoot: mapGlobalResourceDriveRoot(driveRoot, permission.user)
     });
   } catch (error) {
     return managementError(error, env);
+  }
+}
+
+export async function savePlatformGlobalDriveRootEndpoint(request, env) {
+  const permission = await requirePlatformGlobalAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    let folderId = "";
+    try {
+      folderId = extractGoogleDriveFolderId(body.folderId || body.folderUrl || body.value);
+    } catch (error) {
+      throw clientError("Enter a valid Global Resources Google Drive folder URL or folder ID", 400);
+    }
+    const folder = await requireGlobalDriveItem(env, folderId, folderId, {
+      requireFolder: true,
+      allowRoot: true
+    }, 400);
+    const tables = await readManagementTables(env);
+    const existing = readGlobalResourceDriveRoot(tables.PlatformConfig);
+
+    if (existing.configured && existing.folderId === folderId) {
+      return json({
+        success: true,
+        message: "Global Resources Drive folder is already configured",
+        globalResourceDriveRoot: mapGlobalResourceDriveRoot(existing, permission.user, folder.name)
+      });
+    }
+
+    const outsideResources = [];
+    for (const resource of tables.GlobalResources) {
+      const fileId = extractDriveFileId(resource.ResourceLink);
+      if (!fileId) continue;
+      try {
+        await requireGlobalDriveItem(env, fileId, folderId, { requireFile: true }, 409);
+      } catch (error) {
+        outsideResources.push(String(resource.ResourceName || resource.ResourceID || "Resource"));
+      }
+    }
+    if (outsideResources.length) {
+      throw clientError(
+        `The new folder does not contain ${outsideResources.length} existing Drive-backed global resource${outsideResources.length === 1 ? "" : "s"}: ${outsideResources.slice(0, 3).join(", ")}`,
+        409
+      );
+    }
+
+    const timestamp = new Date().toISOString();
+    const record = {
+      ConfigKey: GLOBAL_RESOURCE_DRIVE_ROOT_KEY,
+      ConfigValue: folderId,
+      UpdatedDate: timestamp,
+      UpdatedByAccountID: permission.user.accountid,
+      UpdatedByAccountName: permission.user.username
+    };
+    const version = readGlobalCurriculumVersion(tables.PlatformConfig);
+    const auditRow = buildAuditRow(permission.user, {
+      action: existing.configured ? "UPDATE_GLOBAL_RESOURCE_DRIVE_ROOT" : "SET_GLOBAL_RESOURCE_DRIVE_ROOT",
+      recordType: "PLATFORM_CONFIG",
+      recordId: GLOBAL_RESOURCE_DRIVE_ROOT_KEY,
+      changedFields: ["ConfigValue"],
+      timestamp
+    });
+    await batchUpdateGoogleSheetValues(env, [
+      valueWrite(
+        "PlatformConfig",
+        existing.rowNumber || nextRowNumber(tables.PlatformConfig),
+        recordToRow(record, PLATFORM_SHEET_HEADERS.PlatformConfig)
+      ),
+      {
+        range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
+        majorDimension: "ROWS",
+        values: [[version.value + 1, timestamp, permission.user.accountid, permission.user.username]]
+      },
+      valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow)
+    ], { spreadsheetId: getPlatformSpreadsheetId(env) });
+
+    return json({
+      success: true,
+      message: existing.configured
+        ? "Global Resources Drive folder updated"
+        : "Global Resources Drive folder configured",
+      globalCurriculumVersion: version.value + 1,
+      globalResourceDriveRoot: mapGlobalResourceDriveRoot({
+        configured: true,
+        folderId,
+        rowNumber: existing.rowNumber || nextRowNumber(tables.PlatformConfig)
+      }, permission.user, folder.name)
+    });
+  } catch (error) {
+    return mutationError(error, env);
+  }
+}
+
+export async function browsePlatformGlobalDriveFolderEndpoint(request, env) {
+  const permission = await requireGlobalCurriculumAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const root = readGlobalResourceDriveRoot(await readPlatformSheet(env, "PlatformConfig"));
+    if (!root.configured) {
+      throw clientError("Configure the Global Resources Google Drive folder first", 409);
+    }
+    const folderId = clean(body.folderId || root.folderId);
+    const folder = await requireGlobalDriveItem(env, folderId, root.folderId, {
+      requireFolder: true,
+      allowRoot: true
+    }, 400);
+    const listing = await listGoogleDriveFolder(env, folderId, {
+      pageToken: clean(body.pageToken),
+      pageSize: 500
+    });
+    const breadcrumbs = await buildDriveBreadcrumbs(env, folder, root.folderId);
+    const items = (Array.isArray(listing.files) ? listing.files : []).map(file => ({
+      id: clean(file.id),
+      name: clean(file.name),
+      mimeType: clean(file.mimeType),
+      size: normalizeSize(file.size),
+      modifiedTime: clean(file.modifiedTime),
+      isFolder: file.mimeType === GOOGLE_DRIVE_FOLDER_MIME,
+      isGoogleNative: isGoogleDriveNativeMimeType(file.mimeType),
+      canDownload: file.capabilities?.canDownload !== false,
+      format: deriveFileFormat(file.name, file.mimeType),
+      supportedTypes: getSupportedResourceTypes(file)
+    })).filter(item => item.id && item.name);
+
+    items.sort((left, right) => {
+      if (left.isFolder !== right.isFolder) return left.isFolder ? -1 : 1;
+      return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" });
+    });
+
+    return json({
+      success: true,
+      rootFolderId: root.folderId,
+      folder: { id: folder.id, name: folder.name || "Global Resources" },
+      breadcrumbs,
+      items,
+      nextPageToken: clean(listing.nextPageToken),
+      incompleteSearch: listing.incompleteSearch === true
+    });
+  } catch (error) {
+    return mutationError(error, env);
+  }
+}
+
+export async function createPlatformGlobalDriveAccessEndpoint(request, env) {
+  const user = await getAuthUser(request, env);
+  if (!user || user.type !== "account") {
+    return json({ success: false, error: "Unauthorized" }, 401);
+  }
+
+  try {
+    const body = await request.json();
+    const resourceId = clean(body.resourceId || body.resourceid);
+    const tables = await readManagementTables(env);
+    const resource = uniqueRecord(tables.GlobalResources, "ResourceID", resourceId, "Global resource");
+    if (!isActivePlatformValue(resource.Active)) {
+      throw clientError("Global resource is inactive", 403);
+    }
+    const subject = uniqueRecord(tables.GlobalSubjectList, "SubjectID", resource.SubjectID, "Global subject");
+    if (!isActivePlatformValue(subject.Active)) {
+      throw clientError("Global subject is inactive", 403);
+    }
+    if (clean(resource.ModuleID)) {
+      const module = uniqueRecord(tables.GlobalModuleList, "ModuleID", resource.ModuleID, "Global module");
+      if (!isActivePlatformValue(module.Active)) throw clientError("Global module is inactive", 403);
+    }
+    if (clean(resource.TaskID)) {
+      const task = uniqueRecord(tables.GlobalTaskList, "TaskID", resource.TaskID, "Global task");
+      if (!isActivePlatformValue(task.Active)) throw clientError("Global task is inactive", 403);
+    }
+
+    const authority = normalizePlatformIdentifier(user.role);
+    if (!["ADMIN", "GLOBAL_ADMIN"].includes(authority)) {
+      const accessMatches = tables.UserGlobalSubjectAccess.filter(access => (
+        normalizePlatformIdentifier(access.AccountID) === normalizePlatformIdentifier(user.accountid) &&
+        normalizePlatformIdentifier(access.SubjectID) === normalizePlatformIdentifier(resource.SubjectID) &&
+        isActivePlatformValue(access.Active)
+      ));
+      if (accessMatches.length !== 1) {
+        throw clientError("An active global-subject subscription is required", 403);
+      }
+    }
+
+    const fileId = extractDriveFileId(resource.ResourceLink);
+    if (!fileId) throw clientError("Global resource is not linked to the protected Drive Library", 409);
+    const root = readGlobalResourceDriveRoot(tables.PlatformConfig);
+    if (!root.configured) throw clientError("Global Resources Drive folder is not configured", 409);
+    const file = await requireGlobalDriveItem(env, fileId, root.folderId, { requireFile: true }, 409);
+    const config = getResourceConfig(resource.ResourceType);
+    const fileValidation = validateFileForResourceType(file, config);
+    if (!fileValidation.ok) throw clientError(fileValidation.error, 409);
+
+    const accessToken = await createDriveAccessToken({
+      fileId: file.id,
+      resourceType: `GLOBAL_${normalizePlatformIdentifier(resource.ResourceType)}`,
+      resourceId: String(resource.ResourceID || "").trim(),
+      filename: file.name,
+      mimeType: file.mimeType
+    }, env);
+    const expiresIn = getDriveAccessTtlSeconds(env);
+    const origin = new URL(request.url).origin;
+    return json({
+      success: true,
+      url: `${origin}/api/library/drive/file/${encodeURIComponent(file.id)}?access=${encodeURIComponent(accessToken)}`,
+      expiresIn,
+      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+      filename: file.name,
+      mimeType: file.mimeType,
+      format: deriveFileFormat(file.name, file.mimeType)
+    });
+  } catch (error) {
+    return mutationError(error, env);
   }
 }
 
@@ -310,24 +545,34 @@ export async function savePlatformGlobalResourceEndpoint(request, env) {
     const subjectId = clean(body.subjectId || body.subjectid);
     const moduleId = clean(body.moduleId || body.moduleid);
     const taskId = clean(body.taskId || body.taskid);
+    const fileId = clean(body.fileId || body.fileid);
     const resourceName = requireText(body.resourceName || body.resourcename, "Resource name", MAX_NAME_LENGTH);
     const resourceType = normalizePlatformIdentifier(body.resourceType || body.resourcetype);
-    const resourceFormat = optionalText(body.resourceFormat || body.resourceformat, "Resource format", MAX_FORMAT_LENGTH);
     const resourceDescription = optionalText(
       body.resourceDescription || body.resourcedescription,
       "Resource description",
       MAX_DESCRIPTION_LENGTH
     );
-    const resourceLink = requireText(body.resourceLink || body.resourcelink, "Resource link", MAX_LINK_LENGTH);
     const requestedActive = readBoolean(body.active, resourceId ? null : true);
     if (!GLOBAL_RESOURCE_TYPES.has(resourceType)) {
       throw clientError("Resource type must be EBOOK, PRINTABLE, AUDIO, VIDEO, or OTHER", 400);
     }
-    if (!isHttpsUrl(resourceLink)) {
-      throw clientError("Global resource link must be a complete HTTPS URL", 400);
-    }
 
     const tables = await readManagementTables(env);
+    const existing = resourceId
+      ? uniqueRecord(tables.GlobalResources, "ResourceID", resourceId, "Global resource")
+      : null;
+    if (!existing && !fileId) {
+      throw clientError("Select a file from the Global Resources Google Drive folder", 400);
+    }
+    if (
+      existing &&
+      normalizePlatformIdentifier(existing.ResourceType) !== resourceType &&
+      !fileId
+    ) {
+      throw clientError("Select the Google Drive file again when changing resource type", 400);
+    }
+
     const subject = uniqueRecord(tables.GlobalSubjectList, "SubjectID", subjectId, "Global subject");
     if (requestedActive && !isActivePlatformValue(subject.Active)) {
       throw clientError("An active resource requires an active global subject", 409);
@@ -338,6 +583,9 @@ export async function savePlatformGlobalResourceEndpoint(request, env) {
       if (normalizePlatformIdentifier(module.SubjectID) !== normalizePlatformIdentifier(subjectId)) {
         throw clientError("The selected global module does not belong to the selected subject", 409);
       }
+      if (requestedActive && !isActivePlatformValue(module.Active)) {
+        throw clientError("An active resource requires an active global module", 409);
+      }
     }
     if (taskId) {
       const task = uniqueRecord(tables.GlobalTaskList, "TaskID", taskId, "Global task");
@@ -347,11 +595,30 @@ export async function savePlatformGlobalResourceEndpoint(request, env) {
       if (moduleId && normalizePlatformIdentifier(task.ModuleID) !== normalizePlatformIdentifier(moduleId)) {
         throw clientError("The selected global task does not belong to the selected module", 409);
       }
+      if (requestedActive && !isActivePlatformValue(task.Active)) {
+        throw clientError("An active resource requires an active global task", 409);
+      }
     }
-    const existing = resourceId
-      ? uniqueRecord(tables.GlobalResources, "ResourceID", resourceId, "Global resource")
-      : null;
     assertNoDuplicateResource(tables.GlobalResources, subjectId, moduleId, taskId, resourceName, existing?.ResourceID);
+
+    let resourceFormat = clean(existing?.ResourceFormat);
+    let resourceLink = clean(existing?.ResourceLink);
+    if (fileId) {
+      const root = readGlobalResourceDriveRoot(tables.PlatformConfig);
+      if (!root.configured) {
+        throw clientError("Configure the Global Resources Google Drive folder first", 409);
+      }
+      const file = await requireGlobalDriveItem(env, fileId, root.folderId, { requireFile: true }, 400);
+      const resourceConfig = getResourceConfig(resourceType);
+      const fileValidation = validateFileForResourceType(file, resourceConfig);
+      if (!fileValidation.ok) throw clientError(fileValidation.error, 400);
+      assertNoDuplicateDriveResource(tables.GlobalResources, file.id, existing?.ResourceID);
+      resourceFormat = deriveFileFormat(file.name, file.mimeType);
+      resourceLink = buildGlobalDriveResourceLink(request, file.id);
+    }
+    if (!resourceLink) {
+      throw clientError("Select a file from the Global Resources Google Drive folder", 400);
+    }
 
     const timestamp = new Date().toISOString();
     const record = existing
@@ -515,6 +782,26 @@ async function requireGlobalCurriculumAdmin(request, env) {
   };
 }
 
+async function requirePlatformGlobalAdmin(request, env) {
+  const user = await getAuthUser(request, env);
+  if (!user) {
+    return { ok: false, response: json({ success: false, error: "Unauthorized" }, 401) };
+  }
+  const authority = normalizePlatformIdentifier(user.role);
+  if (user.type !== "account" || authority !== "GLOBAL_ADMIN") {
+    return { ok: false, response: json({ success: false, error: "GLOBAL_ADMIN authority is required" }, 403) };
+  }
+  return {
+    ok: true,
+    user: {
+      accountid: clean(user.accountid),
+      username: clean(user.username || "Global Admin"),
+      role: authority,
+      courseid: clean(user.courseid)
+    }
+  };
+}
+
 async function readManagementTables(env) {
   const names = [
     "UserAccounts",
@@ -600,6 +887,37 @@ function readGlobalCurriculumVersion(configRows) {
   return { value, rowNumber: matches[0]._rowNumber };
 }
 
+function readGlobalResourceDriveRoot(configRows) {
+  const matches = configRows.filter(record => (
+    normalizePlatformIdentifier(record.ConfigKey) === "GLOBALRESOURCEDRIVEROOTFOLDERID"
+  ));
+  if (matches.length > 1) {
+    throw new Error("PlatformConfig GlobalResourceDriveRootFolderID must resolve at most once");
+  }
+  if (!matches.length) return { configured: false, folderId: "", rowNumber: 0 };
+
+  const folderId = clean(matches[0].ConfigValue);
+  if (folderId && !/^[A-Za-z0-9_-]{10,128}$/.test(folderId)) {
+    throw new Error("PlatformConfig GlobalResourceDriveRootFolderID is invalid");
+  }
+  return {
+    configured: Boolean(folderId),
+    folderId,
+    rowNumber: Number(matches[0]._rowNumber) || 0
+  };
+}
+
+function mapGlobalResourceDriveRoot(root, user, folderName = "") {
+  const configured = root?.configured === true;
+  return {
+    configured,
+    folderid: configured ? clean(root.folderId) : "",
+    folderurl: configured ? buildGoogleDriveFolderUrl(root.folderId) : "",
+    foldername: clean(folderName),
+    canconfigure: normalizePlatformIdentifier(user?.role) === "GLOBAL_ADMIN"
+  };
+}
+
 function uniqueRecord(records, key, value, label) {
   const normalized = normalizePlatformIdentifier(value);
   if (!normalized) throw clientError(`${label} ID is required`, 400);
@@ -650,6 +968,21 @@ function assertNoDuplicateResource(records, subjectId, moduleId, taskId, name, e
     normalizePlatformIdentifier(record.ResourceID) !== normalizePlatformIdentifier(excludedId)
   ));
   if (duplicate) throw clientError("Global resource already exists in this curriculum branch", 409);
+}
+
+function assertNoDuplicateDriveResource(records, fileId, excludedId) {
+  const normalizedFileId = clean(fileId);
+  const normalizedExcluded = normalizePlatformIdentifier(excludedId);
+  const duplicate = records.find(record => (
+    extractDriveFileId(record.ResourceLink) === normalizedFileId &&
+    normalizePlatformIdentifier(record.ResourceID) !== normalizedExcluded
+  ));
+  if (duplicate) {
+    throw clientError(
+      `This Google Drive file is already a global resource${clean(duplicate.ResourceName) ? ` as “${clean(duplicate.ResourceName)}”` : ""}`,
+      409
+    );
+  }
 }
 
 function primaryId(record) {
@@ -725,6 +1058,7 @@ function mapTask(record) {
 }
 
 function mapResource(record) {
+  const resourceLink = String(record.ResourceLink || "").trim();
   return {
     resourceid: String(record.ResourceID || "").trim(),
     subjectid: String(record.SubjectID || "").trim(),
@@ -734,7 +1068,8 @@ function mapResource(record) {
     resourcetype: normalizePlatformIdentifier(record.ResourceType),
     resourceformat: String(record.ResourceFormat || "").trim(),
     resourcedescription: String(record.ResourceDescription || "").trim(),
-    resourcelink: String(record.ResourceLink || "").trim(),
+    resourcelink: resourceLink,
+    fileid: extractDriveFileId(resourceLink),
     active: isActivePlatformValue(record.Active),
     scope: "GLOBAL"
   };
@@ -786,20 +1121,34 @@ function readPositiveInteger(value, label) {
   return number;
 }
 
-function isHttpsUrl(value) {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch (error) {
-    return false;
-  }
-}
-
 function normalizeName(value) {
   return clean(value).replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
 function clean(value) {
   return String(value ?? "").trim();
+}
+
+function normalizeSize(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function buildGlobalDriveResourceLink(request, fileId) {
+  return `${new URL(request.url).origin}/api/library/drive/file/${encodeURIComponent(fileId)}`;
+}
+
+async function requireGlobalDriveItem(env, itemId, rootFolderId, options, status) {
+  try {
+    return await requireItemInsideRoot(env, itemId, rootFolderId, {
+      ...options,
+      rootLabel: "Global Resources"
+    });
+  } catch (error) {
+    const message = String(error?.message || "The selected Google Drive item is unavailable");
+    if (message.startsWith("Google Drive API error")) throw error;
+    throw clientError(message, status || 400);
+  }
 }
 
 function createPlatformId(prefix) {

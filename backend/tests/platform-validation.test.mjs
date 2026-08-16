@@ -113,12 +113,25 @@ try {
     activeGlobalSubjectAccessCount: 0,
     globalResourceCount: 0,
     globalAdminCount: 0,
+    globalResourceDriveConfigured: false,
     readyForAccountMigration: true,
     readyForUnifiedLogin: false
   });
   const serialized = JSON.stringify(result);
   assert.equal(serialized.includes("central-platform-sheet"), false);
   assert.equal(serialized.includes("reboot-course-sheet"), false);
+
+  tables = structuredClone(baseTables);
+  tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", "GLOBAL_ROOT_FOLDER_123"]);
+  const configuredDrive = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(configuredDrive.status, 200);
+  assert.equal((await configuredDrive.json()).globalResourceDriveConfigured, true);
+
+  tables = structuredClone(baseTables);
+  tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", "bad folder/id"]);
+  const invalidDrive = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(invalidDrive.status, 503);
+  assert.match((await invalidDrive.json()).detail, /GlobalResourceDriveRootFolderID is invalid/);
 
   tables = structuredClone(baseTables);
   tables.CourseRegistry[0][0] = "CourseId";
@@ -176,7 +189,7 @@ try {
   assert.equal(subscriptionResult.globalResourceCount, 1);
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 60);
+  assert.equal(sheetsCalls.length, 80);
   assert.equal(sheetsCalls.some(call => decodeURIComponent(call.url.pathname).includes("TeacherScheduleIndex")), false);
 } finally {
   globalThis.fetch = originalFetch;

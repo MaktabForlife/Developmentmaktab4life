@@ -13,9 +13,9 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.6\.3 keeps secure course routing active while correcting PIN retry/);
+assert.match(html, /V102\.7 keeps secure account and course routing active while adding protected global resources/);
 assert.match(html, /Menu visibility and Senior Teacher display remain active/);
-assert.match(html, /m4l-account\.js\?v=102\.6\.3/);
+assert.match(html, /m4l-account\.js\?v=102\.7/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
@@ -47,4 +47,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.6.3 unified account UI compatibility tests passed.");
+console.log("V102.7 unified account UI compatibility tests passed.");

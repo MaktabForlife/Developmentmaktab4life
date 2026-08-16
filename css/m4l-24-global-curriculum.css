@@ -1,4 +1,4 @@
-/* M4L V102.6 - ADMIN/GLOBAL_ADMIN central curriculum and subscription management. */
+/* M4L V102.7 - Global curriculum, subscriptions and protected Drive resources. */
 
 body:has(#global-curriculum-screen.active) .app-shell {
   width: min(100%, 1440px);
@@ -152,6 +152,94 @@ body:has(#global-curriculum-screen.active) .app-shell {
 
 .global-curriculum-content {
   width: 100%;
+}
+
+.global-curriculum-drive-root {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.2fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--border, #e4dadd);
+  border-left: 5px solid #9a719e;
+  border-radius: 12px;
+  background: #faf7fb;
+}
+
+.global-curriculum-drive-root.is-configured {
+  border-left-color: #398155;
+  background: #f3faf5;
+}
+
+.global-curriculum-drive-root > div,
+.global-curriculum-drive-root > label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.global-curriculum-drive-root span {
+  color: var(--text-muted, #70736c);
+  font-size: 0.81rem;
+  line-height: 1.4;
+}
+
+.global-curriculum-drive-root input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e4dadd);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text, #2f312e);
+  font: inherit;
+}
+
+.global-curriculum-drive-root > button,
+.global-curriculum-legacy-file button {
+  width: auto;
+  min-height: 42px;
+  padding: 8px 13px;
+  border: 1px solid #7b3e83;
+  border-radius: 9px;
+  background: #7b3e83;
+  color: #fff;
+  font: inherit;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.global-curriculum-drive-root-authority {
+  align-self: center;
+  justify-self: end;
+}
+
+.global-curriculum-legacy-file {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid #d7b86b;
+  border-radius: 10px;
+  background: #fff9eb;
+}
+
+.global-curriculum-legacy-file span {
+  color: var(--text-muted, #70736c);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.global-curriculum-legacy-file button {
+  justify-self: start;
+}
+
+.global-curriculum-drive-browser {
+  display: grid;
+  gap: 13px;
+  width: min(100%, 900px);
+  margin: 0 auto;
 }
 
 .global-curriculum-management-grid {
@@ -364,6 +452,17 @@ body:has(#global-curriculum-screen.active) .app-shell {
 
   .global-curriculum-management-grid {
     grid-template-columns: 1fr;
+  }
+
+  .global-curriculum-drive-root {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .global-curriculum-drive-root > button,
+  .global-curriculum-drive-root-authority {
+    width: 100%;
+    justify-self: stretch;
   }
 
   .global-curriculum-status-band {

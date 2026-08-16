@@ -1,10 +1,10 @@
-V102.6.3 — GitHub update from deployed V102.6.2
+V102.7 — GitHub update from deployed V102.6.3
 
 Package:
-- Rebootyourmaktab-V102.6.3-GITHUB-UPDATE-FROM-V102.6.2.zip
+- Rebootyourmaktab-V102.7-GITHUB-UPDATE-FROM-V102.6.3.zip
 
 Apply to:
-- Deployed V102.6.2 development repository only.
+- Deployed V102.6.3 development repository only.
 - This is a modified-files overlay, not a full repository.
 
 Files included:
@@ -15,23 +15,42 @@ Files included:
 - RELEASE-NOTES.md
 - UPDATE-TODO.md
 - account/index.html
+- admin/index.html
 - backend/package.json
+- backend/src/router.js
+- backend/src/routes/drive-library.js
+- backend/src/routes/platform-global-management.js
+- backend/src/routes/platform-validation.js
 - backend/src/worker.js
 - backend/tests/account-ui.test.mjs
+- backend/tests/admin-management-ui.test.mjs
+- backend/tests/platform-global-management-ui.test.mjs
+- backend/tests/platform-global-management.test.mjs
+- backend/tests/platform-validation-ui.test.mjs
+- backend/tests/platform-validation.test.mjs
 - backend/tests/router.test.mjs
-- docs/V102.6.3-PIN-RETRY-CORRECTION.md (new)
+- backend/tests/student-task-assignment-ui.test.mjs
+- backend/tests/timetable-teacher-ui.test.mjs
+- css/m4l-24-global-curriculum.css
+- docs/V102-PlatformConfig-template.csv
+- docs/V102.7-GLOBAL-RESOURCES-DRIVE.md (new)
 - js/m4l-account.js
+- js/m4l-global-curriculum.js
+- js/m4l-system-settings.js
 - js/version.json
+- styles.css
 - version.json
 
 Deleted files:
 - None.
 
 Data/config boundary:
-- No Platform Sheet or course Sheet changes.
-- PlatformConfig!B3 remains 102.0.4.
-- PlatformConfig!B4 is unchanged.
+- PlatformConfig schema remains 102.0.4.
+- Adds ConfigKey GlobalResourceDriveRootFolderID; the application creates or
+  updates this row when GLOBAL_ADMIN saves the folder.
+- First folder configuration and successful folder changes increment
+  GlobalCurriculumVersion; an unchanged save does not.
+- Global resource mutations continue to increment GlobalCurriculumVersion.
 - No account migration rerun.
-- No Worker variable, secret, binding or Apps Script change.
-- No authorization, role, rate-limiter or session-policy change.
-- The global-resource Google Drive browser remains a separate future release.
+- No course Sheet, Worker variable, secret, binding or Apps Script change.
+- Global learner-Library merging, billing and expiry remain deferred.

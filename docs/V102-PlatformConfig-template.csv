@@ -2,3 +2,4 @@ ConfigKey,ConfigValue,UpdatedDate,UpdatedByAccountID,UpdatedByAccountName
 AccountLoginBaseUrl,,,,
 PlatformSchemaVersion,102.0.4,,,
 GlobalCurriculumVersion,1,,,
+GlobalResourceDriveRootFolderID,,,,
