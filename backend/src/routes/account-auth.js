@@ -24,7 +24,7 @@ import {
   normalizePlatformIdentifier
 } from "../lib/platform-schema.js";
 
-const PLATFORM_SCHEMA_VERSION = "102.0.3";
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4"]);
 const LOGIN_RATE_LIMIT_SECONDS = 60;
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 
@@ -587,8 +587,9 @@ function assertAccountSchemaVersion(configRows) {
   const matches = configRows.filter(row => (
     normalizePlatformIdentifier(row.ConfigKey) === "PLATFORMSCHEMAVERSION"
   ));
-  if (matches.length !== 1 || String(matches[0].ConfigValue || "").trim() !== PLATFORM_SCHEMA_VERSION) {
-    throw new Error(`PlatformConfig PlatformSchemaVersion must be ${PLATFORM_SCHEMA_VERSION}`);
+  const schemaVersion = String(matches[0]?.ConfigValue || "").trim();
+  if (matches.length !== 1 || !SUPPORTED_PLATFORM_SCHEMA_VERSIONS.has(schemaVersion)) {
+    throw new Error("PlatformConfig PlatformSchemaVersion is not supported by this account release");
   }
 }
 

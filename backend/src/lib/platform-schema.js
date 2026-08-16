@@ -1,4 +1,4 @@
-/* M4L V102.2 - Authoritative central Platform Sheet schema and context rules. */
+/* M4L V102.5 - Authoritative central identity, access and global-content schema. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -54,6 +54,18 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "ModifiedDate",
     "CourseRecordID"
   ]),
+  UserGlobalSubjectAccess: Object.freeze([
+    "SubjectAccessID",
+    "AccountID",
+    "SubjectID",
+    "Active",
+    "CreatedDate",
+    "CreatedByAccountID",
+    "CreatedByAccountName",
+    "ModifiedByAccountID",
+    "ModifiedByAccountName",
+    "ModifiedDate"
+  ]),
   GlobalSubjectList: Object.freeze([
     "SubjectID",
     "SubjectName",
@@ -91,6 +103,24 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "ModifiedByAccountName",
     "ModifiedDate"
   ]),
+  GlobalResources: Object.freeze([
+    "ResourceID",
+    "SubjectID",
+    "ModuleID",
+    "TaskID",
+    "ResourceName",
+    "ResourceType",
+    "ResourceFormat",
+    "ResourceDescription",
+    "ResourceLink",
+    "Active",
+    "CreatedDate",
+    "CreatedByAccountID",
+    "CreatedByAccountName",
+    "ModifiedByAccountID",
+    "ModifiedByAccountName",
+    "ModifiedDate"
+  ]),
   PlatformConfig: Object.freeze([
     "ConfigKey",
     "ConfigValue",
@@ -109,19 +139,6 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "RecordType",
     "RecordID",
     "ChangedFields"
-  ]),
-  TeacherScheduleIndex: Object.freeze([
-    "IndexEntryID",
-    "SourceSessionID",
-    "CourseID",
-    "TeacherAccountID",
-    "DayOfWeek",
-    "StartTime",
-    "EndTime",
-    "TimeZone",
-    "Active",
-    "SourceModifiedDate",
-    "IndexedDate"
   ])
 });
 

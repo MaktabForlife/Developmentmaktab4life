@@ -1,4 +1,4 @@
-/* M4L V102.4 - central account operational navigation and dynamic course routing.
+/* M4L V102.5 - subscription access schema with existing course routing retained.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.4"
+          version: "102.5"
         });
       }
 

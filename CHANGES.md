@@ -1,3 +1,31 @@
+# V102.5 — Subscription access schema
+
+- Retains `UserCourseAccess` as the single source of course access and treats
+  `Role=STUDENT` as a course subscription.
+- Adds `UserGlobalSubjectAccess` for direct global-subject subscriptions rather
+  than duplicating course access in a general subscriptions table.
+- Adds `GlobalResources` for resources owned by standalone global curriculum;
+  existing course resources remain course-local.
+- Validates global curriculum IDs and subject/module/task/resource relationships
+  before reporting the Platform Sheet ready.
+- Removes `TeacherScheduleIndex` from the required schema because subscriptions
+  have no timetable or cross-course conflict restrictions.
+- Adds a fail-closed active global-subject access helper for later learner
+  delivery.
+- Moves Platform schema to `102.0.4`, with temporary account/migration
+  compatibility for `102.0.3` during the Worker-first upgrade.
+- Updates the Admin validation summary with the global-subject subscription
+  count and clarifies that the count is for ten required tabs.
+- Adds two exact CSV templates and a complete migration/rollback guide.
+- Preserves V102.4 operational routing and adds no billing or learner-content
+  UI in this release.
+- Bumps application and Worker metadata to `102.5`; all 42 tests pass.
+
+Development only: production remains stable at V101.1 pending the final
+consolidated and rehearsed production merge.
+
+---
+
 # V102.4 — Unified account operational routing
 
 - Connects the V102.3 central account session to the existing Admin and Student

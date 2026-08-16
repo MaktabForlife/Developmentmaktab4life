@@ -1,13 +1,14 @@
-V102.4 — GitHub update from verified V102.3
+V102.5 — GitHub update from verified V102.4
 
 Package
-- Rebootyourmaktab-V102.4-GITHUB-UPDATE-FROM-V102.3.zip
+- Rebootyourmaktab-V102.5-GITHUB-UPDATE-FROM-V102.4.zip
 
 Verified starting source
-- Rebootyourmaktab-development (1).zip
-- Exact V102.3 baseline; all 39 baseline test files passed before modification.
+- Exact V102.4 tree reconstructed from the reviewed V102.3 repository plus the
+  verified V102.4 incremental package.
+- All 41 V102.4 test files passed before modification.
 
-Add or replace exactly these paths
+Add or replace these paths
 
 Release instructions and metadata
 - CHANGED-FILES.txt
@@ -18,43 +19,44 @@ Release instructions and metadata
 - UPDATE-TODO.md
 - version.json
 - js/version.json
-- docs/V102.4-OPERATIONAL-ACCOUNT-ROUTING.md (new)
+- docs/V102.5-SUBSCRIPTION-ACCESS-SCHEMA.md (new)
+- docs/V102-PLATFORM-SHEET-MIGRATION.md
+- docs/V102-PlatformConfig-template.csv
+- docs/V102-UserGlobalSubjectAccess-template.csv (new)
+- docs/V102-GlobalResources-template.csv (new)
 
-Unified account and operational frontend
+Platform schema and validation
+- backend/package.json
+- backend/src/lib/platform-schema.js
+- backend/src/lib/platform-sheet.js
+- backend/src/routes/account-auth.js
+- backend/src/routes/platform-account-migration.js
+- backend/src/routes/platform-validation.js
+- backend/src/worker.js
+
+Validation UI
 - account/index.html
 - admin/index.html
-- student/index.html
-- index.html
-- app.js
-- js/m4l-account.js
-- js/m4l-auth.js
-- js/m4l-cache.js
-- js/m4l-progress.js
-- js/m4l-shell.js
-- js/m4l-timetable.js
-
-Worker routing and account handoff
-- backend/package.json
-- backend/src/lib/auth.js
-- backend/src/lib/course-routing.js (new)
-- backend/src/lib/request-context.js (new)
-- backend/src/router.js
-- backend/src/routes/account-auth.js
-- backend/src/worker.js
+- js/m4l-system-settings.js
 
 Regression tests
 - backend/tests/account-auth.test.mjs
 - backend/tests/account-ui.test.mjs
-- backend/tests/course-routing.test.mjs (new)
-- backend/tests/group-zero-access.test.mjs
+- backend/tests/platform-sheet.test.mjs
+- backend/tests/platform-validation-ui.test.mjs
+- backend/tests/platform-validation.test.mjs
 - backend/tests/router.test.mjs
-- backend/tests/timetable-teacher-ui.test.mjs
-- backend/tests/unified-workspace-ui.test.mjs (new)
+- backend/tests/subscription-access-schema.test.mjs (new)
+
+Delete this repository path
+- docs/V102-TeacherScheduleIndex-template.csv
 
 Important
-- Apply this package over V102.3. It is not a full repository.
-- Do not delete repository files that are absent from the package.
-- Do not rerun central account migration.
-- No Sheet, Worker setting, secret, binding or Apps Script change is required.
-- Deploy the Worker before the Pages frontend.
-- Follow UPDATE-TODO.md from beginning to end.
+- Apply this package over V102.4 development only.
+- Production remains stable at V101.1 and must not receive this ZIP.
+- Follow UPDATE-TODO.md for the Worker-first schema transition.
+- Create the two empty Platform tabs before deployment, but change
+  PlatformConfig!B3 only after the V102.5 Worker is live.
+- Do not rerun account migration or populate the new tabs.
+- Do not delete the live TeacherScheduleIndex Sheet tab during rollback
+  verification; only the obsolete repository CSV template is deleted.

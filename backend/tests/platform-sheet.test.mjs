@@ -7,6 +7,7 @@ import {
 } from "../src/lib/platform-schema.js";
 import {
   assertActiveCourseRoleMembership,
+  assertActiveGlobalSubjectAccess,
   assertCourseContextAccess,
   getPlatformSpreadsheetId,
   readPlatformSheet,
@@ -16,22 +17,27 @@ import {
 } from "../src/lib/platform-sheet.js";
 
 assert.deepEqual(AUTHORITY_ORDER, ["GLOBAL_ADMIN", "ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
-assert.equal(Object.keys(PLATFORM_SHEET_HEADERS).length, 9);
+assert.equal(Object.keys(PLATFORM_SHEET_HEADERS).length, 10);
 assert.deepEqual(Object.keys(PLATFORM_SHEET_HEADERS), [
   "CourseRegistry",
   "UserAccounts",
   "UserCourseAccess",
+  "UserGlobalSubjectAccess",
   "GlobalSubjectList",
   "GlobalModuleList",
   "GlobalTaskList",
+  "GlobalResources",
   "PlatformConfig",
-  "PlatformAuditLog",
-  "TeacherScheduleIndex"
+  "PlatformAuditLog"
 ]);
 assert.equal(PLATFORM_SHEET_HEADERS.UserAccounts.at(-1), "PlatformRole");
 assert.equal(PLATFORM_SHEET_HEADERS.UserAccounts.length, 14);
 assert.equal(PLATFORM_SHEET_HEADERS.UserCourseAccess.at(-1), "CourseRecordID");
 assert.equal(PLATFORM_SHEET_HEADERS.UserCourseAccess.length, 14);
+assert.equal(PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess[0], "SubjectAccessID");
+assert.equal(PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess.length, 10);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalResources.at(-1), "ModifiedDate");
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalResources.length, 16);
 
 const courseHeaders = PLATFORM_SHEET_HEADERS.CourseRegistry;
 const courseRows = [
@@ -157,6 +163,23 @@ const membership = assertActiveCourseRoleMembership([
   access("ACCESS2", "ACCOUNT1", "COURSE2", "ADMIN", true, "")
 ], "account1", "course2", "admin");
 assert.equal(membership.accessId, "ACCESS2");
+const subjectAccess = assertActiveGlobalSubjectAccess([
+  {
+    SubjectAccessID: "GSACCESS1",
+    AccountID: "ACCOUNT1",
+    SubjectID: "GSUBJ1",
+    Active: true
+  }
+], "account1", "gsubj1");
+assert.deepEqual(subjectAccess, {
+  subjectAccessId: "GSACCESS1",
+  accountId: "ACCOUNT1",
+  subjectId: "GSUBJ1"
+});
+assert.throws(
+  () => assertActiveGlobalSubjectAccess([], "ACCOUNT1", "GSUBJ1"),
+  /did not resolve exactly once/
+);
 assert.deepEqual(
   selectAutomaticAccountContext(
     { AccountID: "ACCOUNT1", Active: true, PlatformRole: "" },

@@ -36,7 +36,7 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.3"],
+  ["PlatformSchemaVersion", "102.0.4"],
   ["GlobalCurriculumVersion", 1]
 ];
 
@@ -90,23 +90,28 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.3",
+    platformSchemaVersion: "102.0.4",
     globalCurriculumVersion: 1,
-    tabCount: 9,
+    tabCount: 10,
     rowCounts: {
       CourseRegistry: 1,
       UserAccounts: 0,
       UserCourseAccess: 0,
+      UserGlobalSubjectAccess: 0,
       GlobalSubjectList: 0,
       GlobalModuleList: 0,
       GlobalTaskList: 0,
+      GlobalResources: 0,
       PlatformConfig: 3,
-      PlatformAuditLog: 0,
-      TeacherScheduleIndex: 0
+      PlatformAuditLog: 0
     },
     activeCourseCount: 1,
     accountCount: 0,
     courseAccessCount: 0,
+    globalSubjectCount: 0,
+    globalSubjectAccessCount: 0,
+    activeGlobalSubjectAccessCount: 0,
+    globalResourceCount: 0,
     globalAdminCount: 0,
     readyForAccountMigration: true,
     readyForUnifiedLogin: false
@@ -138,8 +143,41 @@ try {
   assert.equal(missingCourseRecord.status, 503);
   assert.match((await missingCourseRecord.json()).detail, /requires CourseRecordID/);
 
+  tables = structuredClone(baseTables);
+  tables.UserAccounts.push([
+    "ACCOUNT1", "Subscriber", "SUBSCRIBER1", false, "", true
+  ]);
+  tables.UserGlobalSubjectAccess.push([
+    "GSACCESS1", "ACCOUNT1", "GSUBJ-MISSING", true
+  ]);
+  const badGlobalSubjectAccess = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(badGlobalSubjectAccess.status, 503);
+  assert.match((await badGlobalSubjectAccess.json()).detail, /invalid global SubjectID/);
+
+  tables = structuredClone(baseTables);
+  tables.UserAccounts.push([
+    "ACCOUNT1", "Subscriber", "SUBSCRIBER1", false, "", true
+  ]);
+  tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalModuleList.push(["GMOD1", "GSUBJ1", "Module 1", 1, true]);
+  tables.GlobalTaskList.push(["GTASK1", "GSUBJ1", "GMOD1", "Task 1", true]);
+  tables.GlobalResources.push([
+    "GRES1", "GSUBJ1", "GMOD1", "GTASK1", "Lesson PDF", "EBOOK", "PDF", "", "https://example.test/lesson.pdf", true
+  ]);
+  tables.UserGlobalSubjectAccess.push([
+    "GSACCESS1", "ACCOUNT1", "GSUBJ1", true
+  ]);
+  const validSubscriptionSchema = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(validSubscriptionSchema.status, 200);
+  const subscriptionResult = await validSubscriptionSchema.json();
+  assert.equal(subscriptionResult.globalSubjectCount, 1);
+  assert.equal(subscriptionResult.globalSubjectAccessCount, 1);
+  assert.equal(subscriptionResult.activeGlobalSubjectAccessCount, 1);
+  assert.equal(subscriptionResult.globalResourceCount, 1);
+
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 36);
+  assert.equal(sheetsCalls.length, 60);
+  assert.equal(sheetsCalls.some(call => decodeURIComponent(call.url.pathname).includes("TeacherScheduleIndex")), false);
 } finally {
   globalThis.fetch = originalFetch;
 }

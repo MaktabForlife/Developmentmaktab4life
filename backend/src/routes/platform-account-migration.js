@@ -15,7 +15,7 @@ import {
   normalizePlatformIdentifier
 } from "../lib/platform-schema.js";
 
-const PLATFORM_SCHEMA_VERSION = "102.0.3";
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4"]);
 const VALID_COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const LEGACY_PIN_HASH_PATTERN = /^[a-f0-9]{64}$/i;
 const SALTED_PIN_HASH_PATTERN = /^v2\$pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[a-f0-9]{64}$/i;
@@ -629,8 +629,9 @@ function assertMigrationSchemaVersion(configRows) {
   const matches = configRows.filter(row => (
     normalizePlatformIdentifier(row.ConfigKey) === "PLATFORMSCHEMAVERSION"
   ));
-  if (matches.length !== 1 || String(matches[0].ConfigValue || "").trim() !== PLATFORM_SCHEMA_VERSION) {
-    throw new Error(`PlatformConfig PlatformSchemaVersion must be ${PLATFORM_SCHEMA_VERSION}`);
+  const schemaVersion = String(matches[0]?.ConfigValue || "").trim();
+  if (matches.length !== 1 || !SUPPORTED_PLATFORM_SCHEMA_VERSIONS.has(schemaVersion)) {
+    throw new Error("PlatformConfig PlatformSchemaVersion is not supported by this migration release");
   }
 }
 

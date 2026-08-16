@@ -1,4 +1,4 @@
-/* M4L V102.2 - ADMIN-only validation of Platform schema V102.0.3. */
+/* M4L V102.5 - ADMIN validation of course and global-subject access schema. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { json } from "../lib/http.js";
@@ -9,8 +9,9 @@ import {
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.3";
+const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.4";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
+const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 
 export async function platformValidationEndpoint(request, env) {
   const auth = await requireSystemAdmin(request, env);
@@ -142,6 +143,32 @@ export function validatePlatformTables(tables) {
     courseRecordKeys.add(courseRecordKey);
   }
 
+  const globalCurriculum = validateGlobalCurriculum(tables);
+  const subjectAccessIds = new Set();
+  const subjectAccessKeys = new Set();
+  let activeGlobalSubjectAccessCount = 0;
+  for (const access of tables.UserGlobalSubjectAccess) {
+    const subjectAccessId = normalizePlatformIdentifier(access.SubjectAccessID);
+    const accountId = normalizePlatformIdentifier(access.AccountID);
+    const subjectId = normalizePlatformIdentifier(access.SubjectID);
+    const accessKey = `${accountId}|${subjectId}`;
+    if (!subjectAccessId || subjectAccessIds.has(subjectAccessId)) {
+      throw new Error(`UserGlobalSubjectAccess row ${access._rowNumber} has a blank or duplicate SubjectAccessID`);
+    }
+    if (!accountIds.has(accountId)) {
+      throw new Error(`UserGlobalSubjectAccess row ${access._rowNumber} has an invalid account reference`);
+    }
+    if (!globalCurriculum.subjectIds.has(subjectId)) {
+      throw new Error(`UserGlobalSubjectAccess row ${access._rowNumber} has an invalid global SubjectID`);
+    }
+    if (subjectAccessKeys.has(accessKey)) {
+      throw new Error(`UserGlobalSubjectAccess row ${access._rowNumber} duplicates an account/subject access`);
+    }
+    subjectAccessIds.add(subjectAccessId);
+    subjectAccessKeys.add(accessKey);
+    if (isActivePlatformValue(access.Active)) activeGlobalSubjectAccessCount += 1;
+  }
+
   return Object.freeze({
     platformSchemaVersion: schemaVersion,
     globalCurriculumVersion: curriculumVersion,
@@ -152,10 +179,101 @@ export function validatePlatformTables(tables) {
     activeCourseCount: activeCourses,
     accountCount: accounts.length,
     courseAccessCount: tables.UserCourseAccess.length,
+    globalSubjectCount: tables.GlobalSubjectList.length,
+    globalSubjectAccessCount: tables.UserGlobalSubjectAccess.length,
+    activeGlobalSubjectAccessCount,
+    globalResourceCount: tables.GlobalResources.length,
     globalAdminCount: globalAdminAccounts,
     readyForAccountMigration: true,
     readyForUnifiedLogin: accounts.length > 0 && globalAdminAccounts > 0
   });
+}
+
+function validateGlobalCurriculum(tables) {
+  const subjectIds = new Set();
+  for (const subject of tables.GlobalSubjectList) {
+    const subjectId = normalizePlatformIdentifier(subject.SubjectID);
+    if (!subjectId || !String(subject.SubjectName || "").trim()) {
+      throw new Error(`GlobalSubjectList row ${subject._rowNumber} requires SubjectID and SubjectName`);
+    }
+    if (subjectIds.has(subjectId)) {
+      throw new Error(`GlobalSubjectList row ${subject._rowNumber} duplicates SubjectID`);
+    }
+    subjectIds.add(subjectId);
+  }
+
+  const moduleIds = new Set();
+  const moduleSubjects = new Map();
+  for (const module of tables.GlobalModuleList) {
+    const moduleId = normalizePlatformIdentifier(module.ModuleID);
+    const subjectId = normalizePlatformIdentifier(module.SubjectID);
+    if (!moduleId || !String(module.ModuleName || "").trim()) {
+      throw new Error(`GlobalModuleList row ${module._rowNumber} requires ModuleID and ModuleName`);
+    }
+    if (moduleIds.has(moduleId)) {
+      throw new Error(`GlobalModuleList row ${module._rowNumber} duplicates ModuleID`);
+    }
+    if (!subjectIds.has(subjectId)) {
+      throw new Error(`GlobalModuleList row ${module._rowNumber} has an invalid global SubjectID`);
+    }
+    moduleIds.add(moduleId);
+    moduleSubjects.set(moduleId, subjectId);
+  }
+
+  const taskIds = new Set();
+  const taskCurriculum = new Map();
+  for (const task of tables.GlobalTaskList) {
+    const taskId = normalizePlatformIdentifier(task.TaskID);
+    const subjectId = normalizePlatformIdentifier(task.SubjectID);
+    const moduleId = normalizePlatformIdentifier(task.ModuleID);
+    if (!taskId || !String(task.TaskName || "").trim()) {
+      throw new Error(`GlobalTaskList row ${task._rowNumber} requires TaskID and TaskName`);
+    }
+    if (taskIds.has(taskId)) {
+      throw new Error(`GlobalTaskList row ${task._rowNumber} duplicates TaskID`);
+    }
+    if (!subjectIds.has(subjectId)) {
+      throw new Error(`GlobalTaskList row ${task._rowNumber} has an invalid global SubjectID`);
+    }
+    if (moduleId && moduleSubjects.get(moduleId) !== subjectId) {
+      throw new Error(`GlobalTaskList row ${task._rowNumber} has an invalid SubjectID/ModuleID relationship`);
+    }
+    taskIds.add(taskId);
+    taskCurriculum.set(taskId, { subjectId, moduleId });
+  }
+
+  const resourceIds = new Set();
+  for (const resource of tables.GlobalResources) {
+    const resourceId = normalizePlatformIdentifier(resource.ResourceID);
+    const subjectId = normalizePlatformIdentifier(resource.SubjectID);
+    const moduleId = normalizePlatformIdentifier(resource.ModuleID);
+    const taskId = normalizePlatformIdentifier(resource.TaskID);
+    const resourceType = normalizePlatformIdentifier(resource.ResourceType);
+    if (!resourceId || !String(resource.ResourceName || "").trim() || !String(resource.ResourceLink || "").trim()) {
+      throw new Error(`GlobalResources row ${resource._rowNumber} requires ResourceID, ResourceName and ResourceLink`);
+    }
+    if (resourceIds.has(resourceId)) {
+      throw new Error(`GlobalResources row ${resource._rowNumber} duplicates ResourceID`);
+    }
+    if (!subjectIds.has(subjectId)) {
+      throw new Error(`GlobalResources row ${resource._rowNumber} has an invalid global SubjectID`);
+    }
+    if (moduleId && moduleSubjects.get(moduleId) !== subjectId) {
+      throw new Error(`GlobalResources row ${resource._rowNumber} has an invalid SubjectID/ModuleID relationship`);
+    }
+    if (taskId) {
+      const task = taskCurriculum.get(taskId);
+      if (!task || task.subjectId !== subjectId || (moduleId && task.moduleId && task.moduleId !== moduleId)) {
+        throw new Error(`GlobalResources row ${resource._rowNumber} has an invalid curriculum reference`);
+      }
+    }
+    if (!GLOBAL_RESOURCE_TYPES.has(resourceType)) {
+      throw new Error(`GlobalResources row ${resource._rowNumber} has an invalid ResourceType`);
+    }
+    resourceIds.add(resourceId);
+  }
+
+  return Object.freeze({ subjectIds, moduleIds, taskIds, resourceIds });
 }
 
 function uniqueRowsByKey(rows, keyName, sheetName) {

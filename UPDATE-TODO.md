@@ -1,153 +1,170 @@
-# V102.4 update to-do
+# V102.5 update to-do
 
-Use this checklist to apply V102.4 over the verified V102.3 repository.
-The supported package is:
+Apply V102.5 only over the verified V102.4 development repository using:
 
-`Rebootyourmaktab-V102.4-GITHUB-UPDATE-FROM-V102.3.zip`
+`Rebootyourmaktab-V102.5-GITHUB-UPDATE-FROM-V102.4.zip`
 
-It contains only added or changed files. You do not need to upload the whole
-repository again.
+This is an incremental update. You do not need to upload the entire repository.
+Production remains stable at V101.1 and must not receive this ZIP.
 
-## 1. Confirm the starting point
+## 1. Confirm and back up the development baseline
 
-- [ ] Confirm the current repository and development deployment are V102.3.
-- [ ] Confirm the V102.3 central account migration has already completed.
-- [ ] Confirm `UserAccounts` and `UserCourseAccess` contain the migrated rows.
-- [ ] Confirm the Platform Sheet validates with schema version `102.0.3`.
-- [ ] Confirm `CourseRegistry` has one active `COURSE1` row pointing to the
-  development course Sheet.
-- [ ] Confirm the Google service account is an Editor of the Platform Sheet and
-  the registered course Sheet.
-- [ ] Back up the repository, Platform Sheet and development course Sheet.
+- [ ] Confirm development currently reports V102.4.
+- [ ] Confirm GLOBAL_ADMIN and Student unified login still work.
+- [ ] Confirm the central account migration is already complete.
+- [ ] Back up the development source repository.
+- [ ] Back up the development Platform Sheet.
+- [ ] Back up the development course Sheet.
+- [ ] Confirm `PlatformConfig!B3` currently contains exactly `102.0.3`.
 
-Do **not** rerun account migration for V102.4. This update creates no Sheet tab,
-header or row and requires no new Worker variable, secret, binding or Apps
-Script deployment.
+Do not rerun account migration for V102.5.
 
-## 2. Update the GitHub repository
+## 2. Prepare the Platform Sheet while V102.4 remains live
 
-- [ ] Extract `Rebootyourmaktab-V102.4-GITHUB-UPDATE-FROM-V102.3.zip`.
-- [ ] Open its `Rebootyourmaktab-development` folder.
-- [ ] Upload every included file to the same path in the existing GitHub
+- [ ] Create a new tab named exactly `UserGlobalSubjectAccess`.
+- [ ] Paste the supplied
+  `docs/V102-UserGlobalSubjectAccess-template.csv` header into
+  `UserGlobalSubjectAccess!A1:J1`.
+- [ ] Confirm the exact header values are:
+
+```text
+SubjectAccessID,AccountID,SubjectID,Active,CreatedDate,CreatedByAccountID,CreatedByAccountName,ModifiedByAccountID,ModifiedByAccountName,ModifiedDate
+```
+
+- [ ] Create a new tab named exactly `GlobalResources`.
+- [ ] Paste the supplied `docs/V102-GlobalResources-template.csv` header into
+  `GlobalResources!A1:P1`.
+- [ ] Confirm the exact header values are:
+
+```text
+ResourceID,SubjectID,ModuleID,TaskID,ResourceName,ResourceType,ResourceFormat,ResourceDescription,ResourceLink,Active,CreatedDate,CreatedByAccountID,CreatedByAccountName,ModifiedByAccountID,ModifiedByAccountName,ModifiedDate
+```
+
+- [ ] Leave every cell from row 2 downward empty in both new tabs.
+- [ ] Do not create a `UserSubscriptions` tab.
+- [ ] Leave the existing live `TeacherScheduleIndex` tab untouched for
+  rollback.
+- [ ] Keep `PlatformConfig!B3` at `102.0.3` until the V102.5 Worker is deployed.
+
+The V102.4 Worker ignores the two extra tabs, so preparing them first does not
+interrupt the current application.
+
+## 3. Update the GitHub repository
+
+- [ ] Extract
+  `Rebootyourmaktab-V102.5-GITHUB-UPDATE-FROM-V102.4.zip`.
+- [ ] Open the contained `Rebootyourmaktab-development` folder.
+- [ ] Upload every included file to its matching path in the existing GitHub
   repository.
-- [ ] Replace an existing file when its path already exists and add it when the
-  path is new.
-- [ ] Preserve all folder names. Do not create a second nested repository
-  folder.
-- [ ] Do not delete files that are absent from this incremental update.
-- [ ] Confirm the root `version.json` and `js/version.json` both say `102.4`.
-- [ ] Confirm the root `UPDATE-TODO.md` is this V102.4 checklist.
+- [ ] Replace existing files and add new files while preserving folder names.
+- [ ] Delete the obsolete repository file
+  `docs/V102-TeacherScheduleIndex-template.csv` as instructed in
+  `DELETE-FILES.txt`.
+- [ ] Do not delete any other repository file.
+- [ ] Confirm root `version.json` and `js/version.json` both say `102.5`.
+- [ ] Confirm this V102.5 `UPDATE-TODO.md` is present at repository root.
 
-## 3. Deploy in the required order
+## 4. Deploy the Worker before changing the schema-version cell
 
-- [ ] Deploy the updated `backend/` Worker first, preserving all existing
-  settings.
-- [ ] Open the Worker root endpoint and confirm it reports version `102.4`.
-- [ ] Deploy the complete updated Pages frontend after the Worker succeeds.
-- [ ] Hard-refresh the development site or use a private window for the first
-  verification.
+- [ ] Deploy the updated development `backend/` Worker with all existing
+  variables and secrets preserved.
+- [ ] Confirm the Worker root endpoint reports version `102.5`.
+- [ ] Confirm one existing `/account/<uniqueid>` login still works while
+  `PlatformConfig!B3` remains `102.0.3`.
 
-Do not deploy Pages first. The V102.4 frontend expects
-`/api/account/workspace` and course-scoped Worker routing.
+The V102.5 account code accepts both `102.0.3` and `102.0.4` during this
+controlled transition. **Validate Platform Sheet** is expected to report a
+schema-version error until the next step is complete.
 
-## 4. Verify unified Student access
+## 5. Activate Platform schema 102.0.4
 
-- [ ] Open a migrated Student at
-  `https://developmentmaktab4life.pages.dev/account/<existing-uniqueid>`.
-- [ ] Enter the existing PIN once.
-- [ ] Confirm the Student Home opens automatically; no second PIN screen should
-  appear.
-- [ ] Open the Profile menu and confirm the course name and Student role/group
-  are shown.
-- [ ] Confirm normal Student timetable, Library, tasks and progress views load.
-- [ ] Confirm the Student remains restricted to her own authorised class/data.
-- [ ] In Profile, select **Switch course or role**. Confirm the central context
-  page opens without asking for a PIN.
-- [ ] Select the Student course and confirm Student Home reopens.
+- [ ] Change only `PlatformConfig!B3` from `102.0.3` to `102.0.4`.
+- [ ] Do not change `PlatformConfig!B2` (`AccountLoginBaseUrl`).
+- [ ] Do not change `PlatformConfig!B4` (`GlobalCurriculumVersion`) merely for
+  this schema installation.
+- [ ] Sign in as GLOBAL_ADMIN or authorised ADMIN.
+- [ ] Open **System Settings → Validate Platform Sheet**.
+- [ ] Confirm validation reports ready with `10 required tabs`.
+- [ ] Confirm the active-course and central-account counts remain unchanged.
+- [ ] Confirm it reports `0 global-subject subscriptions` because the new tab
+  is intentionally empty.
+- [ ] Resolve every header or reference error before continuing.
 
-## 5. Verify GlobalAdmin and staff access
+For the current development data, the expected message should begin similarly
+to:
 
-- [ ] Open the migrated GLOBAL_ADMIN account through `/account/<uniqueid>`.
-- [ ] Confirm the Platform context page appears after login.
-- [ ] Select `COURSE1`; confirm the Admin workspace opens without another PIN.
-- [ ] Confirm Admin functions still work against the registered COURSE1 Sheet.
-- [ ] Confirm Profile shows the course and GLOBAL ADMIN context, then confirm
-  **Switch course or role** returns to the central context page.
-- [ ] Test one migrated SENIOR or TEACHER account if a PIN is available.
-- [ ] Confirm ordinary staff cannot change course access by editing a URL,
-  CourseID field or request body.
-- [ ] Confirm Teacher views remain limited to the assigned class/group.
+```text
+Ready: 10 required tabs, 1 active course, 33 central accounts, 0 global-subject subscriptions.
+```
 
-## 6. Verify secure routing
+The account count may differ only if authorised accounts were deliberately
+added after the original migration.
 
-- [ ] In browser developer tools, inspect one successful operational API
-  response and confirm `X-M4L-Course-ID: COURSE1`.
-- [ ] Confirm the response also has the expected `X-M4L-Backend` header.
-- [ ] With a test membership only, deactivate its `UserCourseAccess` row and
-  confirm the next request is rejected. Reactivate it afterward.
-- [ ] With a test course-local profile only, deactivate its matching
-  `AdminRecords` or `StudentRecords` row and confirm the next request is
-  rejected. Reactivate it afterward.
-- [ ] Do not deactivate the only active GLOBAL_ADMIN.
-- [ ] Confirm switching context clears old timetable/resource/progress data and
-  reloads the selected course.
+## 6. Deploy the complete Pages frontend
 
-Every course-scoped request must derive its Sheet from the revalidated central
-token and `CourseRegistry`. A submitted CourseID or role is never authority.
+- [ ] Deploy the complete updated Pages frontend after Platform validation
+  succeeds.
+- [ ] Hard-refresh or use a private window.
+- [ ] Confirm the account page displays `V102.5`.
+- [ ] Confirm the Admin System Settings validation message uses
+  `required tabs` and includes the global-subject subscription count.
 
-## 7. Legacy and regression checks
+## 7. Regression verification
 
-- [ ] Confirm an existing direct `/admin/<uniqueid>` link can still log in with
-  its legacy PIN.
-- [ ] Confirm an existing direct `/student/<uniqueid>` link can still log in
-  with its legacy PIN.
-- [ ] Confirm the current live timetable still reads from `TeacherAssign`.
-- [ ] Confirm attendance, weekly planner, resources, tasks and progress retain
-  their V102.3 behaviour and restrictions.
-- [ ] Confirm Platform validation still succeeds.
+- [ ] Confirm GLOBAL_ADMIN can sign in and enter `COURSE1` without another PIN.
+- [ ] Confirm a migrated Student can sign in and reach Student Home without
+  another PIN.
+- [ ] Confirm **Profile → Switch course or role** still works.
+- [ ] Confirm timetable, Library, attendance, planners, tasks and progress have
+  the same V102.4 behaviour.
+- [ ] Confirm direct legacy `/admin/` and `/student/` links remain available.
+- [ ] Confirm the live timetable still reads from `TeacherAssign`.
+- [ ] Confirm no Platform account, course-access or audit row was duplicated or
+  deleted.
 
-## 8. Boundaries that remain after V102.4
+V102.5 adds no timetable, teacher-overlap or subscription-limit check.
 
-- [ ] Do not redirect or retire `/admin/<uniqueid>` or
-  `/student/<uniqueid>` yet.
-- [ ] Do not remove `AdminRecords`, `StudentRecords`, `TeacherAssign` or
-  `TimeTable`.
-- [ ] Do not rerun migration merely because a new course-local user is added.
-- [ ] Record that course-local Admin/Student registration does not yet create
-  the matching central `UserAccounts` and `UserCourseAccess` rows.
-- [ ] Record that each Library is course-owned, but per-course Drive-root and
-  Apps Script URL routing are not yet implemented. Do not activate a second
-  production course's Drive/preview workflow in this release.
-- [ ] Record that complete Teacher resource/task/progress write permissions,
-  global-curriculum merging, cross-course teacher-conflict indexing, immutable
-  publication expansion and published-timetable live reads remain later work.
-- [ ] Keep `GOOGLE_SPREADSHEET_ID` as the legacy fallback until legacy routes
-  are retired.
+## 8. Subscription-model boundaries
+
+- [ ] Treat an active `UserCourseAccess` row with `Role=STUDENT` as the course
+  subscription; do not duplicate it elsewhere.
+- [ ] Do not manually add global-subject access rows until global subjects and
+  the management workflow are deliberately introduced.
+- [ ] Do not copy course resources into `GlobalResources`.
+- [ ] Do not add payment, expiry or renewal information to authorization rows
+  in this release.
+- [ ] Do not expect a global-subject-only account to receive a learner landing
+  page yet.
+- [ ] Do not remove `TeacherScheduleIndex` from the live Platform Sheet during
+  this rollback period; it is simply ignored by V102.5.
+- [ ] Do not onboard a second production course or modify production V101.1.
 
 ## 9. Completion criteria
 
-V102.4 is complete in development only when all of these are true:
+V102.5 is complete in development only when:
 
-- [ ] Worker root reports `102.4`.
-- [ ] Student and Admin operational workspaces open from `/account/` after one
-  PIN.
-- [ ] Profile switching works without another PIN.
-- [ ] Invalid/inactive central membership and invalid/inactive local profile
-  checks fail closed.
-- [ ] Operational API responses identify the authenticated course as
-  `COURSE1`.
-- [ ] Student and Teacher class restrictions are unchanged.
-- [ ] Legacy direct login remains available for rollback.
-- [ ] No central account or course data was remigrated, duplicated or deleted.
+- [ ] Worker root reports `102.5`.
+- [ ] `PlatformConfig!B3` is exactly `102.0.4`.
+- [ ] `UserGlobalSubjectAccess!A1:J1` and `GlobalResources!A1:P1` match the
+  supplied templates exactly.
+- [ ] Platform validation reports ten required tabs and no errors.
+- [ ] Existing GLOBAL_ADMIN and Student unified login still work.
+- [ ] Existing course operations behave exactly as in V102.4.
+- [ ] No migration was rerun and no new access/resource data was fabricated.
+- [ ] Production remains unchanged at V101.1.
 
-## 10. Rollback
+## 10. Rollback to V102.4
 
-- [ ] Roll back the Worker and Pages deployments together to V102.3.
-- [ ] Do not delete the migrated `UserAccounts`, `UserCourseAccess` or central
-  audit rows.
-- [ ] Continue using the existing direct Admin and Student links.
-- [ ] Preserve all Sheet data written during normal V102.4 application use.
+Perform rollback in this order:
 
-After development verification, the next release should centralise creation of
-new accounts/memberships before legacy-login retirement or a second live course
-is onboarded.
+- [ ] Change `PlatformConfig!B3` back to `102.0.3` first.
+- [ ] Roll back the Worker to V102.4.
+- [ ] Roll back the Pages frontend to V102.4.
+- [ ] Leave the empty `UserGlobalSubjectAccess` and `GlobalResources` tabs in
+  place; V102.4 ignores extra tabs.
+- [ ] Leave `TeacherScheduleIndex` in place.
+- [ ] Do not delete or restore any account, membership, curriculum, course or
+  audit data.
+
+The next subscription release can build Admin management and learner delivery
+only after this schema validates and V102.4 operational regressions pass.

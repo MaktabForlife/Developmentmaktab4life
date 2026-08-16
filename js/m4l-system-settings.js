@@ -1,4 +1,4 @@
-/* M4L V102.2 - ADMIN settings, Platform validation and account migration. */
+/* M4L V102.5 - ADMIN settings, access-schema validation and account migration. */
 (function () {
   "use strict";
 
@@ -151,12 +151,14 @@
       const tabCount = Number(result.tabCount || 0);
       const courseCount = Number(result.activeCourseCount || 0);
       const accountCount = Number(result.accountCount || 0);
+      const subjectAccessCount = Number(result.globalSubjectAccessCount || 0);
       const migrationState = result.readyForUnifiedLogin
         ? "Unified-login data is present."
         : "Ready for account migration; unified login is not active yet.";
       setPlatformValidationMessage(
-        `Ready: ${tabCount} tabs, ${courseCount} active course${courseCount === 1 ? "" : "s"}, ` +
-        `${accountCount} central account${accountCount === 1 ? "" : "s"}. ${migrationState}`,
+        `Ready: ${tabCount} required tabs, ${courseCount} active course${courseCount === 1 ? "" : "s"}, ` +
+        `${accountCount} central account${accountCount === 1 ? "" : "s"}, ` +
+        `${subjectAccessCount} global-subject subscription${subjectAccessCount === 1 ? "" : "s"}. ${migrationState}`,
         "success"
       );
       return true;

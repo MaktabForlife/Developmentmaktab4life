@@ -251,11 +251,15 @@ try {
   assert.ok(writes.some(write => write.range === "'UserAccounts'!G2"));
   assert.ok(writes.some(write => write.range === "'UserCourseAccess'!G3"));
   assert.ok(reads.includes("UserAccounts!A2:N2"));
+
+  tables.PlatformConfig[2][1] = "102.0.4";
+  const upgradedSchemaCheck = await post("/api/account/check", { uniqueid: "ADMIN-LINK" });
+  assert.equal(upgradedSchemaCheck.response.status, 200, "V102.5 account login must accept the upgraded Platform schema");
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.4 central account authentication tests passed.");
+console.log("V102.5 central account authentication compatibility tests passed.");
 
 async function post(path, body, token = "") {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

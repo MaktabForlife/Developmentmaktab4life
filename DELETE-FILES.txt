@@ -1,3 +1,19 @@
+V102.5
+
+Delete this obsolete repository template after applying the V102.5 update:
+
+- `docs/V102-TeacherScheduleIndex-template.csv`
+
+Do **not** delete the live Platform Sheet `TeacherScheduleIndex` tab during the
+V102.5 rollback period. It is no longer required or read, but leaving the tab
+temporarily allows a clean rollback to V102.4.
+
+Do not delete any central account, course-access, curriculum, resource,
+course-Sheet or audit row. Keep all legacy operational routes and all V101.4.3
+timetable tabs. Production remains untouched at V101.1.
+
+---
+
 V102.4
 
 No repository file, course Sheet tab, Platform Sheet tab, course Library record

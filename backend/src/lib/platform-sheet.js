@@ -1,4 +1,4 @@
-/* M4L V102 - Fail-closed reads and routing from the central Platform Sheet. */
+/* M4L V102.5 - Fail-closed central course and global-subject access helpers. */
 
 import { readGoogleSheetValues } from "./google-sheets.js";
 import {
@@ -138,6 +138,34 @@ export function assertActiveCourseRoleMembership(accessRecords, accountId, cours
     throw new Error("Active course-role membership did not resolve exactly once");
   }
   return normalizeContext(matches[0]);
+}
+
+export function assertActiveGlobalSubjectAccess(accessRecords, accountId, subjectId) {
+  const requestedAccountID = normalizePlatformIdentifier(accountId);
+  const requestedSubjectID = normalizePlatformIdentifier(subjectId);
+  if (!requestedAccountID || !requestedSubjectID) {
+    throw new Error("AccountID and global SubjectID are required");
+  }
+
+  const matches = (Array.isArray(accessRecords) ? accessRecords : []).filter(record => (
+    normalizePlatformIdentifier(record.AccountID) === requestedAccountID &&
+    normalizePlatformIdentifier(record.SubjectID) === requestedSubjectID &&
+    isActivePlatformValue(record.Active)
+  ));
+  if (matches.length !== 1) {
+    throw new Error("Active global-subject access did not resolve exactly once");
+  }
+
+  const access = matches[0];
+  const subjectAccessId = String(access.SubjectAccessID || "").trim();
+  if (!subjectAccessId) {
+    throw new Error("Active global-subject access is missing SubjectAccessID");
+  }
+  return Object.freeze({
+    subjectAccessId,
+    accountId: String(access.AccountID || "").trim(),
+    subjectId: String(access.SubjectID || "").trim()
+  });
 }
 
 export function assertCourseContextAccess(

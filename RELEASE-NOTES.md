@@ -1,3 +1,45 @@
+V102.5
+
+# Define course and global-subject subscription access without duplication
+
+- Confirms that an active `UserCourseAccess` row with `Role=STUDENT` is the
+  authoritative course subscription; no general `UserSubscriptions` table is
+  added.
+- Adds `UserGlobalSubjectAccess` for direct account-to-global-subject
+  entitlements, unique by AccountID and SubjectID.
+- Adds central `GlobalResources` metadata so a standalone global subject is not
+  dependent on a course Sheet or course Library.
+- Validates global subject, module, task and resource relationships centrally,
+  including supported resource types and exact reference integrity.
+- Removes `TeacherScheduleIndex` from the required/validated Platform contract.
+  The existing live tab may remain unused during rollback verification.
+- Explicitly applies no timetable limit, overlap check, teacher-schedule check
+  or course-combination restriction to subscriptions.
+- Advances Platform schema from `102.0.3` to `102.0.4` and requires two new
+  empty tabs with exact supplied headers.
+- Keeps account authentication compatible with both schema versions during the
+  controlled Worker-first upgrade.
+- Updates Platform validation to report required tabs, central accounts and
+  global-subject subscription counts clearly.
+- Preserves all V102.4 unified login, course switching, cache isolation and
+  dynamic course-Sheet routing behaviour.
+- Requires no account-migration rerun, course-Sheet modification, new Worker
+  variable, secret, binding or Apps Script deployment.
+- Adds a required root `UPDATE-TODO.md` with exact tab names, cell ranges,
+  deployment order, testing and rollback instructions.
+- Application and Worker metadata become `102.5`; all 42 test files pass.
+
+V102.5 is a development schema-and-validation release. It does not yet provide
+global-subject-only account navigation, payment/renewal records, Admin
+subscription management or global-resource delivery. Production remains stable
+at V101.1 and requires a later dedicated merge package.
+
+Install only
+`Rebootyourmaktab-V102.5-GITHUB-UPDATE-FROM-V102.4.zip` over V102.4 and follow
+`UPDATE-TODO.md` from beginning to end.
+
+---
+
 V102.4
 
 # Open the authorised course workspace after unified login
