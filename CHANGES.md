@@ -1,3 +1,16 @@
+# V102.6.3 — Account PIN retry correction
+
+- Keeps a stable login-form reference across the asynchronous account request.
+- Re-enables the PIN field and submit button after an incorrect PIN.
+- Clears and focuses the field for immediate re-entry without reloading.
+- Applies the same form-reference protection to first-PIN setup API failures.
+- Keeps V102.6.2 role visibility, permissions and display labels unchanged.
+- Bumps application and Worker metadata to `102.6.3`.
+
+Development only: production remains stable at V101.1.
+
+---
+
 # V102.6.2 — Menu visibility, PIN retry and Senior Teacher label
 
 - Removes inaccessible Admin Home tiles from SENIOR and TEACHER layouts instead

@@ -1,4 +1,4 @@
-/* M4L V102.6.2 - Unified account login, retry reset, context switching and Profile details. */
+/* M4L V102.6.3 - Unified account login retry, context switching and Profile details. */
 (function () {
   "use strict";
 
@@ -87,12 +87,13 @@
   async function submitLogin(event) {
     event.preventDefault();
     if (state.busy) return;
+    const form = event.currentTarget;
     const pin = byId("login-pin").value;
     if (!/^\d{4}$/.test(pin)) {
       showFormError("login-error", "Enter your complete 4-digit PIN.");
       return;
     }
-    setBusy(event.currentTarget, true);
+    setBusy(form, true);
     showFormError("login-error", "");
     let loginFailed = false;
     try {
@@ -103,7 +104,7 @@
       byId("login-pin").value = "";
       loginFailed = true;
     } finally {
-      setBusy(event.currentTarget, false);
+      setBusy(form, false);
       if (loginFailed) {
         byId("login-pin").focus();
       }
@@ -113,6 +114,7 @@
   async function submitSetup(event) {
     event.preventDefault();
     if (state.busy) return;
+    const form = event.currentTarget;
     const pin = byId("setup-pin").value;
     const pinConfirmation = byId("setup-pin-confirmation").value;
     if (!/^\d{4}$/.test(pin)) {
@@ -124,7 +126,7 @@
       byId("setup-pin-confirmation").select();
       return;
     }
-    setBusy(event.currentTarget, true);
+    setBusy(form, true);
     showFormError("setup-error", "");
     try {
       const result = await api("/api/account/setup-pin", {
@@ -136,7 +138,7 @@
     } catch (error) {
       showFormError("setup-error", error.message);
     } finally {
-      setBusy(event.currentTarget, false);
+      setBusy(form, false);
     }
   }
 
@@ -348,6 +350,7 @@
 
   function setBusy(form, busy) {
     state.busy = busy;
+    if (!form) return;
     form.querySelectorAll("button, input").forEach(control => { control.disabled = busy; });
   }
 

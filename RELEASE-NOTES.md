@@ -1,3 +1,23 @@
+V102.6.3
+
+# Correct account PIN retry re-enabling
+
+- Preserves the submitted login form reference before the asynchronous API call.
+- Reliably re-enables the PIN input and Continue button after a rejected PIN.
+- Clears and focuses the PIN field so the next attempt can be entered without
+  reloading.
+- Applies the same safe form-reference handling to first-PIN setup failures.
+- Preserves V102.6.2 menu visibility, permissions and Senior Teacher display.
+- Changes no Sheet schema or data, Apps Script, Worker configuration, session
+  policy or authorization rule.
+- Includes the exact deployment and verification checklist in `UPDATE-TODO.md`.
+
+Install only
+`Rebootyourmaktab-V102.6.3-GITHUB-UPDATE-FROM-V102.6.2.zip` over deployed
+V102.6.2 development. Production remains stable at V101.1.
+
+---
+
 V102.6.2
 
 # Correct restricted menu visibility, PIN retry and Senior Teacher label

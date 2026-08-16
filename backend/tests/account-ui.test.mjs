@@ -13,9 +13,9 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.6\.2 keeps secure course routing active while correcting menu visibility/);
-assert.match(html, /PIN retry and Senior Teacher display/);
-assert.match(html, /m4l-account\.js\?v=102\.6\.2/);
+assert.match(html, /V102\.6\.3 keeps secure course routing active while correcting PIN retry/);
+assert.match(html, /Menu visibility and Senior Teacher display remain active/);
+assert.match(html, /m4l-account\.js\?v=102\.6\.3/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
@@ -37,7 +37,9 @@ assert.match(script, /localStorage\.removeItem\(TOKEN_KEY\)/);
 assert.match(script, /Authorization: `Bearer \$\{token\}`/);
 assert.match(script, /replace\(\/\\D\/g, ""\)\.slice\(0, 4\)/);
 assert.match(script, /byId\("login-pin"\)\.value = ""/);
-assert.match(script, /setBusy\(event\.currentTarget, false\);[\s\S]*?if \(loginFailed\)[\s\S]*?byId\("login-pin"\)\.focus\(\)/);
+assert.match(script, /const form = event\.currentTarget;[\s\S]*?setBusy\(form, true\)/);
+assert.match(script, /setBusy\(form, false\);[\s\S]*?if \(loginFailed\)[\s\S]*?byId\("login-pin"\)\.focus\(\)/);
+assert.doesNotMatch(script, /setBusy\(event\.currentTarget, false\)/);
 assert.match(script, /if \(normalized === "SENIOR"\) return "SENIOR TEACHER"/);
 assert.doesNotMatch(script, /innerHTML\s*=/, "Account context values must not be injected through innerHTML");
 assert.match(css, /@media \(max-width: 760px\)/);
@@ -45,4 +47,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.6.2 unified account UI compatibility tests passed.");
+console.log("V102.6.3 unified account UI compatibility tests passed.");

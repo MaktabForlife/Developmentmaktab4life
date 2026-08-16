@@ -1,10 +1,10 @@
-V102.6.2 — GitHub update from deployed V102.6.1
+V102.6.3 — GitHub update from deployed V102.6.2
 
 Package:
-- Rebootyourmaktab-V102.6.2-GITHUB-UPDATE-FROM-V102.6.1.zip
+- Rebootyourmaktab-V102.6.3-GITHUB-UPDATE-FROM-V102.6.2.zip
 
 Apply to:
-- Deployed V102.6.1 development repository only.
+- Deployed V102.6.2 development repository only.
 - This is a modified-files overlay, not a full repository.
 
 Files included:
@@ -15,27 +15,13 @@ Files included:
 - RELEASE-NOTES.md
 - UPDATE-TODO.md
 - account/index.html
-- admin/index.html
 - backend/package.json
 - backend/src/worker.js
 - backend/tests/account-ui.test.mjs
-- backend/tests/admin-management-ui.test.mjs
-- backend/tests/admin-menu-home.test.mjs
-- backend/tests/group-zero-access.test.mjs
 - backend/tests/router.test.mjs
-- backend/tests/student-task-assignment-ui.test.mjs
-- backend/tests/timetable-teacher-ui.test.mjs
-- backend/tests/unified-workspace-ui.test.mjs
-- css/m4l-02-home-common-and-shared-cards.css
-- docs/V102.6.2-MENU-PIN-ROLE-LABEL-CORRECTIONS.md (new)
-- index.html
+- docs/V102.6.3-PIN-RETRY-CORRECTION.md (new)
 - js/m4l-account.js
-- js/m4l-admin-academics.js
-- js/m4l-manage-admins.js
-- js/m4l-shell.js
 - js/version.json
-- student/index.html
-- styles.css
 - version.json
 
 Deleted files:
@@ -47,5 +33,5 @@ Data/config boundary:
 - PlatformConfig!B4 is unchanged.
 - No account migration rerun.
 - No Worker variable, secret, binding or Apps Script change.
-- Stored role value remains SENIOR; SENIOR TEACHER is display-only.
-- The documented browser-session authentication policy remains inactive.
+- No authorization, role, rate-limiter or session-policy change.
+- The global-resource Google Drive browser remains a separate future release.
