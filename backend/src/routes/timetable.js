@@ -4,12 +4,21 @@ import {
   prepareAdminAudit
 } from "../lib/admin-audit.js";
 import { getAuthUser, requireAdminOrSenior, requireSystemAdmin } from "../lib/auth.js";
-import { readGoogleSheetValues } from "../lib/google-sheets.js";
+import { batchReadGoogleSheetValues, readGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import {
+  PUBLISHED_TIMETABLE_SESSION_SHEET,
+  TIMETABLE_PUBLICATION_SHEET,
+  TIMETABLE_STATE_SHEET,
+  resolveCurrentPublishedTimetable
+} from "../lib/timetable-publication.js";
+import {
   GLOBAL_ZOOM_LINK_KEY,
+  TIMETABLE_SOURCE_PUBLISHED,
+  TIMETABLE_SOURCE_TEACHER_ASSIGN,
   findSystemConfigRowIndexes,
   getSystemConfigValue,
+  getTimetableLiveSource,
   normalizeGlobalZoomLink,
   readSystemConfigRows,
   upsertSystemConfigValues
@@ -57,6 +66,81 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
     return context.response;
   }
 
+  let systemConfigRows;
+  try {
+    systemConfigRows = await readSystemConfigRows(env);
+  } catch (error) {
+    return json({
+      success: false,
+      error: "Timetable source configuration could not be read",
+      code: "TIMETABLE_SOURCE_CONFIG_UNAVAILABLE",
+      retryable: true,
+      sessions: []
+    }, 503);
+  }
+
+  let liveSource;
+  try {
+    liveSource = getTimetableLiveSource(systemConfigRows);
+  } catch (error) {
+    return json({
+      success: false,
+      error: error?.message || "Timetable live source configuration is invalid",
+      code: "TIMETABLE_SOURCE_CONFIG_INVALID",
+      sessions: []
+    }, 503);
+  }
+
+  const globalZoomConfigured = findSystemConfigRowIndexes(
+    systemConfigRows,
+    GLOBAL_ZOOM_LINK_KEY
+  ).length === 1;
+  const globalZoomLink = getSystemConfigValue(systemConfigRows, GLOBAL_ZOOM_LINK_KEY);
+
+  if (liveSource === TIMETABLE_SOURCE_PUBLISHED) {
+    let stateRows;
+    let publicationRows;
+    let publishedSessionRows;
+    try {
+      [stateRows, publicationRows, publishedSessionRows] = await batchReadGoogleSheetValues(env, [
+        `${TIMETABLE_STATE_SHEET}!${FULL_SHEET_RANGE}`,
+        `${TIMETABLE_PUBLICATION_SHEET}!${FULL_SHEET_RANGE}`,
+        `${PUBLISHED_TIMETABLE_SESSION_SHEET}!${FULL_SHEET_RANGE}`
+      ]);
+    } catch (error) {
+      return publishedTimetableUnavailableResponse(
+        "The published timetable could not be read. No legacy fallback was used.",
+        "PUBLISHED_TIMETABLE_READ_FAILED"
+      );
+    }
+
+    const current = resolveCurrentPublishedTimetable({
+      stateRows,
+      publicationRows,
+      publishedSessionRows
+    }, env.M4L_AUTHENTICATED_COURSE_ID || inferPublishedCourseId(stateRows), {
+      requireCurrentHeaders: true,
+      requireDisplayValues: true
+    });
+    if (!current.ok) {
+      return publishedTimetableUnavailableResponse(current.error, current.code);
+    }
+
+    const legacyRows = globalZoomConfigured ? [] : await readLegacyTimetableRows(env);
+    return json(buildPublishedTimetableResponse(current, {
+      legacyRows,
+      globalZoomLink,
+      globalZoomConfigured,
+      groupNo: context.groupNo,
+      teacherId: context.teacherId,
+      allGroupsStudent: context.allGroupsStudent,
+      viewerAdminId: context.viewerAdminId,
+      viewerRole: context.viewerRole,
+      teacherOnly: context.teacherOnly,
+      showGroupLabels: context.showGroupLabels
+    }));
+  }
+
   let teacherRows;
   let adminRows;
   let subjectRows;
@@ -79,12 +163,6 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
     return json(missingTimetableSheetResponse(missingSheet));
   }
 
-  const systemConfigRows = await readTimetableSystemConfigRows(env);
-  const globalZoomConfigured = findSystemConfigRowIndexes(
-    systemConfigRows,
-    GLOBAL_ZOOM_LINK_KEY
-  ).length === 1;
-  const globalZoomLink = getSystemConfigValue(systemConfigRows, GLOBAL_ZOOM_LINK_KEY);
   const legacyRows = globalZoomConfigured ? [] : await readLegacyTimetableRows(env);
 
   return json(buildTimetableResponse(teacherRows, {
@@ -104,6 +182,75 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
   }));
 }
 
+export function buildPublishedTimetableResponse(current = {}, options = {}) {
+  const requestedGroup = clean(options.groupNo ?? options.classgroup ?? options.group ?? "ALL") || "ALL";
+  const requestedTeacherId = clean(
+    options.teacherId ?? options.adminId ?? options.assignedTeacher ?? options.teacher ?? "ALL"
+  ) || "ALL";
+  const viewerAdminId = clean(options.viewerAdminId);
+  const viewerRole = clean(options.viewerRole).toUpperCase();
+  const globalZoom = resolveGlobalZoom(options);
+  const sourceSessions = Array.isArray(current.sessions) ? current.sessions : [];
+  const sessions = sourceSessions.filter(session => (
+    groupMatches(session.groupno, requestedGroup, options.allGroupsStudent === true) &&
+    teacherMatches(session.teacherid, requestedTeacherId)
+  )).map((session, index) => ({
+    row: session.rowindex >= 0 ? session.rowindex + 1 : index + 2,
+    sessionid: session.sourcesessionid,
+    publishedsessionid: session.publishedsessionid,
+    publicationid: session.publicationid,
+    subjectid: session.subjectid,
+    subjectname: session.subjectname,
+    subjectactive: null,
+    moduleid: session.moduleid,
+    modulename: session.modulename,
+    moduleno: "",
+    moduleassigned: Boolean(session.moduleid),
+    modulestatus: session.moduleid ? "assigned" : "subject-level",
+    dayofweek: session.dayofweek,
+    starttime: session.starttime,
+    endtime: session.endtime,
+    zoomlink: session.zoomlink,
+    groupno: session.groupno,
+    teacherid: session.teacherid,
+    teachername: session.teachername,
+    teacherassigned: Boolean(session.teacherid && session.teachername),
+    assignmentstatus: session.teacherid && session.teachername ? "assigned" : "unassigned",
+    assignedteacher: session.teacherid,
+    courseid: session.courseid,
+    coursename: session.coursename,
+    assignmentconflict: false
+  }));
+  const warnings = [
+    ...markAssignmentConflicts(sessions),
+    ...markSubjectModuleOverlaps(sessions)
+  ];
+
+  return {
+    success: true,
+    sessions,
+    zoomlink: globalZoom.link,
+    zoomsource: globalZoom.source,
+    timetablesource: PUBLISHED_TIMETABLE_SESSION_SHEET,
+    liveSource: TIMETABLE_SOURCE_PUBLISHED,
+    publicationid: clean(current.publication?.publicationid),
+    publicationversion: Number(current.publication?.versionno) || 0,
+    publisheddate: clean(current.publication?.publisheddate),
+    groupno: requestedGroup,
+    teacherid: requestedTeacherId,
+    assignedteacher: requestedTeacherId,
+    vieweradminid: viewerAdminId,
+    viewerrole: viewerRole,
+    teacheronly: options.teacherOnly === true,
+    viewerhasassignments: Boolean(viewerAdminId) && sessions.some(session => (
+      session.teacherassigned === true && normalizeMatch(session.teacherid) === normalizeMatch(viewerAdminId)
+    )),
+    showgrouplabels: options.showGroupLabels === true || requestedGroup.toUpperCase() === "ALL",
+    warnings,
+    count: sessions.length
+  };
+}
+
 export function buildTimetableResponse(rows = [], options = {}) {
   const requestedGroup = clean(
     options.groupNo ?? options.classgroup ?? options.group ?? "ALL"
@@ -120,6 +267,7 @@ export function buildTimetableResponse(rows = [], options = {}) {
     zoomlink: globalZoom.link,
     zoomsource: globalZoom.source,
     timetablesource: TEACHER_TIMETABLE_SHEET_NAME,
+    liveSource: TIMETABLE_SOURCE_TEACHER_ASSIGN,
     groupno: requestedGroup,
     teacherid: requestedTeacherId,
     assignedteacher: requestedTeacherId,
@@ -785,14 +933,6 @@ async function readLegacyTimetableRows(env) {
   }
 }
 
-async function readTimetableSystemConfigRows(env) {
-  try {
-    return await readSystemConfigRows(env);
-  } catch {
-    return [];
-  }
-}
-
 function missingTimetableSheetResponse(sheetName) {
   return {
     success: false,
@@ -801,6 +941,27 @@ function missingTimetableSheetResponse(sheetName) {
     zoomlink: "",
     timetablesource: TEACHER_TIMETABLE_SHEET_NAME
   };
+}
+
+function publishedTimetableUnavailableResponse(error, code) {
+  return json({
+    success: false,
+    error: clean(error) || "The published timetable is not ready",
+    code: clean(code) || "PUBLISHED_TIMETABLE_NOT_READY",
+    retryable: true,
+    sessions: [],
+    zoomlink: "",
+    timetablesource: PUBLISHED_TIMETABLE_SESSION_SHEET,
+    liveSource: TIMETABLE_SOURCE_PUBLISHED,
+    fallbackUsed: false
+  }, 503);
+}
+
+function inferPublishedCourseId(stateRows = []) {
+  const ids = new Set((Array.isArray(stateRows) ? stateRows.slice(1) : [])
+    .map(row => clean(row?.[0]))
+    .filter(Boolean));
+  return ids.size === 1 ? Array.from(ids)[0] : "";
 }
 
 function getMissingRequiredSheetName(error) {

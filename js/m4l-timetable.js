@@ -18,9 +18,21 @@ v98 - Timetable board + V84 Home vertical stack support
 ========================= */
 
 const TIMETABLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-// V100.10.5 cache namespace removes Zoom actions from ADMIN/SENIOR subject
-// headings and delivers the larger, two-colour oversight detail treatment.
-const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v9";
+// V102.9 cache namespace prevents legacy TeacherAssign responses from being
+// reused after a course activates its immutable published timetable source.
+const TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v10";
+
+function clearTimetableCache() {
+  timetableCache = null;
+  timetableCacheKey = "";
+  try {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("maktab_timetable_cache_v")) localStorage.removeItem(key);
+    });
+  } catch (error) {
+    console.warn("Could not clear timetable cache", error);
+  }
+}
 
 let timetableCache = null;
 let timetableCacheKey = "";

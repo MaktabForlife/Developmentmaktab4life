@@ -1,3 +1,30 @@
+# V102.9 — Published timetable integrator
+
+- Extends immutable publication snapshots with course, time, subject, module
+  and teacher display values in `PublishedTimetableSessions!O:T`.
+- Adds ADMIN preview, typed activation and typed rollback controls without
+  changing the live source during deployment.
+- Adds course-local `TimetableLiveSource` values `TEACHER_ASSIGN` and
+  `PUBLISHED_TIMETABLE`, with source change and audit committed atomically.
+- Routes Student, staff oversight and Weekly Planner timetable reads through
+  the current publication after activation.
+- Preserves the current publication while Builder edits are in Development and
+  makes the next successful publication live immediately.
+- Clears the current browser's course-scoped timetable cache after source
+  activation, rollback or a publication that becomes live immediately.
+- Fails closed instead of silently falling back when an activated publication
+  has invalid headers, pointers, counts, duplicates or display values.
+- Keeps legacy `TeacherAssign` and `TimeTable` for verification and rollback.
+- Keeps Platform schema `102.0.4`; documents the Reboot course schema update to
+  `101.4.4` and exact O1:T1/E2 migration cells.
+- Adds focused backend/UI tests, deployment checklist and rollback procedure.
+- Adds no subscription timetable restrictions or cross-course overlap checks.
+
+Development only: production remains stable at V101.1. Aalimiyah onboarding
+remains the next stage after Reboot cutover verification.
+
+---
+
 # V102.8.2 — Timetable reliability and selected-session editing
 
 - Batches all Timetable Builder value reads, including TaskList, into one

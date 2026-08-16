@@ -1,5 +1,5 @@
-/* M4L V102.8.2 - reliable group-assigned sessions, selective bulk editing,
-   publication snapshots and staged deletion. */
+/* M4L V102.9 - reliable group-assigned sessions, selective bulk editing,
+   immutable publication snapshots and reversible live-source integration. */
 
 import {
   appendAdminAuditLog,
@@ -23,18 +23,34 @@ import {
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import { nextSequentialId } from "../lib/sequential-ids.js";
+import {
+  PUBLISHED_TIMETABLE_SESSION_HEADERS,
+  PUBLISHED_TIMETABLE_SESSION_SHEET,
+  TIMETABLE_PUBLICATION_HEADERS,
+  TIMETABLE_PUBLICATION_SHEET,
+  TIMETABLE_STATE_HEADERS,
+  TIMETABLE_STATE_SHEET,
+  parsePublishedTimetableSessions,
+  parseTimetablePublications,
+  parseTimetableStates,
+  validatePublishedTimetableHeaders
+} from "../lib/timetable-publication.js";
 import { buildTasksResponse } from "./curriculum.js";
 import {
   GLOBAL_ZOOM_LINK_KEY,
-  getSystemConfigValue
+  TIMETABLE_SOURCE_PUBLISHED,
+  getSystemConfigValue,
+  getTimetableLiveSource
 } from "../lib/system-config.js";
 
 export const COURSE_SHEET = "Courses";
 export const TIME_SLOT_SHEET = "TimeSlots";
 export const TIMETABLE_SESSION_SHEET = "TimetableSessions";
-export const TIMETABLE_STATE_SHEET = "TimetableCourseState";
-export const TIMETABLE_PUBLICATION_SHEET = "TimetablePublications";
-export const PUBLISHED_TIMETABLE_SESSION_SHEET = "PublishedTimetableSessions";
+export {
+  PUBLISHED_TIMETABLE_SESSION_HEADERS,
+  TIMETABLE_PUBLICATION_HEADERS,
+  TIMETABLE_STATE_HEADERS
+} from "../lib/timetable-publication.js";
 
 export const COURSE_HEADERS = Object.freeze([
   "CourseID",
@@ -79,45 +95,6 @@ export const TIMETABLE_SESSION_HEADERS = Object.freeze([
   "ModifiedByAdminID",
   "ModifiedByAdminName",
   "ModifiedDate"
-]);
-
-export const TIMETABLE_STATE_HEADERS = Object.freeze([
-  "CourseID",
-  "Stage",
-  "CurrentPublicationID",
-  "CreatedDate",
-  "CreatedByAdminID",
-  "CreatedByAdminName",
-  "ModifiedByAdminID",
-  "ModifiedByAdminName",
-  "ModifiedDate"
-]);
-
-export const TIMETABLE_PUBLICATION_HEADERS = Object.freeze([
-  "PublicationID",
-  "CourseID",
-  "VersionNo",
-  "PublishedDate",
-  "PublishedByAdminID",
-  "PublishedByAdminName",
-  "SessionCount"
-]);
-
-export const PUBLISHED_TIMETABLE_SESSION_HEADERS = Object.freeze([
-  "PublishedSessionID",
-  "PublicationID",
-  "SourceSessionID",
-  "CourseID",
-  "TimeSlotID",
-  "DayOfWeek",
-  "SubjectID",
-  "ModuleID",
-  "GroupNo",
-  "TeacherID",
-  "ZoomLink",
-  "PublishedDate",
-  "PublishedByAdminID",
-  "PublishedByAdminName"
 ]);
 
 const SUBJECT_SHEET = "SubjectList";
@@ -1075,13 +1052,28 @@ export async function publishTimetableGoogleSheetsEndpoint(request, env) {
 
   let data;
   try {
-    data = await readBuilderData(env, { includeReferences: true });
+    data = await readBuilderData(env, {
+      includeReferences: true,
+      includeSystemConfig: true
+    });
   } catch (error) {
     return builderDataReadErrorResponse(error);
   }
 
   const schema = validateBuilderData(data);
   if (!schema.ok) return json({ success: false, error: schema.error }, 503);
+
+  const publishSchema = validatePublishedTimetableHeaders(data.publishedSessionRows, {
+    allowLegacy: false,
+    requireCurrent: true
+  });
+  if (!publishSchema.ok) {
+    return json({
+      success: false,
+      code: "PUBLISHED_TIMETABLE_SCHEMA_NOT_READY",
+      error: "Before publishing, add the documented immutable display headers in PublishedTimetableSessions O1:T1"
+    }, 503);
+  }
 
   const courses = parseCourses(data.courseRows);
   const timeSlots = parseTimeSlots(data.timeSlotRows);
@@ -1146,7 +1138,8 @@ export async function publishTimetableGoogleSheetsEndpoint(request, env) {
     success: true,
     message: `Timetable version ${versionno} published in the builder`,
     publication: { publicationid, courseid: courseId, versionno, sessioncount: activeSessions.length, stage: PUBLISHED_STAGE },
-    liveSource: "TeacherAssign"
+    liveSource: getTimetableLiveSource(data.systemConfigRows || []),
+    publicationBecomesLive: getTimetableLiveSource(data.systemConfigRows || []) === TIMETABLE_SOURCE_PUBLISHED
   });
 }
 
@@ -1224,7 +1217,7 @@ function validateBuilderData(data) {
     validateExactHeaders(data.sessionRows, TIMETABLE_SESSION_HEADERS, TIMETABLE_SESSION_SHEET),
     validateExactHeaders(data.stateRows, TIMETABLE_STATE_HEADERS, TIMETABLE_STATE_SHEET),
     validateExactHeaders(data.publicationRows, TIMETABLE_PUBLICATION_HEADERS, TIMETABLE_PUBLICATION_SHEET),
-    validateExactHeaders(data.publishedSessionRows, PUBLISHED_TIMETABLE_SESSION_HEADERS, PUBLISHED_TIMETABLE_SESSION_SHEET)
+    validatePublishedTimetableHeaders(data.publishedSessionRows, { allowLegacy: true })
   ];
   return checks.find(check => !check.ok) || { ok: true };
 }
@@ -1247,6 +1240,8 @@ function buildBuilderResponse(data) {
   const states = parseTimetableStates(data.stateRows);
   const publications = parseTimetablePublications(data.publicationRows);
   const publishedSessions = parsePublishedTimetableSessions(data.publishedSessionRows);
+  const liveSource = getTimetableLiveSource(data.systemConfigRows || []);
+  const snapshotSchema = validatePublishedTimetableHeaders(data.publishedSessionRows, { allowLegacy: true });
   const publishedSourceIds = new Set(publishedSessions.map(session => session.sourcesessionid));
   const subjectMap = new Map(subjects.map(subject => [subject.subjectid, subject]));
   const moduleMap = new Map(modules.map(module => [module.moduleid, module]));
@@ -1258,7 +1253,8 @@ function buildBuilderResponse(data) {
 
   return {
     success: true,
-    liveSource: "TeacherAssign",
+    liveSource,
+    publishedSnapshotSchemaReady: snapshotSchema.current === true,
     builderSource: TIMETABLE_SESSION_SHEET,
     publishedSnapshotSource: PUBLISHED_TIMETABLE_SESSION_SHEET,
     published: states.some(state => state.stage === PUBLISHED_STAGE),
@@ -1345,46 +1341,6 @@ function parseSessions(rows = []) {
     active: normalizeBoolean(row[9]),
     createddate: clean(row[10])
   })).filter(session => session.sessionid && session.courseid && session.timeslotid && session.dayofweek);
-}
-
-function parseTimetableStates(rows = []) {
-  return rows.slice(1).map((row, index) => ({
-    rowindex: index + 1,
-    courseid: clean(row[0]),
-    stage: normalizeTimetableStage(row[1]),
-    currentpublicationid: clean(row[2]),
-    createddate: clean(row[3]),
-    modifieddate: clean(row[8])
-  })).filter(state => state.courseid);
-}
-
-function parseTimetablePublications(rows = []) {
-  return rows.slice(1).map(row => ({
-    publicationid: clean(row[0]),
-    courseid: clean(row[1]),
-    versionno: Number(row[2]) || 0,
-    publisheddate: clean(row[3]),
-    publishedbyadminid: clean(row[4]),
-    publishedbyadminname: clean(row[5]),
-    sessioncount: Number(row[6]) || 0
-  })).filter(publication => publication.publicationid && publication.courseid);
-}
-
-function parsePublishedTimetableSessions(rows = []) {
-  return rows.slice(1).map(row => ({
-    publishedsessionid: clean(row[0]),
-    publicationid: clean(row[1]),
-    sourcesessionid: clean(row[2]),
-    courseid: clean(row[3]),
-    timeslotid: clean(row[4]),
-    dayofweek: normalizeDay(row[5]),
-    subjectid: clean(row[6]),
-    moduleid: clean(row[7]),
-    groupno: normalizeGroup(row[8]),
-    teacherid: clean(row[9]),
-    zoomlink: clean(row[10]),
-    publisheddate: clean(row[11])
-  })).filter(session => session.publishedsessionid && session.publicationid && session.sourcesessionid);
 }
 
 function normalizeTimetableStage(value) {
@@ -1524,6 +1480,12 @@ async function writePublishedTimetableSnapshot(env, data, options) {
   ];
   const sheetIds = await getRequiredSheetIds(env, requiredSheets);
   const { audit, publicationid, courseid, versionno, sessions } = options;
+  const courseMap = new Map(parseCourses(data.courseRows).map(course => [course.courseid, course]));
+  const timeSlotMap = new Map(parseTimeSlots(data.timeSlotRows).map(slot => [slot.timeslotid, slot]));
+  const subjectMap = new Map(parseSubjects(data.subjectRows).map(subject => [subject.subjectid, subject]));
+  const moduleMap = new Map(parseModules(data.moduleRows).map(module => [module.moduleid, module]));
+  const teacherMap = new Map(parseTeachers(data.adminRows).map(teacher => [teacher.teacherid, teacher]));
+  const course = courseMap.get(courseid);
   const publicationRow = [
     publicationid,
     courseid,
@@ -1533,22 +1495,34 @@ async function writePublishedTimetableSnapshot(env, data, options) {
     audit.actor.adminname,
     sessions.length
   ];
-  const snapshotRows = sessions.map(session => [
-    createTimetableId("PUBLISHED-SESSION"),
-    publicationid,
-    session.sessionid,
-    courseid,
-    session.timeslotid,
-    session.dayofweek,
-    session.subjectid,
-    session.moduleid,
-    session.groupno,
-    session.teacherid,
-    session.zoomlink,
-    audit.timestamp,
-    audit.actor.adminid,
-    audit.actor.adminname
-  ]);
+  const snapshotRows = sessions.map(session => {
+    const slot = timeSlotMap.get(session.timeslotid);
+    const subject = subjectMap.get(session.subjectid);
+    const module = session.moduleid ? moduleMap.get(session.moduleid) : null;
+    const teacher = teacherMap.get(session.teacherid);
+    return [
+      createTimetableId("PUBLISHED-SESSION"),
+      publicationid,
+      session.sessionid,
+      courseid,
+      session.timeslotid,
+      session.dayofweek,
+      session.subjectid,
+      session.moduleid,
+      session.groupno,
+      session.teacherid,
+      session.zoomlink,
+      audit.timestamp,
+      audit.actor.adminid,
+      audit.actor.adminname,
+      course?.coursename || courseid,
+      slot?.starttime || "",
+      slot?.endtime || "",
+      subject?.subjectname || session.subjectid,
+      module?.modulename || "",
+      teacher?.teachername || session.teacherid
+    ];
+  });
   const state = getCourseTimetableState(data, courseid);
   const rowAudit = getRequiredRowAuditColumns(TIMETABLE_STATE_HEADERS);
   if (!rowAudit.ok) throw new Error(rowAudit.error);
@@ -2060,7 +2034,7 @@ function builderDataReadErrorResponse(error) {
 
   return json({
     success: false,
-    error: "Timetable Builder Sheet setup is incomplete. Create Courses, TimeSlots, TimetableSessions, TimetableCourseState, TimetablePublications and PublishedTimetableSessions using the V101.4.3 migration headers."
+    error: "Timetable Builder Sheet setup is incomplete. Create Courses, TimeSlots, TimetableSessions, TimetableCourseState, TimetablePublications and PublishedTimetableSessions using the V101.4.4 migration headers."
   }, 503);
 }
 

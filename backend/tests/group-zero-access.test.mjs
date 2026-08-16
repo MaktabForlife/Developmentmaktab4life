@@ -20,14 +20,14 @@ assert.match(manageStudents, /Only an Admin can assign Group 0 \(ALL\) access/);
 assert.match(manageStudents, /if \(isInactive\)[\s\S]*if \(isGroupZero\) return ALL_GROUPS_STUDENT_LABEL/);
 assert.match(shell, /if \(group === "0"\) return "ALL \(Group 0\)"/);
 
-assert.match(timetableUi, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v9"/);
+assert.match(timetableUi, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v10"/);
 assert.match(timetableUi, /getTimetableViewerCachePart/);
 assert.match(timetableUi, /user\.studentid[\s\S]*user\.adminid/);
 assert.match(timetableUi, /user\.classgroup \?\?[\s\S]*user\.assignedgroup/);
 
 for (const html of [adminHtml, studentHtml, rootHtml]) {
   assert.match(html, /m4l-shell\.js\?v=102\.8/);
-  assert.match(html, /m4l-timetable\.js\?v=102\.4/);
+  assert.match(html, /m4l-timetable\.js\?v=102\.9/);
 }
 assert.match(adminHtml, /m4l-manage-students\.js\?v=102\.6\.1/);
 

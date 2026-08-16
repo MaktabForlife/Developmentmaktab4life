@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=102.8.2">
+<link rel="stylesheet" href="/styles.css?v=102.9">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -759,7 +759,7 @@
       </div>
     </section>
 
-    <!-- ADMIN TIMETABLE BUILDER - V102.8.2 -->
+    <!-- ADMIN TIMETABLE BUILDER - V102.9 -->
     <section id="timetable-builder-screen" class="screen admin-theme timetable-builder-screen" aria-labelledby="timetable-builder-title">
       <header class="timetable-builder-header">
         <div>
@@ -781,6 +781,7 @@
       <div class="timetable-builder-status-band">
         <strong id="timetable-builder-stage-label">Development draft</strong>
         <span id="timetable-builder-stage-detail">The live student and teacher timetable still reads from TeacherAssign.</span>
+        <button id="timetable-builder-integration" type="button" class="timetable-builder-secondary" data-ttb-action="review-integration" hidden>Review Live Integration</button>
         <button id="timetable-builder-publish" type="button" class="timetable-builder-primary" data-ttb-action="publish-timetable" hidden>Publish Timetable</button>
       </div>
 
@@ -914,6 +915,29 @@
           <div class="timetable-builder-dialog-actions">
             <button type="button" class="timetable-builder-secondary" data-ttb-action="close-bulk-session">Cancel</button>
             <button id="ttb-save-bulk-sessions" type="button" class="timetable-builder-primary" data-ttb-action="save-bulk-sessions">Save Selected Sessions</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="timetable-integration-dialog" class="timetable-builder-dialog timetable-integration-dialog" aria-labelledby="timetable-integration-dialog-title">
+        <form class="timetable-builder-dialog-form" onsubmit="return false;">
+          <div class="timetable-builder-dialog-heading">
+            <div>
+              <p class="timetable-builder-eyebrow">Authoritative live source</p>
+              <h3 id="timetable-integration-dialog-title">Review Live Timetable Integration</h3>
+              <p class="timetable-builder-dialog-summary">Preview the current publication before activating or rolling back this course.</p>
+            </div>
+            <button type="button" class="icon-action-btn" data-ttb-action="close-integration" aria-label="Close timetable integration review" title="Close"><span class="app-icon app-icon-xclose" aria-hidden="true"></span></button>
+          </div>
+          <div id="ttb-integration-content" class="timetable-integration-content"><p class="helper-text">Loading integration review…</p></div>
+          <label id="ttb-integration-confirm-field" class="timetable-builder-field timetable-integration-confirm-field" hidden>
+            <span id="ttb-integration-confirm-label">Type the confirmation phrase exactly</span>
+            <input id="ttb-integration-confirmation" type="text" autocomplete="off" spellcheck="false" />
+          </label>
+          <div id="ttb-integration-message" class="timetable-session-message" role="alert" aria-live="assertive"></div>
+          <div class="timetable-builder-dialog-actions">
+            <button type="button" class="timetable-builder-secondary" data-ttb-action="close-integration">Cancel</button>
+            <button id="ttb-save-integration-source" type="button" class="timetable-builder-primary" data-ttb-action="save-integration-source" disabled>Activate Published Timetable</button>
           </div>
         </form>
       </dialog>
@@ -1694,16 +1718,16 @@
 <script src="/js/m4l-config.js?v=94.1"></script>
 <script src="/app.js?v=102.4"></script>
 <script src="/js/m4l-cache.js?v=102.4"></script>
-<script src="/js/m4l-auth.js?v=102.8.2"></script>
+<script src="/js/m4l-auth.js?v=102.9"></script>
 <script src="/js/m4l-shell.js?v=102.8"></script>
-  <script src="/js/m4l-timetable.js?v=102.4"></script>
+  <script src="/js/m4l-timetable.js?v=102.9"></script>
   <script src="/js/m4l-weekly-planner.js?v=101.1.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.4"></script>
 <script src="/js/m4l-admin-academics.js?v=102.6.2"></script>
 <script src="/js/m4l-system-settings.js?v=102.7"></script>
-<script src="/js/m4l-timetable-builder.js?v=102.8.2"></script>
+<script src="/js/m4l-timetable-builder.js?v=102.9"></script>
 <script src="/js/m4l-global-curriculum.js?v=102.7"></script>
   <script src="/js/m4l-resources.js?v=102.8.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>

@@ -26,7 +26,7 @@ const sessionRows = [
 ];
 const stateRows = [[...TIMETABLE_STATE_HEADERS]];
 const publicationRows = [[...TIMETABLE_PUBLICATION_HEADERS]];
-const publishedSessionRows = [[...PUBLISHED_TIMETABLE_SESSION_HEADERS]];
+const publishedSessionRows = [[...PUBLISHED_TIMETABLE_SESSION_HEADERS.slice(0, 14)]];
 const subjectRows = [
   ["SubjectID", "SubjectName", "Active", "CreatedDate"],
   ["SUB1", "Qur'an", true, "2026-08-01T00:00:00.000Z"],
@@ -82,7 +82,7 @@ const appendRows = {
   "TimetableSessions!A:P": sessionRows,
   "TimetableCourseState!A:I": stateRows,
   "TimetablePublications!A:G": publicationRows,
-  "PublishedTimetableSessions!A:N": publishedSessionRows,
+  "PublishedTimetableSessions!A:T": publishedSessionRows,
   "AdminAuditLog!A:I": auditRows
 };
 const sheetIds = new Map([
@@ -180,7 +180,8 @@ try {
 
   const initial = await post("/api/admin/timetable-builder/get", adminToken, {});
   assert.equal(initial.response.status, 200);
-  assert.equal(initial.data.liveSource, "TeacherAssign");
+  assert.equal(initial.data.liveSource, "TEACHER_ASSIGN");
+  assert.equal(initial.data.publishedSnapshotSchemaReady, false);
   assert.equal(initial.data.publishedSnapshotSource, "PublishedTimetableSessions");
   assert.equal(initial.data.timetablestates[0].stage, "DEVELOPMENT");
   assert.deepEqual(initial.data.groups, ["ALL", "1", "2"]);
@@ -190,6 +191,11 @@ try {
   assert.equal(valueBatchGets.length, 1, "The complete builder load should use one Sheets values batch read");
   assert.equal(valueBatchGets[0].length, 12);
   assert.ok(valueBatchGets[0].includes("TaskList!A:ZZ"));
+
+  const blockedLegacyPublish = await post("/api/admin/timetable-builder/publish", adminToken, { courseid: "COURSE1" });
+  assert.equal(blockedLegacyPublish.response.status, 503);
+  assert.equal(blockedLegacyPublish.data.code, "PUBLISHED_TIMETABLE_SCHEMA_NOT_READY");
+  assert.equal(publicationRows.length, 1, "A blocked publication must not write a publication row");
 
   const invalidAll = await post("/api/admin/timetable-builder/session/save", adminToken, {
     courseid: "COURSE1", timeslotid: "SLOT2", daysofweek: ["Wed"], subjectid: "SUB1",
@@ -325,13 +331,20 @@ try {
   assert.equal(spreadsheetBatches.length, batchesBeforeConflict, "A rejected bulk edit must not write any row");
   assert.equal(sessionRows.find(row => row[0] === wedSessions[1])[7], conflictingTeacherBefore);
 
+  publishedSessionRows[0] = [...PUBLISHED_TIMETABLE_SESSION_HEADERS];
   const publish = await post("/api/admin/timetable-builder/publish", adminToken, { courseid: "COURSE1" });
   assert.equal(publish.response.status, 200);
   assert.equal(publish.data.publication.versionno, 1);
   assert.equal(publish.data.publication.sessioncount, 5);
-  assert.equal(publish.data.liveSource, "TeacherAssign");
+  assert.equal(publish.data.liveSource, "TEACHER_ASSIGN");
+  assert.equal(publish.data.publicationBecomesLive, false);
   assert.equal(publicationRows.length, 2);
   assert.equal(publishedSessionRows.length, 6);
+  assert.ok(publishedSessionRows.slice(1).every(row => row.length === 20));
+  const immutableLegacySnapshot = publishedSessionRows.find(row => row[2] === "SESSION-LEGACY-1");
+  assert.deepEqual(immutableLegacySnapshot.slice(14), [
+    "Evening Maktab", "09:00", "10:00", "Qur'an", "Qa'idah", "Teacher One"
+  ]);
   assert.equal(stateRows[1][1], "PUBLISHED");
   assert.equal(stateRows[1][2], publish.data.publication.publicationid);
   assert.ok(spreadsheetBatches.some(requests => requests.length === 4));

@@ -10,7 +10,7 @@ const admin = await readFile(new URL("../../admin/index.html", import.meta.url),
 const student = await readFile(new URL("../../student/index.html", import.meta.url), "utf8");
 const root = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 
-assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v9"/);
+assert.match(timetable, /TIMETABLE_CACHE_PREFIX = "maktab_timetable_cache_v10"/);
 assert.match(timetable, /teacherId: normalizeTimetableText\(resolvedTeacherId\)/);
 assert.match(timetable, /teachername: teacherName/);
 assert.match(timetable, /data-timetable-teacher-id=/);
@@ -65,14 +65,14 @@ assert.doesNotMatch(
 );
 assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.5/);
 
-assert.match(admin, /styles\.css\?v=102\.8/);
+assert.match(admin, /styles\.css\?v=102\.9/);
 
 for (const html of [student, root]) {
-  assert.match(html, /m4l-timetable\.js\?v=102\.4/);
-  assert.match(html, /styles\.css\?v=102\.8/);
+  assert.match(html, /m4l-timetable\.js\?v=102\.9/);
+  assert.match(html, /styles\.css\?v=102\.9/);
 }
 
-assert.match(admin, /m4l-timetable\.js\?v=102\.4/);
+assert.match(admin, /m4l-timetable\.js\?v=102\.9/);
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=101\.1\.1/);
 

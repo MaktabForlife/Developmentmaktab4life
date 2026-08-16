@@ -9,6 +9,9 @@ export const STUDENT_LOGIN_BASE_KEY = "StudentLoginBaseUrl";
 export const WEEKLY_PLANNER_DRIVE_FOLDER_ID_KEY = "WeeklyPlannerDriveFolderId";
 export const WEEKLY_PLANNER_DRIVE_FOLDER_LABEL_KEY = "WeeklyPlannerDriveFolderLabel";
 export const GLOBAL_ZOOM_LINK_KEY = "GlobalZoomLink";
+export const TIMETABLE_LIVE_SOURCE_KEY = "TimetableLiveSource";
+export const TIMETABLE_SOURCE_TEACHER_ASSIGN = "TEACHER_ASSIGN";
+export const TIMETABLE_SOURCE_PUBLISHED = "PUBLISHED_TIMETABLE";
 export const DEFAULT_WEEKLY_PLANNER_DRIVE_FOLDER_LABEL = "Weekly Planner";
 
 const SYSTEM_CONFIG_RANGE = `${SYSTEM_CONFIG_SHEET}!A:E`;
@@ -40,6 +43,27 @@ export function findSystemConfigRowIndexes(rows, key) {
   });
 
   return indexes;
+}
+
+export function getTimetableLiveSource(rows) {
+  const matches = findSystemConfigRowIndexes(rows, TIMETABLE_LIVE_SOURCE_KEY);
+
+  if (matches.length > 1) {
+    throw new Error(`SystemConfig contains duplicate ${TIMETABLE_LIVE_SOURCE_KEY} rows`);
+  }
+
+  const value = matches.length === 1
+    ? getSystemConfigValue(rows, TIMETABLE_LIVE_SOURCE_KEY)
+    : TIMETABLE_SOURCE_TEACHER_ASSIGN;
+  const normalized = clean(value).toUpperCase();
+
+  if (normalized === TIMETABLE_SOURCE_TEACHER_ASSIGN || normalized === TIMETABLE_SOURCE_PUBLISHED) {
+    return normalized;
+  }
+
+  throw new Error(
+    `${TIMETABLE_LIVE_SOURCE_KEY} must be ${TIMETABLE_SOURCE_TEACHER_ASSIGN} or ${TIMETABLE_SOURCE_PUBLISHED}`
+  );
 }
 
 export async function upsertSystemConfigValues(env, valuesByKey, options = {}) {

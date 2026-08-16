@@ -1,3 +1,37 @@
+V102.9
+
+# Integrate immutable published timetables with a reversible live cutover
+
+- Extends `PublishedTimetableSessions` with immutable course name, start/end
+  time, subject name, module name and teacher name display values.
+- Keeps ordinary Builder reads compatible with the legacy A:N header during
+  rollout, while blocking publication and activation until O1:T1 are present.
+- Adds an ADMIN review dialog showing snapshot readiness, current publication
+  and logical differences from `TeacherAssign`.
+- Adds typed `ACTIVATE PUBLISHED TIMETABLE` and `RETURN TO TEACHERASSIGN`
+  confirmations.
+- Saves the course-local `TimetableLiveSource` and its Admin audit event in one
+  atomic Google Sheets batch.
+- Routes Student, TEACHER, ADMIN/SENIOR oversight and Weekly Planner reads
+  through the current publication after activation.
+- Keeps draft edits isolated behind the last current publication; the next
+  successful publication becomes live automatically.
+- Invalidates the current browser's timetable cache after activation, rollback
+  and every publication that becomes live immediately.
+- Fails closed on invalid published headers, pointers, row counts, duplicate
+  IDs or missing immutable display values; no silent legacy fallback occurs.
+- Keeps `TeacherAssign` and `TimeTable` available for verification and rollback.
+- Keeps Platform schema `102.0.4`; Reboot course schema moves to `101.4.4` after
+  the six documented header cells are added.
+- Adds no subscription timetable limits or cross-course conflict checks.
+
+Install only
+`Rebootyourmaktab-V102.9-GITHUB-UPDATE-FROM-V102.8.2.zip` over development
+V102.8.2 and complete every item in `UPDATE-TODO.md`. Production remains stable
+at V101.1.
+
+---
+
 V102.8.2
 
 # Make Timetable Builder edits reliable and update selected sessions safely

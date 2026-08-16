@@ -1,5 +1,5 @@
-/* M4L V102.8.2 - reliable staged timetable publication, per-group assignments
-   and selective multi-session editing. */
+/* M4L V102.9 - staged timetable publication, immutable live-source integration,
+   per-group assignments and selective multi-session editing. */
 
 const timetableBuilderState = {
   loaded: false,
@@ -15,6 +15,7 @@ const timetableBuilderState = {
   showInactiveSessions: false,
   bulkSelectionMode: false,
   selectedSessionIds: [],
+  integrationPreview: null,
   data: {
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     courses: [],
@@ -27,7 +28,9 @@ const timetableBuilderState = {
     tasks: [],
     timetablestates: [],
     publications: [],
-    globalzoomlink: ""
+    globalzoomlink: "",
+    liveSource: "TEACHER_ASSIGN",
+    publishedSnapshotSchemaReady: false
   }
 };
 
@@ -56,6 +59,7 @@ function bindTimetableBuilderHandlers() {
   timetableBuilderHandlersBound = true;
   document.addEventListener("click", handleTimetableBuilderClick);
   document.addEventListener("change", handleTimetableBuilderChange);
+  document.addEventListener("input", handleTimetableBuilderChange);
   return true;
 }
 
@@ -104,6 +108,9 @@ async function handleTimetableBuilderClick(event) {
   if (action === "delete-session") return deleteTimetableBuilderSession(target);
   if (action === "restore-session") return restoreTimetableBuilderSession(target);
   if (action === "publish-timetable") return publishTimetableBuilder(target);
+  if (action === "review-integration") return openTimetableIntegrationReview();
+  if (action === "close-integration") return closeTimetableIntegrationReview();
+  if (action === "save-integration-source") return saveTimetableIntegrationSource(target);
   if (action === "toggle-inactive-sessions") {
     timetableBuilderState.showInactiveSessions = !timetableBuilderState.showInactiveSessions;
     return renderTimetableBuilderGrid();
@@ -124,6 +131,7 @@ function handleTimetableBuilderChange(event) {
     timetableBuilderState.editTimeSlotId = "";
     timetableBuilderState.bulkSelectionMode = false;
     timetableBuilderState.selectedSessionIds = [];
+    timetableBuilderState.integrationPreview = null;
     renderTimetableBuilder();
     return;
   }
@@ -147,6 +155,12 @@ function handleTimetableBuilderChange(event) {
 
   if (target.closest("#timetable-bulk-session-dialog")) {
     clearTimetableBulkSessionMessage();
+  }
+
+  if (target.id === "ttb-integration-confirmation") {
+    updateTimetableIntegrationControls();
+    clearTimetableIntegrationMessage();
+    return;
   }
 
   if (target.matches("input[name='ttb-session-group']")) {
@@ -274,17 +288,29 @@ function renderTimetableBuilderStatus() {
   const label = document.getElementById("timetable-builder-stage-label");
   const detail = document.getElementById("timetable-builder-stage-detail");
   const publishButton = document.getElementById("timetable-builder-publish");
+  const integrationButton = document.getElementById("timetable-builder-integration");
   const hasCourse = Boolean(timetableBuilderState.selectedCourseId);
   const isPublished = selectedState.stage === "PUBLISHED";
+  const publishedIsLive = timetableBuilderState.data.liveSource === "PUBLISHED_TIMETABLE";
 
   if (label) label.textContent = isPublished
     ? `Published · version ${selectedState.versionno || 1}`
     : "Development draft";
-  if (detail) detail.textContent = isPublished
-    ? `Snapshot published${selectedState.publisheddate ? ` on ${formatBuilderDate(selectedState.publisheddate)}` : ""}. The live timetable still reads from TeacherAssign.`
-    : selectedState.currentpublicationid
-      ? `Draft changes are not in published version ${selectedState.versionno}. The live timetable still reads from TeacherAssign.`
-      : "No builder snapshot is published yet. The live timetable still reads from TeacherAssign.";
+  if (detail) detail.textContent = publishedIsLive
+    ? selectedState.currentpublicationid
+      ? isPublished
+        ? `Published version ${selectedState.versionno} is live. A future draft remains hidden until it is published.`
+        : `Published version ${selectedState.versionno} remains live. Current draft changes are hidden until the next publish.`
+      : "Published timetable mode is active, but no valid current publication is available. Review the integration immediately."
+    : isPublished
+      ? `Snapshot published${selectedState.publisheddate ? ` on ${formatBuilderDate(selectedState.publisheddate)}` : ""}. TeacherAssign remains live until explicit activation.`
+      : selectedState.currentpublicationid
+        ? `Draft changes are not in published version ${selectedState.versionno}. TeacherAssign remains live until explicit activation.`
+        : "No builder snapshot is published yet. TeacherAssign remains the live timetable source.";
+  if (integrationButton) {
+    integrationButton.hidden = !hasCourse;
+    integrationButton.textContent = publishedIsLive ? "Review / Roll Back" : "Review Live Integration";
+  }
   if (publishButton) {
     publishButton.hidden = !hasCourse;
     publishButton.textContent = isPublished ? "Publish New Version" : "Publish Timetable";
@@ -1174,14 +1200,21 @@ async function publishTimetableBuilder(button) {
   const activeCount = (timetableBuilderState.data.sessions || []).filter(session => session.courseid === courseid && session.active).length;
   const nextVersion = (getSelectedTimetableState().versionno || 0) + 1;
   if (!courseid || !activeCount) return setTimetableBuilderMessage("Add at least one active session before publishing.", "error");
-  if (!window.confirm(`Publish ${course?.coursename || "this course"} timetable version ${nextVersion} with ${activeCount} active sessions?\n\nThis creates an immutable snapshot. TeacherAssign remains the live timetable source in V101.4.3.`)) return false;
+  const publicationEffect = timetableBuilderState.data.liveSource === "PUBLISHED_TIMETABLE"
+    ? "This creates an immutable snapshot and the new version will become live immediately for this course."
+    : "This creates an immutable snapshot. TeacherAssign remains live until you review and explicitly activate the published source.";
+  if (!window.confirm(`Publish ${course?.coursename || "this course"} timetable version ${nextVersion} with ${activeCount} active sessions?\n\n${publicationEffect}`)) return false;
 
   button.disabled = true;
   setTimetableBuilderMessage("Validating and publishing an immutable snapshot…", "");
   try {
     const result = await apiPost("/api/admin/timetable-builder/publish", { courseid }, state.token);
     if (!result.success) throw new Error(result.error || "Unable to publish timetable");
+    if (result.publicationBecomesLive && typeof clearTimetableCache === "function") {
+      clearTimetableCache();
+    }
     timetableBuilderState.loaded = false;
+    timetableBuilderState.integrationPreview = null;
     await loadTimetableBuilder(true);
     setTimetableBuilderMessage(result.message || "Timetable published.", "success");
     return true;
@@ -1191,6 +1224,163 @@ async function publishTimetableBuilder(button) {
   } finally {
     button.disabled = false;
   }
+}
+
+async function openTimetableIntegrationReview() {
+  const courseid = timetableBuilderState.selectedCourseId;
+  const dialog = document.getElementById("timetable-integration-dialog");
+  if (!courseid || !dialog) return false;
+
+  timetableBuilderState.integrationPreview = null;
+  setTimetableIntegrationContent('<p class="helper-text">Validating the current publication and comparing TeacherAssign…</p>');
+  clearTimetableIntegrationMessage();
+  setTimetableIntegrationConfirmation(null);
+  if (!dialog.open && typeof dialog.showModal === "function") dialog.showModal();
+
+  try {
+    const preview = await apiPost("/api/admin/timetable-builder/integration/preview", { courseid }, state.token);
+    if (!preview.success) throw new Error(preview.error || "Unable to review timetable integration");
+    timetableBuilderState.integrationPreview = preview;
+    renderTimetableIntegrationPreview(preview);
+    return true;
+  } catch (error) {
+    setTimetableIntegrationContent(`<section class="timetable-integration-blocker"><strong>Integration review could not be completed</strong><p>${ttbEscape(error?.message || "Unable to review timetable integration.")}</p></section>`);
+    showTimetableIntegrationMessage(error?.message || "Unable to review timetable integration.", "error");
+    return false;
+  }
+}
+
+function renderTimetableIntegrationPreview(preview) {
+  const publishedIsLive = preview.currentSource === "PUBLISHED_TIMETABLE";
+  const publication = preview.publication;
+  const comparison = preview.comparison || {};
+  const publicationSummary = publication
+    ? `Version ${publication.versionno} · ${publication.sessioncount} sessions${publication.publisheddate ? ` · ${formatBuilderDate(publication.publisheddate)}` : ""}`
+    : "No valid current publication";
+  const warnings = (preview.warnings || []).map(warning => `<li>${ttbEscape(warning)}</li>`).join("");
+  const differences = comparison.invalidTeacherAssignHeaders ? "" : `
+    <section class="timetable-integration-comparison">
+      <h4>Source comparison</h4>
+      <div class="timetable-integration-counts">
+        <span><strong>${Number(comparison.matchingCount) || 0}</strong> matching</span>
+        <span><strong>${Number(comparison.publishedOnlyCount) || 0}</strong> published only</span>
+        <span><strong>${Number(comparison.teacherAssignOnlyCount) || 0}</strong> TeacherAssign only</span>
+      </div>
+      ${renderTimetableIntegrationDifferenceList("Only in published snapshot", comparison.publishedOnly, comparison.publishedOnlyCount)}
+      ${renderTimetableIntegrationDifferenceList("Only in TeacherAssign", comparison.teacherAssignOnly, comparison.teacherAssignOnlyCount)}
+    </section>`;
+
+  setTimetableIntegrationContent(`
+    <section class="timetable-integration-source-card">
+      <span>Current live source</span>
+      <strong>${publishedIsLive ? "Published Timetable" : "TeacherAssign"}</strong>
+      <small>${publishedIsLive
+        ? "Student, staff and Weekly Planner reads use the current published snapshot."
+        : "Student, staff and Weekly Planner reads continue to use TeacherAssign."}</small>
+    </section>
+    <div class="timetable-integration-checks">
+      <section class="timetable-integration-check ${preview.snapshotSchemaReady ? "is-ready" : "is-blocked"}"><span>Immutable columns O:T</span><strong>${preview.snapshotSchemaReady ? "Ready" : "Required"}</strong></section>
+      <section class="timetable-integration-check ${preview.readyToActivate ? "is-ready" : "is-blocked"}"><span>Current publication</span><strong>${ttbEscape(publicationSummary)}</strong></section>
+    </div>
+    ${preview.blockingError ? `<section class="timetable-integration-blocker"><strong>Published source cannot be activated yet</strong><p>${ttbEscape(preview.blockingError)}</p></section>` : differences}
+    ${warnings ? `<ul class="timetable-integration-warnings">${warnings}</ul>` : ""}
+    <p class="timetable-integration-safety-note">Activation is course-local and reversible. After activation, an invalid snapshot fails closed and never silently falls back to TeacherAssign.</p>
+  `);
+  setTimetableIntegrationConfirmation(preview);
+}
+
+function renderTimetableIntegrationDifferenceList(title, sessions, total) {
+  if (!Number(total)) return "";
+  const values = Array.isArray(sessions) ? sessions : [];
+  const rows = values.map(session => `<li><strong>${ttbEscape(session.dayofweek)} ${ttbEscape(session.starttime)}</strong><span>${ttbEscape(session.subjectname || session.subjectid)}${session.modulename ? ` · ${ttbEscape(session.modulename)}` : ""} · Group ${ttbEscape(session.groupno)} · ${ttbEscape(session.teachername || session.teacherid)}</span></li>`).join("");
+  return `<details class="timetable-integration-differences"><summary>${ttbEscape(title)} (${Number(total) || 0})</summary><ul>${rows}</ul>${Number(total) > values.length ? "<small>Only the first 12 differences are shown.</small>" : ""}</details>`;
+}
+
+function setTimetableIntegrationConfirmation(preview) {
+  const field = document.getElementById("ttb-integration-confirm-field");
+  const label = document.getElementById("ttb-integration-confirm-label");
+  const input = document.getElementById("ttb-integration-confirmation");
+  const button = document.getElementById("ttb-save-integration-source");
+  const publishedIsLive = preview?.currentSource === "PUBLISHED_TIMETABLE";
+  const canChange = Boolean(preview && (publishedIsLive || preview.readyToActivate));
+  if (field) field.hidden = !canChange;
+  if (label) label.textContent = preview ? `Type ${preview.requiredConfirmation} exactly to confirm` : "Type the confirmation phrase exactly";
+  if (input) {
+    input.value = "";
+    input.placeholder = preview?.requiredConfirmation || "";
+    input.disabled = !canChange;
+  }
+  if (button) {
+    button.textContent = publishedIsLive ? "Return to TeacherAssign" : "Activate Published Timetable";
+    button.classList.toggle("timetable-builder-danger", publishedIsLive);
+    button.classList.toggle("timetable-builder-primary", !publishedIsLive);
+    button.disabled = true;
+  }
+}
+
+function updateTimetableIntegrationControls() {
+  const preview = timetableBuilderState.integrationPreview;
+  const input = document.getElementById("ttb-integration-confirmation");
+  const button = document.getElementById("ttb-save-integration-source");
+  if (!preview || !input || !button) return false;
+  const canChange = preview.currentSource === "PUBLISHED_TIMETABLE" || preview.readyToActivate;
+  button.disabled = !canChange || input.value.trim() !== preview.requiredConfirmation;
+  return !button.disabled;
+}
+
+async function saveTimetableIntegrationSource(button) {
+  const preview = timetableBuilderState.integrationPreview;
+  const input = document.getElementById("ttb-integration-confirmation");
+  if (!preview || !input || button.disabled) return false;
+  button.disabled = true;
+  showTimetableIntegrationMessage("Saving the course live source and audit record…", "working");
+  try {
+    const result = await apiPost("/api/admin/timetable-builder/integration/source/save", {
+      courseid: timetableBuilderState.selectedCourseId,
+      source: preview.targetSource,
+      publicationid: preview.publication?.publicationid || "",
+      confirmation: input.value.trim()
+    }, state.token);
+    if (!result.success) throw new Error(result.error || "Unable to save the timetable live source");
+    timetableBuilderState.loaded = false;
+    closeTimetableIntegrationReview();
+    await loadTimetableBuilder(true);
+    if (typeof clearTimetableCache === "function") clearTimetableCache();
+    setTimetableBuilderMessage(result.message || "Timetable live source saved.", "success");
+    return true;
+  } catch (error) {
+    showTimetableIntegrationMessage(error?.message || "Unable to save the timetable live source.", "error");
+    updateTimetableIntegrationControls();
+    return false;
+  }
+}
+
+function closeTimetableIntegrationReview() {
+  const dialog = document.getElementById("timetable-integration-dialog");
+  if (dialog?.open && typeof dialog.close === "function") dialog.close();
+  timetableBuilderState.integrationPreview = null;
+  return true;
+}
+
+function setTimetableIntegrationContent(html) {
+  const element = document.getElementById("ttb-integration-content");
+  if (element) element.innerHTML = html;
+}
+
+function showTimetableIntegrationMessage(message, type = "error") {
+  const element = document.getElementById("ttb-integration-message");
+  if (!element) return false;
+  element.className = `timetable-session-message is-${ttbAttr(type)}`;
+  element.innerHTML = `<strong>${ttbEscape(message)}</strong>`;
+  return true;
+}
+
+function clearTimetableIntegrationMessage() {
+  const element = document.getElementById("ttb-integration-message");
+  if (!element) return false;
+  element.className = "timetable-session-message";
+  element.textContent = "";
+  return true;
 }
 
 function applyTimetableSessionUpdates(updates) {

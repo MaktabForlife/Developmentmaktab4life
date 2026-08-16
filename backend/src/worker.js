@@ -1,4 +1,4 @@
-/* M4L V102.8.2 - reliable timetable reads and selective multi-session editing.
+/* M4L V102.9 - immutable published timetable integration and reversible live cutover.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.8.2"
+          version: "102.9"
         });
       }
 

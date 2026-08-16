@@ -1,4 +1,4 @@
-/* M4L V102.8.2 - reliable staged Timetable Builder with selective multi-session editing. */
+/* M4L V102.9 - staged Timetable Builder, bulk editing and live-source integration. */
 
 body:has(#timetable-builder-screen.active) .app-shell {
   width: min(100%, 1500px);
@@ -613,6 +613,43 @@ body:has(#timetable-builder-screen.active) .app-shell {
   width: min(760px, calc(100vw - 36px));
 }
 
+.timetable-integration-dialog { width: min(820px, calc(100vw - 36px)); }
+.timetable-integration-content { display: grid; gap: 13px; }
+.timetable-integration-source-card,
+.timetable-integration-check,
+.timetable-integration-comparison,
+.timetable-integration-blocker,
+.timetable-integration-safety-note { border: 1px solid var(--border, #e4dadd); border-radius: 11px; }
+.timetable-integration-source-card { display: grid; gap: 4px; padding: 14px; background: color-mix(in srgb, var(--primary, #31513f) 7%, white); }
+.timetable-integration-source-card span,
+.timetable-integration-check span { color: var(--text-muted, #70736c); font-size: .75rem; font-weight: 680; text-transform: uppercase; }
+.timetable-integration-source-card strong { color: var(--primary, #31513f); font-size: 1.08rem; }
+.timetable-integration-source-card small { color: var(--text-muted, #70736c); line-height: 1.4; }
+.timetable-integration-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.timetable-integration-check { display: grid; gap: 5px; padding: 12px; }
+.timetable-integration-check.is-ready { border-color: #a6d0b0; background: #edf8f0; }
+.timetable-integration-check.is-blocked,
+.timetable-integration-blocker { border-color: #efb5b5; background: #fff0f0; }
+.timetable-integration-blocker { padding: 13px; color: #8b2525; }
+.timetable-integration-blocker p,
+.timetable-integration-comparison h4,
+.timetable-integration-safety-note { margin: 0; }
+.timetable-integration-blocker p { margin-top: 4px; line-height: 1.45; }
+.timetable-integration-comparison { display: grid; gap: 11px; padding: 14px; }
+.timetable-integration-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.timetable-integration-counts span { display: grid; gap: 2px; padding: 9px; border-radius: 8px; background: var(--surface-track, #f4f1ef); color: var(--text-muted, #70736c); font-size: .75rem; text-align: center; }
+.timetable-integration-counts strong { color: var(--text, #2f312e); font-size: 1rem; }
+.timetable-integration-differences { border-top: 1px solid var(--border, #e4dadd); padding-top: 9px; }
+.timetable-integration-differences summary { color: var(--primary, #31513f); font-size: .84rem; font-weight: 720; cursor: pointer; }
+.timetable-integration-differences ul,
+.timetable-integration-warnings { margin: 9px 0 0; padding-left: 20px; }
+.timetable-integration-differences li { display: grid; gap: 2px; margin-bottom: 7px; font-size: .78rem; }
+.timetable-integration-differences li span,
+.timetable-integration-differences small,
+.timetable-integration-warnings { color: var(--text-muted, #70736c); font-size: .77rem; }
+.timetable-integration-safety-note { padding: 11px 13px; background: #fff8e8; color: #765920; font-size: .79rem; line-height: 1.45; }
+.timetable-integration-confirm-field { margin-top: 16px; }
+
 .timetable-builder-dialog-summary {
   margin: 5px 0 0;
   color: var(--text-muted, #70736c);
@@ -899,6 +936,9 @@ body:has(#timetable-builder-screen.active) .app-shell {
   .timetable-builder-bulk-control-grid {
     grid-template-columns: 1fr;
   }
+
+  .timetable-integration-checks,
+  .timetable-integration-counts { grid-template-columns: 1fr; }
 
   .timetable-session-group-assignment-grid {
     grid-template-columns: 1fr;

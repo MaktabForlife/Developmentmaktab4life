@@ -1,26 +1,26 @@
 # Maktabhelper
 
-Current development release: V102.8.2 Timetable reliability and selected-session editing.
+Current development release: V102.9 Published timetable integrator.
 
-V102.8.2 corrects the Timetable Builder failure seen after one or two Admin
-changes. The Builder now reads all related Sheet ranges in one batch, includes
-Tasks in that response and updates its grid locally after successful session
-changes. Temporary Google Sheets or network failures remain distinct from
-denied course access and do not invalidate a valid account session.
+V102.9 adds an ADMIN review, activation and rollback path for making the
+Timetable Builder's current immutable publication the selected course's live
+Student, staff and Weekly Planner source. Deployment alone changes nothing:
+`TeacherAssign` remains live until activation is explicitly confirmed.
 
-ADMIN can select two to one hundred active sessions in the current course and
-apply only the checked fields: subject/module, teacher and/or Zoom override.
-Day, time, group and active status are never bulk changed. All proposed rows
-are conflict-checked first and committed atomically; a failed validation writes
-nothing. Existing published snapshots remain immutable.
+Published snapshots now preserve course, time, subject, module and teacher
+display values so later curriculum edits cannot rewrite historical timetable
+display. Draft changes remain hidden behind the last current publication. An
+invalid published source fails closed instead of silently returning legacy
+data.
 
-Platform schema remains `102.0.4` and the Reboot course schema remains
-`101.4.3`. V102.8.2 adds no Sheet tab/header, migration, Worker configuration,
-Apps Script or course Sheet change. Account migration must not be rerun.
+Platform schema remains `102.0.4`. The Reboot course schema moves to `101.4.4`
+after adding the documented `PublishedTimetableSessions!O1:T1` headers. Account
+migration must not be rerun, and `TeacherAssign`/`TimeTable` are not deleted in
+this release.
 
 Start installation with `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip` directly over a
-development repository already containing V102.8.1. It is a modified-files
+`Rebootyourmaktab-V102.9-GITHUB-UPDATE-FROM-V102.8.2.zip` directly over a
+development repository already containing V102.8.2. It is a modified-files
 overlay containing the complete update; a full repository upload is not
 required.
 

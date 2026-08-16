@@ -81,6 +81,10 @@ import {
   saveTimetableTimeSlotGoogleSheetsEndpoint
 } from "./routes/timetable-builder.js";
 import {
+  previewTimetableIntegrationGoogleSheetsEndpoint,
+  saveTimetableLiveSourceGoogleSheetsEndpoint
+} from "./routes/timetable-integration.js";
+import {
   checkStudentDuplicateGoogleSheetsEndpoint,
   getStudentAssignmentOptionsGoogleSheetsEndpoint,
   searchStudentsGoogleSheetsEndpoint,
@@ -159,6 +163,8 @@ const ROUTES = new Map([
   ["/api/admin/timetable-builder/session/delete", googleSheetsRoute("timetable-builder", deleteTimetableSessionGoogleSheetsEndpoint)],
   ["/api/admin/timetable-builder/session/restore", googleSheetsRoute("timetable-builder", restoreTimetableSessionGoogleSheetsEndpoint)],
   ["/api/admin/timetable-builder/publish", googleSheetsRoute("timetable-builder", publishTimetableGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/integration/preview", googleSheetsRoute("timetable-builder", previewTimetableIntegrationGoogleSheetsEndpoint)],
+  ["/api/admin/timetable-builder/integration/source/save", googleSheetsRoute("timetable-builder", saveTimetableLiveSourceGoogleSheetsEndpoint)],
 
   ["/api/admin/weekly-planner/health", googleSheetsRoute("weekly-planner", weeklyPlannerHealthEndpoint)],
   ["/api/admin/weekly-planner/teachers", googleSheetsRoute("weekly-planner", weeklyPlannerTeachersEndpoint)],

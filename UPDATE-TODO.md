@@ -1,206 +1,161 @@
-# V102.8.2 update to-do
+# V102.9 update TODO — published timetable integrator
 
-Apply V102.8.2 only over a development repository that already contains
-V102.8.1, using:
+Complete this checklist in order. Production remains stable at V101.1 and must
+not be changed during this development deployment.
 
-`Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip`
+## 1. Back up and confirm the starting point
 
-This ZIP is a modified-files overlay. It contains every file changed by this
-release; it is not a full repository and you do not need to upload the full
-repository again. Production remains stable at V101.1 and must not receive
-this development update.
+- [ ] Confirm development currently reports `102.8.2` before applying the overlay.
+- [ ] Export/back up the Platform Sheet.
+- [ ] Export/back up the Reboot course Sheet.
+- [ ] Confirm the current live timetable still reads from `TeacherAssign`.
+- [ ] Confirm `CourseRegistry!A2` is `COURSE1` before relying on the E2 cell
+  instruction below.
+- [ ] Do not rerun account migration.
 
-## 1. Confirm the starting point
+## 2. Apply the modified-files overlay
 
-- [ ] Confirm the development Worker root reports `102.8.1`.
-- [ ] Confirm `/account/<uniqueid>` displays `V102.8.1`.
-- [ ] Confirm the repository into which the ZIP will be copied already contains
-  the complete V102.8.1 source.
-- [ ] Back up or download the current development branch before replacing files.
-- [ ] Record the current Worker and Pages deployment IDs.
-- [ ] Export or back up the Platform Sheet and Reboot course Sheet.
-
-Do not rerun account migration. Do not add, remove, rename or manually populate
-any Sheet tab or header for this release.
-
-## 2. Apply the overlay
-
-- [ ] Extract
-  `Rebootyourmaktab-V102.8.2-GITHUB-UPDATE-FROM-V102.8.1.zip` locally.
-- [ ] Copy every included file into the matching path of the existing
-  development repository.
-- [ ] Replace files when prompted and preserve the directory structure.
-- [ ] Confirm `docs/V102.8.2-TIMETABLE-RELIABILITY-BULK-EDIT.md` was added.
-- [ ] Confirm `DELETE-FILES.txt` says that no files are deleted.
-- [ ] Confirm root `UPDATE-TODO.md` is this V102.8.2 checklist.
+- [ ] Extract `Rebootyourmaktab-V102.9-GITHUB-UPDATE-FROM-V102.8.2.zip`.
+- [ ] Copy every file into the matching path of the existing development repo.
+- [ ] Replace files when prompted and retain the directory structure.
+- [ ] Confirm `docs/V102.9-PUBLISHED-TIMETABLE-INTEGRATOR.md` is present.
+- [ ] Confirm `DELETE-FILES.txt` states that no files are deleted.
 - [ ] Confirm `version.json`, `js/version.json` and `backend/package.json` all
-  contain `102.8.2`.
-- [ ] Review the changed files and commit the complete overlay as one
-  development revision.
+  report `102.9`.
+- [ ] Commit the complete overlay as one development revision.
 
-Cloudflare may deploy the Worker and Pages immediately after the GitHub commit.
-Wait until both deployments from the same commit finish before testing. Do not
-change existing Worker variables, secrets or bindings.
+Cloudflare may deploy Worker and Pages immediately. Wait for both deployments
+from the same commit before application testing.
 
-## 3. Data and configuration boundary
+## 3. Confirm code deployment before changing Sheets
 
-Confirm all of the following before deployment:
+- [ ] Confirm the Worker root reports `102.9`.
+- [ ] Confirm Pages deployed from the same GitHub commit.
+- [ ] Hard-refresh or use a private browser window.
+- [ ] Confirm `/account/<uniqueid>` displays `V102.9`.
+- [ ] Confirm GLOBAL_ADMIN, course ADMIN, TEACHER and Student can still sign in.
 
-- [ ] Platform schema remains `102.0.4`.
-- [ ] The registered Reboot course schema remains `101.4.3`.
-- [ ] No Platform or course Sheet tab/header change is made.
-- [ ] No account or curriculum migration is run.
-- [ ] No Apps Script deployment is made.
-- [ ] No Cloudflare variable, secret or binding is added, changed or removed.
-- [ ] `GlobalCurriculumVersion` is not manually changed.
+At this point `TeacherAssign` is still live. Deployment itself does not change
+the timetable source.
 
-V102.8.2 writes normal timetable-session and AdminAuditLog data only when an
-Admin performs an edit. Deployment itself writes no Sheet data.
+## 4. Add the six exact course-Sheet headers
 
-## 4. Confirm deployments
+Open the Reboot course Sheet → `PublishedTimetableSessions` and enter:
 
-- [ ] Confirm the Worker deployment succeeds and its root reports `102.8.2`.
-- [ ] Confirm the Pages deployment succeeds from the same GitHub revision.
-- [ ] Hard-refresh Pages or use a private browser window.
-- [ ] Confirm `/account/<uniqueid>` displays `V102.8.2`.
-- [ ] Confirm GLOBAL_ADMIN, course ADMIN and Student unified login still work.
-- [ ] Confirm current Profile course/role switching still works without a
-  second PIN.
+- [ ] `O1` = `CourseName`
+- [ ] `P1` = `StartTime`
+- [ ] `Q1` = `EndTime`
+- [ ] `R1` = `SubjectName`
+- [ ] `S1` = `ModuleName`
+- [ ] `T1` = `TeacherName`
 
-## 5. Reproduce and verify the reliability correction
+- [ ] Do not enter data in O2:T.
+- [ ] Confirm A1:N1 remain unchanged and `SourceSessionID` occurs only once.
+- [ ] Confirm `TimetableSessions!H1` is exactly `TeacherID` with no leading space.
 
-Use a development ADMIN account and a course with several existing Builder
-sessions.
+## 5. Update the registered course schema
+
+Open the Platform Sheet → `CourseRegistry`:
+
+- [ ] Confirm `CourseRegistry!A2` is `COURSE1`.
+- [ ] Set `CourseRegistry!E2` to `101.4.4`.
+- [ ] If COURSE1 is no longer row 2, update column E on its actual row instead.
+- [ ] Keep Platform schema `102.0.4` unchanged.
+- [ ] Do not add or remove Platform tabs.
+- [ ] Do not create `TimetableLiveSource` manually.
+
+## 6. Verify compatibility before publishing
 
 - [ ] Open **Admin → Timetable Builder**.
-- [ ] In browser developer tools, clear the Network log.
-- [ ] Reload the Builder once and confirm the Builder data uses one Worker
-  `/api/admin/timetable-builder/get` request.
-- [ ] Modify and save at least five sessions consecutively without logging out,
-  closing the Builder or waiting between every edit.
-- [ ] Confirm each successful save updates the grid immediately.
-- [ ] Confirm the app does not show **Course access could not be validated**
-  after one or two changes.
-- [ ] Confirm Safari reports a normal JSON API error, not an opaque CORS error,
-  if an unexpected asynchronous Worker route failure occurs.
-- [ ] Confirm a successful session save does not automatically call the full
-  Builder GET again.
-- [ ] Confirm the separate `/api/admin/tasks/list` request is not made by the
-  Builder load.
-- [ ] Confirm the Admin session remains active throughout the test.
+- [ ] Confirm courses, times, sessions, subjects, modules, tasks and teachers load.
+- [ ] Confirm existing add, modify, bulk-edit, delete and restore behavior works.
+- [ ] Confirm **Review Live Integration** opens.
+- [ ] Confirm **Immutable columns O:T** reports **Ready**.
+- [ ] Confirm TeacherAssign is shown as the current live source.
+- [ ] Confirm activation is unavailable if no valid current publication exists.
 
-If a temporary Google/Worker failure can be safely simulated in development:
+## 7. Create a fresh immutable publication
 
-- [ ] Confirm the UI reports that the service or Google Sheets is temporarily
-  busy/unavailable.
-- [ ] Confirm the already loaded timetable remains visible.
-- [ ] Confirm the user is not logged out for a network error, HTTP 429 or 5xx.
-- [ ] Confirm **Try Again** or Reload succeeds after the temporary failure ends.
-- [ ] Confirm a genuine expired/invalid token returning HTTP 401 still requires
-  a new login.
+- [ ] Publish a new timetable version after O1:T1 were added.
+- [ ] Record PublicationID: ____________________
+- [ ] Record VersionNo: ____________________
+- [ ] Confirm the new rows in `PublishedTimetableSessions` contain values in
+  O, P, Q, R, T and in S whenever ModuleID is present.
+- [ ] Confirm the snapshot row count matches `TimetablePublications.SessionCount`.
+- [ ] Confirm the publication audit row contains the Admin ID, name and date.
+- [ ] Confirm TeacherAssign remains live after publishing.
 
-## 6. Verify selected-session editing
+## 8. Review source comparison
 
-- [ ] Open the Timetable tab and choose **Select sessions**.
-- [ ] Confirm active sessions display selection circles.
-- [ ] Confirm an inactive session cannot be selected.
-- [ ] Select at least two sessions and confirm the selected count is correct.
-- [ ] Confirm **Edit selected** remains disabled until two sessions are selected.
-- [ ] Confirm **Clear** clears the selection and **Done** exits selection mode.
-- [ ] Re-select two or more sessions and open **Edit selected**.
-- [ ] Confirm all three changes are initially unticked and disabled:
-  **subject/module**, **teacher**, and **Zoom override**.
-- [ ] Confirm unticked fields are explicitly described as unchanged.
-- [ ] Confirm day, time slot, group and active status cannot be edited in this
-  dialog.
+- [ ] Open **Review Live Integration** again.
+- [ ] Confirm it shows the fresh PublicationID/version and session count.
+- [ ] Review Matching, Published only and TeacherAssign only counts.
+- [ ] Expand any differences and confirm they are expected Builder changes.
+- [ ] If a difference is wrong, cancel, correct the draft and publish a new
+  version before continuing.
 
-## 7. Verify teacher-only bulk editing
+## 9. Activate the published live source
 
-Choose sessions that can safely use the same teacher without overlapping.
+- [ ] Type `ACTIVATE PUBLISHED TIMETABLE` exactly.
+- [ ] Activate and confirm the success message names the published version.
+- [ ] Confirm a single course-local `SystemConfig` row now has:
+  `TimetableLiveSource | PUBLISHED_TIMETABLE`.
+- [ ] Confirm `AdminAuditLog` contains `ACTIVATE`,
+  `TIMETABLE_LIVE_SOURCE`, `TimetableLiveSource`.
+- [ ] Confirm no `TeacherAssign` or publication rows were deleted or rewritten.
 
-- [ ] Tick only **Change teacher**.
-- [ ] Select the replacement teacher and save.
-- [ ] Confirm every selected session receives that teacher.
-- [ ] Confirm unselected sessions are unchanged.
-- [ ] Confirm subject, module, Zoom, day, time, group and active status remain
-  unchanged on every selected session.
-- [ ] Confirm the modal closes only after a successful save.
+## 10. Verify live viewers
 
-## 8. Verify subject/module bulk editing
+- [ ] Student in Group 1 sees Group 1 and ALL sessions only.
+- [ ] Another Student sees only her authenticated group and ALL sessions.
+- [ ] TEACHER sees only sessions assigned to her stable AdminID.
+- [ ] ADMIN sees the complete timetable with existing visual greying behavior.
+- [ ] SENIOR/SENIOR TEACHER sees the permitted oversight view.
+- [ ] Weekly Planner teacher filtering uses the published timetable.
+- [ ] Subject/module names, teacher names and start times match the publication.
+- [ ] Per-session Zoom overrides work.
+- [ ] Course-default `GlobalZoomLink` fallback works.
+- [ ] No cross-course overlap or subscription timetable limit is introduced.
 
-- [ ] Select two or more compatible active sessions.
-- [ ] Tick only **Change subject and module**.
-- [ ] Choose a subject and one of its active modules, then save.
-- [ ] Confirm every selected session receives the subject and module.
-- [ ] Repeat using **No module** and confirm the module is cleared.
-- [ ] Confirm teacher and Zoom remain unchanged.
-- [ ] Confirm a module from another subject cannot be applied.
+## 11. Verify draft isolation and next publication
 
-## 9. Verify Zoom bulk editing
+- [ ] Modify one Builder session without publishing.
+- [ ] Confirm Builder stage becomes `DEVELOPMENT`.
+- [ ] Confirm `CurrentPublicationID` remains the previous PublicationID.
+- [ ] Confirm Student/Teacher live views remain unchanged.
+- [ ] Publish the corrected draft.
+- [ ] Confirm the new version becomes live immediately.
+- [ ] Confirm timetable cache refresh shows the new version.
 
-- [ ] Select two or more active sessions.
-- [ ] Tick only **Change Zoom override**.
-- [ ] Apply a valid HTTPS Zoom link and confirm it reaches only the selected
-  sessions.
-- [ ] Repeat with the Zoom field blank and confirm each selected override is
-  cleared, returning to the course-default Zoom link.
-- [ ] Confirm a non-HTTPS URL is rejected and no selected row changes.
+## 12. Verify rollback
 
-## 10. Verify conflict atomicity
+- [ ] Open **Review / Roll Back**.
+- [ ] Type `RETURN TO TEACHERASSIGN` exactly.
+- [ ] Confirm Student/Teacher views return to TeacherAssign.
+- [ ] Confirm `SystemConfig` now contains `TEACHER_ASSIGN`.
+- [ ] Confirm `AdminAuditLog` contains a `ROLLBACK` source event.
+- [ ] Re-activate the published source only if development testing should end in
+  published mode.
 
-- [ ] Select two same-time sessions for different groups.
-- [ ] Attempt to apply one teacher to both so that the teacher would overlap.
-- [ ] Confirm the Worker reports detailed timetable conflicts.
-- [ ] Confirm the message states that no selected session was changed.
-- [ ] Check the Sheet and confirm none of the proposed session rows were
-  partially updated.
-- [ ] Test a conflict against an unselected existing session and confirm the
-  same all-or-nothing result.
-- [ ] Confirm selecting more than 100 sessions is rejected.
+## 13. Regression checks
 
-## 11. Verify stage, publication and audit safety
+- [ ] Unified Profile course/role switching works without another PIN.
+- [ ] Inaccessible menu items remain hidden by role.
+- [ ] Library source pill, Global Subjects and protected resources still work.
+- [ ] Student PDF split view still works.
+- [ ] Attendance, Progress and Weekly Planner creation/viewing still work.
+- [ ] Global Curriculum and subscriptions remain unchanged.
+- [ ] Production V101.1 was not deployed or modified.
 
-- [ ] Publish a development timetable snapshot in the development environment.
-- [ ] Record its publication ID and its `PublishedTimetableSessions` rows.
-- [ ] Bulk-edit at least two active source sessions.
-- [ ] Confirm `TimetableCourseState.Stage` changes to `DEVELOPMENT`.
-- [ ] Confirm `CurrentPublicationID` remains unchanged.
-- [ ] Confirm the recorded published snapshot rows remain byte-for-byte
-  unchanged.
-- [ ] Confirm each actually changed session has one `BULK_UPDATE` row in
-  `AdminAuditLog` with the Admin ID, Admin name, date and changed fields.
-- [ ] Confirm a timetable-state audit row is present if the stage changed.
-- [ ] Confirm a rejected conflict creates no session update or bulk audit row.
-- [ ] Confirm existing hard-delete, soft-delete and restore behaviour remains
-  unchanged.
+## 14. Code rollback if required
 
-The live timetable still reads from `TeacherAssign`; V102.8.2 does not switch
-the authoritative live source.
-
-## 12. Application regressions
-
-- [ ] Confirm normal single-session add and modify behaviour still supports
-  multiple days and multiple groups with per-group teacher/Zoom assignments.
-- [ ] Confirm course, time-slot, subject, module and task management still load.
-- [ ] Confirm GLOBAL_ADMIN can access the course Builder in an authorised course
-  context.
-- [ ] Confirm TEACHER and SENIOR/SENIOR TEACHER cannot access Timetable Builder.
-- [ ] Confirm inaccessible menu items remain hidden for those roles.
-- [ ] Confirm Library, PDF split view, Global Subjects, Attendance, Weekly
-  Planner and Progress behave as in V102.8.1.
-- [ ] Confirm production V101.1 was not deployed or modified.
-
-## 13. Rollback
-
-- [ ] Revert the single V102.8.2 GitHub commit or restore the backed-up V102.8.1
-  development source.
-- [ ] Wait for both Worker and Pages rollback deployments.
-- [ ] Confirm Worker root and `/account/<uniqueid>` return to `102.8.1`.
-- [ ] Do not rerun account migration or change any Platform/course schema.
-- [ ] Do not delete audit rows created by real development testing.
-
-No schema or migration rollback is required. Timetable data created during
-testing should be reversed only through the normal Builder lifecycle if needed.
+- [ ] First use V102.9 to return the live source to TeacherAssign.
+- [ ] Back up `PublishedTimetableSessions` again.
+- [ ] Remove O:T or restore the pre-V102.9 course Sheet backup.
+- [ ] Restore the Reboot CourseRegistry schema value to `101.4.3`.
+- [ ] Revert the single V102.9 GitHub commit.
+- [ ] Wait for Worker and Pages to return to V102.8.2.
+- [ ] Do not delete legitimate Admin audit rows.
 
 ## Completion record
 
@@ -208,13 +163,12 @@ testing should be reversed only through the normal Builder lifecycle if needed.
 - Worker deployment ID: ____________________
 - Pages deployment ID: ____________________
 - Worker version verified: ____________________
-- Consecutive single edits completed: ____________________
-- Teacher bulk edit tested: ____________________
-- Subject/module bulk edit tested: ____________________
-- Zoom set/clear tested: ____________________
-- Conflict atomicity tested: ____________________
-- Published snapshot compared: ____________________
-- Audit rows checked: ____________________
-- Verified by: ____________________
+- O1:T1 verified by: ____________________
+- Fresh PublicationID: ____________________
+- Comparison reviewed by: ____________________
+- Activation tested: ____________________
+- Student/Teacher/Admin views tested: ____________________
+- Draft isolation tested: ____________________
+- Rollback tested: ____________________
 - Verification date: ____________________
 - Result: ____________________
