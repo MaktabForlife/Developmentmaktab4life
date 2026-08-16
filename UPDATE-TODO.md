@@ -1,184 +1,196 @@
-# V102.8 update to-do
+# V102.8.1 update to-do
 
-Apply V102.8 only over the deployed V102.7 development repository using:
+Apply V102.8.1 only over the deployed V102.8 development repository using:
 
-`Rebootyourmaktab-V102.8-GITHUB-UPDATE-FROM-V102.7.zip`
+`Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip`
 
-This is a modified-files overlay, not a complete repository. Production remains
-stable at V101.1 and must not receive this ZIP. A separate, rehearsed production
-merge will be prepared after the V102 development programme is complete.
+This ZIP is a modified-files overlay, not a complete repository. Production
+remains stable at V101.1 and must not receive this update. V102.8.1 is a focused
+Library/Profile/PDF correction; it does not begin the V102.9 timetable
+integrator.
 
-## 1. Confirm and back up V102.7
+## 1. Confirm and back up V102.8
 
-- [ ] Confirm the development Worker root reports `102.7`.
-- [ ] Confirm `/account/<uniqueid>` displays `V102.7`.
-- [ ] Back up the development GitHub repository.
-- [ ] Export or back up the Platform Sheet and current course Sheet.
-- [ ] If a second course is already registered, export or back up that course
-  Sheet too.
-- [ ] Confirm `PlatformConfig!B3` remains `102.0.4`.
-- [ ] Record the current `GlobalCurriculumVersion` value.
-
-Do not rerun account migration. V102.8 adds no Platform tab, header or data row
-and does not change Platform schema `102.0.4`.
-
-## 2. Confirm Library prerequisites
-
-- [ ] Confirm every course that should appear has one active, unique
-  `CourseRegistry` row with its correct `CourseID`, `CourseName` and
-  `SpreadsheetID`.
-- [ ] Confirm the Worker service account can read each registered course Sheet.
-- [ ] Confirm every ordinary account has only the intended active
-  `UserCourseAccess` rows and each row has the correct `CourseRecordID`.
-- [ ] Confirm subscribed global subjects have active
-  `UserGlobalSubjectAccess` rows.
-- [ ] Confirm each course-local `StudentRecords`/`AdminRecords` identity still
-  matches the central account UniqueID and role.
-
-V102.8 uses the existing course Library Drive root for protected course files.
-If course files are stored in separate subfolders, those folders must currently
-be descendants of `M4L_GOOGLE_DRIVE_ROOT_FOLDER_ID`. The central Global
-Resources folder remains independently configured in `PlatformConfig`.
-
-## 3. Update the GitHub development repository
-
-- [ ] Extract `Rebootyourmaktab-V102.8-GITHUB-UPDATE-FROM-V102.7.zip`.
-- [ ] Upload every included file to its matching path in the existing V102.7
-  development repository.
-- [ ] Replace existing files and add new files while preserving folder names.
-- [ ] Do not delete any repository file; `DELETE-FILES.txt` confirms none.
-- [ ] Confirm root `version.json` and `js/version.json` both contain `102.8`.
-- [ ] Confirm `backend/package.json` and the Worker root version are `102.8`.
-- [ ] Confirm this `UPDATE-TODO.md` is present at repository root.
-- [ ] Commit the complete overlay as one revision.
-
-Cloudflare may deploy Worker and Pages immediately after the GitHub commit. Do
-not start application testing until both deployments from the same commit have
-completed.
-
-## 4. Confirm deployment
-
-- [ ] Wait for both Worker and Pages deployments to finish successfully.
-- [ ] Preserve every existing Worker variable, secret and binding.
-- [ ] Confirm the Worker root reports `102.8`.
-- [ ] Hard-refresh Pages or use a private window.
+- [ ] Confirm the development Worker root reports `102.8`.
 - [ ] Confirm `/account/<uniqueid>` displays `V102.8`.
+- [ ] Confirm V102.8 unified login and Library currently open.
+- [ ] Back up the current development GitHub repository or branch.
+- [ ] Record the current Worker and Pages deployment IDs.
+- [ ] Export or back up the Platform Sheet and active course Sheet(s).
+- [ ] Confirm `PlatformConfig` still reports schema `102.0.4`.
+
+Do not rerun account migration. Do not add, remove or rename a Sheet tab or
+header. V102.8.1 adds no Sheet data and does not change
+`GlobalCurriculumVersion` merely by being deployed.
+
+## 2. Confirm the test account and subscription
+
+Use one ordinary non-GLOBAL_ADMIN account that has both:
+
+- [ ] an active `UserCourseAccess` row for a registered active course; and
+- [ ] an active `UserGlobalSubjectAccess` row referencing an active row in
+  `GlobalSubjectList`.
+
+Record its expected course/role and subscribed global subjects before updating.
+The Profile correction depends on both the access row and referenced subject
+being active. No manual Profile row is required.
+
+## 3. Apply the GitHub overlay
+
+- [ ] Extract `Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip`.
+- [ ] Upload every included file to the matching path in the existing V102.8
+  development repository.
+- [ ] Replace existing files and add the new documentation file while
+  preserving all folder names.
+- [ ] Do not delete any repository file; `DELETE-FILES.txt` confirms none.
+- [ ] Confirm root `UPDATE-TODO.md` is this V102.8.1 checklist.
+- [ ] Confirm root `version.json` and `js/version.json` both contain `102.8.1`.
+- [ ] Confirm `backend/package.json` contains `102.8.1`.
+- [ ] Commit the entire overlay as one development revision.
+
+Cloudflare may deploy Worker and Pages immediately after the GitHub commit.
+Wait until both deployments from the same commit finish before testing. Do not
+change or remove existing Worker variables, secrets or bindings.
+
+## 4. Confirm deployment versions
+
+- [ ] Confirm the Worker deployment succeeds and its root reports `102.8.1`.
+- [ ] Confirm the Pages deployment succeeds.
+- [ ] Hard-refresh Pages or open a private window.
+- [ ] Confirm `/account/<uniqueid>` displays `V102.8.1`.
 - [ ] Confirm GLOBAL_ADMIN, ordinary staff and Student unified login still work.
-- [ ] Confirm direct legacy links remain available for rollback testing.
+- [ ] Confirm existing legacy login links remain available for rollback tests.
 
-No Cloudflare variable, secret, binding, Apps Script deployment or Sheet schema
-change is required.
+No Apps Script deployment is required. No Platform Sheet, course Sheet,
+Cloudflare variable, secret or binding change is required.
 
-## 5. Verify direct Profile switching
+## 5. Verify Global Subjects in Profile
 
-- [ ] Sign in through `/account/<uniqueid>` with an account that has at least
-  two contexts.
-- [ ] Open the application menu and select **Profile**.
-- [ ] Confirm the card shows name, every authorised course/role, and the current
+- [ ] Sign in through `/account/<uniqueid>` using the prepared account with both
+  course access and a global-subject subscription.
+- [ ] Confirm the fresh login still opens its highest-authority course context;
+  it must not automatically replace that course with the lower STUDENT global
   context.
-- [ ] Select another course or role directly from the Profile card.
-- [ ] Confirm no PIN is requested.
-- [ ] Confirm the application opens the correct Admin or Student workspace.
-- [ ] Reopen Profile and confirm the new context is marked **Current**.
-- [ ] Confirm menu items are recalculated for the new role.
-- [ ] Confirm course-specific timetable, progress and user-data caches do not
-  show data from the previous context.
+- [ ] Open the application menu and select **Profile**.
+- [ ] Confirm the Profile shows the current course/role.
+- [ ] Confirm it also shows exactly one **Global Subjects — STUDENT** choice.
+- [ ] Confirm individual global subject names are not duplicated in Profile.
+- [ ] Select **Global Subjects** and confirm no PIN is requested.
+- [ ] Confirm the restricted Global Library workspace opens.
+- [ ] Reopen Profile and confirm **Global Subjects** is marked **Current** and
+  the course context remains available to switch back to.
+- [ ] Switch back to the course and confirm a newly scoped course workspace
+  opens without another PIN.
 
-Every switch must call the central switch endpoint and receive a new scoped
-token. A displayed course name, submitted CourseID or URL must never grant
-access by itself.
+Every Profile switch must use the central switch endpoint and receive a new
+validated scope/role token. A displayed name, URL or submitted CourseID must not
+grant access by itself.
 
-## 6. Verify the unified Library selector
+## 6. Verify fail-closed Global Subjects access
 
-- [ ] Open **Library** from a unified account workspace.
-- [ ] Confirm there is one Library menu item, not separate course/global Library
-  menu items.
-- [ ] Confirm the source selector appears in this order:
-  1. **All**
-  2. each authorised active course in `CourseRegistry` row order
-  3. **Global Subjects** when the account has at least one active subscription.
-- [ ] Confirm **All** shows all authorised course Libraries followed by the
-  subscribed Global Subjects Library.
-- [ ] Select each course and confirm only that course's Library is shown.
-- [ ] Select **Global Subjects** and confirm only subscribed global subjects and
-  their active resources are shown.
-- [ ] Confirm changing the Library source does not change the Profile's current
+- [ ] Temporarily deactivate the prepared account's global-subject access row.
+- [ ] Start a new login/session and confirm **Global Subjects** disappears from
+  Profile if the account has no other active global subscriptions.
+- [ ] Reactivate the row after the negative test.
+- [ ] Temporarily inactivate its referenced global subject and confirm the same
+  fail-closed result.
+- [ ] Reactivate the subject after the test and confirm the Profile context
+  returns on a fresh session.
+- [ ] Confirm a global-only subscriber still logs directly into the restricted
+  Global Library, if such a test account exists.
+
+## 7. Verify the all-visible Library source pill
+
+- [ ] Open **Library** from an account authorised for more than one source.
+- [ ] Confirm one segmented pill displays all eligible choices together, in
+  this order: **All**, each authorised active course, **Global Subjects**.
+- [ ] Confirm desktop/tablet shows the choices in one horizontal row when they
+  fit.
+- [ ] At a compact width, confirm the choices wrap inside the same pill and no
+  option requires a dropdown or horizontal scrolling.
+- [ ] Select **All** and confirm all authorised course resources plus subscribed
+  active global resources appear.
+- [ ] Select each course and confirm only that course's Library appears.
+- [ ] Select **Global Subjects** and confirm only subscribed active global
+  content appears.
+- [ ] Confirm changing a Library filter does not change the Profile's current
   operational course/role.
-- [ ] Confirm global sections display a clear `GLOBAL` badge.
+- [ ] Confirm global content retains its clear `GLOBAL` badge.
 
-GLOBAL_ADMIN should see every active registered course Library. Ordinary users
-must see only courses supported by their active central memberships.
+## 8. Verify protected resource access
 
-## 7. Verify per-course and subscription restrictions
-
-- [ ] Sign in as a Student who belongs to two courses with different groups.
-- [ ] Confirm each course Library uses that course's own StudentRecords group.
-- [ ] Confirm the Student sees resources for `ALL` and the matching group only.
-- [ ] Confirm a resource for another group is absent.
-- [ ] Sign in as SENIOR/SENIOR TEACHER or TEACHER and confirm Library access is
-  available without exposing Student Records.
-- [ ] Deactivate one `UserCourseAccess` row, sign in again, and confirm that
-  course disappears.
-- [ ] Reactivate it only after the negative test is complete.
-- [ ] Deactivate one direct global-subject subscription and confirm that subject
-  disappears after refresh/new session.
-- [ ] Confirm inactive subjects, modules, tasks and resources are absent.
-
-## 8. Verify protected resource opening
-
-- [ ] From **All**, open one protected Reboot course resource.
-- [ ] If another course is registered, open one protected resource from it.
-- [ ] Open one subscribed protected Global Resource.
-- [ ] Confirm each opens through a short-lived Worker access URL.
-- [ ] Confirm an unauthorised course resource request is rejected.
+- [ ] Open a protected PDF from the current course Library.
+- [ ] Open a subscribed protected Global Resource.
+- [ ] If another course is authorised, open one protected resource from it.
+- [ ] Confirm each item receives its own short-lived authorised access URL.
 - [ ] Confirm an unsubscribed global resource is absent and direct access is
   rejected.
-- [ ] Confirm no SpreadsheetID is returned to the browser in the Library
-  catalogue response.
+- [ ] Confirm an unauthorised course resource is absent and direct access is
+  rejected.
+- [ ] Confirm no SpreadsheetID is exposed in the catalogue response or UI.
 
-## 9. Verify a global-subject-only account when available
+## 9. Verify PDF shelf placement
 
-- [ ] Use an active account that has no course memberships and at least one
-  active global-subject subscription.
-- [ ] Sign in through `/account/<uniqueid>`.
-- [ ] Confirm it opens the Global Library directly.
-- [ ] Confirm Home, Attendance, Progress and Admin operational menus are hidden.
-- [ ] Confirm only subscribed active global content is visible.
-- [ ] Deactivate the subscription temporarily and confirm the scoped session no
-  longer opens the Global Library.
+Repeat for a Student and one staff account:
 
-Skip this section if no global-only test account exists yet.
+- [ ] Open a Library containing at least two PDFs.
+- [ ] Open one PDF in the PDF.js viewer.
+- [ ] Confirm the `current/total` shelf selector sits immediately to the left of
+  the PDF name.
+- [ ] Confirm **Previous** and **Next** remain in the navigation group to the
+  right.
+- [ ] Confirm the shelf selector still opens the authorised PDF list.
+- [ ] Confirm Previous/Next and direct Open continue to work.
 
-## 10. Regression checks
+## 10. Verify Student split-PDF viewing
 
-- [ ] Confirm existing course resource creation remains available to ADMIN,
-  SENIOR and TEACHER under the established permissions.
-- [ ] Confirm only ADMIN can modify an existing course resource.
+- [ ] Sign in as a Student whose selected Library catalogue contains at least
+  two authorised PDFs.
+- [ ] At a viewport width of 1024px or more, open a PDF and confirm **Split** is
+  available.
+- [ ] Open the second pane and choose another authorised PDF.
+- [ ] Confirm both PDFs load independently and retain independent page/zoom
+  state.
+- [ ] Confirm the pane divider can resize the two views.
+- [ ] From **All**, test a permitted cross-source pair when available (for
+  example one course PDF and one subscribed global PDF).
+- [ ] Confirm closing the second pane returns to the normal single-PDF view.
+- [ ] Below 1024px, confirm the Split control is not shown and the normal
+  single-PDF viewer remains usable.
+- [ ] Confirm Student receives no resource create, modify or delete control.
+
+## 11. Permission and application regressions
+
+- [ ] Confirm SENIOR displays as **SENIOR TEACHER** without changing the stored
+  `SENIOR` role.
+- [ ] Confirm SENIOR and TEACHER can add course resources under the established
+  permissions.
+- [ ] Confirm only ADMIN can modify existing course resources.
 - [ ] Confirm SENIOR and TEACHER cannot see Student Records.
-- [ ] Confirm `SENIOR` continues to display as `SENIOR TEACHER` without changing
-  the stored role.
+- [ ] Confirm inaccessible menu items remain hidden for the active role.
 - [ ] Confirm Attendance, Weekly Planner, Progress and timetable behaviour are
-  unchanged in the active course context.
-- [ ] Confirm Global Curriculum management and subscription counts remain
-  correct.
-- [ ] Confirm `GlobalCurriculumVersion` did not change merely because V102.8
-  was deployed or a Library source was selected.
+  unchanged in a course context.
+- [ ] Confirm Global Curriculum management and the six existing subscription
+  rows remain unchanged.
+- [ ] Confirm `GlobalCurriculumVersion` was not incremented by deployment,
+  Profile switching or Library filtering.
 
-The approved all-user browser-session authentication policy remains documented
-in `docs/V102-AUTHENTICATION-SESSION-POLICY.md`; V102.8 does not change the
-current session-persistence behaviour.
+The approved all-user authentication policy remains documented in
+`docs/V102-AUTHENTICATION-SESSION-POLICY.md`; V102.8.1 does not change the
+current browser-session persistence behaviour.
 
-## 11. Rollback
+## 12. Rollback
 
-- [ ] Revert the V102.8 GitHub commit or redeploy the backed-up V102.7 source.
-- [ ] Confirm Worker and Pages both return to `102.7`.
+- [ ] Revert the single V102.8.1 GitHub commit or restore the backed-up V102.8
+  source.
+- [ ] Wait for both Worker and Pages rollback deployments.
+- [ ] Confirm the Worker root and `/account/<uniqueid>` return to `102.8`.
 - [ ] Do not rerun account migration.
-- [ ] Do not delete central memberships, subscriptions, global resources or
-  audit rows during rollback.
+- [ ] Do not delete or edit central accounts, memberships, subscriptions,
+  curriculum, resources or audit rows as part of rollback.
 - [ ] Do not reduce `GlobalCurriculumVersion` manually.
 
-V102.7 ignores the new frontend/API routes after the source rollback; no data
-rollback is required because V102.8 adds no schema or migration.
+No data rollback is required because V102.8.1 changes no schema or stored data.
 
 ## Completion record
 
@@ -186,10 +198,11 @@ rollback is required because V102.8 adds no schema or migration.
 - Worker deployment ID: ____________________
 - Pages deployment ID: ____________________
 - Worker version verified: ____________________
-- Profile switch contexts tested: ____________________
-- Library courses tested: ____________________
-- Global subjects/resources tested: ____________________
-- Global-only account tested or N/A: ____________________
+- Dual course/global Profile account tested: ____________________
+- Library pill sources tested: ____________________
+- Student split-PDF pair tested: ____________________
+- Staff PDF shelf placement tested: ____________________
+- Negative entitlement test completed: ____________________
 - Verified by: ____________________
 - Verification date: ____________________
 - Result: ____________________

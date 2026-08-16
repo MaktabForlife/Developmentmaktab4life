@@ -1,5 +1,6 @@
-/* M4L V99.1 — large-screen PDF split viewer
-   Admin/teacher only. The SPLIT control is unavailable below 1024px.
+/* M4L V102.8.1 — large-screen PDF split viewer
+   Available to every authorised Library user, including Students.
+   The SPLIT control remains unavailable below 1024px.
 */
 
 .pdf-split-toggle {
@@ -128,11 +129,11 @@
   transform: translateY(-50%);
 }
 
-#pdf-viewer-screen.admin-theme .pdf-library-item {
+#pdf-viewer-screen .pdf-library-item {
   grid-template-columns: 28px minmax(0, 1fr) auto;
 }
 
-#pdf-viewer-screen.admin-theme .pdf-library-item-pane-badge {
+#pdf-viewer-screen .pdf-library-item-pane-badge {
   min-width: 24px;
   height: 24px;
   padding: 0 6px;
@@ -146,7 +147,7 @@
   font-weight: 800;
 }
 
-#pdf-viewer-screen.admin-theme .pdf-library-item:disabled {
+#pdf-viewer-screen .pdf-library-item:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

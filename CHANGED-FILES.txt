@@ -1,10 +1,10 @@
-V102.8 — GitHub update from deployed V102.7
+V102.8.1 — GitHub update from deployed V102.8
 
 Package:
-- Rebootyourmaktab-V102.8-GITHUB-UPDATE-FROM-V102.7.zip
+- Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip
 
 Apply to:
-- Deployed V102.7 development repository only.
+- Deployed V102.8 development repository only.
 - This is a modified-files overlay, not a full repository.
 
 Files included:
@@ -17,34 +17,19 @@ Files included:
 - account/index.html
 - admin/index.html
 - backend/package.json
-- backend/src/lib/auth.js
-- backend/src/lib/backend-routing.js
-- backend/src/router.js
 - backend/src/routes/account-auth.js
-- backend/src/routes/library-catalogue.js (new)
-- backend/src/routes/resources.js
 - backend/src/worker.js
 - backend/tests/account-auth.test.mjs
 - backend/tests/account-ui.test.mjs
-- backend/tests/admin-management-ui.test.mjs
-- backend/tests/backend-routing.test.mjs
-- backend/tests/group-zero-access.test.mjs
-- backend/tests/library-catalogue-ui.test.mjs (new)
-- backend/tests/library-catalogue.test.mjs (new)
+- backend/tests/library-catalogue-ui.test.mjs
 - backend/tests/pdf-split-view.test.mjs
-- backend/tests/resource-management-ui.test.mjs
 - backend/tests/router.test.mjs
-- backend/tests/student-task-assignment-ui.test.mjs
-- backend/tests/timetable-teacher-ui.test.mjs
-- backend/tests/unified-workspace-ui.test.mjs
-- css/m4l-01-foundation-auth-userband.css
 - css/m4l-04-library-resources.css
-- docs/V102.8-UNIFIED-MULTI-LIBRARY.md (new)
+- css/m4l-06-attendance-and-pdf-viewer.css
+- css/m4l-19-pdf-split-view.css
+- docs/V102.8.1-LIBRARY-PROFILE-PDF-CORRECTIONS.md (new)
 - index.html
-- js/m4l-account.js
-- js/m4l-auth.js
 - js/m4l-resources.js
-- js/m4l-shell.js
 - js/version.json
 - student/index.html
 - styles.css

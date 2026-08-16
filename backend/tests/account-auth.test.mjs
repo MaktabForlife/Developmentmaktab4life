@@ -39,7 +39,8 @@ const tables = {
   ],
   UserGlobalSubjectAccess: [
     PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess,
-    ["GSACCESS1", "ACCOUNT5", "GSUBJ1", true, "", "", ""]
+    ["GSACCESS1", "ACCOUNT5", "GSUBJ1", true, "", "", ""],
+    ["GSACCESS2", "ACCOUNT1", "GSUBJ1", true, "", "", ""]
   ],
   GlobalSubjectList: [
     PLATFORM_SHEET_HEADERS.GlobalSubjectList,
@@ -59,12 +60,15 @@ const tables = {
 const plainContexts = buildAvailableContexts(
   record(tables.UserAccounts, 2),
   [record(tables.UserCourseAccess, 2), record(tables.UserCourseAccess, 3), record(tables.UserCourseAccess, 4)],
-  [record(tables.CourseRegistry, 2), record(tables.CourseRegistry, 3), record(tables.CourseRegistry, 4)]
+  [record(tables.CourseRegistry, 2), record(tables.CourseRegistry, 3), record(tables.CourseRegistry, 4)],
+  [record(tables.UserGlobalSubjectAccess, 3)],
+  [record(tables.GlobalSubjectList, 2)]
 );
-assert.deepEqual(plainContexts.map(context => `${context.courseId}:${context.role}`), [
-  "COURSE2:ADMIN",
-  "COURSE1:ADMIN",
-  "COURSE1:TEACHER"
+assert.deepEqual(plainContexts.map(context => `${context.scope}:${context.courseId}:${context.role}`), [
+  "COURSE:COURSE2:ADMIN",
+  "COURSE:COURSE1:ADMIN",
+  "COURSE:COURSE1:TEACHER",
+  "GLOBAL::STUDENT"
 ]);
 const globalContexts = buildAvailableContexts(
   record(tables.UserAccounts, 3),
@@ -176,7 +180,13 @@ try {
     role: "ADMIN"
   });
   assert.equal(login.data.operationalAccessActive, true);
-  assert.equal(login.data.contexts.length, 3);
+  assert.equal(login.data.contexts.length, 4);
+  assert.deepEqual(login.data.contexts.at(-1), {
+    scope: "GLOBAL",
+    courseId: "",
+    courseName: "Global Subjects",
+    role: "STUDENT"
+  });
   const loginToken = await verifySessionToken(login.data.token, env);
   assert.equal(loginToken.type, "account");
   assert.equal(loginToken.accountid, "ACCOUNT1");
@@ -207,6 +217,24 @@ try {
   const switchedToken = await verifySessionToken(switched.data.token, env);
   assert.equal(switchedToken.accessid, "ACCESS3");
   assert.equal(switchedToken.courserecordid, "ADMIN1");
+
+  const switchedGlobal = await post("/api/account/switch-context", {
+    scope: "GLOBAL",
+    courseId: "",
+    role: "STUDENT"
+  }, login.data.token);
+  assert.equal(switchedGlobal.response.status, 200, JSON.stringify(switchedGlobal.data));
+  assert.deepEqual(switchedGlobal.data.context, {
+    scope: "GLOBAL",
+    courseId: "",
+    courseName: "Global Subjects",
+    role: "STUDENT"
+  });
+  const switchedGlobalToken = await verifySessionToken(switchedGlobal.data.token, env);
+  assert.equal(switchedGlobalToken.scope, "GLOBAL");
+  assert.equal(switchedGlobalToken.role, "STUDENT");
+  assert.equal(switchedGlobalToken.globalaccessid, "GSACCESS2");
+  assert.equal(switchedGlobalToken.globalaccessrow, 3);
 
   const unauthorizedSwitch = await post("/api/account/switch-context", {
     scope: "COURSE",
@@ -316,7 +344,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.8 central account and global-only authentication tests passed.");
+console.log("V102.8.1 central account and global-context authentication tests passed.");
 
 async function post(path, body, token = "") {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

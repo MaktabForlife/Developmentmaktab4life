@@ -1,4 +1,5 @@
-/* M4L v94.5  - pdfjs viewer panel ui
+/* M4L V102.8.1 - PDF shelf selector/title alignment.
+   M4L v94.5  - pdfjs viewer panel ui
 M4L v93.7.1 - Attendance card borders and responsive panel surfaces
    Adds the shared 2px surface-track border to the white Attendance cards and
    keeps the sticky header wrapper transparent so its rounded panel is visible.
@@ -985,6 +986,21 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
   line-height: 1.2;
 }
 
+.pdf-viewer-title-group {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-viewer-title-group h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pdf-viewer-actions {
   display: flex;
   align-items: center;
@@ -1248,6 +1264,7 @@ body.pdf-viewer-open #pdf-viewer-screen.screen.active {
 
 @media (max-width: 620px) {
   .pdf-viewer-header h2 { display: none; }
+  .pdf-viewer-title-group { flex: 0 0 auto; }
   .pdf-viewer-library-controls { margin-left: 0; }
   .pdf-library-step-btn { width: 38px; min-width: 38px; }
   .pdf-library-step-btn .app-icon { width: 20px; height: 20px; }

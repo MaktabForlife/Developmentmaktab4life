@@ -460,7 +460,7 @@ export function buildAvailableContexts(account, accessRecords, courses, globalAc
     left.courseName.localeCompare(right.courseName) ||
     left.role.localeCompare(right.role)
   ));
-  if (sorted.length === 0 && hasActiveGlobalSubjectAccess(globalAccessRecords, globalSubjects)) {
+  if (hasActiveGlobalSubjectAccess(globalAccessRecords, globalSubjects)) {
     sorted.push({
       scope: "GLOBAL",
       courseId: "",

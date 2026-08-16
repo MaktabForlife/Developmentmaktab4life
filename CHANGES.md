@@ -1,3 +1,28 @@
+# V102.8.1 — Library, Profile and PDF corrections
+
+- Adds one `GLOBAL/STUDENT` Profile context whenever an ordinary active account
+  has at least one active subscription to an active global subject, including
+  when that account also has course memberships.
+- Preserves course-first automatic login when course access exists; Global
+  Subjects is selected explicitly from Profile without another PIN.
+- Renders **All**, each authorised course and **Global Subjects** together as
+  one segmented Library source pill, wrapping on compact screens without a
+  dropdown or horizontal scrolling.
+- Enables the existing protected two-PDF split view for Students at widths of
+  1024px or more, without adding resource-management permissions.
+- Moves the PDF `current/total` shelf selector immediately before the PDF title
+  for Student and staff viewers; Previous and Next remain to the right.
+- Keeps Platform schema `102.0.4`, Sheet data, Worker configuration, Apps
+  Script, account migration and current session persistence unchanged.
+- Bumps application and Worker metadata to `102.8.1` and adds focused regression
+  coverage for dual course/global contexts, the source pill and Student split
+  viewing.
+
+Development only: production remains stable at V101.1. The timetable integrator
+remains reserved for V102.9.
+
+---
+
 # V102.8 — Unified multi-course and global Library
 
 - Keeps one Library menu item and adds **All**, authorised-course and

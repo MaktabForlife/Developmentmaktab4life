@@ -1,3 +1,30 @@
+V102.8.1
+
+# Correct Global Subjects switching and Library PDF controls
+
+- Shows one **Global Subjects — STUDENT** choice in Profile for every ordinary
+  account with an active subscription to an active global subject, even when
+  the account also belongs to a course.
+- Keeps the highest-authority course as the automatic fresh-login context when
+  course access exists.
+- Switches into the restricted Global Library through the existing central
+  context endpoint, with a newly validated token and no second PIN.
+- Displays **All**, all authorised courses and **Global Subjects** together in
+  one segmented Library pill; compact layouts wrap the same control.
+- Gives Students the existing two-PDF split viewer on screens at least 1024px
+  wide. Both PDFs still require independent protected access.
+- Places the PDF shelf count immediately left of the PDF title for all roles.
+- Requires no Platform/course Sheet change, migration, account copy, Worker
+  variable, secret, binding or Apps Script deployment.
+- Preserves current browser-session persistence and all V102.8 permissions.
+
+Install only
+`Rebootyourmaktab-V102.8.1-GITHUB-UPDATE-FROM-V102.8.zip` over deployed V102.8
+development and complete every item in `UPDATE-TODO.md`. Production remains
+stable at V101.1. The timetable integrator is not part of this correction.
+
+---
+
 V102.8
 
 # Integrate authorised course Libraries and subscribed global subjects

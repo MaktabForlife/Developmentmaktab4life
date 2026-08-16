@@ -79,9 +79,9 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-01-foundation-auth-userband.css?v=102.8");
 @import url("/css/m4l-02-home-common-and-shared-cards.css?v=102.6.2");
 @import url("/css/m4l-03-progress-core-shared-student-base.css?v=93.5");
-@import url("/css/m4l-04-library-resources.css?v=102.8");
+@import url("/css/m4l-04-library-resources.css?v=102.8.1");
 @import url("/css/m4l-05-home-timetable.css?v=100.10.5");
-@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=97.1.8.3");
+@import url("/css/m4l-06-attendance-and-pdf-viewer.css?v=102.8.1");
 @import url("/css/m4l-07-manage-students.css?v=100.9");
 @import url("/css/m4l-08-bounded-viewport-and-progress-cleanup.css?v=93.5");
 @import url("/css/m4l-09-progress-matrix-and-admin-class-base.css?v=93.6");
@@ -95,7 +95,7 @@ v91.7.4 - CSS split phase 1 loader
 
 @import url("/css/m4l-17-teaching-panel.css?v=98.0");
 @import url("/css/m4l-18-system-settings.css?v=102.2");
-@import url("/css/m4l-19-pdf-split-view.css?v=99.1");
+@import url("/css/m4l-19-pdf-split-view.css?v=102.8.1");
 @import url("/css/m4l-20-manage-admins.css?v=100.3.0");
 @import url("/css/m4l-21-manage-resources.css?v=100.4.2");
 @import url("/css/m4l-22-timetable-builder.css?v=101.4.3");

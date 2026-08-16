@@ -1,4 +1,4 @@
-/* M4L V102.8 - Unified authorised course/global Library source selector.
+/* M4L V102.8.1 - Profile-visible Global context, segmented Library selector and Student split PDF support.
    M4L v100.4.1 - Private Drive PDF.js compatibility
    Routes signed M4L Drive PDF URLs through the existing same-origin /pdf-file proxy.
 
@@ -6,7 +6,7 @@
    Resolves private Drive-backed resource rows to short-lived Worker delivery URLs.
 
    M4L v99.1 - Large-screen split PDF viewer
-   Adds an admin/teacher-only second PDF.js pane at 1024px and wider.
+   Adds an authorised-user second PDF.js pane at 1024px and wider.
    Reuses the existing PDF Library drawer, preserves independent PDF.js state,
    and coordinates split mode with the Teaching Panel.
 
@@ -387,7 +387,12 @@ function renderLibrarySourceSelector(result) {
 
   container.classList.remove("hidden");
   setDomHtml(container, `
-    <div class="library-source-menu" role="tablist" aria-label="Select a Library source">
+    <div
+      class="library-source-menu"
+      role="tablist"
+      aria-label="Select a Library source"
+      style="--library-source-count: ${sources.length}"
+    >
       ${sources.map(source => {
         const sourceId = String(source.id || "");
         const selected = sourceId === selectedLibrarySourceId;

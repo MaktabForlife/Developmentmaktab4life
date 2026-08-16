@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=102.8">
+<link rel="stylesheet" href="/styles.css?v=102.8.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -1378,16 +1378,18 @@
     <span class="pdf-viewer-icon-label">OPEN</span>
   </button>
 
-  <h2 id="pdf-viewer-title">PDF Viewer</h2>
+  <div class="pdf-viewer-title-group">
+    <button id="pdf-library-toggle" type="button" class="pdf-library-toggle-btn" onclick="togglePdfLibraryDrawer()" aria-label="Open PDF library" aria-controls="pdf-library-drawer" aria-expanded="false" hidden>
+      <span class="app-icon pdf-library-icon" aria-hidden="true"></span>
+      <span id="pdf-library-count" class="pdf-library-count"></span>
+    </button>
+    <h2 id="pdf-viewer-title">PDF Viewer</h2>
+  </div>
 
   <div class="pdf-viewer-library-controls" aria-label="PDF library navigation">
     <button id="pdf-library-previous" type="button" class="pdf-viewer-icon-btn pdf-library-step-btn" onclick="stepPdfLibrary(-1)" aria-label="Previous PDF" title="Previous PDF" hidden>
       <span class="app-icon pdf-library-previous-icon" aria-hidden="true"></span>
       <span class="pdf-viewer-icon-label">PREV</span>
-    </button>
-    <button id="pdf-library-toggle" type="button" class="pdf-library-toggle-btn" onclick="togglePdfLibraryDrawer()" aria-label="Open PDF library" aria-controls="pdf-library-drawer" aria-expanded="false" hidden>
-      <span class="app-icon pdf-library-icon" aria-hidden="true"></span>
-      <span id="pdf-library-count" class="pdf-library-count"></span>
     </button>
     <button id="pdf-library-next" type="button" class="pdf-viewer-icon-btn pdf-library-step-btn" onclick="stepPdfLibrary(1)" aria-label="Next PDF" title="Next PDF" hidden>
       <span class="app-icon pdf-library-next-icon" aria-hidden="true"></span>
@@ -1637,7 +1639,7 @@
 <script src="/js/m4l-system-settings.js?v=102.7"></script>
 <script src="/js/m4l-timetable-builder.js?v=101.4.3"></script>
 <script src="/js/m4l-global-curriculum.js?v=102.7"></script>
-  <script src="/js/m4l-resources.js?v=102.8"></script>
+  <script src="/js/m4l-resources.js?v=102.8.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=102.4"></script>
 <script src="/js/m4l-manage-students.js?v=102.6.1"></script>

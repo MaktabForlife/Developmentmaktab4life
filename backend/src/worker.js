@@ -1,4 +1,4 @@
-/* M4L V102.8 - secure multi-course and subscribed-global Library integration.
+/* M4L V102.8.1 - Library profile, selector and Student PDF-view corrections.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.8"
+          version: "102.8.1"
         });
       }
 

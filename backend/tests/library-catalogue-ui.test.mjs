@@ -9,8 +9,8 @@ const student = read("../../student/index.html");
 
 for (const html of [admin, student]) {
   assert.match(html, /id="library-source-selector"/);
-  assert.match(html, /m4l-resources\.js\?v=102\.8/);
-  assert.match(html, /styles\.css\?v=102\.8/);
+  assert.match(html, /m4l-resources\.js\?v=102\.8\.1/);
+  assert.match(html, /styles\.css\?v=102\.8\.1/);
 }
 
 assert.match(resources, /\/api\/library\/catalogue/);
@@ -29,5 +29,12 @@ assert.doesNotMatch(
 assert.match(styles, /\.library-source-menu/);
 assert.match(styles, /\.library-source-menu__item\.is-active/);
 assert.match(styles, /\.library-global-badge/);
+assert.match(styles, /grid-template-columns:\s*repeat\(var\(--library-source-count, 1\), minmax\(0, 1fr\)\)/);
+assert.match(styles, /@media \(max-width: 720px\)/);
+const sourceMenuStyles = styles.slice(
+  styles.indexOf(".library-source-menu {"),
+  styles.indexOf(".library-resource-browser")
+);
+assert.doesNotMatch(sourceMenuStyles, /overflow-x:\s*auto/);
 
-console.log("V102.8 unified Library source-selector UI tests passed.");
+console.log("V102.8.1 unified Library source-selector UI tests passed.");

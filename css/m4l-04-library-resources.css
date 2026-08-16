@@ -1,4 +1,4 @@
-/* Resources / Library ribbon - V94.6 vertical and horizontal touch scrolling */
+/* M4L V102.8.1 - all-visible segmented Library source selector and resource ribbons. */
 .library-landing-header {
   width: 100%;
   min-width: 0;
@@ -34,36 +34,48 @@
 
 .library-source-menu {
   width: 100%;
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(var(--library-source-count, 1), minmax(0, 1fr));
+  gap: 4px;
   padding: 4px;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: thin;
-  scroll-snap-type: x proximity;
+  overflow: visible;
+  border: 1px solid var(--surface-track);
+  border-radius: 999px;
+  background: var(--surface-track);
 }
 
 .library-source-menu__item {
-  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
   min-height: 42px;
   margin: 0;
-  padding: 9px 16px;
-  border: 1px solid var(--surface-track);
+  padding: 9px 12px;
+  border: 0;
   border-radius: 999px;
-  background: var(--surface-card);
+  background: transparent;
   color: var(--text);
   box-shadow: none;
   font: inherit;
   font-size: 0.88rem;
   font-weight: 700;
-  white-space: nowrap;
-  scroll-snap-align: start;
+  line-height: 1.15;
+  white-space: normal;
 }
 
 .library-source-menu__item.is-active {
-  border-color: var(--primary);
   background: var(--primary);
   color: var(--text-inverse);
+}
+
+@media (max-width: 720px) {
+  .library-source-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 24px;
+  }
+
+  .library-source-menu__item:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 
 .library-resource-browser {
