@@ -154,8 +154,10 @@ try {
   assert.equal(requestedRanges.includes("TeacherAssign!A:ZZ"), false, "Published live reads must not read TeacherAssign");
 
   const teacher = await post("/api/admin/timetable/get", teacherToken, {});
-  assert.deepEqual(teacher.data.sessions.map(session => session.sessionid), ["SESSION-2"]);
-  assert.equal(teacher.data.teacheronly, true);
+  assert.deepEqual(teacher.data.sessions.map(session => session.sessionid), ["SESSION-1", "SESSION-2"]);
+  assert.equal(teacher.data.teacheronly, false);
+  assert.equal(teacher.data.viewerhasassignments, true);
+  assert.equal(teacher.data.showgrouplabels, true);
 
   const review = await post("/api/admin/timetable-builder/integration/preview", adminToken, { courseid: courseId });
   assert.equal(review.response.status, 200);

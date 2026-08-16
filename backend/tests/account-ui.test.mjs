@@ -48,4 +48,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.9 unified account UI compatibility tests passed.");
+console.log("V102.9.1 unified account UI compatibility tests passed.");

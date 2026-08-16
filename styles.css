@@ -1,4 +1,4 @@
-/* V102.9 immutable published timetable integration and reversible live cutover.
+/* V102.9.1 compact Timetable Builder controls and complete teacher timetable reads.
 
    V101.4 Timetable Builder and curriculum management workspace.
 
@@ -98,5 +98,5 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-19-pdf-split-view.css?v=102.8.1");
 @import url("/css/m4l-20-manage-admins.css?v=100.3.0");
 @import url("/css/m4l-21-manage-resources.css?v=100.4.2");
-@import url("/css/m4l-22-timetable-builder.css?v=102.9");
+@import url("/css/m4l-22-timetable-builder.css?v=102.9.1");
 @import url("/css/m4l-24-global-curriculum.css?v=102.7");

@@ -1,3 +1,27 @@
+# V102.9.1 — Timetable display correction
+
+- Restores compact Timetable Builder status, section, course and weekly-session
+  controls instead of inheriting the application's global full-width button
+  rule.
+- Lets the same controls wrap cleanly on narrower screens without clipping the
+  grid or dialogs.
+- Gives TEACHER the complete read-only current published timetable for the
+  selected course.
+- Keeps the teacher's own sessions prominent and other teachers' sessions
+  visible in muted styling.
+- Returns Zoom actions only for the signed-in teacher's own assignments.
+- Preserves ADMIN, SENIOR TEACHER and Student timetable behavior.
+- Does not expand TEACHER or SENIOR TEACHER access to Attendance, Progress,
+  Weekly Planner or Student Records.
+- Changes no Sheet, schema, PlatformConfig, Worker setting, Apps Script,
+  publication or activation state.
+- Documents the approved next-stage academy-wide timetable architecture without
+  building it in this correction.
+
+Development only: production remains stable at V101.1.
+
+---
+
 # V102.9 — Published timetable integrator
 
 - Extends immutable publication snapshots with course, time, subject, module

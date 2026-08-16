@@ -1,28 +1,31 @@
 # Maktabhelper
 
-Current development release: V102.9 Published timetable integrator.
+Current development release: V102.9.1 timetable display correction.
 
-V102.9 adds an ADMIN review, activation and rollback path for making the
-Timetable Builder's current immutable publication the selected course's live
-Student, staff and Weekly Planner source. Deployment alone changes nothing:
-`TeacherAssign` remains live until activation is explicitly confirmed.
+V102.9.1 is a small modified-files overlay for a development repository that
+already contains deployed V102.9. It corrects the Timetable Builder controls
+that inherited the application's global full-width button rule, so the status,
+section, course and weekly-session actions fit and wrap normally.
 
-Published snapshots now preserve course, time, subject, module and teacher
-display values so later curriculum edits cannot rewrite historical timetable
-display. Draft changes remain hidden behind the last current publication. An
-invalid published source fails closed instead of silently returning legacy
-data.
+Teachers now receive the complete read-only published timetable for the
+selected course. Their own assigned sessions remain prominent and retain their
+Zoom actions; other teachers' sessions remain visible in muted text without
+exposing their Zoom actions. Attendance, Progress, Weekly Planner and student
+record scope are unchanged.
 
-Platform schema remains `102.0.4`. The Reboot course schema moves to `101.4.4`
-after adding the documented `PublishedTimetableSessions!O1:T1` headers. Account
-migration must not be rerun, and `TeacherAssign`/`TimeTable` are not deleted in
-this release.
+No Sheet, header, schema, PlatformConfig, Worker setting, secret, binding or
+Apps Script change is required. The live publication and activation state are
+not changed, and the account migration must not be rerun.
 
-Start installation with `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.9-GITHUB-UPDATE-FROM-V102.8.2.zip` directly over a
-development repository already containing V102.8.2. It is a modified-files
-overlay containing the complete update; a full repository upload is not
-required.
+Start with `UPDATE-TODO.md`. Apply
+`Rebootyourmaktab-V102.9.1-GITHUB-UPDATE-FROM-V102.9.zip` directly over the
+development repository already containing V102.9. This is a modified-files
+overlay; a full repository upload is not required.
+
+`docs/V102.10-ACADEMY-TIMETABLE-PLAN.md` records the agreed next architecture:
+an authenticated academy-wide timetable with each person's enrolled,
+subscribed or assigned sessions highlighted. It is documentation only and is
+not active in V102.9.1.
 
 Production remains stable at V101.1 and must not receive this development-only
 overlay. A separate production merge plan will be prepared after V102

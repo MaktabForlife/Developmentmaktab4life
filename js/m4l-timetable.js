@@ -666,7 +666,12 @@ function renderTimetableSubjectEntries(entries, options = {}) {
       const scopeLabel = getTimetableAssignmentScopeLabel(entry, { includeGroupLabel: includeGroupLabels });
       const entryZoomLink = normalizeTimetableText(entry.zoomlink);
       const entryMuted = isTimetableEntryMuted(entry, options);
-      const showAssignmentZoomAction = options.showAssignmentZoomActions === true && Boolean(entryZoomLink);
+      const viewerOwnsEntry = Boolean(teacherId) && (
+        normalizeTimetableKey(teacherId) === normalizeTimetableKey(options.viewerAdminId)
+      );
+      const showAssignmentZoomAction = options.showAssignmentZoomActions === true &&
+        Boolean(entryZoomLink) &&
+        (options.restrictAssignmentZoomToViewer !== true || viewerOwnsEntry);
       const assignmentClasses = [
         "m4l-timetable-assignment",
         scopeLabel ? "m4l-timetable-assignment--with-group m4l-timetable-assignment--with-scope" : "",
@@ -676,7 +681,8 @@ function renderTimetableSubjectEntries(entries, options = {}) {
         entry.assignmentconflict === true ? "m4l-timetable-assignment--conflict" : ""
       ].filter(Boolean).join(" ");
       const groupMarkup = scopeLabel
-        ? entryZoomLink && !sharedZoomLink && !showAssignmentZoomAction
+        ? entryZoomLink && !sharedZoomLink && !showAssignmentZoomAction &&
+          options.restrictAssignmentZoomToViewer !== true
           ? renderTimetableZoomButton(
             scopeLabel,
             entryZoomLink,
@@ -742,7 +748,7 @@ function renderTimetableSubjectEntries(entries, options = {}) {
 }
 
 function isOversightTimetableRole(role) {
-  return ["admin", "senior"].includes(normalizeTimetableKey(role));
+  return ["admin", "senior", "teacher"].includes(normalizeTimetableKey(role));
 }
 
 function renderTimetableWeekLayout(model, renderOptions = {}) {
@@ -907,20 +913,23 @@ function renderTimetable(containerOrId, timetableResult, options = {}) {
     timetableResult?.viewerrole || state?.user?.role || ""
   );
   const oversightView = options.oversightView === true || isOversightTimetableRole(viewerRole);
+  const teacherView = normalizeTimetableKey(viewerRole) === "teacher";
+  const viewerAdminId = normalizeTimetableText(
+    timetableResult?.vieweradminid || state?.user?.adminid || ""
+  );
   const renderOptions = {
     ...options,
     showGroupLabels: options.showGroupLabels === true || timetableResult?.showgrouplabels === true,
-    viewerAdminId: normalizeTimetableText(
-      timetableResult?.vieweradminid || state?.user?.adminid || ""
-    ),
-    // ADMIN/SENIOR oversight rows remain compact until their inline disclosure
-    // is opened. Each disclosed assignment keeps its own Zoom action.
+    viewerAdminId,
+    // Staff complete-timetable rows remain compact until their inline
+    // disclosure is opened. Each disclosed assignment keeps its own Zoom action.
     alwaysDiscloseAssignments: oversightView,
     showAssignmentZoomActions: oversightView,
     allowSubjectZoomActions: !oversightView,
-    // Confirmed V100.10 rule: admins who teach at least one visible session see
-    // other teachers' sessions in grey text. Oversight-only admins see all normally.
-    dimOtherTeachers: timetableResult?.viewerhasassignments === true
+    restrictAssignmentZoomToViewer: teacherView,
+    // A staff member who teaches at least one visible session sees other
+    // teachers' sessions in grey text. Oversight-only staff see all normally.
+    dimOtherTeachers: teacherView || timetableResult?.viewerhasassignments === true
   };
   const weekLayout = renderTimetableWeekLayout(model, renderOptions);
   const timetableHtml = oversightView

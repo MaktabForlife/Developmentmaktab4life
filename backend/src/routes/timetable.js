@@ -556,7 +556,7 @@ async function getTimetableRequestContext(request, env) {
   const viewerRole = authUser.type === "admin"
     ? clean(authUser.role).toUpperCase()
     : "";
-  const teacherOnly = authUser.type === "admin" && viewerRole === "TEACHER";
+  const teacherViewer = authUser.type === "admin" && viewerRole === "TEACHER";
 
   if (authUser.type === "student") {
     const studentGroup = clean(
@@ -573,15 +573,16 @@ async function getTimetableRequestContext(request, env) {
     teacherId = "ALL";
   }
 
-  if (teacherOnly) {
-    // A TEACHER account sees only sessions assigned to its stable AdminID.
-    // Request-body teacher/group filters cannot expand this scope.
+  if (teacherViewer) {
+    // V102.9.1: a TEACHER may read the complete course timetable. This does
+    // not expand attendance, progress, planner or student-record scope and it
+    // does not grant any timetable write permission.
     groupNo = "ALL";
-    teacherId = clean(authUser.adminid) || "__MISSING_TEACHER_ID__";
+    teacherId = "ALL";
   }
 
-  // TeacherAssign is authoritative for teaching scope. ADMIN and SENIOR retain
-  // full oversight; AdminRecords AssignedGroup never grants or restricts it.
+  // Timetable visibility is course-wide for ADMIN, SENIOR and TEACHER.
+  // AdminRecords AssignedGroup never grants or restricts this read-only view.
   return {
     ok: true,
     authUser,
@@ -590,8 +591,8 @@ async function getTimetableRequestContext(request, env) {
     allGroupsStudent,
     viewerAdminId: authUser.type === "admin" ? clean(authUser.adminid) : "",
     viewerRole,
-    teacherOnly,
-    showGroupLabels: teacherOnly || allGroupsStudent || (
+    teacherOnly: false,
+    showGroupLabels: teacherViewer || allGroupsStudent || (
       authUser.type === "admin" && normalizeMatch(groupNo) === "all"
     )
   };

@@ -28,12 +28,14 @@ assert.match(timetable, /Open \$\{scopeLabel\} Zoom link/);
 assert.match(timetable, /alwaysDiscloseAssignments: oversightView/);
 assert.match(timetable, /showAssignmentZoomActions: oversightView/);
 assert.match(timetable, /allowSubjectZoomActions: !oversightView/);
+assert.match(timetable, /restrictAssignmentZoomToViewer: teacherView/);
 assert.match(timetable, /isOversightTimetableRole/);
+assert.match(timetable, /\["admin", "senior", "teacher"\]/);
 assert.match(timetable, /renderTimetableDayLayout/);
 assert.match(timetable, /m4l-timetable-responsive--oversight/);
 assert.match(timetable, /m4l-timetable-layout--days/);
 assert.match(timetable, /m4l-timetable-session--muted/);
-assert.match(timetable, /dimOtherTeachers: timetableResult\?\.viewerhasassignments === true/);
+assert.match(timetable, /dimOtherTeachers: teacherView \|\| timetableResult\?\.viewerhasassignments === true/);
 assert.match(timetable, /const sharedZoomLink = getSharedTimetableZoomLink\(subjectEntries\)/);
 assert.match(timetable, /"Open session Zoom link"/);
 assert.doesNotMatch(timetable, /options\.usePerSessionZoom === true/);
@@ -65,14 +67,14 @@ assert.doesNotMatch(
 );
 assert.match(styles, /m4l-05-home-timetable\.css\?v=100\.10\.5/);
 
-assert.match(admin, /styles\.css\?v=102\.9/);
+assert.match(admin, /styles\.css\?v=102\.9\.1/);
 
 for (const html of [student, root]) {
-  assert.match(html, /m4l-timetable\.js\?v=102\.9/);
-  assert.match(html, /styles\.css\?v=102\.9/);
+  assert.match(html, /m4l-timetable\.js\?v=102\.9\.1/);
+  assert.match(html, /styles\.css\?v=102\.9\.1/);
 }
 
-assert.match(admin, /m4l-timetable\.js\?v=102\.9/);
+assert.match(admin, /m4l-timetable\.js\?v=102\.9\.1/);
 
 assert.match(admin, /m4l-weekly-planner\.js\?v=101\.1\.1/);
 
@@ -347,19 +349,75 @@ assert.match(
 const teacherTarget = { innerHTML: "" };
 renderContext.window.M4LTimetable.renderTimetable(teacherTarget, {
   viewerrole: "TEACHER",
-  sessions: [{
-    sessionid: "TEACHER1",
-    subjectname: "Quran",
-    dayofweek: "Mon",
-    starttime: "05:45",
-    groupno: "1",
-    teacherid: "ADMIN1",
-    teachername: "Teacher A",
-    teacherassigned: true
-  }]
+  vieweradminid: "ADMIN1",
+  viewerhasassignments: true,
+  sessions: [
+    {
+      sessionid: "TEACHER1",
+      subjectname: "Quran",
+      dayofweek: "Mon",
+      starttime: "05:45",
+      groupno: "1",
+      teacherid: "ADMIN1",
+      teachername: "Teacher A",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/teacher-own"
+    },
+    {
+      sessionid: "TEACHER2",
+      subjectname: "Fiqh",
+      dayofweek: "Tue",
+      starttime: "06:45",
+      groupno: "2",
+      teacherid: "ADMIN2",
+      teachername: "Teacher B",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/teacher-other"
+    }
+  ]
 });
 
 assert.match(teacherTarget.innerHTML, /m4l-timetable-layout--week/);
-assert.doesNotMatch(teacherTarget.innerHTML, /m4l-timetable-layout--days/);
+assert.match(teacherTarget.innerHTML, /m4l-timetable-responsive--oversight/);
+assert.match(teacherTarget.innerHTML, /m4l-timetable-layout--days/);
+assert.match(teacherTarget.innerHTML, /m4l-timetable-session--muted/);
+assert.match(teacherTarget.innerHTML, /https:\/\/zoom\.test\/teacher-own/);
+assert.doesNotMatch(teacherTarget.innerHTML, /https:\/\/zoom\.test\/teacher-other/);
+
+const groupedTeacherTarget = { innerHTML: "" };
+renderContext.window.M4LTimetable.renderTimetable(groupedTeacherTarget, {
+  viewerrole: "TEACHER",
+  vieweradminid: "ADMIN1",
+  viewerhasassignments: true,
+  showgrouplabels: true,
+  sessions: [
+    {
+      sessionid: "TEACHER-GROUPED-OWN",
+      subjectname: "Quran",
+      dayofweek: "Wed",
+      starttime: "05:45",
+      groupno: "1",
+      teacherid: "ADMIN1",
+      teachername: "Teacher A",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/grouped-own"
+    },
+    {
+      sessionid: "TEACHER-GROUPED-OTHER",
+      subjectname: "Quran",
+      dayofweek: "Wed",
+      starttime: "05:45",
+      groupno: "2",
+      teacherid: "ADMIN2",
+      teachername: "Teacher B",
+      teacherassigned: true,
+      zoomlink: "https://zoom.test/grouped-other"
+    }
+  ]
+});
+
+assert.match(groupedTeacherTarget.innerHTML, /https:\/\/zoom\.test\/grouped-own/);
+assert.doesNotMatch(groupedTeacherTarget.innerHTML, /https:\/\/zoom\.test\/grouped-other/);
+assert.match(groupedTeacherTarget.innerHTML, /m4l-timetable-assignment--muted/);
 
 console.log("Teacher-aware timetable UI and cache-delivery tests passed.");

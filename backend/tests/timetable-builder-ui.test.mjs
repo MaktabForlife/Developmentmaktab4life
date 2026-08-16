@@ -44,9 +44,9 @@ assert.match(adminHtml, /id="timetable-integration-dialog"/);
 assert.match(adminHtml, /id="ttb-integration-confirmation"/);
 assert.match(adminHtml, /data-ttb-action="save-integration-source"/);
 assert.match(adminHtml, /Leave blank to use the course-default Zoom/);
-assert.match(adminHtml, /m4l-timetable-builder\.js\?v=102\.9/);
-assert.match(adminHtml, /m4l-auth\.js\?v=102\.9/);
-assert.match(adminHtml, /m4l-timetable\.js\?v=102\.9/);
+assert.match(adminHtml, /m4l-timetable-builder\.js\?v=102\.9\.1/);
+assert.match(adminHtml, /m4l-auth\.js\?v=102\.9\.1/);
+assert.match(adminHtml, /m4l-timetable\.js\?v=102\.9\.1/);
 
 assert.match(builderJs, /getTimetableBuilderRole\(\) !== "ADMIN"/);
 assert.match(builderJs, /\["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"\]/);
@@ -96,7 +96,12 @@ assert.match(builderJs, /applyTimetableSessionUpdates/);
 assert.match(builderJs, /result\.changed !== false/);
 assert.doesNotMatch(builderJs, /apiPost\(\s*"\/api\/admin\/tasks\/list"/);
 
-assert.match(styles, /m4l-22-timetable-builder\.css\?v=102\.9/);
+assert.match(styles, /m4l-22-timetable-builder\.css\?v=102\.9\.1/);
+assert.match(builderCss, /\.timetable-builder-tabs button\s*\{[^}]*width:\s*auto/s);
+assert.match(builderCss, /\.timetable-builder-status-band > button\s*\{[^}]*width:\s*auto/s);
+assert.match(builderCss, /\.timetable-builder-course-bar > button\s*\{[^}]*width:\s*auto/s);
+assert.match(builderCss, /\.timetable-builder-grid-title-actions\s*\{[^}]*flex-wrap:\s*wrap/s);
+assert.match(builderCss, /@media \(max-width: 640px\)[\s\S]*\.timetable-builder-status-band > button\s*\{[^}]*flex:\s*1 1 140px/);
 assert.match(builderCss, /grid-template-columns:\s*132px repeat\(var\(--ttb-day-count\), minmax\(152px, 1fr\)\)/);
 assert.match(builderCss, /min-width:\s*1240px/);
 assert.match(builderCss, /grid-template-columns:\s*minmax\(290px, 360px\) minmax\(520px, 1fr\)/);

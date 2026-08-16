@@ -1,4 +1,4 @@
-/* M4L V102.9 - staged Timetable Builder, bulk editing and live-source integration. */
+/* M4L V102.9.1 - compact responsive Timetable Builder actions. */
 
 body:has(#timetable-builder-screen.active) .app-shell {
   width: min(100%, 1500px);
@@ -65,6 +65,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
 
 .timetable-builder-status-band {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;
@@ -82,12 +83,18 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-status-band > span {
-  flex: 1 1 auto;
+  flex: 1 1 320px;
+  min-width: 220px;
 }
 
 .timetable-builder-status-band > button {
   flex: 0 0 auto;
-  margin-left: auto;
+  width: auto;
+  min-width: 132px;
+  min-height: 36px;
+  margin-left: 0;
+  padding: 7px 11px;
+  font-size: 0.82rem;
 }
 
 .timetable-builder-tabs {
@@ -103,7 +110,8 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-tabs button {
-  flex: 0 0 auto;
+  flex: 1 1 110px;
+  width: auto;
   min-width: 110px;
   min-height: 42px;
   padding: 8px 16px;
@@ -159,6 +167,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-course-bar {
+  flex-wrap: wrap;
   justify-content: flex-start;
   margin-bottom: 14px;
   padding: 12px 14px;
@@ -166,8 +175,18 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-course-select {
+  flex: 1 1 280px;
   width: min(380px, 46vw);
   margin-right: auto;
+}
+
+.timetable-builder-course-bar > button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 118px;
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
 }
 
 .timetable-builder-field {
@@ -224,6 +243,7 @@ body:has(#timetable-builder-screen.active) .app-shell {
 .timetable-builder-danger,
 .timetable-builder-panel-heading > button,
 .ttb-grid-time button {
+  width: auto;
   min-height: 40px;
   padding: 8px 14px;
   border: 1px solid var(--primary, #31513f);
@@ -265,6 +285,8 @@ body:has(#timetable-builder-screen.active) .app-shell {
 }
 
 .timetable-builder-grid-title {
+  flex-wrap: wrap;
+  align-items: flex-start;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border, #e4dadd);
 }
@@ -278,8 +300,19 @@ body:has(#timetable-builder-screen.active) .app-shell {
 
 .timetable-builder-grid-title-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  margin-left: auto;
+}
+
+.timetable-builder-grid-title-actions > button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
 }
 
 .timetable-builder-grid-title-actions > span {
@@ -922,11 +955,43 @@ body:has(#timetable-builder-screen.active) .app-shell {
   .timetable-builder-status-band {
     align-items: flex-start;
   }
+
+  .timetable-builder-status-band > span {
+    min-width: min(100%, 260px);
+  }
 }
 
 @media (max-width: 640px) {
   .timetable-builder-screen {
     padding: 16px;
+  }
+
+  .timetable-builder-status-band > strong,
+  .timetable-builder-status-band > span {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .timetable-builder-status-band > button {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .timetable-builder-course-select {
+    flex-basis: 100%;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .timetable-builder-course-bar > button {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+
+  .timetable-builder-grid-title-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .timetable-builder-form-grid {

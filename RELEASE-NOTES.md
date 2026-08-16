@@ -1,3 +1,29 @@
+V102.9.1
+
+# Fit Timetable Builder controls and give teachers the complete course timetable
+
+- Makes status, section, course and weekly-session controls compact instead of
+  full width, with responsive wrapping when the screen is narrower.
+- Keeps all Timetable Builder add, modify, select, bulk edit, delete, restore,
+  review, publish and rollback behavior unchanged.
+- Shows TEACHER the complete current published timetable for the selected
+  course as a read-only view.
+- Keeps the signed-in teacher's assigned sessions prominent and mutes sessions
+  assigned to other teachers.
+- Exposes Zoom actions only for the signed-in teacher's own assignments.
+- Does not change Attendance, Progress, Weekly Planner or Student Records scope.
+- Requires no Sheet/header/schema change, migration, configuration change,
+  timetable republish, activation or rollback.
+- Includes a documentation-only plan for the later academy-wide active/muted
+  timetable.
+
+Install only
+`Rebootyourmaktab-V102.9.1-GITHUB-UPDATE-FROM-V102.9.zip` over deployed V102.9
+development and complete every item in `UPDATE-TODO.md`. Production remains
+stable at V101.1.
+
+---
+
 V102.9
 
 # Integrate immutable published timetables with a reversible live cutover

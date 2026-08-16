@@ -99,14 +99,14 @@ const expectedPaths = [
   "/api/progress/task-detail"
 ];
 
-assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include V102.9 timetable integration");
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include V102.9.1 timetable integration");
 
 const root = await worker.fetch(new Request("https://worker.test/"), {});
 assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.9"
+  version: "102.9.1"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {
