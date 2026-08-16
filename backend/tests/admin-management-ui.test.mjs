@@ -10,8 +10,8 @@ const manageAdminsCss = readFileSync(new URL("../../css/m4l-20-manage-admins.css
 assert.match(adminHtml, /id="open-manage-admins-btn"/);
 assert.match(adminHtml, /id="manage-admins-screen"/);
 assert.match(adminHtml, /id="manage-admins-content"/);
-assert.match(adminHtml, /m4l-manage-admins\.js\?v=100\.3\.2/);
-assert.match(adminHtml, /styles\.css\?v=102\.6\.1/);
+assert.match(adminHtml, /m4l-manage-admins\.js\?v=102\.6\.2/);
+assert.match(adminHtml, /styles\.css\?v=102\.6\.2/);
 
 assert.match(manageAdminsJs, /getCurrentRole\(\) === "ADMIN"/);
 assert.match(manageAdminsJs, /\/api\/admin\/admins\/search/);
@@ -20,6 +20,8 @@ assert.match(manageAdminsJs, /\/api\/admin\/update-admin/);
 assert.match(manageAdminsJs, /\/api\/admin\/reset-admin-pin/);
 assert.match(manageAdminsJs, /you can change only your own display name/i);
 assert.match(manageAdminsJs, /Their existing sessions will stop working/);
+assert.match(manageAdminsJs, /function getAdminRoleLabel\(role\)/);
+assert.match(manageAdminsJs, /value="SENIOR">SENIOR TEACHER<\/option>/);
 assert.match(manageAdminsJs, /data-uniqueid=/);
 assert.match(manageAdminsJs, /function selectAdmin\(uniqueid, adminid\)/);
 assert.match(manageAdminsJs, /uniqueid: admin\.uniqueid/);

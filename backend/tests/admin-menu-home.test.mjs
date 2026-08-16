@@ -54,8 +54,12 @@ assert.match(academicsJs, /function showAdminSystemMenu\(\)/);
 assert.match(academicsJs, /getAdminAcademicsRole\(\) === "ADMIN"/);
 assert.match(academicsJs, /data-admin-menu-admin-only/);
 assert.match(academicsJs, /data-student-records-admin/);
+assert.match(academicsJs, /function syncAdminLandingLayout\(\)/);
+assert.match(academicsJs, /--admin-menu-visible-columns/);
 assert.match(homeCss, /\.admin-menu-icon-grid/);
-assert.match(homeCss, /\.admin-menu-icon-grid[\s\S]*?grid-template-columns: repeat\(8, minmax\(0, 1fr\)\)/);
+assert.match(homeCss, /\.home-cover-icon-btn\.hidden,[\s\S]*?\.home-cover-icon-btn\[aria-hidden="true"\][\s\S]*?display: none !important/);
+assert.match(homeCss, /grid-template-columns: repeat\(var\(--admin-menu-visible-columns, 8\), minmax\(0, 1fr\)\)/);
+assert.match(shellJs, /if \(normalized === "SENIOR"\) return "SENIOR TEACHER"/);
 assert.match(shellJs, /"admin-system-menu"/);
 
 assert.equal(existsSync(new URL("../../icons/studentrecords.svg", import.meta.url)), true);

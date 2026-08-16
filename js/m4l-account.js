@@ -1,4 +1,4 @@
-/* M4L V102.6.1 - Unified account login, context switching and Profile context details. */
+/* M4L V102.6.2 - Unified account login, retry reset, context switching and Profile details. */
 (function () {
   "use strict";
 
@@ -94,14 +94,19 @@
     }
     setBusy(event.currentTarget, true);
     showFormError("login-error", "");
+    let loginFailed = false;
     try {
       const result = await api("/api/account/login", { uniqueid: uniqueId, pin });
       await acceptSession(result, true, { autoOpen: !switcherMode });
     } catch (error) {
       showFormError("login-error", error.message);
-      byId("login-pin").select();
+      byId("login-pin").value = "";
+      loginFailed = true;
     } finally {
       setBusy(event.currentTarget, false);
+      if (loginFailed) {
+        byId("login-pin").focus();
+      }
     }
   }
 
@@ -366,6 +371,8 @@
   }
 
   function roleLabel(role) {
+    const normalized = normalize(role);
+    if (normalized === "SENIOR") return "SENIOR TEACHER";
     return String(role || "").replace(/_/g, " ");
   }
 

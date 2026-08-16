@@ -13,9 +13,9 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.6\.1 keeps secure course routing active while correcting role visibility/);
-assert.match(html, /Profile switching and Global Curriculum controls/);
-assert.match(html, /m4l-account\.js\?v=102\.6\.1/);
+assert.match(html, /V102\.6\.2 keeps secure course routing active while correcting menu visibility/);
+assert.match(html, /PIN retry and Senior Teacher display/);
+assert.match(html, /m4l-account\.js\?v=102\.6\.2/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
@@ -36,10 +36,13 @@ assert.match(script, /clearCourseDataCaches/);
 assert.match(script, /localStorage\.removeItem\(TOKEN_KEY\)/);
 assert.match(script, /Authorization: `Bearer \$\{token\}`/);
 assert.match(script, /replace\(\/\\D\/g, ""\)\.slice\(0, 4\)/);
+assert.match(script, /byId\("login-pin"\)\.value = ""/);
+assert.match(script, /setBusy\(event\.currentTarget, false\);[\s\S]*?if \(loginFailed\)[\s\S]*?byId\("login-pin"\)\.focus\(\)/);
+assert.match(script, /if \(normalized === "SENIOR"\) return "SENIOR TEACHER"/);
 assert.doesNotMatch(script, /innerHTML\s*=/, "Account context values must not be injected through innerHTML");
 assert.match(css, /@media \(max-width: 760px\)/);
 assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.6.1 unified account UI compatibility tests passed.");
+console.log("V102.6.2 unified account UI compatibility tests passed.");

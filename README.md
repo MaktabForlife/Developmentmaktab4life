@@ -1,31 +1,29 @@
 # Maktabhelper
 
-Current development release: V102.6.1 permission, Profile and Global Curriculum
-UI corrections.
+Current development release: V102.6.2 menu-visibility, PIN-retry and role-label
+corrections.
 
-V102.6.1 is applied over deployed V102.6. It makes all five Global Curriculum
-sections visible, reports global subjects separately from global-subject
-subscriptions in Platform validation, and prevents inherited full-width button
-styles from hiding the remaining tab controls.
+V102.6.2 is applied over deployed V102.6.1. It fixes the CSS cascade that left
+restricted Admin Home tiles visible to SENIOR and TEACHER. Those roles now see
+only Home, Admin Home and Resources on that screen. The main Admin navigation
+entry remains available because it is their authorized route to Resources.
 
-SENIOR and TEACHER can add course resources. Existing-resource modification
-remains ADMIN-only. Student Records are ADMIN-only and their tile is hidden from
-SENIOR and TEACHER. Other inaccessible Admin Home controls are also hidden for
-the active role; Worker authorization remains the security boundary.
+The user-facing `SENIOR` label becomes `SENIOR TEACHER`. Stored Sheet values,
+tokens, API permission checks and role constants remain `SENIOR` for backward
+compatibility.
 
-The app menu now has one Profile control. Its card shows the account name,
-courses, roles and current context and contains the course/role switch action.
-The separate duplicate switch menu item is removed.
+After an incorrect PIN on `/account/<uniqueid>`, the account login field is now
+cleared and focused so the user can retry without reloading the page.
 
-V102.6.1 makes no Platform Sheet header, course Sheet, Worker variable, secret,
+V102.6.2 makes no Platform Sheet header, course Sheet, Worker variable, secret,
 binding or Apps Script change. `PlatformConfig!B3` remains `102.0.4`, deployment
 does not change `PlatformConfig!B4`, and central account migration must not be
 rerun. The approved browser-session authentication policy remains documented
 but inactive.
 
 Start installation with the root-level `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.6.1-GITHUB-UPDATE-FROM-V102.6.zip` directly over the
-deployed V102.6 development repository. A full repository upload is not
+`Rebootyourmaktab-V102.6.2-GITHUB-UPDATE-FROM-V102.6.1.zip` directly over the
+deployed V102.6.1 development repository. A full repository upload is not
 required.
 
 Production remains stable at V101.1. It must not receive this development-only

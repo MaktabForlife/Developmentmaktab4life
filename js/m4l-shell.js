@@ -2205,7 +2205,7 @@ function getCurrentUserLevelText() {
   const role = String(user.role || user.Role || "").trim();
 
   if (getBottomNavRole() === "admin") {
-    return role || "Admin";
+    return getDisplayRoleLabel(role) || "Admin";
   }
 
   const groupLabel = getCurrentStudentGroupLabel(user);
@@ -2219,10 +2219,16 @@ function getCurrentUserRoleLabel() {
   const navRole = getBottomNavRole();
 
   if (navRole === "admin") {
-    return role || "Admin";
+    return getDisplayRoleLabel(role) || "Admin";
   }
 
   return "Student";
+}
+
+function getDisplayRoleLabel(role) {
+  const normalized = String(role || "").trim().toUpperCase();
+  if (normalized === "SENIOR") return "SENIOR TEACHER";
+  return String(role || "").trim().replace(/_/g, " ");
 }
 
 function getCurrentUserGroupLabel() {
@@ -2258,7 +2264,7 @@ function getUserBandProfileMarkup(username, role) {
   const current = state.accountContext || null;
   const contextMarkup = contexts.length ? contexts.map(context => {
     const courseName = String(context.courseName || context.coursename || "M4L Platform").trim();
-    const contextRole = String(context.role || "").trim().replace(/_/g, " ");
+    const contextRole = getDisplayRoleLabel(context.role);
     const isCurrent = accountContextMatches(context, current);
     return `
       <div class="app-user-profile-menu__context${isCurrent ? " is-current" : ""}">

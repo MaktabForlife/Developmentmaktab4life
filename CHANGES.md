@@ -1,3 +1,19 @@
+# V102.6.2 — Menu visibility, PIN retry and Senior Teacher label
+
+- Removes inaccessible Admin Home tiles from SENIOR and TEACHER layouts instead
+  of leaving them visible and greyed out.
+- Keeps the Admin navigation entry available to those roles for authorized
+  Resources access.
+- Clears and focuses the unified account PIN field after an incorrect PIN.
+- Displays SENIOR as SENIOR TEACHER without changing the stored `SENIOR` role.
+- Keeps Platform schema `102.0.4`, GlobalCurriculumVersion, Sheet data and current
+  session behaviour unchanged.
+- Bumps application and Worker metadata to `102.6.2`.
+
+Development only: production remains stable at V101.1.
+
+---
+
 # V102.6.1 — Permission, Profile and Global Curriculum UI corrections
 
 - Shows all five Global Curriculum tabs and restores compact panel actions.

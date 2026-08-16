@@ -130,7 +130,7 @@
         <section class="student-admin-result-card">
           <div class="student-admin-card-title">Admin Created</div>
           <p><strong>${escapeHtml(admin.username)}</strong></p>
-          <p class="student-admin-help">${escapeHtml(admin.role)} · Group ${escapeHtml(admin.assignedgroup)}</p>
+          <p class="student-admin-help">${escapeHtml(getAdminRoleLabel(admin.role))} · Group ${escapeHtml(admin.assignedgroup)}</p>
           <div class="student-link-box student-icon-field">
             <span class="student-link-text">${escapeHtml(loginUrl)}</span>
             <button type="button" class="student-copy-icon-btn" data-manage-admin-action="copy-link" data-login-url="${escapeAttribute(loginUrl)}" aria-label="Copy admin login link" title="Copy link">
@@ -154,7 +154,7 @@
         <label class="student-admin-label" for="admin-register-role">Role</label>
         <select id="admin-register-role">
           <option value="TEACHER">TEACHER</option>
-          <option value="SENIOR">SENIOR</option>
+          <option value="SENIOR">SENIOR TEACHER</option>
           <option value="ADMIN">ADMIN</option>
         </select>
 
@@ -199,7 +199,7 @@
 
     return admins.map((admin) => `
       <button type="button" class="student-search-card managed-admin-row" data-manage-admin-action="select" data-adminid="${escapeAttribute(admin.adminid)}" data-uniqueid="${escapeAttribute(admin.uniqueid)}">
-        <span class="managed-admin-role">${escapeHtml(admin.role)}</span>
+        <span class="managed-admin-role">${escapeHtml(getAdminRoleLabel(admin.role))}</span>
         <span class="student-search-main">
           <strong>${escapeHtml(admin.username)}${admin.isSelf ? " (You)" : ""}</strong>
           <small>${escapeHtml(admin.adminid)} · Group ${escapeHtml(admin.assignedgroup)}</small>
@@ -218,7 +218,7 @@
     return `
       <section class="student-admin-card">
         <div class="selected-student-heading compact-selected-student-heading">
-          <div><strong>${escapeHtml(admin.username)}</strong><small>${escapeHtml(admin.adminid)} · ${escapeHtml(admin.role)}</small></div>
+          <div><strong>${escapeHtml(admin.username)}</strong><small>${escapeHtml(admin.adminid)} · ${escapeHtml(getAdminRoleLabel(admin.role))}</small></div>
         </div>
         ${selfNote}
         <label class="student-admin-label" for="admin-edit-name">Name</label>
@@ -226,7 +226,7 @@
 
         <label class="student-admin-label" for="admin-edit-role">Role</label>
         <select id="admin-edit-role" ${securityDisabled}>
-          ${["ADMIN", "SENIOR", "TEACHER"].map(role => `<option value="${role}" ${admin.role === role ? "selected" : ""}>${role}</option>`).join("")}
+          ${["ADMIN", "SENIOR", "TEACHER"].map(role => `<option value="${role}" ${admin.role === role ? "selected" : ""}>${getAdminRoleLabel(role)}</option>`).join("")}
         </select>
 
         <label class="student-admin-label" for="admin-edit-group">Assigned Group</label>
@@ -429,6 +429,12 @@
   function value(id) {
     const element = document.getElementById(id);
     return element ? String(element.value || "").trim() : "";
+  }
+
+  function getAdminRoleLabel(role) {
+    return String(role || "").trim().toUpperCase() === "SENIOR"
+      ? "SENIOR TEACHER"
+      : String(role || "").trim().replace(/_/g, " ");
   }
 
   function setFeedback(message, isError) {

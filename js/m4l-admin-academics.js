@@ -36,6 +36,17 @@ function syncAdminLandingAccess() {
   return allowed;
 }
 
+function syncAdminLandingLayout() {
+  const grid = document.querySelector(".admin-menu-icon-grid");
+  if (!grid) return;
+
+  const visibleCount = Array.from(grid.querySelectorAll(".home-cover-icon-btn"))
+    .filter(button => !button.classList.contains("hidden") && button.getAttribute("aria-hidden") !== "true")
+    .length;
+
+  grid.style.setProperty("--admin-menu-visible-columns", String(Math.max(1, Math.min(8, visibleCount))));
+}
+
 function showAdminSystemMenu() {
   if (!syncAdminLandingAccess()) {
     alert("System Settings are available to ADMIN accounts only.");
@@ -75,6 +86,8 @@ function prepareAdminAcademicsScreen() {
   if (window.M4LGlobalCurriculum && typeof window.M4LGlobalCurriculum.syncAccess === "function") {
     window.M4LGlobalCurriculum.syncAccess();
   }
+
+  syncAdminLandingLayout();
 }
 
 /* =========================

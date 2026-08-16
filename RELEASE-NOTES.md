@@ -1,3 +1,28 @@
+V102.6.2
+
+# Correct restricted menu visibility, PIN retry and Senior Teacher label
+
+- Fixes the CSS cascade that caused role-restricted Admin Home tiles to remain
+  visible as greyed controls.
+- For SENIOR and TEACHER, Admin Home now renders only Home, Admin Home and
+  Resources. The main Admin navigation entry remains because it opens their
+  authorized Resources route.
+- Clears and focuses the account PIN field after a failed login attempt so the
+  user can retry without reloading.
+- Displays `SENIOR` as `SENIOR TEACHER` while retaining `SENIOR` as the stored and
+  authorized role value.
+- Keeps all V102.6.1 authorization rules, Global Curriculum corrections and
+  resource permissions intact.
+- Changes no Sheet schema, Sheet data, Worker variable, binding, secret, Apps
+  Script or authentication-session persistence policy.
+- Adds the exact deployment and verification checklist in `UPDATE-TODO.md`.
+
+Install only
+`Rebootyourmaktab-V102.6.2-GITHUB-UPDATE-FROM-V102.6.1.zip` over deployed
+V102.6.1 development. Production remains stable at V101.1.
+
+---
+
 V102.6.1
 
 # Correct role visibility, resource creation, Profile and Global Curriculum tabs

@@ -79,6 +79,14 @@ Home cover-sheet app icons - V95.0
   touch-action: manipulation;
 }
 
+/* Role-restricted menu controls must not be rendered. This rule intentionally
+   follows the button's display:grid declaration so the shared .hidden state
+   cannot be overridden by this component stylesheet. */
+.home-cover-icon-btn.hidden,
+.home-cover-icon-btn[aria-hidden="true"] {
+  display: none !important;
+}
+
 .home-cover-icon-btn:active {
   transform: scale(1.05);
 }
@@ -139,7 +147,7 @@ Home cover-sheet app icons - V95.0
   }
 
   .admin-menu-icon-grid {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--admin-menu-visible-columns, 8), minmax(0, 1fr));
     max-width: 960px;
   }
 
