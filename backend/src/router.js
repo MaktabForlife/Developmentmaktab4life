@@ -91,6 +91,14 @@ import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import { platformValidationEndpoint } from "./routes/platform-validation.js";
 import { platformAccountMigrationEndpoint } from "./routes/platform-account-migration.js";
 import {
+  getPlatformGlobalManagementEndpoint,
+  savePlatformGlobalModuleEndpoint,
+  savePlatformGlobalResourceEndpoint,
+  savePlatformGlobalSubjectAccessEndpoint,
+  savePlatformGlobalSubjectEndpoint,
+  savePlatformGlobalTaskEndpoint
+} from "./routes/platform-global-management.js";
+import {
   accountLoginEndpoint,
   accountSessionEndpoint,
   accountWorkspaceEndpoint,
@@ -151,6 +159,12 @@ const ROUTES = new Map([
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint, { courseScoped: true })],
   ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint, { courseScoped: true })],
   ["/api/admin/platform/accounts/migrate", workerRoute("platform-account-migration", platformAccountMigrationEndpoint, { courseScoped: true })],
+  ["/api/admin/platform/global/get", workerRoute("platform-global-management", getPlatformGlobalManagementEndpoint)],
+  ["/api/admin/platform/global/subject/save", workerRoute("platform-global-management", savePlatformGlobalSubjectEndpoint)],
+  ["/api/admin/platform/global/module/save", workerRoute("platform-global-management", savePlatformGlobalModuleEndpoint)],
+  ["/api/admin/platform/global/task/save", workerRoute("platform-global-management", savePlatformGlobalTaskEndpoint)],
+  ["/api/admin/platform/global/resource/save", workerRoute("platform-global-management", savePlatformGlobalResourceEndpoint)],
+  ["/api/admin/platform/global/access/save", workerRoute("platform-global-management", savePlatformGlobalSubjectAccessEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],
 

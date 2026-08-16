@@ -252,6 +252,22 @@
           </button>
 
           <button
+            id="open-global-curriculum-btn"
+            class="home-cover-icon-btn hidden"
+            data-global-curriculum-admin
+            type="button"
+            aria-hidden="true"
+            onclick="showGlobalCurriculumManagement()"
+            style="--cover-home-icon: url('/icons/resources.svg?v=102.6')"
+            aria-label="Open Global Curriculum"
+          >
+            <span class="home-cover-icon-tile" aria-hidden="true">
+              <span class="home-cover-icon-glyph"></span>
+            </span>
+            <span class="home-cover-icon-label">Global Curriculum</span>
+          </button>
+
+          <button
             id="open-admin-system-menu-btn"
             class="home-cover-icon-btn hidden"
             data-admin-menu-admin-only
@@ -831,6 +847,45 @@
           </div>
         </form>
       </dialog>
+    </section>
+
+    <!-- GLOBAL CURRICULUM MANAGEMENT - V102.6 -->
+    <section id="global-curriculum-screen" class="screen admin-theme global-curriculum-screen" aria-labelledby="global-curriculum-title">
+      <header class="global-curriculum-header">
+        <div>
+          <p class="global-curriculum-eyebrow">Platform administration</p>
+          <h2 id="global-curriculum-title">Global Curriculum</h2>
+        </div>
+        <div class="global-curriculum-header-actions">
+          <button type="button" class="icon-action-btn global-curriculum-reload" data-gcm-action="reload" aria-label="Reload Global Curriculum" title="Reload">
+            <span class="app-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Reload</span>
+          </button>
+          <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close to Admin menu" title="Close">
+            <span class="app-icon app-icon-xclose" aria-hidden="true"></span>
+            <span class="visually-hidden">Close</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="global-curriculum-status-band">
+        <strong>GLOBAL</strong>
+        <span>Changes apply across the platform and are recorded in PlatformAuditLog.</span>
+        <small id="global-curriculum-version">Curriculum version —</small>
+      </div>
+
+      <nav class="global-curriculum-tabs" aria-label="Global Curriculum sections">
+        <button type="button" class="is-active" data-gcm-action="show-tab" data-gcm-tab="subjects">Subjects</button>
+        <button type="button" data-gcm-action="show-tab" data-gcm-tab="modules">Modules</button>
+        <button type="button" data-gcm-action="show-tab" data-gcm-tab="tasks">Tasks</button>
+        <button type="button" data-gcm-action="show-tab" data-gcm-tab="resources">Resources</button>
+        <button type="button" data-gcm-action="show-tab" data-gcm-tab="access">Subscriptions</button>
+      </nav>
+
+      <p id="global-curriculum-message" class="global-curriculum-message" role="status" aria-live="polite"></p>
+      <div id="global-curriculum-content" class="global-curriculum-content">
+        <p class="helper-text">Loading Global Curriculum...</p>
+      </div>
     </section>
 
     <!-- WEEKLY PLANNER - V101.1.1 -->
@@ -1577,6 +1632,7 @@
 <script src="/js/m4l-admin-academics.js?v=100.7.2"></script>
 <script src="/js/m4l-system-settings.js?v=102.5"></script>
 <script src="/js/m4l-timetable-builder.js?v=101.4.3"></script>
+<script src="/js/m4l-global-curriculum.js?v=102.6"></script>
   <script src="/js/m4l-resources.js?v=100.4.1"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=102.4"></script>

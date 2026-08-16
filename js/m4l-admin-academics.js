@@ -71,6 +71,10 @@ function prepareAdminAcademicsScreen() {
   if (window.M4LManageResources && typeof window.M4LManageResources.syncAccess === "function") {
     window.M4LManageResources.syncAccess();
   }
+
+  if (window.M4LGlobalCurriculum && typeof window.M4LGlobalCurriculum.syncAccess === "function") {
+    window.M4LGlobalCurriculum.syncAccess();
+  }
 }
 
 /* =========================

@@ -1,62 +1,11 @@
-V102.5
+V102.6
 
-Delete this obsolete repository template after applying the V102.5 update:
+No repository file, Platform Sheet tab, course Sheet tab, account, membership,
+curriculum, resource, access, audit or historical record should be deleted in
+this release.
 
-- `docs/V102-TeacherScheduleIndex-template.csv`
+Keep every V102.5 Platform tab. Keep the unused live `TeacherScheduleIndex` tab
+until the wider V102 rollback period is deliberately closed. Keep all legacy
+operational routes and all V101.4.3 timetable tabs.
 
-Do **not** delete the live Platform Sheet `TeacherScheduleIndex` tab during the
-V102.5 rollback period. It is no longer required or read, but leaving the tab
-temporarily allows a clean rollback to V102.4.
-
-Do not delete any central account, course-access, curriculum, resource,
-course-Sheet or audit row. Keep all legacy operational routes and all V101.4.3
-timetable tabs. Production remains untouched at V101.1.
-
----
-
-V102.4
-
-No repository file, course Sheet tab, Platform Sheet tab, course Library record
-or historical record should be deleted in this release.
-
-Do not delete central rows created by the completed V102.3 migration. Keep
-`/admin/<uniqueid>` and `/student/<uniqueid>` operational as rollback paths.
-Keep `AdminRecords`, `StudentRecords`, `TeacherAssign`, `TimeTable` and every
-V101.4.3 timetable publication tab.
-
----
-
-V102.3
-
-No repository file, course Sheet tab, Platform Sheet tab, course Library record
-or historical record should be deleted in this release.
-
-Keep `/admin/<uniqueid>` and `/student/<uniqueid>` operational. Keep
-`AdminRecords`, `StudentRecords`, `TeacherAssign`, `TimeTable` and every
-V101.4.3 timetable publication tab. Dynamic routing and legacy retirement are
-separate, later cutovers.
-
----
-
-V102.2
-
-No existing repository files, course Sheet tabs or course Library records
-should be deleted in this release.
-
-The proposed central `GlobalResources` tab is intentionally not created:
-Libraries and resources belong to courses. This is a schema decision, not a
-deletion from any existing workbook.
-
-The proposed `PlatformPermissions` tab is also intentionally not created:
-authorization is defined directly by ADMIN, SENIOR, TEACHER and STUDENT roles.
-
-Create `Courses`, `TimeSlots`, and `TimetableSessions`. Keep `SystemConfig`,
-`AdminAuditLog`, `SubjectList`, `ModuleList`, `TaskList`, `TeacherAssign`, and
-`TimeTable`. The last two remain the live timetable source in V101.4.
-
-V101.4.1 introduces no additional tabs and deletes no V101.4 data.
-
-V101.4.2 introduces no additional tabs and deletes no V101.4 data.
-
-V101.4.3 adds three tabs but deletes no existing repository files, Sheet tabs,
-or historical timetable data. Published snapshot rows must never be deleted.
+Production remains untouched at V101.1.

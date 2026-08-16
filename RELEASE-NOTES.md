@@ -1,3 +1,43 @@
+V102.6
+
+# Manage central global curriculum and direct subject subscriptions
+
+- Adds **Admin Home → Global Curriculum** for centrally authenticated `ADMIN`
+  and `GLOBAL_ADMIN` accounts.
+- Adds central add/modify and activate/deactivate management for global
+  subjects, modules, tasks and resources.
+- Adds direct account-to-global-subject access activation/deactivation through
+  the existing `UserGlobalSubjectAccess` table; no duplicate general
+  subscription table is introduced.
+- Revalidates the central account token and exact authority for every new
+  request. SENIOR, TEACHER, STUDENT, legacy-only and unauthenticated sessions
+  are rejected.
+- Uses namespaced UUIDs and never restores Sheet ID counters.
+- Preserves global record dependencies: no hard deletion is offered,
+  curriculum-branch moves that would orphan dependencies are blocked, and
+  deactivation returns dependency feedback.
+- Requires complete HTTPS links and the existing allowed types for central
+  global resources.
+- Writes every change to `PlatformAuditLog` with account, authority, course,
+  action, record and changed-field data.
+- Increments `GlobalCurriculumVersion` for every curriculum/resource change;
+  direct access changes do not change the content version.
+- Keeps Platform schema `102.0.4`; no tab/header, course Sheet, account
+  migration, Worker setting, secret, binding or Apps Script change is needed.
+- Documents the approved all-user browser-session authentication policy without
+  changing current V102.6 session behaviour.
+- Adds a required root deployment/verification/rollback `UPDATE-TODO.md`.
+
+V102.6 does not yet deliver global curriculum in the learner application,
+create a global-subject-only login context, or add billing/expiry logic.
+Production remains stable at V101.1 and requires a later dedicated merge.
+
+Install only
+`Rebootyourmaktab-V102.6-GITHUB-UPDATE-FROM-V102.5.zip` over verified V102.5
+development and follow `UPDATE-TODO.md`.
+
+---
+
 V102.5
 
 # Define course and global-subject subscription access without duplication

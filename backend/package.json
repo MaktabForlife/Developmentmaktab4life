@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "102.5",
+  "version": "102.6",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -19,6 +19,8 @@
     "test:course-routing": "node tests/course-routing.test.mjs",
     "test:unified-workspace-ui": "node tests/unified-workspace-ui.test.mjs",
     "test:subscription-access-schema": "node tests/subscription-access-schema.test.mjs",
+    "test:platform-global-management": "node tests/platform-global-management.test.mjs",
+    "test:platform-global-management-ui": "node tests/platform-global-management-ui.test.mjs",
     "test:sequential-ids": "node tests/sequential-ids.test.mjs",
     "test:admin-audit": "node tests/admin-audit.test.mjs",
     "test:resources": "node tests/resources.test.mjs",

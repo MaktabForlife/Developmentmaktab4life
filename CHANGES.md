@@ -1,3 +1,20 @@
+# V102.6 — Global curriculum and subscription management
+
+- Adds centrally authorised ADMIN/GLOBAL_ADMIN CRUD-style activation
+  management for `GlobalSubjectList`, `GlobalModuleList`, `GlobalTaskList` and
+  `GlobalResources`.
+- Adds direct `UserGlobalSubjectAccess` activation/deactivation management.
+- Adds dependency-safe validation, central audit writes and automatic global
+  curriculum-version increments.
+- Adds a separate Global Curriculum Admin screen and responsive styling.
+- Preserves V102.5 unified login, dynamic course routing and ten-tab schema.
+- Documents but defers the approved browser-session authentication policy.
+- Bumps application and Worker metadata to `102.6`.
+
+Development only: production remains stable at V101.1.
+
+---
+
 # V102.5 — Subscription access schema
 
 - Retains `UserCourseAccess` as the single source of course access and treats

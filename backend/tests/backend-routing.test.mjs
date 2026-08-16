@@ -110,6 +110,11 @@ assert.equal(platformAccountMigration.valid, true);
 assert.equal(platformAccountMigration.backend, BACKEND_WORKER);
 assert.equal(platformAccountMigration.source, "fixed");
 
+const platformGlobalManagement = getBackendSelection({}, "platform-global-management");
+assert.equal(platformGlobalManagement.valid, true);
+assert.equal(platformGlobalManagement.backend, BACKEND_WORKER);
+assert.equal(platformGlobalManagement.source, "fixed");
+
 const accountAuth = getBackendSelection({}, "account-auth");
 assert.equal(accountAuth.valid, true);
 assert.equal(accountAuth.backend, BACKEND_WORKER);

@@ -13,7 +13,7 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.5 keeps secure course routing active while subscription access is added/);
+assert.match(html, /V102\.6 keeps secure course routing active while central global curriculum management is added/);
 assert.match(html, /Every operational request is routed from the authenticated course context/);
 assert.match(html, /m4l-account\.js\?v=102\.4/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
@@ -41,4 +41,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.5 unified account UI compatibility tests passed.");
+console.log("V102.6 unified account UI compatibility tests passed.");

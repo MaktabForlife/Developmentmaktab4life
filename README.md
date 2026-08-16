@@ -1,34 +1,41 @@
 # Maktabhelper
 
-Current release: V102.5 subscription access schema.
+Current development release: V102.6 global curriculum and subscription
+management.
 
-V102.5 keeps the verified V102.4 unified login and dynamic course routing
-unchanged. It defines Student course subscriptions through the existing
-`UserCourseAccess` table, adds direct global-subject access through
-`UserGlobalSubjectAccess`, and adds central `GlobalResources` metadata for
-standalone global curriculum. It does not create a duplicate general
-`UserSubscriptions` table.
+V102.6 builds on the verified V102.5 ten-tab Platform schema. A centrally
+authenticated `ADMIN` or `GLOBAL_ADMIN` can now open **Admin Home → Global
+Curriculum** to add or modify central global subjects, modules, tasks and
+resources, and to activate or deactivate direct account-to-global-subject
+access.
 
-Subscriptions have no timetable limits, overlap checks or course-combination
-checks. `TeacherScheduleIndex` is therefore removed from the required Platform
-contract. Its existing live tab may remain during rollback verification, but
-the V102.5 Worker no longer reads it.
+Every change is authorised again by the Worker and recorded in
+`PlatformAuditLog`. Global curriculum and resource changes automatically
+increment `PlatformConfig!B4` (`GlobalCurriculumVersion`) so later learner
+caches can be invalidated safely. Direct access changes do not change the
+curriculum version.
 
-Platform schema becomes `102.0.4`. V102.5 requires two new empty Platform tabs
-and no account-migration rerun, course-Sheet change, Worker variable, secret,
-binding or Apps Script deployment. Global-subject learner delivery, payment
-integration and Admin subscription management remain later releases.
+V102.6 makes no Platform Sheet header, course Sheet, Worker variable, secret,
+binding or Apps Script change. The Platform schema remains `102.0.4`; the
+central account migration must not be rerun.
 
-See `RELEASE-NOTES.md`, `docs/V102.5-SUBSCRIPTION-ACCESS-SCHEMA.md` and
-`docs/V102-PLATFORM-SHEET-MIGRATION.md` before deployment.
+This release deliberately does not yet:
 
-Start every installation with the root-level `UPDATE-TODO.md`. Beginning with
-V102.3, each release package includes this deployment and completion checklist.
+- deliver subscribed global subjects in the learner application;
+- create a global-subject-only login context;
+- connect billing, payments, renewals or expiry dates;
+- apply timetable, course-combination or teacher-overlap restrictions;
+- implement the approved browser-session authentication policy.
 
-For this GitHub-dashboard update, apply
-`Rebootyourmaktab-V102.5-GITHUB-UPDATE-FROM-V102.4.zip` directly over the
-verified V102.4 repository. A full repository upload is not required.
+The future authentication policy is recorded in
+`docs/V102-AUTHENTICATION-SESSION-POLICY.md` and does not change V102.6 login
+behaviour.
 
-Development advances to V102.5. Production remains stable at V101.1 and must
-not receive this development-only incremental ZIP; it will receive a separate
-rehearsed merge package after the V102 programme is complete.
+Start installation with the root-level `UPDATE-TODO.md`. Apply
+`Rebootyourmaktab-V102.6-GITHUB-UPDATE-FROM-V102.5.zip` directly over the
+verified V102.5 development repository. A full repository upload is not
+required.
+
+Production remains stable at V101.1. It must not receive this development-only
+incremental package; production will receive a separate, rehearsed merge after
+the V102 development programme is complete.
