@@ -1,4 +1,4 @@
-/* M4L v97.1.5.4 - Preserve register position when toggling Present/Absent
+/* M4L v97.1.5.5 - Reset saved attendance register to Present after successful save
    Baseline: M4L v87.2 Attendance module + bounded sticky top panel scroll
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-swipe.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe.
@@ -1172,6 +1172,16 @@ async function submitAttendanceRegister() {
 
   attendanceRegisterSaveInProgress = false;
   setAttendanceSaveButtonState(false);
+
+  // A successful save completes this register entry. Reset the local register
+  // state so previously absent students do not remain marked Absent on screen.
+  attendanceStudentsCache.forEach(student => {
+    if (student && student.studentid != null) {
+      attendanceState[student.studentid] = "Present";
+    }
+  });
+  renderAttendanceRegister(dateValue);
+
   invalidateAttendanceComputedPanels();
   renderAttendanceInactivePanelShells();
   hydrateAttendanceInactivePanelsQuietly(true);
