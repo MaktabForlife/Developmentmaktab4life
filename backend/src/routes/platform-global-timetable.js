@@ -1,4 +1,4 @@
-/* M4L V102.11.1 - Global-subject course scheduling, lifecycle and immutable publication. */
+/* M4L V102.11.2 - Global-subject course scheduling, lifecycle and immutable publication. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -48,7 +48,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.11.1",
+      version: "102.11.2",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),

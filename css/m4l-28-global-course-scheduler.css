@@ -1,4 +1,4 @@
-/* M4L V102.11.1 - Global Course Scheduler and simplified course/access tables. */
+/* M4L V102.11.2 - Global Course Scheduler compact setup, multi-day rows and inline session editing. */
 .global-course-scheduler-shell { display:grid; gap:18px; }
 .global-table-scroll { width:100%; overflow-x:auto; border:1px solid var(--border,#e4dadd); border-radius:10px; background:#fff; }
 .global-course-table { width:100%; min-width:680px; border-collapse:collapse; }
@@ -7,19 +7,63 @@
 .global-course-table tr:last-child td { border-bottom:0; }
 .global-course-table input,.global-course-table select { width:100%; min-width:120px; }
 .global-course-subject-table td:nth-child(3) { text-align:center; width:90px; }
-.global-course-subject-table td:last-child { width:84px; text-align:right; }
+.global-course-subject-table td:last-child { width:64px; text-align:center; }
 .global-course-row { cursor:pointer; }
 .global-course-row.is-selected,.global-course-subject-table tr.is-selected { background:rgba(123,62,131,.06); }
 .global-course-locked { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px; border:1px solid var(--border,#e4dadd); border-radius:10px; }
 .global-course-locked strong,.global-course-revision-state { font-weight:800; letter-spacing:.04em; }
-.global-course-weekly-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+
+.global-course-setup-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.global-course-summary-edit-row { display:grid; grid-template-columns:minmax(190px,1.05fr) minmax(280px,1.8fr) minmax(155px,.85fr) minmax(155px,.85fr) minmax(90px,.45fr); gap:10px; align-items:end; }
+.global-course-summary-edit-row .global-curriculum-field { min-width:0; }
+.global-course-summary-edit-row input,.global-course-summary-edit-row select { min-height:48px; height:48px; }
+.global-course-active-field { display:grid; gap:6px; justify-items:center; align-items:end; font-weight:700; }
+.global-course-active-field > span { min-height:22px; }
+.global-course-active-field input { width:24px; height:24px; margin:12px 0; accent-color:#7b3e83; }
+
+.global-course-weekly-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px; }
 .global-course-weekly-heading h4 { margin:0; }
 .global-course-schedule-rows { display:grid; gap:10px; }
-.global-course-schedule-row { display:grid; grid-template-columns:minmax(120px,.9fr) minmax(105px,.7fr) minmax(105px,.7fr) minmax(160px,1.1fr) minmax(170px,1.1fr) minmax(180px,1.3fr) 40px; gap:8px; align-items:end; padding:10px; border:1px solid var(--border,#e4dadd); border-radius:10px; }
-.global-course-remove-row { min-height:40px; align-self:end; }
-.global-course-session-editor { margin-top:16px; padding-top:16px; border-top:1px solid var(--border,#e4dadd); }
-.global-course-reschedule-editor { border:1px solid var(--border,#e4dadd); border-radius:10px; padding:14px; }
+.global-course-schedule-row { display:grid; grid-template-columns:minmax(330px,1.8fr) minmax(105px,.55fr) minmax(105px,.55fr) minmax(160px,1fr) minmax(170px,1fr) minmax(190px,1.25fr) 48px; gap:8px; align-items:end; padding:10px; border:1px solid var(--border,#e4dadd); border-radius:10px; }
+.global-course-schedule-row .global-curriculum-field { min-width:0; }
+.global-course-schedule-row .global-curriculum-field > input,.global-course-schedule-row .global-curriculum-field > select,.global-course-remove-row { min-height:48px; height:48px; }
+.global-course-day-pills { display:grid; grid-template-columns:repeat(7,minmax(42px,1fr)); gap:5px; min-height:48px; align-items:stretch; }
+.global-course-day-pill { position:relative; min-width:0; }
+.global-course-day-pill input { position:absolute; opacity:0; pointer-events:none; }
+.global-course-day-pill span { height:48px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border,#d9dde8); border-radius:999px; background:#fff; font-weight:700; cursor:pointer; user-select:none; }
+.global-course-day-pill input:checked + span { background:#7b3e83; border-color:#7b3e83; color:#fff; }
+.global-course-day-pill input:focus-visible + span { outline:2px solid currentColor; outline-offset:2px; }
+.global-course-remove-row { width:48px; padding:0; align-self:end; font-size:1.3rem; }
+
+.global-save-icon-button { width:46px; min-width:46px; height:46px; min-height:46px; padding:9px !important; display:inline-flex; align-items:center; justify-content:center; }
+.global-save-icon-button svg { width:24px; height:24px; display:block; }
+
+.global-session-inline-scroll { width:100%; overflow-x:auto; }
+.global-session-inline-table { min-width:1320px; display:grid; gap:7px; }
+.global-session-inline-row { display:grid; grid-template-columns:145px 92px 92px minmax(180px,1.15fr) minmax(170px,1fr) minmax(210px,1.35fr) 135px 96px; gap:8px; align-items:center; min-height:58px; padding:7px 9px; border:1px solid var(--surface-track,#d9dde8); border-radius:11px; background:#fff; }
+.global-session-inline-header { min-height:auto; padding-top:5px; padding-bottom:5px; border:0; border-radius:0; background:transparent; font-weight:800; }
+.global-session-inline-row input,.global-session-inline-row select { width:100%; min-width:0; height:44px; min-height:44px; }
+.global-session-inline-row.is-lifecycle-changed { border-style:dashed; }
+.global-session-inline-actions { display:flex; align-items:center; justify-content:flex-end; gap:5px; }
+.global-session-inline-actions button { width:42px; min-width:42px; height:42px; min-height:42px; padding:7px; }
+.global-session-inline-actions .global-save-icon-button { width:42px; min-width:42px; height:42px; min-height:42px; }
+.global-session-reschedule-button { font-size:1.2rem; }
+.global-session-relation { display:block; margin-top:2px; font-size:.72rem; font-weight:700; opacity:.7; }
+.global-session-zoom-display { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.global-session-reschedule-inline { min-width:1320px; display:grid; grid-template-columns:105px 145px 92px 92px minmax(180px,1.15fr) minmax(170px,1fr) minmax(210px,1.35fr) 96px; gap:8px; align-items:center; padding:9px; border:1px dashed #7b3e83; border-radius:11px; background:rgba(123,62,131,.035); }
+.global-session-reschedule-inline input,.global-session-reschedule-inline select { width:100%; min-width:0; height:44px; min-height:44px; }
 .global-course-publish-row { display:flex; justify-content:flex-end; margin-top:16px; }
-.global-timetable-session.is-lifecycle-changed { border-style:dashed; }
-@media (max-width:1050px) { .global-course-schedule-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .global-course-remove-row { grid-column:2; justify-self:end; } }
-@media (max-width:640px) { .global-course-schedule-row { grid-template-columns:1fr; } .global-course-remove-row { grid-column:1; } .global-course-locked { align-items:stretch; flex-direction:column; } }
+
+@media (max-width:1200px) {
+  .global-course-summary-edit-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .global-course-active-field { justify-items:start; }
+  .global-course-schedule-row { grid-template-columns:minmax(330px,2fr) repeat(2,minmax(105px,.7fr)); }
+  .global-course-schedule-row .global-curriculum-field:nth-of-type(n+4) { grid-column:auto; }
+  .global-course-remove-row { justify-self:end; }
+}
+@media (max-width:760px) {
+  .global-course-summary-edit-row,.global-course-schedule-row { grid-template-columns:1fr; }
+  .global-course-day-pills { grid-template-columns:repeat(4,minmax(50px,1fr)); }
+  .global-course-remove-row { justify-self:end; }
+  .global-course-locked { align-items:stretch; flex-direction:column; }
+}

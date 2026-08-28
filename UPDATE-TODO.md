@@ -1,137 +1,50 @@
-# ﷽ V102.11.1 update TODO — Course Scheduler and revision workflow
+# ﷽ V102.11.2 update TODO — Course Scheduler usability refinement
 
-Complete in order. Baseline is the deployed and validated V102.11 development repository on Platform schema `102.0.6`.
+## 1. Before deployment
 
-## 1. Confirm the V102.11 starting point
+- [ ] Confirm the current deployed development baseline is V102.11.1.
+- [ ] Do **not** change `PlatformConfig.PlatformSchemaVersion`; it remains `102.0.7`.
+- [ ] Do **not** add or alter Platform Sheet tabs for V102.11.2.
+- [ ] Apply only the paths listed in `CHANGED-FILES.txt`.
+- [ ] Follow `DELETE-FILES.txt` (there are no intentional deletions).
 
-- [ ] Development Worker root reports `102.11` before applying this correction.
-- [ ] Platform validation is green on schema `102.0.6` with 17 required tabs.
-- [ ] Back up the complete central Platform Sheet.
-- [ ] Confirm at least one existing Global Course/run and its current publication can be read.
-- [ ] Confirm V102.10 FREE/PAID Global Access and protected Global Resources still work.
-- [ ] Confirm the Attendance successful-save reset still works.
+## 2. Deploy
 
-## 2. Prepare the two additive Platform changes while schema stays 102.0.6
+- [ ] Commit the V102.11.2 changed files to development GitHub.
+- [ ] Deploy Pages and Worker from the same commit.
+- [ ] Confirm Worker root returns `version: "102.11.2"`.
+- [ ] Confirm the central account page shows `V102.11.2`.
+- [ ] Hard refresh/private-window test the Admin UI to avoid stale assets.
 
-Follow `docs/V102.11.1-PLATFORM-SHEET-MIGRATION.md` exactly.
+## 3. Course Scheduler checks
 
-- [ ] Create `GlobalTimetableSessionLifecycle`.
-- [ ] Paste the exact A1:L1 headers from the migration guide/template.
-- [ ] Leave row 2 onward blank; do **not** manufacture lifecycle history for existing V102.11 rows.
-- [ ] Add exactly one `PlatformConfig` row: `PlatformTimezone | Africa/Johannesburg`.
-- [ ] Do not create a duplicate `PlatformTimezone` row.
-- [ ] Leave `PlatformSchemaVersion` at `102.0.6`.
+- [ ] Course setup header contains `Set up a new course` and `Modify course`.
+- [ ] Course identity/name/start/end/active controls align in one row on a large screen.
+- [ ] Every schedule line shows seven day pills and allows multiple days to be selected.
+- [ ] Example: select Mon/Tue/Wed/Thu with `04h00`–`05h00`; saving generates the correct exact dates inside the course range.
+- [ ] Start/end time inputs and session rows display 24-hour `13h00` format; no AM/PM time control is shown in Course Scheduler.
+- [ ] Schedule-row inputs and remove control have consistent heights.
+- [ ] Save actions use save icons and retain accessible labels/tooltips.
+- [ ] DEVELOPMENT sessions can be edited inline and saved individually.
+- [ ] A session can be changed to CANCELLED inline.
+- [ ] Reschedule creates a linked replacement session inline.
+- [ ] PUBLISHED rows are read-only; opening a revision enables editing without rewriting the previous publication.
+- [ ] Publication still blocks if a SCHEDULED session has no valid active teacher.
 
-## 3. Apply the V102.11.1 changed-files overlay
+## 4. Global Access checks
 
-- [ ] Copy every included file to its matching path in the deployed V102.11 development repository.
-- [ ] Follow `DELETE-FILES.txt` (V102.11.1 has no intentional deletion).
-- [ ] Confirm root `version.json`, `js/version.json`, backend package and Worker root are `102.11.1`.
-- [ ] Confirm the account page shows `V102.11.1`.
-- [ ] Confirm Pages and Worker deploy from the **same GitHub commit**.
+- [ ] Global Access shows separate `Account` and `Unique ID` columns.
+- [ ] Unique ID matches `UserAccounts.UniqueID`.
+- [ ] FREE subjects still show FREE plus any saved subscription tick.
+- [ ] PAID/FREE authorization behavior is unchanged.
 
-## 4. Confirm deployment before schema flip
+## 5. Regression checks
 
-- [ ] Worker root reports `102.11.1`.
-- [ ] Hard refresh/private window loads the V102.11.1 Pages commit.
-- [ ] Account login works and Profile says **Switch program or role**.
-- [ ] Admin Home shows **Program Timetables**.
-- [ ] Global Curriculum tabs show `Subjects | Modules | Tasks | Resources | Course Scheduler | Global Access`.
-- [ ] Course Scheduler remains fail-closed for writes while the schema marker is still `102.0.6`.
-- [ ] Do not change the schema marker until both Pages and Worker are confirmed on the same commit.
-
-## 5. Advance Platform schema
-
-- [ ] Change the existing `PlatformSchemaVersion` value from `102.0.6` to `102.0.7` (`PlatformConfig!B3` if the current layout is unchanged).
-- [ ] Run Platform validation.
-- [ ] Confirm schema `102.0.7` and **18 required tabs**.
-- [ ] Confirm exactly one `PlatformTimezone = Africa/Johannesburg` row.
-- [ ] Confirm `GlobalTimetableSessionLifecycle` passes exact-header validation.
-- [ ] Confirm existing V102.11 publications remain valid even though they have no historical lifecycle seed rows.
-
-## 6. Verify Course Scheduler setup workflow
-
-- [ ] Open Global Curriculum → **Course Scheduler**.
-- [ ] Confirm the header refresh icon reloads newly created/modified courses without logout/login.
-- [ ] Confirm there is no redundant inline Reload button.
-- [ ] Confirm the subject table is `Subject | Access | Modules | Status`.
-- [ ] Confirm Global Course summary is `Course | Scheduled dates | Sessions | Status`.
-- [ ] Confirm the setup heading is **Set up / modify a course**.
-- [ ] Set course name, Start date, End date and Active state.
-- [ ] Add weekly day/time rows in the same screen.
-- [ ] Confirm each weekly row provides Day, Start, End, Module, Teacher and **Zoom link**.
-- [ ] Confirm no Timezone field is exposed in Course Scheduler.
-- [ ] Save the course and generate exact dated sessions.
-
-## 7. Verify Teacher TBA and publication guard
-
-- [ ] Create/edit a DEVELOPMENT course with one schedule row using Teacher `TBA`.
-- [ ] Confirm saving/generating succeeds.
-- [ ] Attempt to publish while a scheduled session has no teacher.
-- [ ] Confirm publication is blocked and identifies the missing teacher requirement.
-- [ ] Assign a valid active central teacher and confirm publication can proceed.
-
-## 8. Verify immutable revision workflow
-
-- [ ] Publish the test Global Course.
-- [ ] Confirm direct generate/edit/cancel/reschedule actions are locked while PUBLISHED.
-- [ ] Select **Revise timetable**.
-- [ ] Confirm the working state becomes DEVELOPMENT/REVISION while `CurrentPublicationID` remains on the last immutable publication.
-- [ ] Confirm the prior published snapshot did not change.
-
-## 9. Verify CANCELLED and RESCHEDULED
-
-- [ ] In the revision, select one dated session and mark it `CANCELLED`.
-- [ ] Select another dated session and use the reschedule action.
-- [ ] Create the replacement exact date/time and confirm the original and replacement are linked.
-- [ ] Confirm CANCELLED/RESCHEDULED originals remain represented rather than silently disappearing.
-- [ ] Publish the revision.
-- [ ] Confirm a new immutable publication is appended.
-- [ ] Confirm the old publication remains unchanged.
-- [ ] Confirm the new publication carries the session lifecycle snapshot information.
-
-## 10. Verify Global Access redesign
-
-- [ ] Open **Global Access**.
-- [ ] Confirm the old Global Subject Access heading/explanatory paragraph is absent.
-- [ ] Confirm header row 1 contains Global Subject names.
-- [ ] Confirm header row 2 contains `PAID` or `FREE`.
-- [ ] For a FREE subject with a saved TRUE matrix value, confirm both the **FREE** token and saved entitlement tick are visible.
-- [ ] For a FREE subject with FALSE, confirm FREE access still works while the saved tick remains off.
-- [ ] Confirm switching between Course Scheduler and Global Access leaves only one tab highlighted.
-
-## 11. Verify terminology and System Settings
-
-- [ ] Confirm existing Reboot/Aalimiyyah builder is labelled **Program Timetables**.
-- [ ] Confirm its setup tab says **Programs & Times**.
-- [ ] Confirm internal course endpoints/IDs continue to work unchanged.
-- [ ] Confirm System Settings shows Platform Timezone `Africa/Johannesburg`.
-- [ ] Confirm user-facing Global Course forms say **Zoom link**, not Zoom override.
-
-## 12. Regression checks
-
-- [ ] FREE Global Subject remains accessible to active accounts without a saved paid tick.
-- [ ] PAID/SUBSCRIPTION subject still follows the saved Access Matrix TRUE/FALSE value.
-- [ ] Protected Global Drive links still enforce current backend entitlement.
-- [ ] Existing Program timetable Builder/read/publication remains unchanged apart from labels.
-- [ ] Weekly Planner remains unchanged.
-- [ ] Attendance successful save resets the visible register to Present.
-- [ ] Platform validation remains green after test data is created.
-
-## Scope confirmation
-
-- [ ] Do not expect Global Course sessions in the Student/Teacher Academy timetable yet; that remains V102.12.
-- [ ] Do not copy Global Course sessions into Program Sheets.
-- [ ] Do not rename stored `CourseID`, `RunID`, API routes or existing Sheet names as part of this UI terminology pass.
-- [ ] Do not add billing/expiry logic.
-- [ ] Do not add cross-Program conflict logic in this correction.
+- [ ] Attendance successful save still resets the visible register to Present.
+- [ ] Protected Global Resources/Drive authorization still follows current FREE/PAID entitlement.
+- [ ] Program Timetables remain available and unchanged functionally.
+- [ ] Weekly Planner, Progress and Student Records still open normally.
 
 ## Rollback
 
-If rollback is required after schema `102.0.7` is active:
-
-1. Change `PlatformSchemaVersion` back to `102.0.6` **before** reverting code.
-2. Revert Pages and Worker together to the same deployed V102.11 commit.
-3. Leave `GlobalTimetableSessionLifecycle` in place; V102.11 ignores the additive tab.
-4. Leave `PlatformTimezone` in `PlatformConfig`; V102.11 ignores the additive key.
-5. Preserve all V102.11/V102.11.1 timetable and publication rows; do not delete history merely to roll back code.
+V102.11.2 has no Sheet migration. To roll back, revert the V102.11.2 code commit to the deployed V102.11.1 commit and redeploy Pages + Worker together. Leave Platform schema `102.0.7` and all timetable/publication data unchanged.

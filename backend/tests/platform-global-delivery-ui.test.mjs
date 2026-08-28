@@ -9,19 +9,27 @@ const [adminHtml, js, css, styles] = await Promise.all([
 ]);
 
 assert.match(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=102\.11\.1/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=102\.11\.2/);
 assert.doesNotMatch(adminHtml, /data-gcm-delivery-action="show"/);
 assert.doesNotMatch(adminHtml, /data-gcm-timetable-action="show"/);
 assert.doesNotMatch(adminHtml, /m4l-global-delivery\.js\?v=102\.11/);
 assert.doesNotMatch(adminHtml, /m4l-global-timetable\.js\?v=102\.11/);
-assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=102\.11\.1/);
+assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=102\.11\.2/);
 
-assert.match(js, /Set up \/ modify a course/);
+assert.match(js, /Set up a new course/);
+assert.match(js, /Modify course/);
 assert.match(js, /<th>Subject<\/th><th>Access<\/th><th>Modules<\/th><th>Status<\/th>/);
 assert.match(js, /<th>Course<\/th><th>Scheduled dates<\/th><th>Sessions<\/th><th>Status<\/th>/);
 assert.match(js, />PAID<\/option>/);
 assert.match(js, />FREE<\/option>/);
 assert.match(js, /Weekly schedule/);
+assert.match(js, /global-course-day-pills/);
+assert.match(js, /data-course-schedule-day/);
+assert.match(js, /weekdays: row\.days/);
+assert.match(js, /placeholder="04h00"/);
+assert.doesNotMatch(js, /type="time"/);
+assert.match(js, /global-course-summary-edit-row/);
+assert.match(js, /saveIconButton/);
 assert.match(js, /Zoom link/);
 assert.doesNotMatch(js, /field\("Timezone"/);
 assert.match(js, /<option value=""[^>]*>TBA<\/option>/);
@@ -33,4 +41,4 @@ assert.match(js, /void load\(true\)/, "Header refresh must force a fresh Course 
 assert.match(css, /\.global-course-scheduler-shell/);
 assert.match(css, /\.global-course-schedule-row/);
 
-console.log("V102.11.1 merged Global Course Scheduler setup UI checks passed.");
+console.log("V102.11.2 merged Global Course Scheduler setup UI checks passed.");

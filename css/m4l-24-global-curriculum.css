@@ -559,10 +559,17 @@ body:has(#global-curriculum-screen.active) .app-shell {
   margin-top: 10px;
 }
 
-/* V102.11.1 Global Access two-tier headers and FREE + saved entitlement state. */
+/* V102.11.2 Global Access two-tier headers, separate Unique ID and FREE + saved entitlement state. */
 .global-access-matrix thead tr:first-child th { border-bottom:0; }
 .global-access-policy-row th { padding-top:4px; padding-bottom:8px; }
 .global-access-policy-token { display:inline-flex; align-items:center; justify-content:center; min-width:48px; padding:3px 8px; border-radius:999px; font-size:.7rem; font-weight:800; letter-spacing:.04em; }
 .global-access-policy-token--free { background:#edf8f0; color:#28683d; }
 .global-access-policy-token--paid { background:rgba(35,69,105,.07); color:#234569; }
 .global-access-free-state { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+
+/* V102.11.2 Global Access separate sticky Account / Unique ID columns. */
+.global-access-account-column { min-width:210px; width:210px; }
+.global-access-unique-column { position:sticky; left:210px; z-index:1; min-width:170px; width:170px; background:#fff; text-align:left !important; }
+.global-access-matrix thead .global-access-unique-column { z-index:2; background:var(--surface-track,#f4f1ef); }
+.global-access-unique-column code { font-family:inherit; font-size:.86rem; white-space:nowrap; }
+.global-access-account-column small { display:block; margin-top:2px; font-weight:500; opacity:.7; }

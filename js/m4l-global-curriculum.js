@@ -1,4 +1,4 @@
-/* M4L V102.11.1 - Global curriculum, access matrix and protected Drive resources. */
+/* M4L V102.11.2 - Global curriculum, Global Access and protected Drive resources. */
 (function () {
   "use strict";
 
@@ -341,6 +341,7 @@
             <thead>
               <tr class="global-access-subject-row">
                 <th scope="col" class="global-access-account-column" rowspan="2">Account</th>
+                <th scope="col" class="global-access-unique-column" rowspan="2">Unique ID</th>
                 ${subjects.map(subject => `<th scope="col">${html(subject.subjectname)}</th>`).join("")}
               </tr>
               <tr class="global-access-policy-row">
@@ -354,7 +355,8 @@
               ${accounts.map(account => {
                 const row = rowsByAccount.get(account.accountid) || { values: {} };
                 return `<tr class="${account.active ? "" : "is-inactive"}">
-                  <th scope="row" class="global-access-account-column"><strong>${html(account.displayname)}</strong><small>${html(account.uniqueid || account.accountid)}${account.active ? "" : " · inactive"}</small></th>
+                  <th scope="row" class="global-access-account-column"><strong>${html(account.displayname)}</strong>${account.active ? "" : "<small>inactive</small>"}</th>
+                  <td class="global-access-unique-column"><code>${html(account.uniqueid || "—")}</code></td>
                   ${subjects.map(subject => {
                     const policy = String(policies[subject.subjectid] || "SUBSCRIPTION").toUpperCase();
                     const subscribed = row.values?.[subject.subjectid] === true;
@@ -702,7 +704,8 @@
   }
 
   function saveButtons(action, editing) {
-    return `<div class="global-curriculum-form-actions">${editing ? '<button type="button" class="global-curriculum-secondary" data-gcm-action="new">Cancel</button>' : ""}<button type="button" class="global-curriculum-primary" data-gcm-action="${attr(action)}">${editing ? "Save Changes" : "Create"}</button></div>`;
+    const label = editing ? "Save changes" : "Create";
+    return `<div class="global-curriculum-form-actions">${editing ? '<button type="button" class="global-curriculum-secondary" data-gcm-action="new">Cancel</button>' : ""}<button type="button" class="global-curriculum-primary global-save-icon-button" data-gcm-action="${attr(action)}" aria-label="${attr(label)}" title="${attr(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h12l2 2v16H5V3Zm2 2v5h8V5H7Zm0 14h10v-7H7v7Zm2-12h4V5H9v2Z" fill="currentColor"/></svg></button></div>`;
   }
 
   function recordList(items, id, title, subtitle, active) {

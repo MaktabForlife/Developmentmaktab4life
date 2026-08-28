@@ -13,9 +13,9 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /V102\.11\.1 provides Program and Global Course scheduling foundations with central access controls/);
+assert.match(html, /V102\.11\.2 refines Global Course scheduling with multi-day time periods, inline session editing and clearer Global Access/);
 assert.match(html, /Switch program or role directly from Profile without entering another PIN/);
-assert.match(html, /m4l-account\.js\?v=102\.11\.1/);
+assert.match(html, /m4l-account\.js\?v=102\.11\.2/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);
 
 for (const endpoint of [
@@ -48,4 +48,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.11.1 unified account UI terminology and compatibility tests passed.");
+console.log("V102.11.2 unified account UI terminology and compatibility tests passed.");

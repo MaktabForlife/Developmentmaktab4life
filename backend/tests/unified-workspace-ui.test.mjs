@@ -36,7 +36,7 @@ for (const html of [adminHtml, studentHtml]) {
   assert.match(html, /\/app\.js\?v=102\.4/);
   assert.match(html, /\/js\/m4l-cache\.js\?v=102\.4/);
   assert.match(html, /\/js\/m4l-auth\.js\?v=102\.9/);
-  assert.match(html, /\/js\/m4l-shell\.js\?v=102\.11\.1/);
+  assert.match(html, /\/js\/m4l-shell\.js\?v=102\.11\.2/);
   assert.match(html, /\/js\/m4l-timetable\.js\?v=102\.9/);
   assert.match(html, /\/js\/m4l-progress\.js\?v=102\.4/);
 }
