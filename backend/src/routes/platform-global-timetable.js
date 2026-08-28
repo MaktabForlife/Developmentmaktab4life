@@ -1,4 +1,4 @@
-/* M4L V102.11 - Global-subject exact-dated timetable development and immutable publication. */
+/* M4L V102.11.1 - Global-subject course scheduling, lifecycle and immutable publication. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -15,6 +15,16 @@ import {
   validateTimeRange
 } from "../lib/global-timetable.js";
 import { mapGlobalSubjectRun } from "../lib/global-subject-delivery.js";
+import {
+  GLOBAL_SESSION_STATUS_CANCELLED,
+  GLOBAL_SESSION_STATUS_RESCHEDULED,
+  GLOBAL_SESSION_STATUS_SCHEDULED,
+  GLOBAL_SESSION_STATUSES,
+  lifecycleNeedsTeacher,
+  mapGlobalTimetableSessionLifecycle,
+  normalizeGlobalSessionStatus,
+  resolveCurrentSessionLifecycle
+} from "../lib/global-timetable-lifecycle.js";
 import { batchUpdateGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import { getPlatformSpreadsheetId, readPlatformSheet } from "../lib/platform-sheet.js";
@@ -26,7 +36,7 @@ import {
 
 const MAX_ZOOM_LINK_LENGTH = 1000;
 const HTTPS_URL_PATTERN = /^https:\/\//i;
-const TIMETABLE_SCHEMA_VERSION = "102.0.6";
+const TIMETABLE_SCHEMA_VERSION = "102.0.7";
 
 export async function getPlatformGlobalTimetableEndpoint(request, env) {
   const permission = await requireGlobalTimetableAdmin(request, env);
@@ -38,7 +48,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.11",
+      version: "102.11.1",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -49,6 +59,12 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
       )),
       states: tables.GlobalTimetableRunState.map(mapGlobalTimetableRunState),
       publications: tables.GlobalTimetablePublications.map(mapGlobalTimetablePublication),
+      lifecycles: tables.GlobalTimetableSessionLifecycle
+        .filter(row => !clean(row.PublicationID))
+        .map(mapGlobalTimetableSessionLifecycle),
+      publishedLifecycles: tables.GlobalTimetableSessionLifecycle
+        .filter(row => clean(row.PublicationID))
+        .map(mapGlobalTimetableSessionLifecycle),
       publishedSessions: tables.PublishedGlobalTimetableSessions.map(mapPublishedGlobalTimetableSession)
     });
   } catch (error) {
@@ -76,9 +92,10 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
 
     const tables = await readGlobalTimetableTables(env);
     const run = activeRun(tables, runId);
+    requireEditableGlobalTimetable(tables, run.RunID);
     const subject = activeSubject(tables, run.SubjectID);
     const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: true });
-    const teacher = activeTeacher(tables, teacherAccountId);
+    const teacher = optionalActiveTeacher(tables, teacherAccountId);
     const dates = generateSessionDates(clean(run.StartDate), clean(run.EndDate), weekdays);
     if (!dates.length) throw clientError("The selected weekdays do not occur inside this run", 400);
 
@@ -88,7 +105,7 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
         sessionDate,
         startTime,
         endTime
-      })) {
+      }, tables.GlobalTimetableSessionLifecycle)) {
         throw clientError(`An active session already overlaps ${sessionDate} ${startTime}-${endTime}`, 409);
       }
     }
@@ -102,7 +119,7 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
       SessionDate: sessionDate,
       StartTime: startTime,
       EndTime: endTime,
-      TeacherAccountID: clean(teacher.AccountID),
+      TeacherAccountID: clean(teacher?.AccountID),
       ZoomLink: zoomLink,
       Active: true,
       CreatedDate: timestamp,
@@ -138,14 +155,21 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
     const tables = await readGlobalTimetableTables(env);
     const existing = uniqueRecord(tables.GlobalTimetableSessions, "SessionID", sessionId, "Global timetable session");
     const run = activeRun(tables, existing.RunID);
+    requireEditableGlobalTimetable(tables, run.RunID);
     const subject = activeSubject(tables, run.SubjectID);
     const moduleId = clean(body.moduleId ?? body.moduleid ?? existing.ModuleID);
     const sessionDate = clean(body.sessionDate || body.sessiondate || existing.SessionDate);
     const startTime = normalizeSubmittedTime(body.startTime || body.starttime || existing.StartTime);
     const endTime = normalizeSubmittedTime(body.endTime || body.endtime || existing.EndTime);
-    const teacherAccountId = clean(body.teacherAccountId || body.teacheraccountid || existing.TeacherAccountID);
+    const teacherAccountId = clean(body.teacherAccountId ?? body.teacheraccountid ?? existing.TeacherAccountID);
     const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? existing.ZoomLink);
     const active = readBoolean(body.active, isActivePlatformValue(existing.Active));
+    const existingLifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, existing.SessionID);
+    const requestedStatus = normalizeGlobalSessionStatus(body.status || existingLifecycle.status);
+    if (!GLOBAL_SESSION_STATUSES.includes(requestedStatus)) throw clientError("Session status is invalid", 400);
+    if (existingLifecycle.status === GLOBAL_SESSION_STATUS_RESCHEDULED && requestedStatus !== GLOBAL_SESSION_STATUS_RESCHEDULED) {
+      throw clientError("A rescheduled source session keeps its RESCHEDULED status; edit the linked replacement instead", 409);
+    }
 
     if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
       throw clientError("SessionDate must be a valid date within the selected run", 400);
@@ -153,16 +177,16 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
     if (!validateTimeRange(startTime, endTime)) throw clientError("StartTime and EndTime require a valid increasing HH:MM range", 400);
     validateZoomLink(zoomLink);
     const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: false });
-    const teacher = activeTeacher(tables, teacherAccountId);
+    const teacher = optionalActiveTeacher(tables, teacherAccountId);
 
-    if (active && hasActiveSlotConflict(tables.GlobalTimetableSessions, {
+    if (active && requestedStatus === GLOBAL_SESSION_STATUS_SCHEDULED && hasActiveSlotConflict(tables.GlobalTimetableSessions, {
       runId: run.RunID,
       sessionDate,
       startTime,
       endTime,
       excludeSessionId: existing.SessionID
-    })) {
-      throw clientError("This edit overlaps another active session in the same run", 409);
+    }, tables.GlobalTimetableSessionLifecycle)) {
+      throw clientError("This edit overlaps another scheduled session in the same course", 409);
     }
 
     const timestamp = new Date().toISOString();
@@ -172,7 +196,7 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
       SessionDate: sessionDate,
       StartTime: startTime,
       EndTime: endTime,
-      TeacherAccountID: clean(teacher.AccountID),
+      TeacherAccountID: clean(teacher?.AccountID),
       ZoomLink: zoomLink,
       Active: active,
       ModifiedByAccountID: permission.user.accountid,
@@ -182,19 +206,124 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
     const changedFields = changedRecordFields(existing, record, [
       "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"
     ]);
-    if (!changedFields.length) {
+    const lifecycleMutation = buildCurrentLifecycleMutation(tables, existing.SessionID, {
+      status: requestedStatus,
+      rescheduledFromSessionId: existingLifecycle.rescheduledfromsessionid,
+      rescheduledToSessionId: existingLifecycle.rescheduledtosessionid
+    }, permission.user, timestamp);
+
+    if (!changedFields.length && !lifecycleMutation) {
       return json({
         success: true,
         message: "No global timetable session changes requested",
-        session: enrichSession(mapGlobalTimetableSession(existing, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables)
+        session: enrichSession(mapGlobalTimetableSession(existing, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables),
+        lifecycle: existingLifecycle
       });
     }
 
-    await writeSessionUpdate(env, permission.user, tables, run, existing, record, changedFields, timestamp);
+    await writeSessionUpdate(env, permission.user, tables, run, existing, record, changedFields, lifecycleMutation, timestamp);
     return json({
       success: true,
-      message: "Global timetable session updated",
-      session: enrichSession(mapGlobalTimetableSession(record, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables)
+      message: requestedStatus === GLOBAL_SESSION_STATUS_CANCELLED ? "Session marked CANCELLED" : "Global timetable session updated",
+      session: enrichSession(mapGlobalTimetableSession(record, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables),
+      lifecycle: lifecycleMutation ? mapGlobalTimetableSessionLifecycle(lifecycleMutation.record) : existingLifecycle
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+export async function revisePlatformGlobalTimetableEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+  try {
+    const body = await request.json();
+    const runId = clean(body.runId || body.runid);
+    if (!runId) throw clientError("RunID is required", 400);
+    const tables = await readGlobalTimetableTables(env);
+    const run = activeRun(tables, runId);
+    const matches = tables.GlobalTimetableRunState.filter(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(run.RunID));
+    if (matches.length !== 1) throw clientError("Published course requires exactly one timetable state row", 409);
+    const state = mapGlobalTimetableRunState(matches[0]);
+    if (state.stage !== GLOBAL_TIMETABLE_PUBLISHED_STAGE || !state.currentpublicationid) {
+      return json({ success: true, message: "Course timetable is already in DEVELOPMENT", state });
+    }
+    const timestamp = new Date().toISOString();
+    const mutation = buildDevelopmentStateMutation(tables, run.RunID, permission.user, timestamp);
+    if (!mutation) return json({ success: true, message: "Course timetable is already in DEVELOPMENT", state });
+    await batchUpdateGoogleSheetValues(env, [
+      mutation.write,
+      valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), mutation.audit)
+    ], { spreadsheetId: getPlatformSpreadsheetId(env) });
+    return json({
+      success: true,
+      message: "Revision opened. Published timetable remains unchanged until you publish the revision.",
+      state: { runid: clean(run.RunID), stage: GLOBAL_TIMETABLE_DEVELOPMENT_STAGE, currentpublicationid: state.currentpublicationid }
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+export async function reschedulePlatformGlobalTimetableSessionEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+  try {
+    const body = await request.json();
+    const sourceSessionId = clean(body.sessionId || body.sessionid || body.sourceSessionId);
+    if (!sourceSessionId) throw clientError("SessionID is required", 400);
+    const tables = await readGlobalTimetableTables(env);
+    const source = uniqueRecord(tables.GlobalTimetableSessions, "SessionID", sourceSessionId, "Global timetable session");
+    const sourceLifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, source.SessionID);
+    if (sourceLifecycle.status === GLOBAL_SESSION_STATUS_RESCHEDULED || sourceLifecycle.rescheduledtosessionid) {
+      throw clientError("This session is already rescheduled", 409);
+    }
+    const run = activeRun(tables, source.RunID);
+    requireEditableGlobalTimetable(tables, run.RunID);
+    const subject = activeSubject(tables, run.SubjectID);
+    const sessionDate = clean(body.sessionDate || body.sessiondate);
+    const startTime = normalizeSubmittedTime(body.startTime || body.starttime);
+    const endTime = normalizeSubmittedTime(body.endTime || body.endtime);
+    const moduleId = clean(body.moduleId ?? body.moduleid ?? source.ModuleID);
+    const teacherAccountId = clean(body.teacherAccountId ?? body.teacheraccountid ?? source.TeacherAccountID);
+    const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? source.ZoomLink);
+    if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
+      throw clientError("Replacement date must be within the course dates", 400);
+    }
+    if (!validateTimeRange(startTime, endTime)) throw clientError("Replacement time requires a valid increasing HH:MM range", 400);
+    validateZoomLink(zoomLink);
+    const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: false });
+    const teacher = optionalActiveTeacher(tables, teacherAccountId);
+    if (hasActiveSlotConflict(tables.GlobalTimetableSessions, {
+      runId: run.RunID, sessionDate, startTime, endTime, excludeSessionId: source.SessionID
+    }, tables.GlobalTimetableSessionLifecycle)) {
+      throw clientError("Replacement overlaps another scheduled session in the same course", 409);
+    }
+    const timestamp = new Date().toISOString();
+    const replacement = {
+      SessionID: createPlatformId("GTS"), RunID: clean(run.RunID), SubjectID: clean(subject.SubjectID),
+      ModuleID: module ? clean(module.ModuleID) : "", SessionDate: sessionDate, StartTime: startTime, EndTime: endTime,
+      TeacherAccountID: clean(teacher?.AccountID), ZoomLink: zoomLink, Active: true,
+      CreatedDate: timestamp, CreatedByAccountID: permission.user.accountid, CreatedByAccountName: permission.user.username,
+      ModifiedByAccountID: "", ModifiedByAccountName: "", ModifiedDate: ""
+    };
+    const sourceLifecycleMutation = buildCurrentLifecycleMutation(tables, source.SessionID, {
+      status: GLOBAL_SESSION_STATUS_RESCHEDULED,
+      rescheduledFromSessionId: sourceLifecycle.rescheduledfromsessionid,
+      rescheduledToSessionId: replacement.SessionID
+    }, permission.user, timestamp, { force: true });
+    const replacementLifecycleMutation = buildCurrentLifecycleMutation(tables, replacement.SessionID, {
+      status: GLOBAL_SESSION_STATUS_SCHEDULED,
+      rescheduledFromSessionId: source.SessionID,
+      rescheduledToSessionId: ""
+    }, permission.user, timestamp, { force: true });
+    await writeRescheduledSession(env, permission.user, tables, run, source, replacement, sourceLifecycleMutation, replacementLifecycleMutation, timestamp);
+    return json({
+      success: true,
+      message: "Session rescheduled. Publish the revision to make the change current for students.",
+      sourceLifecycle: mapGlobalTimetableSessionLifecycle(sourceLifecycleMutation.record),
+      replacement: enrichSession(mapGlobalTimetableSession(replacement, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables),
+      replacementLifecycle: mapGlobalTimetableSessionLifecycle(replacementLifecycleMutation.record)
     });
   } catch (error) {
     return globalTimetableMutationError(error, env);
@@ -215,7 +344,7 @@ export async function publishPlatformGlobalTimetableEndpoint(request, env) {
     const subject = activeSubject(tables, run.SubjectID);
     const sessions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID);
     if (!sessions.length) throw clientError("Publish requires at least one active global timetable session", 409);
-    validateSessionsForPublication(tables, run, subject, sessions);
+    const sessionLifecycles = validateSessionsForPublication(tables, run, subject, sessions);
 
     const timestamp = new Date().toISOString();
     const versionNo = Math.max(0, ...tables.GlobalTimetablePublications
@@ -232,9 +361,11 @@ export async function publishPlatformGlobalTimetableEndpoint(request, env) {
       PublishedByAccountName: permission.user.username,
       SessionCount: sessions.length
     };
-    const snapshots = buildSnapshotRows(tables, publication, run, subject, sessions, permission.user, timestamp);
+    const { snapshots, lifecycleSnapshots } = buildSnapshotRows(
+      tables, publication, run, subject, sessions, sessionLifecycles, permission.user, timestamp
+    );
 
-    await writePublication(env, permission.user, tables, run, publication, snapshots, timestamp);
+    await writePublication(env, permission.user, tables, run, publication, snapshots, lifecycleSnapshots, timestamp);
     return json({
       success: true,
       message: `Global timetable publication ${versionNo} created`,
@@ -278,6 +409,7 @@ async function readGlobalTimetableTables(env) {
     "GlobalTimetableRunState",
     "GlobalTimetablePublications",
     "PublishedGlobalTimetableSessions",
+    "GlobalTimetableSessionLifecycle",
     "PlatformConfig",
     "PlatformAuditLog"
   ];
@@ -313,25 +445,56 @@ async function writeGeneratedSessions(env, user, tables, run, records, timestamp
   await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
 }
 
-async function writeSessionUpdate(env, user, tables, run, existing, record, changedFields, timestamp) {
+async function writeSessionUpdate(env, user, tables, run, existing, record, changedFields, lifecycleMutation, timestamp) {
   const writes = [
     valueWrite("GlobalTimetableSessions", existing._rowNumber, recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessions))
   ];
+  if (lifecycleMutation) writes.push(lifecycleMutation.write);
   const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, user, timestamp);
   if (stateMutation) writes.push(stateMutation.write);
-  const audits = [auditRow(user, timestamp, "UPDATE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", record.SessionID, changedFields)];
+  const audits = [];
+  if (changedFields.length) {
+    audits.push(auditRow(user, timestamp, "UPDATE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", record.SessionID, changedFields));
+  }
+  if (lifecycleMutation) audits.push(lifecycleMutation.audit);
+  if (stateMutation) audits.push(stateMutation.audit);
+  if (audits.length) writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+}
+
+async function writeRescheduledSession(env, user, tables, run, source, replacement, sourceLifecycleMutation, replacementLifecycleMutation, timestamp) {
+  const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, user, timestamp);
+  let nextLifecycleRow = nextRowNumber(tables.GlobalTimetableSessionLifecycle);
+  const lifecycleWrite = mutation => {
+    const rowNumber = mutation.existingRowNumber || nextLifecycleRow++;
+    return valueWrite("GlobalTimetableSessionLifecycle", rowNumber,
+      recordToRow(mutation.record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle));
+  };
+  const writes = [
+    valueWrite("GlobalTimetableSessions", nextRowNumber(tables.GlobalTimetableSessions), recordToRow(replacement, PLATFORM_SHEET_HEADERS.GlobalTimetableSessions)),
+    lifecycleWrite(sourceLifecycleMutation),
+    lifecycleWrite(replacementLifecycleMutation)
+  ];
+  if (stateMutation) writes.push(stateMutation.write);
+  const audits = [
+    auditRow(user, timestamp, "RESCHEDULE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", source.SessionID,
+      ["Status", "RescheduledToSessionID"]),
+    auditRow(user, timestamp, "CREATE_RESCHEDULED_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", replacement.SessionID,
+      ["RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active", "RescheduledFromSessionID"])
+  ];
   if (stateMutation) audits.push(stateMutation.audit);
   writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
   await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
 }
 
-async function writePublication(env, user, tables, run, publication, snapshots, timestamp) {
+async function writePublication(env, user, tables, run, publication, snapshots, lifecycleSnapshots, timestamp) {
   const version = readGlobalTimetableVersion(tables.PlatformConfig);
   const nextVersion = version.value + 1;
   const stateWrite = buildPublishedStateWrite(tables, run.RunID, publication.PublicationID, user, timestamp);
   const writes = [
     valueWrite("GlobalTimetablePublications", nextRowNumber(tables.GlobalTimetablePublications), recordToRow(publication, PLATFORM_SHEET_HEADERS.GlobalTimetablePublications)),
     rangeWrite("PublishedGlobalTimetableSessions", nextRowNumber(tables.PublishedGlobalTimetableSessions), snapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions))),
+    rangeWrite("GlobalTimetableSessionLifecycle", nextRowNumber(tables.GlobalTimetableSessionLifecycle), lifecycleSnapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle))),
     stateWrite.write,
     {
       range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
@@ -346,34 +509,68 @@ async function writePublication(env, user, tables, run, publication, snapshots, 
   await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
 }
 
-function buildSnapshotRows(tables, publication, run, subject, sessions, user, timestamp) {
-  return [...sessions]
-    .sort((a, b) => `${clean(a.SessionDate)} ${clean(a.StartTime)}`.localeCompare(`${clean(b.SessionDate)} ${clean(b.StartTime)}`))
-    .map(session => {
-      const module = resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
-      const teacher = activeTeacher(tables, session.TeacherAccountID);
-      return {
-        PublishedSessionID: createPlatformId("GTPSESSION"),
-        PublicationID: publication.PublicationID,
-        SourceSessionID: clean(session.SessionID),
-        RunID: clean(run.RunID),
-        SubjectID: clean(subject.SubjectID),
-        ModuleID: module ? clean(module.ModuleID) : "",
-        SessionDate: clean(session.SessionDate),
-        StartTime: normalizeSubmittedTime(session.StartTime),
-        EndTime: normalizeSubmittedTime(session.EndTime),
-        TeacherAccountID: clean(teacher.AccountID),
-        ZoomLink: clean(session.ZoomLink),
-        PublishedDate: timestamp,
-        PublishedByAccountID: user.accountid,
-        PublishedByAccountName: user.username,
-        RunName: clean(run.RunName),
-        SubjectName: clean(subject.SubjectName),
-        ModuleName: module ? clean(module.ModuleName) : "",
-        TeacherName: clean(teacher.DisplayName),
-        Timezone: clean(run.Timezone)
-      };
+function buildSnapshotRows(tables, publication, run, subject, sessions, sessionLifecycles, user, timestamp) {
+  const snapshots = [];
+  const lifecycleSnapshots = [];
+  for (const session of [...sessions].sort((a, b) => `${clean(a.SessionDate)} ${clean(a.StartTime)}`.localeCompare(`${clean(b.SessionDate)} ${clean(b.StartTime)}`))) {
+    const module = resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
+    const lifecycle = sessionLifecycles.get(normalizePlatformIdentifier(session.SessionID)) || resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, session.SessionID);
+    const teacher = optionalActiveTeacher(tables, session.TeacherAccountID);
+    if (lifecycleNeedsTeacher(lifecycle) && !teacher) {
+      throw clientError(`Assign a teacher before publishing ${clean(session.SessionDate)} ${normalizeSubmittedTime(session.StartTime)}`, 409);
+    }
+    snapshots.push({
+      PublishedSessionID: createPlatformId("GTPSESSION"),
+      PublicationID: publication.PublicationID,
+      SourceSessionID: clean(session.SessionID),
+      RunID: clean(run.RunID),
+      SubjectID: clean(subject.SubjectID),
+      ModuleID: module ? clean(module.ModuleID) : "",
+      SessionDate: clean(session.SessionDate),
+      StartTime: normalizeSubmittedTime(session.StartTime),
+      EndTime: normalizeSubmittedTime(session.EndTime),
+      TeacherAccountID: clean(teacher?.AccountID),
+      ZoomLink: clean(session.ZoomLink),
+      PublishedDate: timestamp,
+      PublishedByAccountID: user.accountid,
+      PublishedByAccountName: user.username,
+      RunName: clean(run.RunName),
+      SubjectName: clean(subject.SubjectName),
+      ModuleName: module ? clean(module.ModuleName) : "",
+      TeacherName: clean(teacher?.DisplayName),
+      Timezone: clean(run.Timezone)
     });
+    lifecycleSnapshots.push({
+      SessionLifecycleID: createPlatformId("GTLIFE"),
+      SessionID: clean(session.SessionID),
+      PublicationID: publication.PublicationID,
+      Status: normalizeGlobalSessionStatus(lifecycle.status),
+      RescheduledFromSessionID: clean(lifecycle.rescheduledfromsessionid),
+      RescheduledToSessionID: clean(lifecycle.rescheduledtosessionid),
+      CreatedDate: timestamp,
+      CreatedByAccountID: user.accountid,
+      CreatedByAccountName: user.username,
+      ModifiedByAccountID: "",
+      ModifiedByAccountName: "",
+      ModifiedDate: ""
+    });
+  }
+  return { snapshots, lifecycleSnapshots };
+}
+
+function requireEditableGlobalTimetable(tables, runId) {
+  const matches = tables.GlobalTimetableRunState.filter(row => (
+    normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId)
+  ));
+  if (matches.length > 1) throw clientError("Global timetable run has duplicate state rows", 409);
+  if (!matches.length) return;
+  const stage = normalizePlatformIdentifier(matches[0].Stage);
+  if (stage === GLOBAL_TIMETABLE_PUBLISHED_STAGE) {
+    throw clientError("Revise timetable before modifying a published course", 409);
+  }
+  if (stage && stage !== GLOBAL_TIMETABLE_DEVELOPMENT_STAGE) {
+    throw clientError("Global timetable run has an invalid stage", 409);
+  }
 }
 
 function buildDevelopmentStateMutation(tables, runId, user, timestamp) {
@@ -441,6 +638,7 @@ function buildPublishedStateWrite(tables, runId, publicationId, user, timestamp)
 function validateSessionsForPublication(tables, run, subject, sessions) {
   const sourceIds = new Set();
   const slots = new Set();
+  const lifecycles = new Map();
   for (const session of sessions) {
     const sourceId = normalizePlatformIdentifier(session.SessionID);
     if (!sourceId || sourceIds.has(sourceId)) throw clientError("Global timetable contains duplicate source SessionID values", 409);
@@ -449,15 +647,35 @@ function validateSessionsForPublication(tables, run, subject, sessions) {
         normalizePlatformIdentifier(session.SubjectID) !== normalizePlatformIdentifier(subject.SubjectID)) {
       throw clientError("Global timetable session has an invalid run/subject relationship", 409);
     }
-    if (!sessionWithinRun(session, run)) throw clientError("Global timetable session falls outside its run dates", 409);
+    if (!sessionWithinRun(session, run)) throw clientError("Global timetable session falls outside its course dates", 409);
     if (!validateTimeRange(session.StartTime, session.EndTime)) throw clientError("Global timetable session has an invalid time range", 409);
     resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
-    activeTeacher(tables, session.TeacherAccountID);
+    const lifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, session.SessionID);
+    lifecycles.set(sourceId, lifecycle);
+    if (lifecycleNeedsTeacher(lifecycle)) activeTeacher(tables, session.TeacherAccountID);
+    else optionalActiveTeacher(tables, session.TeacherAccountID);
     validateZoomLink(session.ZoomLink);
-    const slot = `${clean(session.SessionDate)}|${normalizeSubmittedTime(session.StartTime)}|${normalizeSubmittedTime(session.EndTime)}`;
-    if (slots.has(slot)) throw clientError("Global timetable contains duplicate active date/time slots", 409);
-    slots.add(slot);
+    if (lifecycle.status === GLOBAL_SESSION_STATUS_SCHEDULED) {
+      const slot = `${clean(session.SessionDate)}|${normalizeSubmittedTime(session.StartTime)}|${normalizeSubmittedTime(session.EndTime)}`;
+      if (slots.has(slot)) throw clientError("Global timetable contains duplicate scheduled date/time slots", 409);
+      slots.add(slot);
+    }
+    if (lifecycle.status === GLOBAL_SESSION_STATUS_RESCHEDULED && !normalizePlatformIdentifier(lifecycle.rescheduledtosessionid)) {
+      throw clientError("A RESCHEDULED session must link to its replacement session", 409);
+    }
   }
+  for (const [sessionId, lifecycle] of lifecycles) {
+    if (lifecycle.status !== GLOBAL_SESSION_STATUS_RESCHEDULED) continue;
+    const replacementId = normalizePlatformIdentifier(lifecycle.rescheduledtosessionid);
+    if (!sourceIds.has(replacementId)) {
+      throw clientError(`Rescheduled session ${sessionId} points to a replacement that is not active in this course`, 409);
+    }
+    const replacementLifecycle = lifecycles.get(replacementId);
+    if (normalizePlatformIdentifier(replacementLifecycle?.rescheduledfromsessionid) !== sessionId) {
+      throw clientError("Rescheduled session linkage is inconsistent", 409);
+    }
+  }
+  return lifecycles;
 }
 
 function activeRun(tables, runId) {
@@ -483,24 +701,78 @@ function resolveModule(tables, moduleId, subjectId, { requireActive = false } = 
 }
 
 function activeTeacher(tables, accountId) {
-  if (!clean(accountId)) throw clientError("Select teacher", 400);
+  if (!clean(accountId)) throw clientError("Assign a teacher before publishing", 400);
   const teacher = uniqueRecord(tables.UserAccounts, "AccountID", accountId, "Teacher account");
   if (!isActivePlatformValue(teacher.Active)) throw clientError("Teacher account must be active", 409);
   return teacher;
 }
 
-function hasActiveSlotConflict(rows, { runId, sessionDate, startTime, endTime, excludeSessionId = "" }) {
+function optionalActiveTeacher(tables, accountId) {
+  if (!clean(accountId)) return null;
+  return activeTeacher(tables, accountId);
+}
+
+function hasActiveSlotConflict(rows, { runId, sessionDate, startTime, endTime, excludeSessionId = "" }, lifecycleRows = []) {
   const runKey = normalizePlatformIdentifier(runId);
   const exclude = normalizePlatformIdentifier(excludeSessionId);
   return (rows || []).some(row => {
     if (!isActivePlatformValue(row.Active)) return false;
     if (normalizePlatformIdentifier(row.RunID) !== runKey) return false;
     if (exclude && normalizePlatformIdentifier(row.SessionID) === exclude) return false;
+    const lifecycle = resolveCurrentSessionLifecycle(lifecycleRows, row.SessionID);
+    if (lifecycle.status !== GLOBAL_SESSION_STATUS_SCHEDULED) return false;
     if (clean(row.SessionDate) !== clean(sessionDate)) return false;
     const rowStart = normalizeSubmittedTime(row.StartTime);
     const rowEnd = normalizeSubmittedTime(row.EndTime);
     return rowStart < endTime && startTime < rowEnd;
   });
+}
+
+function buildCurrentLifecycleMutation(tables, sessionId, requested, user, timestamp, options = {}) {
+  const sessionKey = normalizePlatformIdentifier(sessionId);
+  const matches = tables.GlobalTimetableSessionLifecycle.filter(row => (
+    !clean(row.PublicationID) && normalizePlatformIdentifier(row.SessionID) === sessionKey
+  ));
+  if (matches.length > 1) throw clientError("Global timetable session has duplicate current lifecycle rows", 409);
+  const existing = matches[0] || null;
+  const status = normalizeGlobalSessionStatus(requested?.status);
+  const fromId = clean(requested?.rescheduledFromSessionId);
+  const toId = clean(requested?.rescheduledToSessionId);
+  const current = existing ? mapGlobalTimetableSessionLifecycle(existing) : resolveCurrentSessionLifecycle([], sessionId);
+  const changed = options.force === true || current.status !== status ||
+    clean(current.rescheduledfromsessionid) !== fromId || clean(current.rescheduledtosessionid) !== toId;
+  if (!changed) return null;
+  const record = existing ? {
+    ...existing,
+    Status: status,
+    RescheduledFromSessionID: fromId,
+    RescheduledToSessionID: toId,
+    ModifiedByAccountID: user.accountid,
+    ModifiedByAccountName: user.username,
+    ModifiedDate: timestamp
+  } : {
+    SessionLifecycleID: createPlatformId("GTLIFE"),
+    SessionID: clean(sessionId),
+    PublicationID: "",
+    Status: status,
+    RescheduledFromSessionID: fromId,
+    RescheduledToSessionID: toId,
+    CreatedDate: timestamp,
+    CreatedByAccountID: user.accountid,
+    CreatedByAccountName: user.username,
+    ModifiedByAccountID: "",
+    ModifiedByAccountName: "",
+    ModifiedDate: ""
+  };
+  const changedFields = ["Status"];
+  if (fromId || clean(existing?.RescheduledFromSessionID)) changedFields.push("RescheduledFromSessionID");
+  if (toId || clean(existing?.RescheduledToSessionID)) changedFields.push("RescheduledToSessionID");
+  return {
+    record,
+    existingRowNumber: existing?._rowNumber || 0,
+    write: valueWrite("GlobalTimetableSessionLifecycle", existing?._rowNumber || nextRowNumber(tables.GlobalTimetableSessionLifecycle), recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle)),
+    audit: auditRow(user, timestamp, existing ? "UPDATE_GLOBAL_TIMETABLE_SESSION_LIFECYCLE" : "CREATE_GLOBAL_TIMETABLE_SESSION_LIFECYCLE", "GLOBAL_TIMETABLE_SESSION_LIFECYCLE", record.SessionLifecycleID, changedFields)
+  };
 }
 
 function publishedSourceIdSet(rows) {

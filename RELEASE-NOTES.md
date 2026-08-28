@@ -1,3 +1,24 @@
+V102.11.1
+
+# Merge Global Course setup and scheduling, then add safe published revisions
+
+- Replaces separate Delivery and Schedule administration with one **Course Scheduler**.
+- Sets Global Course dates and weekly schedule rows in one action and generates exact dated sessions from them.
+- Allows Teacher TBA in DEVELOPMENT; publication remains blocked until every scheduled session has a valid active central teacher.
+- Adds explicit **Revise timetable** / **Publish revision** workflow for already-published Global Courses.
+- Adds `CANCELLED` and linked `RESCHEDULED` lifecycle states without mutating older publications.
+- Adds the central `GlobalTimetableSessionLifecycle` tab and fixed `PlatformTimezone` configuration.
+- Advances Platform schema to `102.0.7` with 18 required tabs.
+- Renames Access Matrix to **Global Access** and visually preserves paid-entitlement ticks while FREE policy is active.
+- Simplifies Global Curriculum labels/headers and removes technical explanatory/version bands.
+- Relabels the existing Reboot/Aalimiyyah builder as **Program Timetables** while leaving internal Course data/API structures unchanged.
+- Corrects refresh/cache behavior so newly created Global Courses appear immediately without logout/login.
+- Carries all V102.10/V102.11 authorization, immutable publication and Attendance reset behavior forward.
+
+Install the V102.11.1 changed-files overlay over the deployed V102.11 development repository. Prepare `GlobalTimetableSessionLifecycle` and `PlatformTimezone` while schema remains `102.0.6`; deploy Pages and Worker from the same commit; then change the schema marker to `102.0.7` and validate. Follow `UPDATE-TODO.md` and `docs/V102.11.1-PLATFORM-SHEET-MIGRATION.md` in order.
+
+---
+
 V102.11
 
 # Build the exact-dated Global Subject timetable and immutable publication layer

@@ -119,6 +119,8 @@ import {
   getPlatformGlobalTimetableEndpoint,
   generatePlatformGlobalTimetableSessionsEndpoint,
   savePlatformGlobalTimetableSessionEndpoint,
+  reschedulePlatformGlobalTimetableSessionEndpoint,
+  revisePlatformGlobalTimetableEndpoint,
   publishPlatformGlobalTimetableEndpoint
 } from "./routes/platform-global-timetable.js";
 import {
@@ -203,6 +205,8 @@ const ROUTES = new Map([
   ["/api/admin/platform/global/timetable/get", workerRoute("platform-global-timetable", getPlatformGlobalTimetableEndpoint)],
   ["/api/admin/platform/global/timetable/generate", workerRoute("platform-global-timetable", generatePlatformGlobalTimetableSessionsEndpoint)],
   ["/api/admin/platform/global/timetable/session/save", workerRoute("platform-global-timetable", savePlatformGlobalTimetableSessionEndpoint)],
+  ["/api/admin/platform/global/timetable/session/reschedule", workerRoute("platform-global-timetable", reschedulePlatformGlobalTimetableSessionEndpoint)],
+  ["/api/admin/platform/global/timetable/revise", workerRoute("platform-global-timetable", revisePlatformGlobalTimetableEndpoint)],
   ["/api/admin/platform/global/timetable/publish", workerRoute("platform-global-timetable", publishPlatformGlobalTimetableEndpoint)],
   ["/api/platform/global/resources/access", workerRoute("platform-global-management", createPlatformGlobalDriveAccessEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],

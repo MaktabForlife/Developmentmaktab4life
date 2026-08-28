@@ -1,0 +1,25 @@
+/* M4L V102.11.1 - Global Course Scheduler and simplified course/access tables. */
+.global-course-scheduler-shell { display:grid; gap:18px; }
+.global-table-scroll { width:100%; overflow-x:auto; border:1px solid var(--border,#e4dadd); border-radius:10px; background:#fff; }
+.global-course-table { width:100%; min-width:680px; border-collapse:collapse; }
+.global-course-table th,.global-course-table td { padding:10px 12px; border-bottom:1px solid var(--border,#e4dadd); text-align:left; vertical-align:middle; }
+.global-course-table th { background:var(--surface-track,#f4f1ef); font-weight:750; }
+.global-course-table tr:last-child td { border-bottom:0; }
+.global-course-table input,.global-course-table select { width:100%; min-width:120px; }
+.global-course-subject-table td:nth-child(3) { text-align:center; width:90px; }
+.global-course-subject-table td:last-child { width:84px; text-align:right; }
+.global-course-row { cursor:pointer; }
+.global-course-row.is-selected,.global-course-subject-table tr.is-selected { background:rgba(123,62,131,.06); }
+.global-course-locked { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px; border:1px solid var(--border,#e4dadd); border-radius:10px; }
+.global-course-locked strong,.global-course-revision-state { font-weight:800; letter-spacing:.04em; }
+.global-course-weekly-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+.global-course-weekly-heading h4 { margin:0; }
+.global-course-schedule-rows { display:grid; gap:10px; }
+.global-course-schedule-row { display:grid; grid-template-columns:minmax(120px,.9fr) minmax(105px,.7fr) minmax(105px,.7fr) minmax(160px,1.1fr) minmax(170px,1.1fr) minmax(180px,1.3fr) 40px; gap:8px; align-items:end; padding:10px; border:1px solid var(--border,#e4dadd); border-radius:10px; }
+.global-course-remove-row { min-height:40px; align-self:end; }
+.global-course-session-editor { margin-top:16px; padding-top:16px; border-top:1px solid var(--border,#e4dadd); }
+.global-course-reschedule-editor { border:1px solid var(--border,#e4dadd); border-radius:10px; padding:14px; }
+.global-course-publish-row { display:flex; justify-content:flex-end; margin-top:16px; }
+.global-timetable-session.is-lifecycle-changed { border-style:dashed; }
+@media (max-width:1050px) { .global-course-schedule-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .global-course-remove-row { grid-column:2; justify-self:end; } }
+@media (max-width:640px) { .global-course-schedule-row { grid-template-columns:1fr; } .global-course-remove-row { grid-column:1; } .global-course-locked { align-items:stretch; flex-direction:column; } }

@@ -44,7 +44,7 @@ function getTimetableBuilderRole() {
 
 async function showTimetableBuilder() {
   if (getTimetableBuilderRole() !== "ADMIN") {
-    alert("Timetable Builder is available to ADMIN accounts only.");
+    alert("Program Timetables are available to ADMIN accounts only.");
     return false;
   }
 
@@ -193,14 +193,14 @@ async function loadTimetableBuilder(force = false) {
 
   const hadLoadedData = timetableBuilderState.loaded;
   timetableBuilderState.loading = true;
-  setTimetableBuilderMessage("Loading courses, curriculum and sessions…", "");
+  setTimetableBuilderMessage("Loading programs, curriculum and sessions…", "");
   if (!hadLoadedData) {
-    setTimetableBuilderContent('<p class="helper-text">Loading Timetable Builder...</p>');
+    setTimetableBuilderContent('<p class="helper-text">Loading Program Timetables...</p>');
   }
 
   try {
     const builder = await apiPost("/api/admin/timetable-builder/get", {}, state.token);
-    if (!builder.success) throw timetableBuilderApiError(builder, "Unable to load Timetable Builder");
+    if (!builder.success) throw timetableBuilderApiError(builder, "Unable to load Program Timetables");
 
     timetableBuilderState.data = {
       ...timetableBuilderState.data,
@@ -213,11 +213,11 @@ async function loadTimetableBuilder(force = false) {
     renderTimetableBuilder();
     return true;
   } catch (error) {
-    console.error("Could not load Timetable Builder", error);
+    console.error("Could not load Program Timetables", error);
     const retryable = error?.retryable === true;
     const message = retryable
       ? "Google Sheets is temporarily busy. Your session remains active. Please wait a moment and try again."
-      : error?.message || "Unable to load Timetable Builder.";
+      : error?.message || "Unable to load Program Timetables.";
     setTimetableBuilderMessage(message, "error");
     if (hadLoadedData) {
       renderTimetableBuilder();
@@ -326,16 +326,16 @@ function renderCourseToolbar() {
   `).join("");
 
   return `
-    <section class="timetable-builder-course-bar" aria-label="Course selection">
+    <section class="timetable-builder-course-bar" aria-label="Program selection">
       <label class="timetable-builder-field timetable-builder-course-select">
-        <span>Course</span>
+        <span>Program</span>
         <select id="ttb-course-select" ${courses.length ? "" : "disabled"}>
-          ${courses.length ? options : '<option value="">Create the first course</option>'}
+          ${courses.length ? options : '<option value="">Create the first program</option>'}
         </select>
       </label>
-      <button type="button" class="timetable-builder-secondary" data-ttb-action="new-course">New Course</button>
+      <button type="button" class="timetable-builder-secondary" data-ttb-action="new-course">New Program</button>
       ${timetableBuilderState.selectedCourseId ? `
-        <button type="button" class="timetable-builder-secondary" data-ttb-action="edit-course" data-course-id="${ttbAttr(timetableBuilderState.selectedCourseId)}">Edit Course</button>
+        <button type="button" class="timetable-builder-secondary" data-ttb-action="edit-course" data-course-id="${ttbAttr(timetableBuilderState.selectedCourseId)}">Edit Program</button>
       ` : ""}
     </section>
   `;
@@ -357,9 +357,9 @@ function renderTimetableBuilderGrid() {
     setTimetableBuilderContent(`
       ${renderCourseToolbar()}
       <div class="timetable-builder-empty">
-        <h3>Create a course first</h3>
-        <p>A course owns its time slots and weekly sessions.</p>
-        <button type="button" class="timetable-builder-primary" data-ttb-action="new-course">Create Course</button>
+        <h3>Create a program first</h3>
+        <p>A program owns its time slots and weekly sessions.</p>
+        <button type="button" class="timetable-builder-primary" data-ttb-action="new-course">Create Program</button>
       </div>
     `);
     return;
@@ -422,7 +422,7 @@ function renderTimetableBuilderGrid() {
         </div>
       ` : `
         <div class="timetable-builder-empty timetable-builder-empty--inside">
-          <p>Create at least one active time slot for this course.</p>
+          <p>Create at least one active time slot for this program.</p>
           <button type="button" class="timetable-builder-primary" data-ttb-action="new-slot">Create Time Slot</button>
         </div>
       `}
@@ -495,25 +495,25 @@ function renderTimetableBuilderCourses() {
     <div class="timetable-builder-management-grid">
       <section class="timetable-builder-panel">
         <div class="timetable-builder-panel-heading">
-          <h3>${course ? "Modify Course" : "Add Course"}</h3>
+          <h3>${course ? "Modify Program" : "Add Program"}</h3>
           ${course ? '<button type="button" data-ttb-action="new-course">Add another</button>' : ""}
         </div>
         <input id="ttb-course-id" type="hidden" value="${ttbAttr(course?.courseid || "")}" />
         <label class="timetable-builder-field">
-          <span>Course name</span>
+          <span>Program name</span>
           <input id="ttb-course-name" type="text" maxlength="100" value="${ttbAttr(course?.coursename || "")}" placeholder="e.g. Reboot Your Maktab" />
         </label>
         <label class="timetable-builder-check">
           <input id="ttb-course-active" type="checkbox" ${course ? (course.active ? "checked" : "") : "checked"} />
-          <span>Active course</span>
+          <span>Active program</span>
         </label>
-        <button type="button" class="timetable-builder-primary" data-ttb-action="save-course">${course ? "Save Course" : "Create Course"}</button>
+        <button type="button" class="timetable-builder-primary" data-ttb-action="save-course">${course ? "Save Program" : "Create Program"}</button>
       </section>
 
       <section class="timetable-builder-panel timetable-builder-panel--wide">
         <div class="timetable-builder-panel-heading">
           <div>
-            <h3>Course Time Slots</h3>
+            <h3>Program Time Slots</h3>
             <p>Every row needs a start and end time.</p>
           </div>
           ${courseId ? '<button type="button" data-ttb-action="new-slot">New time slot</button>' : ""}
@@ -527,7 +527,7 @@ function renderTimetableBuilderCourses() {
             <button type="button" class="timetable-builder-primary" data-ttb-action="save-slot">${slot ? "Save Time Slot" : "Add Time Slot"}</button>
           </div>
           ${renderTimeSlotList(slots)}
-        ` : '<div class="timetable-builder-empty timetable-builder-empty--inside"><p>Create or select a course first.</p></div>'}
+        ` : '<div class="timetable-builder-empty timetable-builder-empty--inside"><p>Create or select a program first.</p></div>'}
       </section>
     </div>
   `);
@@ -691,7 +691,7 @@ function editTimetableBuilderTask(taskId) {
 async function saveTimetableBuilderCourse(button) {
   const courseid = valueOf("ttb-course-id");
   const courseName = valueOf("ttb-course-name");
-  if (!courseName) return setTimetableBuilderMessage("Enter a course name.", "error");
+  if (!courseName) return setTimetableBuilderMessage("Enter a program name.", "error");
   return runTimetableBuilderSave(button, "/api/admin/timetable-builder/course/save", {
     courseid,
     courseName,
@@ -706,7 +706,7 @@ async function saveTimetableBuilderTimeSlot(button) {
   const courseid = timetableBuilderState.selectedCourseId;
   const startTime = valueOf("ttb-slot-start");
   const endTime = valueOf("ttb-slot-end");
-  if (!courseid || !startTime || !endTime) return setTimetableBuilderMessage("Select a course and enter start and end times.", "error");
+  if (!courseid || !startTime || !endTime) return setTimetableBuilderMessage("Select a program and enter start and end times.", "error");
   return runTimetableBuilderSave(button, "/api/admin/timetable-builder/time-slot/save", {
     timeslotid: valueOf("ttb-slot-id"), courseid, startTime, endTime, active: checkedOf("ttb-slot-active")
   }, () => { timetableBuilderState.editTimeSlotId = ""; });
@@ -1201,9 +1201,9 @@ async function publishTimetableBuilder(button) {
   const nextVersion = (getSelectedTimetableState().versionno || 0) + 1;
   if (!courseid || !activeCount) return setTimetableBuilderMessage("Add at least one active session before publishing.", "error");
   const publicationEffect = timetableBuilderState.data.liveSource === "PUBLISHED_TIMETABLE"
-    ? "This creates an immutable snapshot and the new version will become live immediately for this course."
+    ? "This creates an immutable snapshot and the new version will become live immediately for this program."
     : "This creates an immutable snapshot. TeacherAssign remains live until you review and explicitly activate the published source.";
-  if (!window.confirm(`Publish ${course?.coursename || "this course"} timetable version ${nextVersion} with ${activeCount} active sessions?\n\n${publicationEffect}`)) return false;
+  if (!window.confirm(`Publish ${course?.coursename || "this program"} timetable version ${nextVersion} with ${activeCount} active sessions?\n\n${publicationEffect}`)) return false;
 
   button.disabled = true;
   setTimetableBuilderMessage("Validating and publishing an immutable snapshot…", "");
@@ -1284,7 +1284,7 @@ function renderTimetableIntegrationPreview(preview) {
     </div>
     ${preview.blockingError ? `<section class="timetable-integration-blocker"><strong>Published source cannot be activated yet</strong><p>${ttbEscape(preview.blockingError)}</p></section>` : differences}
     ${warnings ? `<ul class="timetable-integration-warnings">${warnings}</ul>` : ""}
-    <p class="timetable-integration-safety-note">Activation is course-local and reversible. After activation, an invalid snapshot fails closed and never silently falls back to TeacherAssign.</p>
+    <p class="timetable-integration-safety-note">Activation is program-local and reversible. After activation, an invalid snapshot fails closed and never silently falls back to TeacherAssign.</p>
   `);
   setTimetableIntegrationConfirmation(preview);
 }
@@ -1333,7 +1333,7 @@ async function saveTimetableIntegrationSource(button) {
   const input = document.getElementById("ttb-integration-confirmation");
   if (!preview || !input || button.disabled) return false;
   button.disabled = true;
-  showTimetableIntegrationMessage("Saving the course live source and audit record…", "working");
+  showTimetableIntegrationMessage("Saving the program live source and audit record…", "working");
   try {
     const result = await apiPost("/api/admin/timetable-builder/integration/source/save", {
       courseid: timetableBuilderState.selectedCourseId,

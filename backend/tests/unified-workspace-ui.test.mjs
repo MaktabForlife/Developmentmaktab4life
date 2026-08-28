@@ -20,7 +20,7 @@ assert.match(auth, /restoreUnifiedAccountWorkspace/);
 assert.match(auth, /switchUnifiedAccountContext/);
 assert.match(auth, /refreshUnifiedAccountProfile/);
 assert.match(auth, /m4l_account_workspace/);
-assert.match(shell, /Switch course or role/);
+assert.match(shell, /Switch program or role/);
 assert.match(shell, /data-app-menu-action="profile"/);
 assert.match(shell, /data-user-profile-context/);
 assert.doesNotMatch(shell, /action: "switch-context"/);
@@ -36,7 +36,7 @@ for (const html of [adminHtml, studentHtml]) {
   assert.match(html, /\/app\.js\?v=102\.4/);
   assert.match(html, /\/js\/m4l-cache\.js\?v=102\.4/);
   assert.match(html, /\/js\/m4l-auth\.js\?v=102\.9/);
-  assert.match(html, /\/js\/m4l-shell\.js\?v=102\.8/);
+  assert.match(html, /\/js\/m4l-shell\.js\?v=102\.11\.1/);
   assert.match(html, /\/js\/m4l-timetable\.js\?v=102\.9/);
   assert.match(html, /\/js\/m4l-progress\.js\?v=102\.4/);
 }

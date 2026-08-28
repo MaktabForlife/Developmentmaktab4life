@@ -36,9 +36,10 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.6"],
+  ["PlatformSchemaVersion", "102.0.7"],
   ["GlobalCurriculumVersion", 1],
-  ["GlobalTimetableVersion", 1]
+  ["GlobalTimetableVersion", 1],
+  ["PlatformTimezone", "Africa/Johannesburg"]
 ];
 
 let tables = structuredClone(baseTables);
@@ -91,10 +92,10 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.6",
+    platformSchemaVersion: "102.0.7",
     globalCurriculumVersion: 1,
     globalTimetableVersion: 1,
-    tabCount: 17,
+    tabCount: 18,
     rowCounts: {
       CourseRegistry: 1,
       UserAccounts: 0,
@@ -106,12 +107,13 @@ try {
       GlobalTimetableSessions: 0,
       GlobalTimetableRunState: 0,
       GlobalTimetablePublications: 0,
+      GlobalTimetableSessionLifecycle: 0,
       PublishedGlobalTimetableSessions: 0,
       GlobalSubjectList: 0,
       GlobalModuleList: 0,
       GlobalTaskList: 0,
       GlobalResources: 0,
-      PlatformConfig: 4,
+      PlatformConfig: 5,
       PlatformAuditLog: 0
     },
     activeCourseCount: 1,
@@ -130,6 +132,7 @@ try {
     globalTimetableSessionCount: 0,
     globalTimetableRunStateCount: 0,
     globalTimetablePublicationCount: 0,
+    globalTimetableSessionLifecycleCount: 0,
     publishedGlobalTimetableSessionCount: 0,
     globalResourceCount: 0,
     globalAdminCount: 0,
@@ -232,6 +235,7 @@ try {
   assert.equal(subscriptionResult.globalTimetableSessionCount, 1);
   assert.equal(subscriptionResult.globalTimetableRunStateCount, 1);
   assert.equal(subscriptionResult.globalTimetablePublicationCount, 1);
+  assert.equal(subscriptionResult.globalTimetableSessionLifecycleCount, 0);
   assert.equal(subscriptionResult.publishedGlobalTimetableSessionCount, 1);
   assert.equal(subscriptionResult.globalResourceCount, 1);
 

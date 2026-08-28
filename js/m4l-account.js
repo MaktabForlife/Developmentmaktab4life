@@ -253,7 +253,7 @@
         throw new Error("The selected workspace route is invalid.");
       }
       if (!["admin", "student"].includes(portalType)) {
-        throw new Error("The course workspace role is invalid.");
+        throw new Error("The program workspace role is invalid.");
       }
       localStorage.setItem(APP_TOKEN_KEY, state.token);
       localStorage.setItem(APP_USER_TYPE_KEY, portalType);
@@ -261,7 +261,7 @@
       window.location.assign(path);
       return true;
     } catch (error) {
-      showFormError("context-error", error.message || "The course workspace could not be opened.");
+      showFormError("context-error", error.message || "The program workspace could not be opened.");
       byId("service-message").textContent = "";
       return false;
     } finally {
@@ -386,7 +386,7 @@
     const normalized = String(scope || "").trim().toUpperCase();
     if (normalized === "PLATFORM") return "Platform";
     if (normalized === "GLOBAL") return "Global Library";
-    return "Course";
+    return "Program";
   }
 
   function getUniqueIdFromPath() {

@@ -26,7 +26,7 @@ assert.match(landing, /id="open-manage-students-btn"/);
 assert.match(landing, /data-student-records-admin/);
 assert.match(landing, />Admin Records</);
 assert.match(landing, />Resources</);
-assert.match(landing, />Timetable Builder</);
+assert.match(landing, />Program Timetables</);
 assert.match(landing, />Global Curriculum</);
 assert.match(landing, />System Settings</);
 assert.doesNotMatch(landing, /class="list-stack"/);

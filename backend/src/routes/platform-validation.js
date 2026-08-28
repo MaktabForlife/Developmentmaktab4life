@@ -1,4 +1,4 @@
-/* M4L V102.11 - Platform validation including global access, runs and immutable global timetable publication. */
+/* M4L V102.11.1 - Platform validation including global access, courses, lifecycle and immutable publication. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { json } from "../lib/http.js";
@@ -21,8 +21,13 @@ import {
   normalizePlatformIdentifier,
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
+import {
+  GLOBAL_SESSION_STATUS_SCHEDULED,
+  GLOBAL_SESSION_STATUSES,
+  normalizeGlobalSessionStatus
+} from "../lib/global-timetable-lifecycle.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.6";
+const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.7";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
@@ -96,6 +101,7 @@ export function validatePlatformTables(tables) {
   const schemaVersion = String(config.get("PLATFORMSCHEMAVERSION")?.ConfigValue || "").trim();
   const curriculumVersion = Number(config.get("GLOBALCURRICULUMVERSION")?.ConfigValue);
   const globalTimetableVersion = Number(config.get("GLOBALTIMETABLEVERSION")?.ConfigValue);
+  const platformTimezone = String(config.get("PLATFORMTIMEZONE")?.ConfigValue || "").trim();
   const globalResourceDriveRootFolderId = String(
     config.get("GLOBALRESOURCEDRIVEROOTFOLDERID")?.ConfigValue || ""
   ).trim();
@@ -110,6 +116,9 @@ export function validatePlatformTables(tables) {
   }
   if (!Number.isInteger(globalTimetableVersion) || globalTimetableVersion < 1) {
     throw new Error("PlatformConfig GlobalTimetableVersion must be a positive integer");
+  }
+  if (!isValidIanaTimezone(platformTimezone)) {
+    throw new Error("PlatformConfig PlatformTimezone must be a valid IANA timezone");
   }
   if (globalResourceDriveRootFolderId && !DRIVE_FOLDER_ID_PATTERN.test(globalResourceDriveRootFolderId)) {
     throw new Error("PlatformConfig GlobalResourceDriveRootFolderID is invalid");
@@ -234,6 +243,7 @@ export function validatePlatformTables(tables) {
     globalTimetableSessionCount: globalTimetable.sessionCount,
     globalTimetableRunStateCount: globalTimetable.stateCount,
     globalTimetablePublicationCount: globalTimetable.publicationCount,
+    globalTimetableSessionLifecycleCount: globalTimetable.lifecycleCount,
     publishedGlobalTimetableSessionCount: globalTimetable.publishedSessionCount,
     globalResourceCount: tables.GlobalResources.length,
     globalAdminCount: globalAdminAccounts,
@@ -480,6 +490,35 @@ function validateGlobalTimetable(tables, context) {
   const runById = new Map(tables.GlobalSubjectRuns.map(run => [
     normalizePlatformIdentifier(run.RunID), run
   ]));
+  const lifecycleIds = new Set();
+  const currentLifecycleBySession = new Map();
+  const publishedLifecycleByKey = new Map();
+  for (const lifecycle of tables.GlobalTimetableSessionLifecycle) {
+    const lifecycleId = normalizePlatformIdentifier(lifecycle.SessionLifecycleID);
+    const sessionId = normalizePlatformIdentifier(lifecycle.SessionID);
+    const publicationId = normalizePlatformIdentifier(lifecycle.PublicationID);
+    const statusRaw = normalizePlatformIdentifier(lifecycle.Status);
+    const fromId = normalizePlatformIdentifier(lifecycle.RescheduledFromSessionID);
+    const toId = normalizePlatformIdentifier(lifecycle.RescheduledToSessionID);
+    if (!lifecycleId || lifecycleIds.has(lifecycleId) || !sessionId) {
+      throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has a blank/duplicate ID or blank SessionID`);
+    }
+    if (!GLOBAL_SESSION_STATUSES.includes(statusRaw)) {
+      throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has an invalid Status`);
+    }
+    if (fromId === sessionId || toId === sessionId) {
+      throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} cannot link a session to itself`);
+    }
+    lifecycleIds.add(lifecycleId);
+    if (publicationId) {
+      const key = `${publicationId}|${sessionId}`;
+      if (publishedLifecycleByKey.has(key)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} duplicates a publication/session lifecycle`);
+      publishedLifecycleByKey.set(key, lifecycle);
+    } else {
+      if (currentLifecycleBySession.has(sessionId)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} duplicates a current session lifecycle`);
+      currentLifecycleBySession.set(sessionId, lifecycle);
+    }
+  }
   const sourceSessionIds = new Set();
   const sessionRuns = new Set();
   for (const session of tables.GlobalTimetableSessions) {
@@ -503,7 +542,7 @@ function validateGlobalTimetable(tables, context) {
     if (!validateTimeRange(session.StartTime, session.EndTime)) {
       throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid time range`);
     }
-    if (!activeAccountIds.has(teacherAccountId)) {
+    if (teacherAccountId && !activeAccountIds.has(teacherAccountId)) {
       throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an inactive or invalid TeacherAccountID`);
     }
     if (String(session.ZoomLink || "").trim() && !isHttpsUrl(session.ZoomLink)) {
@@ -511,6 +550,15 @@ function validateGlobalTimetable(tables, context) {
     }
     sourceSessionIds.add(sessionId);
     sessionRuns.add(runId);
+  }
+  for (const [sessionId, lifecycle] of currentLifecycleBySession.entries()) {
+    if (!sourceSessionIds.has(sessionId)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} references an unknown SessionID`);
+    const status = normalizeGlobalSessionStatus(lifecycle.Status);
+    const fromId = normalizePlatformIdentifier(lifecycle.RescheduledFromSessionID);
+    const toId = normalizePlatformIdentifier(lifecycle.RescheduledToSessionID);
+    if (fromId && !sourceSessionIds.has(fromId)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has an invalid RescheduledFromSessionID`);
+    if (toId && !sourceSessionIds.has(toId)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has an invalid RescheduledToSessionID`);
+    if (status === "RESCHEDULED" && !toId) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} requires RescheduledToSessionID when RESCHEDULED`);
   }
 
   const stateRuns = new Set();
@@ -607,7 +655,13 @@ function validateGlobalTimetable(tables, context) {
     if (!sessionWithinRun(snapshot, runById.get(runId)) || !validateTimeRange(snapshot.StartTime, snapshot.EndTime)) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has invalid date/time values`);
     }
-    if (!accountIds.has(teacherAccountId)) {
+    const publishedLifecycle = publishedLifecycleByKey.get(`${publicationId}|${sourceSessionId}`);
+    const publishedStatus = normalizeGlobalSessionStatus(publishedLifecycle?.Status);
+    if (publishedStatus === GLOBAL_SESSION_STATUS_SCHEDULED) {
+      if (!accountIds.has(teacherAccountId)) {
+        throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} requires a valid TeacherAccountID while SCHEDULED`);
+      }
+    } else if (teacherAccountId && !accountIds.has(teacherAccountId)) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid TeacherAccountID`);
     }
     if (String(snapshot.ZoomLink || "").trim() && !isHttpsUrl(snapshot.ZoomLink)) {
@@ -623,7 +677,7 @@ function validateGlobalTimetable(tables, context) {
     if (
       !String(snapshot.RunName || "").trim() ||
       !String(snapshot.SubjectName || "").trim() ||
-      !String(snapshot.TeacherName || "").trim() ||
+      (publishedStatus === GLOBAL_SESSION_STATUS_SCHEDULED && !String(snapshot.TeacherName || "").trim()) ||
       !String(snapshot.Timezone || "").trim() ||
       (moduleId && !String(snapshot.ModuleName || "").trim())
     ) {
@@ -632,6 +686,17 @@ function validateGlobalTimetable(tables, context) {
     publishedSessionIds.add(publishedSessionId);
     sourceByPublication.add(sourceKey);
     snapshotCounts.set(publicationId, (snapshotCounts.get(publicationId) || 0) + 1);
+  }
+
+  for (const [key, lifecycle] of publishedLifecycleByKey.entries()) {
+    const publicationId = normalizePlatformIdentifier(lifecycle.PublicationID);
+    const sessionId = normalizePlatformIdentifier(lifecycle.SessionID);
+    if (!publicationIds.has(publicationId)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has an invalid PublicationID`);
+    if (!sourceByPublication.has(`${publicationId}|${sessionId}`)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} does not match a published session snapshot`);
+    const fromId = normalizePlatformIdentifier(lifecycle.RescheduledFromSessionID);
+    const toId = normalizePlatformIdentifier(lifecycle.RescheduledToSessionID);
+    if (fromId && !sourceByPublication.has(`${publicationId}|${fromId}`)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has an invalid published RescheduledFromSessionID`);
+    if (toId && !sourceByPublication.has(`${publicationId}|${toId}`)) throw new Error(`GlobalTimetableSessionLifecycle row ${lifecycle._rowNumber} has an invalid published RescheduledToSessionID`);
   }
 
   for (const publication of publicationById.values()) {
@@ -657,7 +722,8 @@ function validateGlobalTimetable(tables, context) {
     sessionCount: tables.GlobalTimetableSessions.length,
     stateCount: tables.GlobalTimetableRunState.length,
     publicationCount: tables.GlobalTimetablePublications.length,
-    publishedSessionCount: tables.PublishedGlobalTimetableSessions.length
+    publishedSessionCount: tables.PublishedGlobalTimetableSessions.length,
+    lifecycleCount: tables.GlobalTimetableSessionLifecycle.length
   });
 }
 

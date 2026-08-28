@@ -15,7 +15,7 @@
 
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
-<link rel="stylesheet" href="/styles.css?v=102.11">
+<link rel="stylesheet" href="/styles.css?v=102.11.1">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -246,12 +246,12 @@
             aria-hidden="true"
             onclick="showTimetableBuilder()"
             style="--cover-home-icon: url('/icons/timetable.svg?v=101.4')"
-            aria-label="Open Timetable Builder"
+            aria-label="Open Program Timetables"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
               <span class="home-cover-icon-glyph"></span>
             </span>
-            <span class="home-cover-icon-label">Timetable Builder</span>
+            <span class="home-cover-icon-label">Program Timetables</span>
           </button>
 
           <button
@@ -417,6 +417,11 @@
           </label>
         </section>
 
+        <section class="system-settings-card" aria-labelledby="system-settings-timezone-heading">
+          <h3 id="system-settings-timezone-heading">Platform Timezone</h3>
+          <div class="system-settings-field"><span>Timezone</span><div class="manage-resource-readonly-value">Africa/Johannesburg</div></div>
+        </section>
+
         <section class="system-settings-card" aria-labelledby="system-settings-platform-heading">
           <h3 id="system-settings-platform-heading">Platform Sheet</h3>
           <p class="system-settings-help">
@@ -440,7 +445,7 @@
           <div class="system-settings-migration" aria-labelledby="system-settings-migration-heading">
             <h4 id="system-settings-migration-heading">Central account migration</h4>
             <p class="system-settings-help">
-              Preview current course AdminRecords and StudentRecords before writing UserAccounts or UserCourseAccess.
+              Preview current program AdminRecords and StudentRecords before writing UserAccounts or UserCourseAccess.
               Existing login routes remain active.
             </p>
             <label class="system-settings-migration-option" for="system-settings-grant-global-admin">
@@ -764,10 +769,10 @@
       <header class="timetable-builder-header">
         <div>
           <p class="timetable-builder-eyebrow">Academic setup</p>
-          <h2 id="timetable-builder-title">Timetable Builder</h2>
+          <h2 id="timetable-builder-title">Program Timetables</h2>
         </div>
         <div class="timetable-builder-header-actions">
-          <button type="button" class="icon-action-btn timetable-builder-reload" data-ttb-action="reload" aria-label="Reload Timetable Builder" title="Reload">
+          <button type="button" class="icon-action-btn timetable-builder-reload" data-ttb-action="reload" aria-label="Reload Program Timetables" title="Reload">
             <span class="app-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Reload</span>
           </button>
@@ -785,9 +790,9 @@
         <button id="timetable-builder-publish" type="button" class="timetable-builder-primary" data-ttb-action="publish-timetable" hidden>Publish Timetable</button>
       </div>
 
-      <nav class="timetable-builder-tabs" aria-label="Timetable Builder sections">
+      <nav class="timetable-builder-tabs" aria-label="Program Timetable sections">
         <button type="button" class="is-active" data-ttb-action="show-tab" data-ttb-tab="timetable">Timetable</button>
-        <button type="button" data-ttb-action="show-tab" data-ttb-tab="courses">Courses &amp; Times</button>
+        <button type="button" data-ttb-action="show-tab" data-ttb-tab="courses">Programs &amp; Times</button>
         <button type="button" data-ttb-action="show-tab" data-ttb-tab="subjects">Subjects</button>
         <button type="button" data-ttb-action="show-tab" data-ttb-tab="modules">Modules</button>
         <button type="button" data-ttb-action="show-tab" data-ttb-tab="tasks">Tasks</button>
@@ -795,7 +800,7 @@
 
       <p id="timetable-builder-message" class="timetable-builder-message" role="status" aria-live="polite"></p>
       <div id="timetable-builder-content" class="timetable-builder-content">
-        <p class="helper-text">Loading Timetable Builder...</p>
+        <p class="helper-text">Loading Program Timetables...</p>
       </div>
 
       <dialog id="timetable-session-dialog" class="timetable-builder-dialog" aria-labelledby="timetable-session-dialog-title">
@@ -905,7 +910,7 @@
               </label>
               <label class="timetable-builder-field">
                 <span>Zoom override <small>optional</small></span>
-                <input id="ttb-bulk-zoom" type="url" inputmode="url" placeholder="Leave blank to use the course-default Zoom" disabled />
+                <input id="ttb-bulk-zoom" type="url" inputmode="url" placeholder="Leave blank to use the program-default Zoom" disabled />
               </label>
               <p class="timetable-builder-bulk-note">A blank value explicitly clears each selected override.</p>
             </section>
@@ -925,7 +930,7 @@
             <div>
               <p class="timetable-builder-eyebrow">Authoritative live source</p>
               <h3 id="timetable-integration-dialog-title">Review Live Timetable Integration</h3>
-              <p class="timetable-builder-dialog-summary">Preview the current publication before activating or rolling back this course.</p>
+              <p class="timetable-builder-dialog-summary">Preview the current publication before activating or rolling back this program.</p>
             </div>
             <button type="button" class="icon-action-btn" data-ttb-action="close-integration" aria-label="Close timetable integration review" title="Close"><span class="app-icon app-icon-xclose" aria-hidden="true"></span></button>
           </div>
@@ -947,7 +952,6 @@
     <section id="global-curriculum-screen" class="screen admin-theme global-curriculum-screen" aria-labelledby="global-curriculum-title">
       <header class="global-curriculum-header">
         <div>
-          <p class="global-curriculum-eyebrow">Platform administration</p>
           <h2 id="global-curriculum-title">Global Curriculum</h2>
         </div>
         <div class="global-curriculum-header-actions">
@@ -962,20 +966,14 @@
         </div>
       </header>
 
-      <div class="global-curriculum-status-band">
-        <strong>GLOBAL</strong>
-        <span>Changes apply across the platform and are recorded in PlatformAuditLog.</span>
-        <small id="global-curriculum-version">Curriculum version —</small>
-      </div>
 
       <nav class="global-curriculum-tabs" aria-label="Global Curriculum sections">
         <button type="button" class="is-active" data-gcm-action="show-tab" data-gcm-tab="subjects">Subjects</button>
         <button type="button" data-gcm-action="show-tab" data-gcm-tab="modules">Modules</button>
         <button type="button" data-gcm-action="show-tab" data-gcm-tab="tasks">Tasks</button>
         <button type="button" data-gcm-action="show-tab" data-gcm-tab="resources">Resources</button>
-        <button type="button" data-gcm-delivery-action="show">Delivery</button>
-        <button type="button" data-gcm-timetable-action="show">Schedule</button>
-        <button type="button" data-gcm-action="show-tab" data-gcm-tab="access">Access Matrix</button>
+        <button type="button" data-gcm-course-action="show">Course Scheduler</button>
+        <button type="button" data-gcm-action="show-tab" data-gcm-tab="access">Global Access</button>
       </nav>
 
       <p id="global-curriculum-message" class="global-curriculum-message" role="status" aria-live="polite"></p>
@@ -1721,7 +1719,7 @@
 <script src="/app.js?v=102.4"></script>
 <script src="/js/m4l-cache.js?v=102.4"></script>
 <script src="/js/m4l-auth.js?v=102.9.1"></script>
-<script src="/js/m4l-shell.js?v=102.8"></script>
+<script src="/js/m4l-shell.js?v=102.11.1"></script>
   <script src="/js/m4l-timetable.js?v=102.9.1"></script>
   <script src="/js/m4l-weekly-planner.js?v=101.1.1"></script>
   <script src="/js/m4l-weekly-planner-archive.js?v=97.1.8.4.1"></script>
@@ -1729,10 +1727,9 @@
 <script src="/js/m4l-attendance.js?v=97.1.5.5"></script>
 <script src="/js/m4l-admin-academics.js?v=102.6.2"></script>
 <script src="/js/m4l-system-settings.js?v=102.10"></script>
-<script src="/js/m4l-timetable-builder.js?v=102.9.1"></script>
-<script src="/js/m4l-global-curriculum.js?v=102.10"></script>
-<script src="/js/m4l-global-delivery.js?v=102.11"></script>
-<script src="/js/m4l-global-timetable.js?v=102.11"></script>
+<script src="/js/m4l-timetable-builder.js?v=102.11.1"></script>
+<script src="/js/m4l-global-curriculum.js?v=102.11.1"></script>
+<script src="/js/m4l-global-course-scheduler.js?v=102.11.1"></script>
   <script src="/js/m4l-resources.js?v=102.10"></script>
 <script src="/js/m4l-teaching-panel.js?v=99.1"></script>
 <script src="/js/m4l-progress.js?v=102.4"></script>

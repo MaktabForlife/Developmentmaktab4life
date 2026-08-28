@@ -1,4 +1,4 @@
-/* M4L V102.11 - Global-subject access-policy, finite runs and timetable-boundary safeguards. */
+/* M4L V102.11.1 - Global-course setup, policy and timetable-boundary safeguards. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -25,6 +25,7 @@ import {
 
 const ACCESS_MODELS = new Set(GLOBAL_SUBJECT_ACCESS_MODELS);
 const MAX_RUN_NAME_LENGTH = 160;
+const PLATFORM_TIMEZONE_CONFIG_KEY = "PLATFORMTIMEZONE";
 
 export async function getPlatformGlobalDeliveryEndpoint(request, env) {
   const permission = await requireDeliveryAdmin(request, env);
@@ -37,6 +38,7 @@ export async function getPlatformGlobalDeliveryEndpoint(request, env) {
       success: true,
       service: "platform-global-delivery",
       globalCurriculumVersion: readGlobalCurriculumVersion(tables.PlatformConfig).value,
+      platformTimezone: readPlatformTimezone(tables.PlatformConfig),
       subjects: tables.GlobalSubjectList.map(subject => mapDeliverySubject(subject, tables, now)),
       policies: tables.GlobalSubjectAccessPolicy.map(mapPolicy),
       runs: tables.GlobalSubjectRuns.map(run => mapGlobalSubjectRun(run, now))
@@ -133,7 +135,7 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const runName = clean(body.runName || body.runname);
     const startDate = clean(body.startDate || body.startdate);
     const endDate = clean(body.endDate || body.enddate);
-    const timezone = clean(body.timezone);
+    const requestedTimezone = clean(body.timezone);
     const requestedActive = readBoolean(body.active, runId ? null : true);
 
     if (!subjectId) throw clientError("Global SubjectID is required", 400);
@@ -143,9 +145,11 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       throw clientError("StartDate and EndDate must use YYYY-MM-DD", 400);
     }
     if (endDate < startDate) throw clientError("EndDate cannot precede StartDate", 400);
-    if (!isValidIanaTimezone(timezone)) throw clientError("Timezone must be a valid IANA timezone", 400);
 
     const tables = await readDeliveryTables(env);
+    const platformTimezone = readPlatformTimezone(tables.PlatformConfig);
+    const timezone = existingTimezoneCandidate(runId, tables.GlobalSubjectRuns) || requestedTimezone || platformTimezone;
+    if (!isValidIanaTimezone(timezone)) throw clientError("Platform timezone is invalid", 409);
     const subject = uniqueRecord(tables.GlobalSubjectList, "SubjectID", subjectId, "Global subject");
     if (requestedActive && !isActivePlatformValue(subject.Active)) {
       throw clientError("An active run requires an active global subject", 409);
@@ -153,6 +157,18 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const existing = runId
       ? uniqueRecord(tables.GlobalSubjectRuns, "RunID", runId, "Global subject run")
       : null;
+    if (existing) {
+      const timetableState = tables.GlobalTimetableRunState.find(row => (
+        normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(existing.RunID)
+      ));
+      if (normalizePlatformIdentifier(timetableState?.Stage) === "PUBLISHED") {
+        const wouldChange = [
+          [existing.RunName, runName], [existing.StartDate, startDate], [existing.EndDate, endDate],
+          [String(isActivePlatformValue(existing.Active)), String(requestedActive)]
+        ].some(([left, right]) => String(left ?? "") !== String(right ?? ""));
+        if (wouldChange) throw clientError("Revise timetable before modifying a published course", 409);
+      }
+    }
     if (
       existing &&
       normalizePlatformIdentifier(existing.SubjectID) !== normalizePlatformIdentifier(subject.SubjectID)
@@ -259,10 +275,12 @@ async function requireDeliveryAdmin(request, env) {
 async function readDeliveryTables(env) {
   const names = [
     "GlobalSubjectList",
+    "GlobalModuleList",
     "GlobalSubjectAccessPolicy",
     "GlobalSubjectRuns",
     "GlobalSubjectAccessMatrix",
     "GlobalTimetableSessions",
+    "GlobalTimetableRunState",
     "GlobalResources",
     "PlatformConfig",
     "PlatformAuditLog"
@@ -307,6 +325,7 @@ function mapDeliverySubject(subject, tables, now) {
     active: isActivePlatformValue(subject.Active),
     accessmodel: policy.accessModel,
     policyconfigured: policy.configured,
+    modulecount: tables.GlobalModuleList.filter(row => normalizePlatformIdentifier(row.SubjectID) === normalizePlatformIdentifier(subjectId)).length,
     deliverystatus: strongestGlobalSubjectDeliveryStatus(tables.GlobalSubjectRuns, subjectId, now),
     dependencies: subjectDependencies(tables, subjectId)
   };
@@ -352,6 +371,21 @@ function readGlobalCurriculumVersion(configRows) {
     throw new Error("PlatformConfig GlobalCurriculumVersion must resolve exactly once as a positive integer");
   }
   return { value, rowNumber: matches[0]._rowNumber };
+}
+
+function readPlatformTimezone(configRows) {
+  const matches = (configRows || []).filter(row => normalizePlatformIdentifier(row.ConfigKey) === PLATFORM_TIMEZONE_CONFIG_KEY);
+  if (matches.length !== 1) throw new Error("PlatformConfig PlatformTimezone must resolve exactly once");
+  const timezone = clean(matches[0].ConfigValue);
+  if (!isValidIanaTimezone(timezone)) throw new Error("PlatformConfig PlatformTimezone must be a valid IANA timezone");
+  return timezone;
+}
+
+function existingTimezoneCandidate(runId, runRows) {
+  if (!clean(runId)) return "";
+  const key = normalizePlatformIdentifier(runId);
+  const matches = (runRows || []).filter(row => normalizePlatformIdentifier(row.RunID) === key);
+  return matches.length === 1 ? clean(matches[0].Timezone) : "";
 }
 
 function recordToRow(record, headers) {

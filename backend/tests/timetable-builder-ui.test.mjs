@@ -43,8 +43,10 @@ assert.match(adminHtml, /id="timetable-builder-integration"/);
 assert.match(adminHtml, /id="timetable-integration-dialog"/);
 assert.match(adminHtml, /id="ttb-integration-confirmation"/);
 assert.match(adminHtml, /data-ttb-action="save-integration-source"/);
-assert.match(adminHtml, /Leave blank to use the course-default Zoom/);
-assert.match(adminHtml, /m4l-timetable-builder\.js\?v=102\.9\.1/);
+assert.match(adminHtml, /Leave blank to use the program-default Zoom/);
+assert.match(adminHtml, /Program Timetables/);
+assert.match(adminHtml, /Programs &amp; Times/);
+assert.match(adminHtml, /m4l-timetable-builder\.js\?v=102\.11\.1/);
 assert.match(adminHtml, /m4l-auth\.js\?v=102\.9\.1/);
 assert.match(adminHtml, /m4l-timetable\.js\?v=102\.9\.1/);
 

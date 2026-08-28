@@ -2286,7 +2286,7 @@ function getUserBandProfileMarkup(username, role) {
   }).join("") : `
     <div class="app-user-profile-menu__context is-current">
       <span>
-        <strong>${escapeHtml(String(state.accountContext?.courseName || "Current course"))}</strong>
+        <strong>${escapeHtml(String(state.accountContext?.courseName || "Current program"))}</strong>
         <small>${escapeHtml(getCurrentUserRoleLabel())}</small>
       </span>
       <em>Current</em>
@@ -2306,7 +2306,7 @@ function getUserBandProfileMarkup(username, role) {
         <span class="app-user-profile-menu__value">${escapeHtml(groupLabel)}</span>
       </div>
     ` : ""}
-    <p class="app-user-profile-menu__section-label">Switch course or role</p>
+    <p class="app-user-profile-menu__section-label">Switch program or role</p>
     <div class="app-user-profile-menu__contexts">${contextMarkup}</div>
     <p class="app-user-profile-menu__feedback" data-user-profile-feedback role="status" aria-live="polite"></p>
   `;
@@ -2634,7 +2634,7 @@ function getUserBandRefreshAction(screenId, role) {
 
   if (activeScreenId === "timetable-builder-screen") {
     return typeof loadTimetableBuilder === "function"
-      ? { label: "Refresh", title: "Refresh Timetable Builder", handler: () => loadTimetableBuilder(true) }
+      ? { label: "Refresh", title: "Refresh Program Timetables", handler: () => loadTimetableBuilder(true) }
       : null;
   }
 
@@ -3057,7 +3057,7 @@ function attachUserBandProfileHandler(band) {
       typeof window.M4LAuth.switchUnifiedAccountContext === "function"
     ) {
       contextButton.disabled = true;
-      if (feedback) feedback.textContent = "Validating the selected course and role…";
+      if (feedback) feedback.textContent = "Validating the selected program and role…";
       window.M4LAuth.switchUnifiedAccountContext(context).catch(error => {
         contextButton.disabled = false;
         if (feedback) feedback.textContent = error.message || "The selected context could not be opened.";

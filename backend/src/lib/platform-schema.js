@@ -1,4 +1,4 @@
-/* M4L V102.11 - Authoritative central identity, access, delivery and global timetable schema. */
+/* M4L V102.11.1 - Authoritative central identity, access, delivery and global timetable schema. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -109,6 +109,12 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "PublicationID", "RunID", "SubjectID", "VersionNo", "PublishedDate",
     "PublishedByAccountID", "PublishedByAccountName", "SessionCount"
   ]),
+  GlobalTimetableSessionLifecycle: Object.freeze([
+    "SessionLifecycleID", "SessionID", "PublicationID", "Status",
+    "RescheduledFromSessionID", "RescheduledToSessionID",
+    "CreatedDate", "CreatedByAccountID", "CreatedByAccountName",
+    "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+  ]),
   PublishedGlobalTimetableSessions: Object.freeze([
     "PublishedSessionID", "PublicationID", "SourceSessionID", "RunID", "SubjectID", "ModuleID",
     "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "PublishedDate",
@@ -195,7 +201,8 @@ export const PLATFORM_CONFIG_KEYS = Object.freeze([
   "AccountLoginBaseUrl",
   "PlatformSchemaVersion",
   "GlobalCurriculumVersion",
-  "GlobalTimetableVersion"
+  "GlobalTimetableVersion",
+  "PlatformTimezone"
 ]);
 
 export function validatePlatformSheetRows(sheetName, rows) {

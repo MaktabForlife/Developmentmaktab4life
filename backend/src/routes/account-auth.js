@@ -25,7 +25,7 @@ import {
   normalizePlatformIdentifier
 } from "../lib/platform-schema.js";
 
-const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4", "102.0.5", "102.0.6"]);
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4", "102.0.5", "102.0.6", "102.0.7"]);
 const LOGIN_RATE_LIMIT_SECONDS = 60;
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 

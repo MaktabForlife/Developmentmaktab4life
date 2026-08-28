@@ -1,4 +1,4 @@
-/* M4L V102.10 - Global curriculum, access matrix and protected Drive resources. */
+/* M4L V102.11.1 - Global curriculum, access matrix and protected Drive resources. */
 (function () {
   "use strict";
 
@@ -170,6 +170,7 @@
     model.drive.data = null;
     if (tab !== "resources") model.resourceDraft = null;
     setMessage("", "");
+    if (!model.loaded) { void load(true); return; }
     render();
   }
 
@@ -186,11 +187,10 @@
   }
 
   function render() {
-    document.querySelectorAll("#global-curriculum-screen [data-gcm-tab]").forEach(button => {
-      button.classList.toggle("is-active", button.dataset.gcmTab === model.tab);
+    document.querySelectorAll("#global-curriculum-screen .global-curriculum-tabs button").forEach(button => {
+      button.classList.remove("is-active");
     });
-    const version = document.getElementById("global-curriculum-version");
-    if (version) version.textContent = `Curriculum version ${model.data.globalCurriculumVersion || "—"}`;
+    document.querySelector(`#global-curriculum-screen [data-gcm-tab="${model.tab}"]`)?.classList.add("is-active");
 
     if (model.tab === "subjects") return renderSubjects();
     if (model.tab === "modules") return renderModules();
@@ -330,26 +330,23 @@
     const policies = matrix.policies && typeof matrix.policies === "object" ? matrix.policies : {};
 
     if (!subjects.length) {
-      setContent('<div class="global-curriculum-empty"><h3>No global subjects</h3><p>Create a Global Subject before assigning subscription access.</p></div>');
+      setContent('<div class="global-curriculum-empty"><h3>No global subjects</h3><p>Create a Global Subject before assigning access.</p></div>');
       return;
     }
 
     setContent(`
       <section class="global-curriculum-panel global-access-matrix-panel">
-        <div class="global-curriculum-panel-heading">
-          <div>
-            <h3>Global Subject Access</h3>
-            <p>One row per central account. FREE subjects are implicit; SUBSCRIPTION subjects are controlled here.</p>
-          </div>
-        </div>
         <div class="global-access-matrix-scroll">
           <table class="global-access-matrix">
             <thead>
-              <tr>
-                <th scope="col" class="global-access-account-column">Account</th>
+              <tr class="global-access-subject-row">
+                <th scope="col" class="global-access-account-column" rowspan="2">Account</th>
+                ${subjects.map(subject => `<th scope="col">${html(subject.subjectname)}</th>`).join("")}
+              </tr>
+              <tr class="global-access-policy-row">
                 ${subjects.map(subject => {
                   const policy = String(policies[subject.subjectid] || "SUBSCRIPTION").toUpperCase();
-                  return `<th scope="col"><span>${html(subject.subjectname)}</span><small>${html(policy)}</small></th>`;
+                  return `<th scope="col"><span class="global-access-policy-token global-access-policy-token--${policy === "FREE" ? "free" : "paid"}">${policy === "FREE" ? "FREE" : "PAID"}</span></th>`;
                 }).join("")}
               </tr>
             </thead>
@@ -360,19 +357,18 @@
                   <th scope="row" class="global-access-account-column"><strong>${html(account.displayname)}</strong><small>${html(account.uniqueid || account.accountid)}${account.active ? "" : " · inactive"}</small></th>
                   ${subjects.map(subject => {
                     const policy = String(policies[subject.subjectid] || "SUBSCRIPTION").toUpperCase();
-                    if (policy === "FREE") {
-                      return '<td><span class="global-access-free">FREE</span></td>';
-                    }
-                    const active = row.values?.[subject.subjectid] === true;
+                    const subscribed = row.values?.[subject.subjectid] === true;
                     const disabled = !account.active || !subject.active;
-                    return `<td><label title="${disabled ? "Inactive account or subject" : "Toggle subscription access"}"><input class="global-access-toggle" type="checkbox" data-gcm-access-toggle data-account-id="${attr(account.accountid)}" data-subject-id="${attr(subject.subjectid)}" ${active ? "checked" : ""} ${disabled ? "disabled" : ""} /></label></td>`;
+                    const checkbox = `<label title="${disabled ? "Inactive account or subject" : "Saved subscription entitlement"}"><input class="global-access-toggle" type="checkbox" data-gcm-access-toggle data-account-id="${attr(account.accountid)}" data-subject-id="${attr(subject.subjectid)}" ${subscribed ? "checked" : ""} ${disabled ? "disabled" : ""} /></label>`;
+                    return policy === "FREE"
+                      ? `<td><div class="global-access-free-state"><span class="global-access-free">FREE</span>${checkbox}</div></td>`
+                      : `<td>${checkbox}</td>`;
                   }).join("")}
                 </tr>`;
               }).join("")}
             </tbody>
           </table>
         </div>
-        <p class="global-curriculum-help global-access-matrix-help">Changing a FREE subject to SUBSCRIPTION reuses the saved matrix values. Changing a SUBSCRIPTION subject to FREE does not delete them; FREE access simply overrides them while that policy is active.</p>
       </section>
     `);
   }
@@ -820,6 +816,10 @@
     if (element) element.innerHTML = markup;
   }
 
+  function invalidate() {
+    model.loaded = false;
+  }
+
   function value(id) {
     return String(document.getElementById(id)?.value || "").trim();
   }
@@ -849,6 +849,6 @@
     return html(value);
   }
 
-  window.M4LGlobalCurriculum = Object.freeze({ show, syncAccess, load });
+  window.M4LGlobalCurriculum = Object.freeze({ show, syncAccess, load, invalidate });
   window.showGlobalCurriculumManagement = show;
 })();

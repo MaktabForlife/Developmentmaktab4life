@@ -1,3 +1,26 @@
+# V102.11.1 — Global Course Scheduler, revisions and clearer Program terminology
+
+- Combines Global Curriculum Delivery and Schedule into one **Course Scheduler** so course dates and weekly day/time setup happen in the same workflow.
+- Presents a compact editable Global Subject table (`Subject | Access | Modules | Status`) and Global Course table (`Course | Scheduled dates | Sessions | Status`).
+- Renames Access Matrix to **Global Access**, removes explanatory access text, separates subject names from `PAID`/`FREE` in a second header row, and keeps saved paid-entitlement ticks visible while a subject is FREE.
+- Removes the Global Curriculum technical status band, Platform administration text and visible curriculum/timetable version counters while retaining the counters in backend logic.
+- Fixes Course Scheduler refresh invalidation so new/modified active courses appear without logout/login; the standard header refresh is authoritative and the redundant inline Reload control is removed.
+- Makes Teacher optional/TBA in DEVELOPMENT but requires a valid active central teacher before publication.
+- Locks PUBLISHED Global Courses against direct modification until **Revise timetable** opens a DEVELOPMENT revision.
+- Adds immutable revision publishing plus `CANCELLED` and linked `RESCHEDULED` session lifecycle handling. Earlier published snapshots remain unchanged.
+- Adds `GlobalTimetableSessionLifecycle` as an additive Platform tab; existing V102.11 sessions/publications with no lifecycle rows default to `SCHEDULED`.
+- Moves the fixed Global Course scheduling timezone into central `PlatformTimezone = Africa/Johannesburg`; Course Scheduler no longer exposes a timezone control.
+- Uses **Zoom link** as the user-facing label without explanatory text; internal compatibility names remain unchanged.
+- Uses **Program Timetables**, **Programs & Times** and **Switch program or role** in the UI while leaving internal Course IDs, routes and Sheet structures unchanged.
+- Fixes the central account page V102.11 label carry-forward and bumps changed browser-module cache URLs so the new UI cannot be hidden by stale cached JavaScript.
+- Advances Platform schema `102.0.6` → `102.0.7` and required tabs from 17 to 18.
+- Preserves V102.10 FREE/PAID authorization, protected Drive behavior, V102.11 immutable publication foundations and the Attendance post-save reset carry-forward.
+- Does not yet deliver Global Course sessions to the Student/Teacher Academy timetable; that remains V102.12.
+
+Development only.
+
+---
+
 # V102.11 — Exact-dated Global Subject timetable and immutable publication
 
 - Adds four central Platform tabs: `GlobalTimetableSessions`, `GlobalTimetableRunState`, `GlobalTimetablePublications`, and `PublishedGlobalTimetableSessions`.

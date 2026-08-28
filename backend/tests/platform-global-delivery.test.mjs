@@ -20,8 +20,9 @@ tables.GlobalSubjectRuns.push([
 tables.UserGlobalSubjectAccess.push(["GSACCESS1", "ACCOUNT2", "GSUBJ1", true]);
 tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"], ["ACCOUNT1", false], ["ACCOUNT2", true]];
 tables.GlobalResources.push(["GRES1", "GSUBJ1", "", "", "Archive PDF", "EBOOK", "PDF", "", "https://example.test/archive.pdf", true]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.5"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.7"]);
 tables.PlatformConfig.push(["GlobalCurriculumVersion", 5]);
+tables.PlatformConfig.push(["PlatformTimezone", "Africa/Johannesburg"]);
 
 const keyPair = await crypto.subtle.generateKey({
   name: "RSASSA-PKCS1-v1_5",
@@ -85,12 +86,14 @@ try {
   const initial = await post("/api/admin/platform/global/delivery/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
   assert.equal(initial.data.globalCurriculumVersion, 5);
+  assert.equal(initial.data.platformTimezone, "Africa/Johannesburg");
   assert.deepEqual(initial.data.subjects[0], {
     subjectid: "GSUBJ1",
     subjectname: "Global Tajweed",
     active: true,
     accessmodel: "SUBSCRIPTION",
     policyconfigured: true,
+    modulecount: 0,
     deliverystatus: "PAST",
     dependencies: { subscriptions: 1, resources: 1, runs: 1 }
   });
@@ -191,7 +194,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.10 global-subject Delivery API policy/run/audit tests passed.");
+console.log("V102.11.1 Global Course setup policy/run/audit tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

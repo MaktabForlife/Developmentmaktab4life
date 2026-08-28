@@ -21,8 +21,9 @@ tables.GlobalSubjectRuns.push([
   "GSRUN1", "GSUBJ1", "September 2026", "2026-09-01", "2026-09-30", "Africa/Johannesburg", true,
   "", "", "", "", "", ""
 ]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.6"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.7"]);
 tables.PlatformConfig.push(["GlobalTimetableVersion", 1]);
+tables.PlatformConfig.push(["PlatformTimezone", "Africa/Johannesburg"]);
 
 const keyPair = await crypto.subtle.generateKey({
   name: "RSASSA-PKCS1-v1_5",
@@ -78,23 +79,47 @@ globalThis.fetch = async (input, init = {}) => {
 };
 
 try {
-  tables.PlatformConfig[1][1] = "102.0.5";
+  tables.PlatformConfig[1][1] = "102.0.6";
   const preCutover = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(preCutover.response.status, 503);
-  assert.match(preCutover.data.detail, /requires PlatformSchemaVersion 102\.0\.6/);
-  tables.PlatformConfig[1][1] = "102.0.6";
+  assert.match(preCutover.data.detail, /requires PlatformSchemaVersion 102\.0\.7/);
+  tables.PlatformConfig[1][1] = "102.0.7";
 
   const initial = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
+  assert.equal(initial.data.version, "102.11.1");
   assert.equal(initial.data.globalTimetableVersion, 1);
   assert.equal(initial.data.runs.length, 1);
   assert.equal(initial.data.teachers.some(item => item.accountid === "TEACHER1"), true);
 
-  const missingTeacher = await post("/api/admin/platform/global/timetable/generate", {
-    runId: "GSRUN1", moduleId: "GMOD1", weekdays: ["MON"], startTime: "09:00", endTime: "10:00"
+  // DEVELOPMENT allows TBA/blank teacher so dates can be planned before staffing is final.
+  const tbaDraft = await post("/api/admin/platform/global/timetable/generate", {
+    runId: "GSRUN1", moduleId: "GMOD1", weekdays: ["FRI"], startTime: "12:00", endTime: "13:00"
   }, token);
-  assert.equal(missingTeacher.response.status, 400);
-  assert.match(missingTeacher.data.error, /Select teacher/);
+  assert.equal(tbaDraft.response.status, 200, JSON.stringify(tbaDraft.data));
+  assert.equal(tbaDraft.data.sessions.length, 4);
+  assert.equal(tbaDraft.data.sessions.every(item => !item.teacheraccountid), true);
+
+  const blockedPublishWithoutTeacher = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN1" }, token);
+  assert.equal(blockedPublishWithoutTeacher.response.status, 400);
+  assert.match(blockedPublishWithoutTeacher.data.error, /Assign a teacher before publishing/);
+  assert.equal(Number(tables.PlatformConfig[2][1]), 1, "Blocked publication must not change GlobalTimetableVersion");
+
+  // Retire the TBA-only draft rows so the main publication can proceed.
+  for (const session of tbaDraft.data.sessions) {
+    const retired = await post("/api/admin/platform/global/timetable/session/save", {
+      sessionId: session.sessionid,
+      sessionDate: session.sessiondate,
+      startTime: session.starttime,
+      endTime: session.endtime,
+      moduleId: session.moduleid,
+      teacherAccountId: "",
+      zoomLink: session.zoomlink,
+      active: false,
+      status: "SCHEDULED"
+    }, token);
+    assert.equal(retired.response.status, 200, JSON.stringify(retired.data));
+  }
 
   const generated = await post("/api/admin/platform/global/timetable/generate", {
     runId: "GSRUN1",
@@ -114,64 +139,115 @@ try {
   assert.equal(tables.GlobalTimetableRunState[1][1], "DEVELOPMENT");
   assert.equal(Number(tables.PlatformConfig[2][1]), 1, "Draft generation must not change GlobalTimetableVersion");
 
-  const firstSessionId = tables.GlobalTimetableSessions[1][0];
+  const first = generated.data.sessions[0];
   const edited = await post("/api/admin/platform/global/timetable/session/save", {
-    sessionId: firstSessionId,
+    sessionId: first.sessionid,
     sessionDate: "2026-09-03",
     startTime: "09:15",
     endTime: "10:15",
     moduleId: "GMOD1",
     teacherAccountId: "TEACHER1",
     zoomLink: "https://zoom.example.test/exception",
-    active: false
+    active: false,
+    status: "SCHEDULED"
   }, token);
   assert.equal(edited.response.status, 200, JSON.stringify(edited.data));
   assert.equal(edited.data.session.sessiondate, "2026-09-03");
   assert.equal(edited.data.session.active, false);
-  assert.equal(Number(tables.PlatformConfig[2][1]), 1);
 
   const publish1 = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN1" }, token);
   assert.equal(publish1.response.status, 200, JSON.stringify(publish1.data));
   assert.equal(publish1.data.publication.versionno, 1);
-  assert.equal(publish1.data.publication.sessioncount, 8, "Inactive draft session must not be published");
+  assert.equal(publish1.data.publication.sessioncount, 8, "Inactive draft sessions must not be published");
   assert.equal(Number(tables.PlatformConfig[2][1]), 2);
   assert.equal(tables.GlobalTimetableRunState[1][1], "PUBLISHED");
   const publication1Id = tables.GlobalTimetableRunState[1][2];
   assert.equal(publication1Id, publish1.data.publication.publicationid);
   const publication1Snapshots = structuredClone(tables.PublishedGlobalTimetableSessions.slice(1));
+  const publication1Lifecycle = structuredClone(tables.GlobalTimetableSessionLifecycle.filter(row => row[2] === publication1Id));
   assert.equal(publication1Snapshots.length, 8);
-  assert.equal(publication1Snapshots.every(row => row[14] === "September 2026" && row[15] === "Steps to My Rabb" && row[17] === "Ml Teacher"), true);
+  assert.equal(publication1Lifecycle.length, 8);
+  assert.equal(publication1Lifecycle.every(row => row[3] === "SCHEDULED"), true);
 
-  const activeSource = tables.GlobalTimetableSessions[2];
-  const postPublishEdit = await post("/api/admin/platform/global/timetable/session/save", {
-    sessionId: activeSource[0],
-    sessionDate: activeSource[4],
+  // A published course is immutable until an explicit revision is opened.
+  const lockedSource = generated.data.sessions[1];
+  const blockedPublishedEdit = await post("/api/admin/platform/global/timetable/session/save", {
+    sessionId: lockedSource.sessionid,
+    sessionDate: lockedSource.sessiondate,
     startTime: "10:30",
     endTime: "11:30",
-    moduleId: activeSource[3],
+    moduleId: lockedSource.moduleid,
     teacherAccountId: "TEACHER1",
-    zoomLink: activeSource[8],
-    active: true
+    zoomLink: lockedSource.zoomlink,
+    active: true,
+    status: "SCHEDULED"
   }, token);
-  assert.equal(postPublishEdit.response.status, 200, JSON.stringify(postPublishEdit.data));
+  assert.equal(blockedPublishedEdit.response.status, 409);
+  assert.match(blockedPublishedEdit.data.error, /Revise timetable before modifying a published course/);
+  assert.deepEqual(tables.PublishedGlobalTimetableSessions.slice(1), publication1Snapshots);
+
+  const revised = await post("/api/admin/platform/global/timetable/revise", { runId: "GSRUN1" }, token);
+  assert.equal(revised.response.status, 200, JSON.stringify(revised.data));
+  assert.equal(revised.data.state.stage, "DEVELOPMENT");
+  assert.equal(revised.data.state.currentpublicationid, publication1Id);
   assert.equal(tables.GlobalTimetableRunState[1][1], "DEVELOPMENT");
-  assert.equal(tables.GlobalTimetableRunState[1][2], publication1Id, "Draft edit must preserve current immutable publication pointer");
-  assert.deepEqual(tables.PublishedGlobalTimetableSessions.slice(1, 9), publication1Snapshots, "Draft edit must not mutate the previous publication snapshot");
-  assert.equal(Number(tables.PlatformConfig[2][1]), 2);
+
+  // One published occurrence can remain visible as CANCELLED in the next publication.
+  const cancelSource = generated.data.sessions[1];
+  const cancelled = await post("/api/admin/platform/global/timetable/session/save", {
+    sessionId: cancelSource.sessionid,
+    sessionDate: cancelSource.sessiondate,
+    startTime: cancelSource.starttime,
+    endTime: cancelSource.endtime,
+    moduleId: cancelSource.moduleid,
+    teacherAccountId: cancelSource.teacheraccountid,
+    zoomLink: cancelSource.zoomlink,
+    active: true,
+    status: "CANCELLED"
+  }, token);
+  assert.equal(cancelled.response.status, 200, JSON.stringify(cancelled.data));
+  assert.equal(cancelled.data.lifecycle.status, "CANCELLED");
+
+  // A reschedule keeps the original occurrence and links it to a new exact-dated replacement.
+  const rescheduleSource = generated.data.sessions[2];
+  const rescheduled = await post("/api/admin/platform/global/timetable/session/reschedule", {
+    sessionId: rescheduleSource.sessionid,
+    sessionDate: "2026-09-05",
+    startTime: "14:00",
+    endTime: "15:00",
+    moduleId: rescheduleSource.moduleid,
+    teacherAccountId: "TEACHER1",
+    zoomLink: "https://zoom.example.test/rescheduled"
+  }, token);
+  assert.equal(rescheduled.response.status, 200, JSON.stringify(rescheduled.data));
+  assert.equal(rescheduled.data.sourceLifecycle.status, "RESCHEDULED");
+  assert.equal(rescheduled.data.sourceLifecycle.rescheduledtosessionid, rescheduled.data.replacement.sessionid);
+  assert.equal(rescheduled.data.replacementLifecycle.status, "SCHEDULED");
+  assert.equal(rescheduled.data.replacementLifecycle.rescheduledfromsessionid, rescheduleSource.sessionid);
+  assert.equal(rescheduled.data.replacement.sessiondate, "2026-09-05");
 
   const publish2 = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN1" }, token);
   assert.equal(publish2.response.status, 200, JSON.stringify(publish2.data));
   assert.equal(publish2.data.publication.versionno, 2);
   assert.notEqual(publish2.data.publication.publicationid, publication1Id);
+  assert.equal(publish2.data.publication.sessioncount, 9, "Cancelled/rescheduled originals remain visible and the replacement is added");
   assert.equal(Number(tables.PlatformConfig[2][1]), 3);
-  assert.deepEqual(tables.PublishedGlobalTimetableSessions.slice(1, 9), publication1Snapshots, "Republish must append rather than alter publication 1");
-  assert.equal(tables.PublishedGlobalTimetableSessions.length - 1, 16);
-  assert.equal(tables.PlatformAuditLog.some(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE"), true);
+  assert.deepEqual(tables.PublishedGlobalTimetableSessions.slice(1, 9), publication1Snapshots, "Revision must not alter publication 1");
+  assert.deepEqual(tables.GlobalTimetableSessionLifecycle.filter(row => row[2] === publication1Id), publication1Lifecycle, "Revision must not alter publication 1 lifecycle history");
+
+  const publication2Id = publish2.data.publication.publicationid;
+  const publication2Lifecycle = tables.GlobalTimetableSessionLifecycle.filter(row => row[2] === publication2Id);
+  assert.equal(publication2Lifecycle.length, 9);
+  assert.equal(publication2Lifecycle.filter(row => row[3] === "CANCELLED").length, 1);
+  assert.equal(publication2Lifecycle.filter(row => row[3] === "RESCHEDULED").length, 1);
+  assert.equal(publication2Lifecycle.filter(row => row[3] === "SCHEDULED").length, 7);
+  assert.equal(tables.PlatformAuditLog.some(row => row[6] === "RESCHEDULE_GLOBAL_TIMETABLE_SESSION"), true);
+  assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 2);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.11 exact-dated global timetable generation/edit/immutable publication tests passed.");
+console.log("V102.11.1 Global Course draft/revision/cancel/reschedule/immutable publication tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {
