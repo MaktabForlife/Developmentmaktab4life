@@ -1,4 +1,4 @@
-/* M4L V102.10 - Platform validation including global access policies, runs and protected Drive configuration. */
+/* M4L V102.11 - Platform validation including global access, runs and immutable global timetable publication. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { json } from "../lib/http.js";
@@ -10,12 +10,19 @@ import {
 } from "../lib/global-subject-delivery.js";
 import { readPlatformSheet } from "../lib/platform-sheet.js";
 import {
+  GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
+  GLOBAL_TIMETABLE_PUBLISHED_STAGE,
+  resolveCurrentPublishedGlobalTimetable,
+  sessionWithinRun,
+  validateTimeRange
+} from "../lib/global-timetable.js";
+import {
   isActivePlatformValue,
   normalizePlatformIdentifier,
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.5";
+const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.6";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
@@ -88,6 +95,7 @@ export function validatePlatformTables(tables) {
   const accountLoginBaseUrl = String(config.get("ACCOUNTLOGINBASEURL")?.ConfigValue || "").trim();
   const schemaVersion = String(config.get("PLATFORMSCHEMAVERSION")?.ConfigValue || "").trim();
   const curriculumVersion = Number(config.get("GLOBALCURRICULUMVERSION")?.ConfigValue);
+  const globalTimetableVersion = Number(config.get("GLOBALTIMETABLEVERSION")?.ConfigValue);
   const globalResourceDriveRootFolderId = String(
     config.get("GLOBALRESOURCEDRIVEROOTFOLDERID")?.ConfigValue || ""
   ).trim();
@@ -100,12 +108,16 @@ export function validatePlatformTables(tables) {
   if (!Number.isInteger(curriculumVersion) || curriculumVersion < 1) {
     throw new Error("PlatformConfig GlobalCurriculumVersion must be a positive integer");
   }
+  if (!Number.isInteger(globalTimetableVersion) || globalTimetableVersion < 1) {
+    throw new Error("PlatformConfig GlobalTimetableVersion must be a positive integer");
+  }
   if (globalResourceDriveRootFolderId && !DRIVE_FOLDER_ID_PATTERN.test(globalResourceDriveRootFolderId)) {
     throw new Error("PlatformConfig GlobalResourceDriveRootFolderID is invalid");
   }
 
   const accounts = tables.UserAccounts;
   const accountIds = new Set();
+  const activeAccountIds = new Set();
   const uniqueIds = new Set();
   let globalAdminAccounts = 0;
   for (const account of accounts) {
@@ -122,6 +134,7 @@ export function validatePlatformTables(tables) {
       throw new Error(`UserAccounts row ${account._rowNumber} has an invalid PlatformRole`);
     }
     accountIds.add(accountId);
+    if (isActivePlatformValue(account.Active)) activeAccountIds.add(accountId);
     uniqueIds.add(uniqueId);
     if (platformRole === "GLOBAL_ADMIN" && isActivePlatformValue(account.Active)) {
       globalAdminAccounts += 1;
@@ -188,10 +201,19 @@ export function validatePlatformTables(tables) {
     accountIds,
     globalCurriculum.subjectIds
   );
+  const globalTimetable = validateGlobalTimetable(tables, {
+    accountIds,
+    activeAccountIds,
+    subjectIds: globalCurriculum.subjectIds,
+    moduleSubjects: globalCurriculum.moduleSubjects,
+    runIds: globalDelivery.runIds,
+    runSubjects: globalDelivery.runSubjects
+  });
 
   return Object.freeze({
     platformSchemaVersion: schemaVersion,
     globalCurriculumVersion: curriculumVersion,
+    globalTimetableVersion,
     tabCount: Object.keys(PLATFORM_SHEET_HEADERS).length,
     rowCounts: Object.freeze(Object.fromEntries(
       Object.keys(PLATFORM_SHEET_HEADERS).map(name => [name, tables[name].length])
@@ -209,6 +231,10 @@ export function validatePlatformTables(tables) {
     activeGlobalSubjectPolicyCount: globalDelivery.activePolicyCount,
     globalSubjectRunCount: tables.GlobalSubjectRuns.length,
     activeGlobalSubjectRunCount: globalDelivery.activeRunCount,
+    globalTimetableSessionCount: globalTimetable.sessionCount,
+    globalTimetableRunStateCount: globalTimetable.stateCount,
+    globalTimetablePublicationCount: globalTimetable.publicationCount,
+    publishedGlobalTimetableSessionCount: globalTimetable.publishedSessionCount,
     globalResourceCount: tables.GlobalResources.length,
     globalAdminCount: globalAdminAccounts,
     globalResourceDriveConfigured: Boolean(globalResourceDriveRootFolderId),
@@ -361,7 +387,7 @@ function validateGlobalCurriculum(tables) {
     resourceIds.add(resourceId);
   }
 
-  return Object.freeze({ subjectIds, activeSubjectIds, moduleIds, taskIds, resourceIds });
+  return Object.freeze({ subjectIds, activeSubjectIds, moduleIds, moduleSubjects, taskIds, resourceIds });
 }
 
 function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
@@ -400,6 +426,7 @@ function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
   }
 
   const runIds = new Set();
+  const runSubjects = new Map();
   let activeRunCount = 0;
   for (const run of tables.GlobalSubjectRuns) {
     const runId = normalizePlatformIdentifier(run.RunID);
@@ -433,9 +460,213 @@ function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
       }
     }
     runIds.add(runId);
+    runSubjects.set(runId, subjectId);
   }
 
-  return Object.freeze({ activePolicyCount, activeRunCount });
+  return Object.freeze({ activePolicyCount, activeRunCount, runIds, runSubjects });
+}
+
+
+function validateGlobalTimetable(tables, context) {
+  const {
+    accountIds,
+    activeAccountIds,
+    subjectIds,
+    moduleSubjects,
+    runIds,
+    runSubjects
+  } = context;
+
+  const runById = new Map(tables.GlobalSubjectRuns.map(run => [
+    normalizePlatformIdentifier(run.RunID), run
+  ]));
+  const sourceSessionIds = new Set();
+  const sessionRuns = new Set();
+  for (const session of tables.GlobalTimetableSessions) {
+    const sessionId = normalizePlatformIdentifier(session.SessionID);
+    const runId = normalizePlatformIdentifier(session.RunID);
+    const subjectId = normalizePlatformIdentifier(session.SubjectID);
+    const moduleId = normalizePlatformIdentifier(session.ModuleID);
+    const teacherAccountId = normalizePlatformIdentifier(session.TeacherAccountID);
+    if (!sessionId || sourceSessionIds.has(sessionId)) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has a blank or duplicate SessionID`);
+    }
+    if (!runIds.has(runId) || runSubjects.get(runId) !== subjectId || !subjectIds.has(subjectId)) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid run/subject relationship`);
+    }
+    if (moduleId && moduleSubjects.get(moduleId) !== subjectId) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid module relationship`);
+    }
+    if (!sessionWithinRun(session, runById.get(runId))) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} falls outside its run dates`);
+    }
+    if (!validateTimeRange(session.StartTime, session.EndTime)) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid time range`);
+    }
+    if (!activeAccountIds.has(teacherAccountId)) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an inactive or invalid TeacherAccountID`);
+    }
+    if (String(session.ZoomLink || "").trim() && !isHttpsUrl(session.ZoomLink)) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} ZoomLink must use HTTPS`);
+    }
+    sourceSessionIds.add(sessionId);
+    sessionRuns.add(runId);
+  }
+
+  const stateRuns = new Set();
+  const stateByRun = new Map();
+  for (const state of tables.GlobalTimetableRunState) {
+    const runId = normalizePlatformIdentifier(state.RunID);
+    const stage = normalizePlatformIdentifier(state.Stage);
+    if (!runIds.has(runId) || stateRuns.has(runId)) {
+      throw new Error(`GlobalTimetableRunState row ${state._rowNumber} has an invalid or duplicate RunID`);
+    }
+    if (![GLOBAL_TIMETABLE_DEVELOPMENT_STAGE, GLOBAL_TIMETABLE_PUBLISHED_STAGE].includes(stage)) {
+      throw new Error(`GlobalTimetableRunState row ${state._rowNumber} Stage must be DEVELOPMENT or PUBLISHED`);
+    }
+    if (stage === GLOBAL_TIMETABLE_PUBLISHED_STAGE && !normalizePlatformIdentifier(state.CurrentPublicationID)) {
+      throw new Error(`GlobalTimetableRunState row ${state._rowNumber} requires CurrentPublicationID when PUBLISHED`);
+    }
+    stateRuns.add(runId);
+    stateByRun.set(runId, state);
+  }
+  for (const runId of sessionRuns) {
+    if (!stateRuns.has(runId)) {
+      throw new Error(`Global timetable run ${runId} has sessions but no GlobalTimetableRunState row`);
+    }
+  }
+
+  const publicationIds = new Set();
+  const publicationVersions = new Set();
+  const publicationById = new Map();
+  for (const publication of tables.GlobalTimetablePublications) {
+    const publicationId = normalizePlatformIdentifier(publication.PublicationID);
+    const runId = normalizePlatformIdentifier(publication.RunID);
+    const subjectId = normalizePlatformIdentifier(publication.SubjectID);
+    const versionNo = Number(publication.VersionNo);
+    const sessionCount = Number(publication.SessionCount);
+    const publishedDate = String(publication.PublishedDate || "").trim();
+    const publishedByAccountId = normalizePlatformIdentifier(publication.PublishedByAccountID);
+    const publishedByAccountName = String(publication.PublishedByAccountName || "").trim();
+    if (!publicationId || publicationIds.has(publicationId)) {
+      throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has a blank or duplicate PublicationID`);
+    }
+    if (!runIds.has(runId) || runSubjects.get(runId) !== subjectId) {
+      throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has an invalid run/subject relationship`);
+    }
+    if (!Number.isInteger(versionNo) || versionNo < 1 || publicationVersions.has(`${runId}|${versionNo}`)) {
+      throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has an invalid or duplicate VersionNo`);
+    }
+    if (!Number.isInteger(sessionCount) || sessionCount < 1) {
+      throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} requires a positive SessionCount`);
+    }
+    if (!publishedDate || !accountIds.has(publishedByAccountId) || !publishedByAccountName) {
+      throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has incomplete publication audit data`);
+    }
+    publicationIds.add(publicationId);
+    publicationVersions.add(`${runId}|${versionNo}`);
+    publicationById.set(publicationId, {
+      publicationId,
+      runId,
+      subjectId,
+      sessionCount,
+      publishedDate,
+      publishedByAccountId,
+      publishedByAccountName
+    });
+  }
+
+  const publishedSessionIds = new Set();
+  const sourceByPublication = new Set();
+  const snapshotCounts = new Map();
+  for (const snapshot of tables.PublishedGlobalTimetableSessions) {
+    const publishedSessionId = normalizePlatformIdentifier(snapshot.PublishedSessionID);
+    const publicationId = normalizePlatformIdentifier(snapshot.PublicationID);
+    const sourceSessionId = normalizePlatformIdentifier(snapshot.SourceSessionID);
+    const runId = normalizePlatformIdentifier(snapshot.RunID);
+    const subjectId = normalizePlatformIdentifier(snapshot.SubjectID);
+    const moduleId = normalizePlatformIdentifier(snapshot.ModuleID);
+    const teacherAccountId = normalizePlatformIdentifier(snapshot.TeacherAccountID);
+    const publication = publicationById.get(publicationId);
+    if (!publishedSessionId || publishedSessionIds.has(publishedSessionId)) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has a blank or duplicate PublishedSessionID`);
+    }
+    if (!publication || publication.runId !== runId || publication.subjectId !== subjectId) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid publication/run/subject relationship`);
+    }
+    const sourceKey = `${publicationId}|${sourceSessionId}`;
+    if (!sourceSessionId || sourceByPublication.has(sourceKey)) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has a blank or duplicate SourceSessionID`);
+    }
+    if (!runIds.has(runId) || runSubjects.get(runId) !== subjectId) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid run/subject relationship`);
+    }
+    if (moduleId && moduleSubjects.get(moduleId) !== subjectId) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid module relationship`);
+    }
+    if (!sessionWithinRun(snapshot, runById.get(runId)) || !validateTimeRange(snapshot.StartTime, snapshot.EndTime)) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has invalid date/time values`);
+    }
+    if (!accountIds.has(teacherAccountId)) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid TeacherAccountID`);
+    }
+    if (String(snapshot.ZoomLink || "").trim() && !isHttpsUrl(snapshot.ZoomLink)) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} ZoomLink must use HTTPS`);
+    }
+    if (
+      String(snapshot.PublishedDate || "").trim() !== publication.publishedDate ||
+      normalizePlatformIdentifier(snapshot.PublishedByAccountID) !== publication.publishedByAccountId ||
+      !String(snapshot.PublishedByAccountName || "").trim()
+    ) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} does not match its publication audit data`);
+    }
+    if (
+      !String(snapshot.RunName || "").trim() ||
+      !String(snapshot.SubjectName || "").trim() ||
+      !String(snapshot.TeacherName || "").trim() ||
+      !String(snapshot.Timezone || "").trim() ||
+      (moduleId && !String(snapshot.ModuleName || "").trim())
+    ) {
+      throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} is missing immutable display values`);
+    }
+    publishedSessionIds.add(publishedSessionId);
+    sourceByPublication.add(sourceKey);
+    snapshotCounts.set(publicationId, (snapshotCounts.get(publicationId) || 0) + 1);
+  }
+
+  for (const publication of publicationById.values()) {
+    if ((snapshotCounts.get(publication.publicationId) || 0) !== publication.sessionCount) {
+      throw new Error(`Global timetable publication ${publication.publicationId} SessionCount does not match its snapshot rows`);
+    }
+  }
+
+  for (const [runId, state] of stateByRun.entries()) {
+    const currentPublicationId = normalizePlatformIdentifier(state.CurrentPublicationID);
+    if (!currentPublicationId) continue;
+    const publication = publicationById.get(currentPublicationId);
+    if (!publication || publication.runId !== runId) {
+      throw new Error(`GlobalTimetableRunState row ${state._rowNumber} CurrentPublicationID is invalid`);
+    }
+    const resolved = resolveCurrentPublishedGlobalTimetable(tables, runId);
+    if (!resolved.ok) {
+      throw new Error(`GlobalTimetableRunState row ${state._rowNumber} current publication failed integrity: ${resolved.error}`);
+    }
+  }
+
+  return Object.freeze({
+    sessionCount: tables.GlobalTimetableSessions.length,
+    stateCount: tables.GlobalTimetableRunState.length,
+    publicationCount: tables.GlobalTimetablePublications.length,
+    publishedSessionCount: tables.PublishedGlobalTimetableSessions.length
+  });
+}
+
+function isHttpsUrl(value) {
+  try {
+    return new URL(String(value || "").trim()).protocol === "https:";
+  } catch (error) {
+    return false;
+  }
 }
 
 function uniqueRowsByKey(rows, keyName, sheetName) {

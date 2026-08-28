@@ -116,6 +116,12 @@ import {
   savePlatformGlobalSubjectRunEndpoint
 } from "./routes/platform-global-delivery.js";
 import {
+  getPlatformGlobalTimetableEndpoint,
+  generatePlatformGlobalTimetableSessionsEndpoint,
+  savePlatformGlobalTimetableSessionEndpoint,
+  publishPlatformGlobalTimetableEndpoint
+} from "./routes/platform-global-timetable.js";
+import {
   accountGlobalWorkspaceEndpoint,
   accountLoginEndpoint,
   accountSessionEndpoint,
@@ -194,6 +200,10 @@ const ROUTES = new Map([
   ["/api/admin/platform/global/delivery/get", workerRoute("platform-global-management", getPlatformGlobalDeliveryEndpoint)],
   ["/api/admin/platform/global/policy/save", workerRoute("platform-global-management", savePlatformGlobalSubjectPolicyEndpoint)],
   ["/api/admin/platform/global/run/save", workerRoute("platform-global-management", savePlatformGlobalSubjectRunEndpoint)],
+  ["/api/admin/platform/global/timetable/get", workerRoute("platform-global-timetable", getPlatformGlobalTimetableEndpoint)],
+  ["/api/admin/platform/global/timetable/generate", workerRoute("platform-global-timetable", generatePlatformGlobalTimetableSessionsEndpoint)],
+  ["/api/admin/platform/global/timetable/session/save", workerRoute("platform-global-timetable", savePlatformGlobalTimetableSessionEndpoint)],
+  ["/api/admin/platform/global/timetable/publish", workerRoute("platform-global-timetable", publishPlatformGlobalTimetableEndpoint)],
   ["/api/platform/global/resources/access", workerRoute("platform-global-management", createPlatformGlobalDriveAccessEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],

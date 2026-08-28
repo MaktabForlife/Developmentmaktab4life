@@ -1,3 +1,27 @@
+# V102.11 — Exact-dated Global Subject timetable and immutable publication
+
+- Adds four central Platform tabs: `GlobalTimetableSessions`, `GlobalTimetableRunState`, `GlobalTimetablePublications`, and `PublishedGlobalTimetableSessions`.
+- Ties every global timetable session to one finite `GlobalSubjectRuns.RunID`; global timetable data is never copied into a course Sheet.
+- Generates exact session dates for selected weekdays between the run StartDate and EndDate inclusive.
+- Lets ADMIN/GLOBAL_ADMIN edit each generated date individually, including date, module, start/end time, central teacher AccountID, optional HTTPS Zoom link, and Active state.
+- Uses central `UserAccounts.AccountID` for teacher assignment; course membership is not required.
+- Prevents a run-date edit from excluding existing global timetable session rows; dated sessions must be corrected first.
+- Adds per-run DEVELOPMENT/PUBLISHED state and preserves `CurrentPublicationID` across later draft edits.
+- Publishes only current Active dated sessions into immutable snapshots; republishing appends a new per-run version and never mutates earlier snapshot rows.
+- Snapshots RunName, SubjectName, ModuleName, TeacherName and Timezone for historical/display integrity. FREE/SUBSCRIPTION policy is deliberately not snapshotted.
+- Adds `GlobalTimetableVersion`, initialized to 1 and incremented only when publication succeeds.
+- Adds Global Curriculum **Schedule** with repeated-date generation, individual session editing, status/version display and explicit Publish Timetable action.
+- Requires an explicit central teacher selection instead of silently choosing the first active account.
+- Keeps the new Schedule API fail-closed until the Platform schema marker has been advanced to `102.0.6`.
+- Writes `PlatformAuditLog` rows for generated sessions, session updates, state transitions and publication.
+- Advances Platform schema `102.0.5` → `102.0.6` and required tabs from 13 to 17.
+- Keeps V102.10 FREE/SUBSCRIPTION access, access matrix, Delivery/run states, protected Drive resources and Library cache/authorization behavior unchanged.
+- Preserves the Attendance successful-save reset carry-forward.
+- Adds focused API/UI/publication tests; the complete backend suite passes.
+- Does not add academy timetable aggregation, Student/Teacher global timetable display, billing, expiry, cross-course conflict detection or Aalimiyah onboarding.
+
+---
+
 # V102.10 — Global-subject access matrix, policies and scheduled runs
 
 - Carries forward the already-applied Attendance save-reset hotfix (`js/m4l-attendance.js` v97.1.5.5): after a successful save, the on-screen register resets every loaded student to Present and rerenders; failed saves keep the current marks. This is preservation of an existing production/development fix, not a new V102.10 attendance feature.

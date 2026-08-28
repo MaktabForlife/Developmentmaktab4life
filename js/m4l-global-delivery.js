@@ -44,7 +44,7 @@
       model.active = false;
       return;
     }
-    const otherTab = event.target?.closest?.('#global-curriculum-screen [data-gcm-action="show-tab"]');
+    const otherTab = event.target?.closest?.('#global-curriculum-screen [data-gcm-action="show-tab"], #global-curriculum-screen [data-gcm-timetable-action="show"]');
     if (otherTab) {
       model.active = false;
       return;

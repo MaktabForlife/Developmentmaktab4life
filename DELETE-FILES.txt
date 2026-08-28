@@ -1,9 +1,3 @@
-V102.10
+V102.11
 
-Delete this obsolete future-plan path when applying the overlay:
-- docs/V102.10-ACADEMY-TIMETABLE-PLAN.md
-
-The plan is retained under its correct future release name:
-- docs/V102.12-ACADEMY-TIMETABLE-PLAN.md
-
-No runtime application file is deleted by V102.10.
+No repository path is deleted by V102.11.

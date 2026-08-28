@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "102.10",
+  "version": "102.11",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -24,6 +24,8 @@
     "test:global-subject-delivery": "node tests/global-subject-delivery.test.mjs",
     "test:platform-global-delivery": "node tests/platform-global-delivery.test.mjs",
     "test:platform-global-delivery-ui": "node tests/platform-global-delivery-ui.test.mjs",
+    "test:platform-global-timetable": "node tests/platform-global-timetable.test.mjs",
+    "test:platform-global-timetable-ui": "node tests/platform-global-timetable-ui.test.mjs",
     "test:sequential-ids": "node tests/sequential-ids.test.mjs",
     "test:admin-audit": "node tests/admin-audit.test.mjs",
     "test:resources": "node tests/resources.test.mjs",

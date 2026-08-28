@@ -36,8 +36,9 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.5"],
-  ["GlobalCurriculumVersion", 1]
+  ["PlatformSchemaVersion", "102.0.6"],
+  ["GlobalCurriculumVersion", 1],
+  ["GlobalTimetableVersion", 1]
 ];
 
 let tables = structuredClone(baseTables);
@@ -90,9 +91,10 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.5",
+    platformSchemaVersion: "102.0.6",
     globalCurriculumVersion: 1,
-    tabCount: 13,
+    globalTimetableVersion: 1,
+    tabCount: 17,
     rowCounts: {
       CourseRegistry: 1,
       UserAccounts: 0,
@@ -101,11 +103,15 @@ try {
       GlobalSubjectAccessMatrix: 0,
       GlobalSubjectAccessPolicy: 0,
       GlobalSubjectRuns: 0,
+      GlobalTimetableSessions: 0,
+      GlobalTimetableRunState: 0,
+      GlobalTimetablePublications: 0,
+      PublishedGlobalTimetableSessions: 0,
       GlobalSubjectList: 0,
       GlobalModuleList: 0,
       GlobalTaskList: 0,
       GlobalResources: 0,
-      PlatformConfig: 3,
+      PlatformConfig: 4,
       PlatformAuditLog: 0
     },
     activeCourseCount: 1,
@@ -121,6 +127,10 @@ try {
     activeGlobalSubjectPolicyCount: 0,
     globalSubjectRunCount: 0,
     activeGlobalSubjectRunCount: 0,
+    globalTimetableSessionCount: 0,
+    globalTimetableRunStateCount: 0,
+    globalTimetablePublicationCount: 0,
+    publishedGlobalTimetableSessionCount: 0,
     globalResourceCount: 0,
     globalAdminCount: 0,
     globalResourceDriveConfigured: false,
@@ -194,6 +204,18 @@ try {
     "GSACCESS1", "ACCOUNT1", "GSUBJ1", true
   ]);
   tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"], ["ACCOUNT1", true]];
+  tables.GlobalTimetableSessions.push([
+    "GTS1", "GSRUN1", "GSUBJ1", "GMOD1", "2026-08-10", "09:00", "10:00", "ACCOUNT1", "https://zoom.example.test/lesson", true
+  ]);
+  tables.GlobalTimetableRunState.push(["GSRUN1", "PUBLISHED", "GTPUB1", "2026-08-01T00:00:00.000Z", "ACCOUNT1", "Subscriber"]);
+  tables.GlobalTimetablePublications.push([
+    "GTPUB1", "GSRUN1", "GSUBJ1", 1, "2026-08-02T00:00:00.000Z", "ACCOUNT1", "Subscriber", 1
+  ]);
+  tables.PublishedGlobalTimetableSessions.push([
+    "GTPSESSION1", "GTPUB1", "GTS1", "GSRUN1", "GSUBJ1", "GMOD1", "2026-08-10", "09:00", "10:00",
+    "ACCOUNT1", "https://zoom.example.test/lesson", "2026-08-02T00:00:00.000Z", "ACCOUNT1", "Subscriber",
+    "Term 1", "Global Tajweed", "Module 1", "Subscriber", "Africa/Johannesburg"
+  ]);
   const validSubscriptionSchema = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(validSubscriptionSchema.status, 200);
   const subscriptionResult = await validSubscriptionSchema.json();
@@ -207,7 +229,16 @@ try {
   assert.equal(subscriptionResult.activeGlobalSubjectPolicyCount, 1);
   assert.equal(subscriptionResult.globalSubjectRunCount, 1);
   assert.equal(subscriptionResult.activeGlobalSubjectRunCount, 1);
+  assert.equal(subscriptionResult.globalTimetableSessionCount, 1);
+  assert.equal(subscriptionResult.globalTimetableRunStateCount, 1);
+  assert.equal(subscriptionResult.globalTimetablePublicationCount, 1);
+  assert.equal(subscriptionResult.publishedGlobalTimetableSessionCount, 1);
   assert.equal(subscriptionResult.globalResourceCount, 1);
+
+  tables.PublishedGlobalTimetableSessions[1][11] = "2026-08-03T00:00:00.000Z";
+  const badSnapshotAudit = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(badSnapshotAudit.status, 503);
+  assert.match((await badSnapshotAudit.json()).detail, /does not match its publication audit data/);
 
   tables = structuredClone(baseTables);
   tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);

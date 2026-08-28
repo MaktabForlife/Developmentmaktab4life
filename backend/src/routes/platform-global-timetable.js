@@ -1,0 +1,655 @@
+/* M4L V102.11 - Global-subject exact-dated timetable development and immutable publication. */
+
+import { getAuthUser } from "../lib/auth.js";
+import {
+  activeGlobalTimetableSessionsForRun,
+  generateSessionDates,
+  GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
+  GLOBAL_TIMETABLE_PUBLISHED_STAGE,
+  mapGlobalTimetablePublication,
+  mapGlobalTimetableRunState,
+  mapGlobalTimetableSession,
+  mapPublishedGlobalTimetableSession,
+  sessionWithinRun,
+  validateIsoDate,
+  validateTimeRange
+} from "../lib/global-timetable.js";
+import { mapGlobalSubjectRun } from "../lib/global-subject-delivery.js";
+import { batchUpdateGoogleSheetValues } from "../lib/google-sheets.js";
+import { json } from "../lib/http.js";
+import { getPlatformSpreadsheetId, readPlatformSheet } from "../lib/platform-sheet.js";
+import {
+  isActivePlatformValue,
+  normalizePlatformIdentifier,
+  PLATFORM_SHEET_HEADERS
+} from "../lib/platform-schema.js";
+
+const MAX_ZOOM_LINK_LENGTH = 1000;
+const HTTPS_URL_PATTERN = /^https:\/\//i;
+const TIMETABLE_SCHEMA_VERSION = "102.0.6";
+
+export async function getPlatformGlobalTimetableEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const tables = await readGlobalTimetableTables(env);
+    const publishedSourceIds = publishedSourceIdSet(tables.PublishedGlobalTimetableSessions);
+    return json({
+      success: true,
+      service: "platform-global-timetable",
+      version: "102.11",
+      globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
+      subjects: tables.GlobalSubjectList.map(mapSubject),
+      modules: tables.GlobalModuleList.map(mapModule),
+      runs: tables.GlobalSubjectRuns.map(run => mapGlobalSubjectRun(run)),
+      teachers: tables.UserAccounts.filter(row => isActivePlatformValue(row.Active)).map(mapTeacherAccount),
+      sessions: tables.GlobalTimetableSessions.map(row => enrichSession(
+        mapGlobalTimetableSession(row, publishedSourceIds), tables
+      )),
+      states: tables.GlobalTimetableRunState.map(mapGlobalTimetableRunState),
+      publications: tables.GlobalTimetablePublications.map(mapGlobalTimetablePublication),
+      publishedSessions: tables.PublishedGlobalTimetableSessions.map(mapPublishedGlobalTimetableSession)
+    });
+  } catch (error) {
+    return globalTimetableError(error, env);
+  }
+}
+
+export async function generatePlatformGlobalTimetableSessionsEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const runId = clean(body.runId || body.runid);
+    const moduleId = clean(body.moduleId || body.moduleid);
+    const teacherAccountId = clean(body.teacherAccountId || body.teacheraccountid);
+    const startTime = normalizeSubmittedTime(body.startTime || body.starttime);
+    const endTime = normalizeSubmittedTime(body.endTime || body.endtime);
+    const zoomLink = clean(body.zoomLink || body.zoomlink);
+    const weekdays = Array.isArray(body.weekdays) ? body.weekdays : [];
+
+    if (!runId) throw clientError("RunID is required", 400);
+    if (!validateTimeRange(startTime, endTime)) throw clientError("StartTime and EndTime require a valid increasing HH:MM range", 400);
+    validateZoomLink(zoomLink);
+
+    const tables = await readGlobalTimetableTables(env);
+    const run = activeRun(tables, runId);
+    const subject = activeSubject(tables, run.SubjectID);
+    const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: true });
+    const teacher = activeTeacher(tables, teacherAccountId);
+    const dates = generateSessionDates(clean(run.StartDate), clean(run.EndDate), weekdays);
+    if (!dates.length) throw clientError("The selected weekdays do not occur inside this run", 400);
+
+    for (const sessionDate of dates) {
+      if (hasActiveSlotConflict(tables.GlobalTimetableSessions, {
+        runId: run.RunID,
+        sessionDate,
+        startTime,
+        endTime
+      })) {
+        throw clientError(`An active session already overlaps ${sessionDate} ${startTime}-${endTime}`, 409);
+      }
+    }
+
+    const timestamp = new Date().toISOString();
+    const records = dates.map(sessionDate => ({
+      SessionID: createPlatformId("GTS"),
+      RunID: clean(run.RunID),
+      SubjectID: clean(subject.SubjectID),
+      ModuleID: module ? clean(module.ModuleID) : "",
+      SessionDate: sessionDate,
+      StartTime: startTime,
+      EndTime: endTime,
+      TeacherAccountID: clean(teacher.AccountID),
+      ZoomLink: zoomLink,
+      Active: true,
+      CreatedDate: timestamp,
+      CreatedByAccountID: permission.user.accountid,
+      CreatedByAccountName: permission.user.username,
+      ModifiedByAccountID: "",
+      ModifiedByAccountName: "",
+      ModifiedDate: ""
+    }));
+
+    await writeGeneratedSessions(env, permission.user, tables, run, records, timestamp);
+    const publishedSourceIds = publishedSourceIdSet(tables.PublishedGlobalTimetableSessions);
+    return json({
+      success: true,
+      message: `${records.length} exact-dated global timetable session${records.length === 1 ? "" : "s"} generated`,
+      sessions: records.map(row => enrichSession(mapGlobalTimetableSession(row, publishedSourceIds), tables)),
+      state: developmentStateForResponse(tables, run.RunID)
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const sessionId = clean(body.sessionId || body.sessionid);
+    if (!sessionId) throw clientError("SessionID is required", 400);
+
+    const tables = await readGlobalTimetableTables(env);
+    const existing = uniqueRecord(tables.GlobalTimetableSessions, "SessionID", sessionId, "Global timetable session");
+    const run = activeRun(tables, existing.RunID);
+    const subject = activeSubject(tables, run.SubjectID);
+    const moduleId = clean(body.moduleId ?? body.moduleid ?? existing.ModuleID);
+    const sessionDate = clean(body.sessionDate || body.sessiondate || existing.SessionDate);
+    const startTime = normalizeSubmittedTime(body.startTime || body.starttime || existing.StartTime);
+    const endTime = normalizeSubmittedTime(body.endTime || body.endtime || existing.EndTime);
+    const teacherAccountId = clean(body.teacherAccountId || body.teacheraccountid || existing.TeacherAccountID);
+    const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? existing.ZoomLink);
+    const active = readBoolean(body.active, isActivePlatformValue(existing.Active));
+
+    if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
+      throw clientError("SessionDate must be a valid date within the selected run", 400);
+    }
+    if (!validateTimeRange(startTime, endTime)) throw clientError("StartTime and EndTime require a valid increasing HH:MM range", 400);
+    validateZoomLink(zoomLink);
+    const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: false });
+    const teacher = activeTeacher(tables, teacherAccountId);
+
+    if (active && hasActiveSlotConflict(tables.GlobalTimetableSessions, {
+      runId: run.RunID,
+      sessionDate,
+      startTime,
+      endTime,
+      excludeSessionId: existing.SessionID
+    })) {
+      throw clientError("This edit overlaps another active session in the same run", 409);
+    }
+
+    const timestamp = new Date().toISOString();
+    const record = {
+      ...existing,
+      ModuleID: module ? clean(module.ModuleID) : "",
+      SessionDate: sessionDate,
+      StartTime: startTime,
+      EndTime: endTime,
+      TeacherAccountID: clean(teacher.AccountID),
+      ZoomLink: zoomLink,
+      Active: active,
+      ModifiedByAccountID: permission.user.accountid,
+      ModifiedByAccountName: permission.user.username,
+      ModifiedDate: timestamp
+    };
+    const changedFields = changedRecordFields(existing, record, [
+      "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"
+    ]);
+    if (!changedFields.length) {
+      return json({
+        success: true,
+        message: "No global timetable session changes requested",
+        session: enrichSession(mapGlobalTimetableSession(existing, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables)
+      });
+    }
+
+    await writeSessionUpdate(env, permission.user, tables, run, existing, record, changedFields, timestamp);
+    return json({
+      success: true,
+      message: "Global timetable session updated",
+      session: enrichSession(mapGlobalTimetableSession(record, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables)
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+export async function publishPlatformGlobalTimetableEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const runId = clean(body.runId || body.runid);
+    if (!runId) throw clientError("RunID is required", 400);
+
+    const tables = await readGlobalTimetableTables(env);
+    const run = activeRun(tables, runId);
+    const subject = activeSubject(tables, run.SubjectID);
+    const sessions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID);
+    if (!sessions.length) throw clientError("Publish requires at least one active global timetable session", 409);
+    validateSessionsForPublication(tables, run, subject, sessions);
+
+    const timestamp = new Date().toISOString();
+    const versionNo = Math.max(0, ...tables.GlobalTimetablePublications
+      .filter(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(run.RunID))
+      .map(row => Number(row.VersionNo) || 0)) + 1;
+    const publicationId = createPlatformId("GTPUB");
+    const publication = {
+      PublicationID: publicationId,
+      RunID: clean(run.RunID),
+      SubjectID: clean(subject.SubjectID),
+      VersionNo: versionNo,
+      PublishedDate: timestamp,
+      PublishedByAccountID: permission.user.accountid,
+      PublishedByAccountName: permission.user.username,
+      SessionCount: sessions.length
+    };
+    const snapshots = buildSnapshotRows(tables, publication, run, subject, sessions, permission.user, timestamp);
+
+    await writePublication(env, permission.user, tables, run, publication, snapshots, timestamp);
+    return json({
+      success: true,
+      message: `Global timetable publication ${versionNo} created`,
+      publication: mapGlobalTimetablePublication(publication),
+      sessions: snapshots.map(mapPublishedGlobalTimetableSession),
+      globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value + 1
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+async function requireGlobalTimetableAdmin(request, env) {
+  if (request.method !== "POST") {
+    return { ok: false, response: json({ success: false, error: "Method not allowed" }, 405) };
+  }
+  const user = await getAuthUser(request, env);
+  if (!user) return { ok: false, response: json({ success: false, error: "Unauthorized" }, 401) };
+  const authority = normalizePlatformIdentifier(user.role);
+  if (user.type !== "account" || !["ADMIN", "GLOBAL_ADMIN"].includes(authority)) {
+    return { ok: false, response: json({ success: false, error: "ADMIN or GLOBAL_ADMIN authority is required" }, 403) };
+  }
+  return {
+    ok: true,
+    user: {
+      accountid: clean(user.accountid),
+      username: clean(user.username || "Global Admin"),
+      role: authority,
+      courseid: clean(user.courseid)
+    }
+  };
+}
+
+async function readGlobalTimetableTables(env) {
+  const names = [
+    "GlobalSubjectList",
+    "GlobalModuleList",
+    "GlobalSubjectRuns",
+    "UserAccounts",
+    "GlobalTimetableSessions",
+    "GlobalTimetableRunState",
+    "GlobalTimetablePublications",
+    "PublishedGlobalTimetableSessions",
+    "PlatformConfig",
+    "PlatformAuditLog"
+  ];
+  const entries = await Promise.all(names.map(async name => [name, await readPlatformSheet(env, name)]));
+  const tables = Object.fromEntries(entries);
+  requireGlobalTimetableSchema(tables.PlatformConfig);
+  return tables;
+}
+
+function requireGlobalTimetableSchema(configRows) {
+  const matches = (configRows || []).filter(row => (
+    normalizePlatformIdentifier(row.ConfigKey) === "PLATFORMSCHEMAVERSION"
+  ));
+  const version = clean(matches[0]?.ConfigValue);
+  if (matches.length !== 1 || version !== TIMETABLE_SCHEMA_VERSION) {
+    throw new Error(`Global timetable requires PlatformSchemaVersion ${TIMETABLE_SCHEMA_VERSION}`);
+  }
+}
+
+async function writeGeneratedSessions(env, user, tables, run, records, timestamp) {
+  const writes = [];
+  const firstRow = nextRowNumber(tables.GlobalTimetableSessions);
+  if (records.length) {
+    writes.push(rangeWrite("GlobalTimetableSessions", firstRow, records.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessions))));
+  }
+  const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, user, timestamp);
+  if (stateMutation) writes.push(stateMutation.write);
+
+  const auditRows = records.map(record => auditRow(user, timestamp, "GENERATE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", record.SessionID,
+    ["RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"]));
+  if (stateMutation) auditRows.push(stateMutation.audit);
+  if (auditRows.length) writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRows));
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+}
+
+async function writeSessionUpdate(env, user, tables, run, existing, record, changedFields, timestamp) {
+  const writes = [
+    valueWrite("GlobalTimetableSessions", existing._rowNumber, recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessions))
+  ];
+  const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, user, timestamp);
+  if (stateMutation) writes.push(stateMutation.write);
+  const audits = [auditRow(user, timestamp, "UPDATE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", record.SessionID, changedFields)];
+  if (stateMutation) audits.push(stateMutation.audit);
+  writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+}
+
+async function writePublication(env, user, tables, run, publication, snapshots, timestamp) {
+  const version = readGlobalTimetableVersion(tables.PlatformConfig);
+  const nextVersion = version.value + 1;
+  const stateWrite = buildPublishedStateWrite(tables, run.RunID, publication.PublicationID, user, timestamp);
+  const writes = [
+    valueWrite("GlobalTimetablePublications", nextRowNumber(tables.GlobalTimetablePublications), recordToRow(publication, PLATFORM_SHEET_HEADERS.GlobalTimetablePublications)),
+    rangeWrite("PublishedGlobalTimetableSessions", nextRowNumber(tables.PublishedGlobalTimetableSessions), snapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions))),
+    stateWrite.write,
+    {
+      range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
+      majorDimension: "ROWS",
+      values: [[nextVersion, timestamp, user.accountid, user.username]]
+    },
+    valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow(
+      user, timestamp, "PUBLISH_GLOBAL_TIMETABLE", "GLOBAL_TIMETABLE_PUBLICATION", publication.PublicationID,
+      ["RunID", "SubjectID", "VersionNo", "PublishedDate", "SessionCount"]
+    ))
+  ];
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+}
+
+function buildSnapshotRows(tables, publication, run, subject, sessions, user, timestamp) {
+  return [...sessions]
+    .sort((a, b) => `${clean(a.SessionDate)} ${clean(a.StartTime)}`.localeCompare(`${clean(b.SessionDate)} ${clean(b.StartTime)}`))
+    .map(session => {
+      const module = resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
+      const teacher = activeTeacher(tables, session.TeacherAccountID);
+      return {
+        PublishedSessionID: createPlatformId("GTPSESSION"),
+        PublicationID: publication.PublicationID,
+        SourceSessionID: clean(session.SessionID),
+        RunID: clean(run.RunID),
+        SubjectID: clean(subject.SubjectID),
+        ModuleID: module ? clean(module.ModuleID) : "",
+        SessionDate: clean(session.SessionDate),
+        StartTime: normalizeSubmittedTime(session.StartTime),
+        EndTime: normalizeSubmittedTime(session.EndTime),
+        TeacherAccountID: clean(teacher.AccountID),
+        ZoomLink: clean(session.ZoomLink),
+        PublishedDate: timestamp,
+        PublishedByAccountID: user.accountid,
+        PublishedByAccountName: user.username,
+        RunName: clean(run.RunName),
+        SubjectName: clean(subject.SubjectName),
+        ModuleName: module ? clean(module.ModuleName) : "",
+        TeacherName: clean(teacher.DisplayName),
+        Timezone: clean(run.Timezone)
+      };
+    });
+}
+
+function buildDevelopmentStateMutation(tables, runId, user, timestamp) {
+  const matches = tables.GlobalTimetableRunState.filter(row => (
+    normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId)
+  ));
+  if (matches.length > 1) throw clientError("Global timetable run has duplicate state rows", 409);
+  const existing = matches[0] || null;
+  if (existing && normalizePlatformIdentifier(existing.Stage) === GLOBAL_TIMETABLE_DEVELOPMENT_STAGE) return null;
+  const record = existing ? {
+    ...existing,
+    Stage: GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
+    CurrentPublicationID: clean(existing.CurrentPublicationID),
+    ModifiedByAccountID: user.accountid,
+    ModifiedByAccountName: user.username,
+    ModifiedDate: timestamp
+  } : {
+    RunID: clean(runId),
+    Stage: GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
+    CurrentPublicationID: "",
+    CreatedDate: timestamp,
+    CreatedByAccountID: user.accountid,
+    CreatedByAccountName: user.username,
+    ModifiedByAccountID: "",
+    ModifiedByAccountName: "",
+    ModifiedDate: ""
+  };
+  const action = existing ? "UPDATE_GLOBAL_TIMETABLE_STATE" : "CREATE_GLOBAL_TIMETABLE_STATE";
+  return {
+    write: valueWrite("GlobalTimetableRunState", existing?._rowNumber || nextRowNumber(tables.GlobalTimetableRunState), recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableRunState)),
+    audit: auditRow(user, timestamp, action, "GLOBAL_TIMETABLE_RUN_STATE", clean(runId), ["Stage", "CurrentPublicationID"])
+  };
+}
+
+function buildPublishedStateWrite(tables, runId, publicationId, user, timestamp) {
+  const matches = tables.GlobalTimetableRunState.filter(row => (
+    normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId)
+  ));
+  if (matches.length > 1) throw clientError("Global timetable run has duplicate state rows", 409);
+  const existing = matches[0] || null;
+  const record = existing ? {
+    ...existing,
+    Stage: GLOBAL_TIMETABLE_PUBLISHED_STAGE,
+    CurrentPublicationID: publicationId,
+    ModifiedByAccountID: user.accountid,
+    ModifiedByAccountName: user.username,
+    ModifiedDate: timestamp
+  } : {
+    RunID: clean(runId),
+    Stage: GLOBAL_TIMETABLE_PUBLISHED_STAGE,
+    CurrentPublicationID: publicationId,
+    CreatedDate: timestamp,
+    CreatedByAccountID: user.accountid,
+    CreatedByAccountName: user.username,
+    ModifiedByAccountID: "",
+    ModifiedByAccountName: "",
+    ModifiedDate: ""
+  };
+  return {
+    write: valueWrite("GlobalTimetableRunState", existing?._rowNumber || nextRowNumber(tables.GlobalTimetableRunState), recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableRunState)),
+    record
+  };
+}
+
+function validateSessionsForPublication(tables, run, subject, sessions) {
+  const sourceIds = new Set();
+  const slots = new Set();
+  for (const session of sessions) {
+    const sourceId = normalizePlatformIdentifier(session.SessionID);
+    if (!sourceId || sourceIds.has(sourceId)) throw clientError("Global timetable contains duplicate source SessionID values", 409);
+    sourceIds.add(sourceId);
+    if (normalizePlatformIdentifier(session.RunID) !== normalizePlatformIdentifier(run.RunID) ||
+        normalizePlatformIdentifier(session.SubjectID) !== normalizePlatformIdentifier(subject.SubjectID)) {
+      throw clientError("Global timetable session has an invalid run/subject relationship", 409);
+    }
+    if (!sessionWithinRun(session, run)) throw clientError("Global timetable session falls outside its run dates", 409);
+    if (!validateTimeRange(session.StartTime, session.EndTime)) throw clientError("Global timetable session has an invalid time range", 409);
+    resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
+    activeTeacher(tables, session.TeacherAccountID);
+    validateZoomLink(session.ZoomLink);
+    const slot = `${clean(session.SessionDate)}|${normalizeSubmittedTime(session.StartTime)}|${normalizeSubmittedTime(session.EndTime)}`;
+    if (slots.has(slot)) throw clientError("Global timetable contains duplicate active date/time slots", 409);
+    slots.add(slot);
+  }
+}
+
+function activeRun(tables, runId) {
+  const run = uniqueRecord(tables.GlobalSubjectRuns, "RunID", runId, "Global subject run");
+  if (!isActivePlatformValue(run.Active)) throw clientError("Global timetable requires an active global-subject run", 409);
+  return run;
+}
+
+function activeSubject(tables, subjectId) {
+  const subject = uniqueRecord(tables.GlobalSubjectList, "SubjectID", subjectId, "Global subject");
+  if (!isActivePlatformValue(subject.Active)) throw clientError("Global timetable requires an active global subject", 409);
+  return subject;
+}
+
+function resolveModule(tables, moduleId, subjectId, { requireActive = false } = {}) {
+  if (!clean(moduleId)) return null;
+  const module = uniqueRecord(tables.GlobalModuleList, "ModuleID", moduleId, "Global module");
+  if (normalizePlatformIdentifier(module.SubjectID) !== normalizePlatformIdentifier(subjectId)) {
+    throw clientError("Module does not belong to this global subject", 409);
+  }
+  if (requireActive && !isActivePlatformValue(module.Active)) throw clientError("Global timetable requires an active module", 409);
+  return module;
+}
+
+function activeTeacher(tables, accountId) {
+  if (!clean(accountId)) throw clientError("Select teacher", 400);
+  const teacher = uniqueRecord(tables.UserAccounts, "AccountID", accountId, "Teacher account");
+  if (!isActivePlatformValue(teacher.Active)) throw clientError("Teacher account must be active", 409);
+  return teacher;
+}
+
+function hasActiveSlotConflict(rows, { runId, sessionDate, startTime, endTime, excludeSessionId = "" }) {
+  const runKey = normalizePlatformIdentifier(runId);
+  const exclude = normalizePlatformIdentifier(excludeSessionId);
+  return (rows || []).some(row => {
+    if (!isActivePlatformValue(row.Active)) return false;
+    if (normalizePlatformIdentifier(row.RunID) !== runKey) return false;
+    if (exclude && normalizePlatformIdentifier(row.SessionID) === exclude) return false;
+    if (clean(row.SessionDate) !== clean(sessionDate)) return false;
+    const rowStart = normalizeSubmittedTime(row.StartTime);
+    const rowEnd = normalizeSubmittedTime(row.EndTime);
+    return rowStart < endTime && startTime < rowEnd;
+  });
+}
+
+function publishedSourceIdSet(rows) {
+  return new Set((rows || []).map(row => normalizePlatformIdentifier(row.SourceSessionID)).filter(Boolean));
+}
+
+function readGlobalTimetableVersion(configRows) {
+  const matches = (configRows || []).filter(row => (
+    normalizePlatformIdentifier(row.ConfigKey) === "GLOBALTIMETABLEVERSION"
+  ));
+  const value = Number(matches[0]?.ConfigValue);
+  if (matches.length !== 1 || !Number.isInteger(value) || value < 1) {
+    throw new Error("PlatformConfig GlobalTimetableVersion must resolve exactly once as a positive integer");
+  }
+  return { value, rowNumber: matches[0]._rowNumber };
+}
+
+function mapSubject(record) {
+  return { subjectid: clean(record.SubjectID), subjectname: clean(record.SubjectName), active: isActivePlatformValue(record.Active) };
+}
+function mapModule(record) {
+  return { moduleid: clean(record.ModuleID), subjectid: clean(record.SubjectID), modulename: clean(record.ModuleName), active: isActivePlatformValue(record.Active) };
+}
+function mapTeacherAccount(record) {
+  return { accountid: clean(record.AccountID), displayname: clean(record.DisplayName), active: isActivePlatformValue(record.Active) };
+}
+function enrichSession(session, tables) {
+  const run = findById(tables.GlobalSubjectRuns, "RunID", session.runid);
+  const subject = findById(tables.GlobalSubjectList, "SubjectID", session.subjectid);
+  const module = session.moduleid ? findById(tables.GlobalModuleList, "ModuleID", session.moduleid) : null;
+  const teacher = findById(tables.UserAccounts, "AccountID", session.teacheraccountid);
+  return Object.freeze({
+    ...session,
+    runname: clean(run?.RunName),
+    subjectname: clean(subject?.SubjectName),
+    modulename: clean(module?.ModuleName),
+    teachername: clean(teacher?.DisplayName),
+    timezone: clean(run?.Timezone)
+  });
+}
+
+function developmentStateForResponse(tables, runId) {
+  const existing = tables.GlobalTimetableRunState.find(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId));
+  return {
+    runid: clean(runId),
+    stage: GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
+    currentpublicationid: clean(existing?.CurrentPublicationID)
+  };
+}
+
+function uniqueRecord(records, key, value, label) {
+  const normalized = normalizePlatformIdentifier(value);
+  if (!normalized) throw clientError(`${label} ID is required`, 400);
+  const matches = (records || []).filter(record => normalizePlatformIdentifier(record[key]) === normalized);
+  if (matches.length === 0) throw clientError(`${label} was not found`, 404);
+  if (matches.length > 1) throw clientError(`${label} is duplicated`, 409);
+  return matches[0];
+}
+function findById(records, key, value) {
+  const normalized = normalizePlatformIdentifier(value);
+  return (records || []).find(record => normalizePlatformIdentifier(record[key]) === normalized) || null;
+}
+function changedRecordFields(existing, next, keys) {
+  return keys.filter(key => String(existing?.[key] ?? "") !== String(next?.[key] ?? ""));
+}
+function recordToRow(record, headers) {
+  return headers.map(header => record?.[header] ?? "");
+}
+function auditRow(user, timestamp, action, recordType, recordId, changedFields) {
+  return [
+    createPlatformId("AUDIT"), timestamp, user.accountid, user.username, user.role,
+    user.role === "GLOBAL_ADMIN" ? "" : user.courseid,
+    action, recordType, recordId, JSON.stringify(changedFields)
+  ];
+}
+function valueWrite(sheetName, rowNumber, row) {
+  return {
+    range: `'${sheetName}'!A${rowNumber}:${columnName(row.length)}${rowNumber}`,
+    majorDimension: "ROWS",
+    values: [row]
+  };
+}
+function rangeWrite(sheetName, startRow, rows) {
+  const width = rows[0]?.length || PLATFORM_SHEET_HEADERS[sheetName]?.length || 1;
+  const endRow = startRow + rows.length - 1;
+  return {
+    range: `'${sheetName}'!A${startRow}:${columnName(width)}${endRow}`,
+    majorDimension: "ROWS",
+    values: rows
+  };
+}
+function nextRowNumber(records) {
+  return Math.max(1, ...(records || []).map(record => Number(record._rowNumber) || 1)) + 1;
+}
+function validateZoomLink(value) {
+  const link = clean(value);
+  if (!link) return;
+  if (link.length > MAX_ZOOM_LINK_LENGTH || !HTTPS_URL_PATTERN.test(link)) {
+    throw clientError("ZoomLink must be blank or a valid HTTPS URL", 400);
+  }
+}
+function normalizeSubmittedTime(value) {
+  const text = clean(value);
+  const match = /^(\d{1,2}):(\d{2})/.exec(text);
+  if (!match) return text;
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`;
+}
+function readBoolean(value, fallback) {
+  if (value === true || value === false) return value;
+  const normalized = normalizePlatformIdentifier(value);
+  if (["TRUE", "YES", "ACTIVE", "1"].includes(normalized)) return true;
+  if (["FALSE", "NO", "INACTIVE", "0"].includes(normalized)) return false;
+  if (fallback !== null && fallback !== undefined) return fallback;
+  throw clientError("Active must be true or false", 400);
+}
+function createPlatformId(prefix) {
+  const uuid = typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${uuid}`;
+}
+function columnName(columnNumber) {
+  let value = columnNumber;
+  let name = "";
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    value = Math.floor((value - 1) / 26);
+  }
+  return name;
+}
+function clientError(message, status = 400) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+function globalTimetableMutationError(error, env) {
+  if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 500) {
+    return json({ success: false, error: clean(error.message) }, error.status);
+  }
+  return globalTimetableError(error, env);
+}
+function globalTimetableError(error, env) {
+  const response = { success: false, error: "Global timetable service is not ready" };
+  if (String(env.M4L_ACCOUNT_AUTH_DIAGNOSTICS || "").trim().toLowerCase() === "true") {
+    response.detail = clean(error?.message || "Global timetable service error").replace(/[\r\n\t]+/g, " ").slice(0, 220);
+  }
+  return json(response, 503);
+}
+function clean(value) {
+  return String(value ?? "").trim();
+}

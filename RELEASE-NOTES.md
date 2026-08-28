@@ -1,3 +1,29 @@
+V102.11
+
+# Build the exact-dated Global Subject timetable and immutable publication layer
+
+- Adds the central, run-bound Global Subject schedule required before academy aggregation.
+- Generates exact dated sessions from selected weekdays across a finite Global Subject run.
+- Supports individual holiday/gap/session exceptions after generation.
+- Assigns teachers by central AccountID and stores an optional per-session HTTPS Zoom link.
+- Keeps editable development rows separate from immutable published snapshots.
+- Publishing is per run and appends a new version; the previous publication remains untouched.
+- Later draft changes preserve the current publication pointer until republish.
+- Adds immutable display snapshots for run, subject, module, teacher and timezone names.
+- Adds Global Curriculum **Schedule** administration with explicit central teacher selection.
+- Keeps Schedule fail-closed until `PlatformSchemaVersion = 102.0.6`, preventing use during the Sheet/code cut-over window.
+- Adds `GlobalTimetableVersion`, changed only by successful publication.
+- Advances Platform schema to `102.0.6` with 17 required tabs.
+- Requires four header-only timetable tabs and the `GlobalTimetableVersion = 1` PlatformConfig row before code deployment.
+- Leaves V102.10 access policy/matrix/run authorization and protected Drive behavior unchanged.
+- Leaves course timetable code and live course publication behavior unchanged.
+- Carries the Attendance post-save reset fix forward.
+- Academy timetable aggregation remains V102.12.
+
+Install the V102.11 changed-files overlay over the complete deployed V102.10 development repository and complete `UPDATE-TODO.md` in order. Follow `V102.11-PLATFORM-SHEET-MIGRATION.md` before the GitHub push.
+
+---
+
 V102.10
 
 # Add global-subject access matrix, policies and finite teaching runs

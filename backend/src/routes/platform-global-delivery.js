@@ -1,4 +1,4 @@
-/* M4L V102.10 - Global-subject access-policy and finite scheduled-run management. */
+/* M4L V102.11 - Global-subject access-policy, finite runs and timetable-boundary safeguards. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -160,6 +160,20 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       throw clientError("A run cannot be moved to a different global subject", 409);
     }
 
+    const timetableSessions = existing ? tables.GlobalTimetableSessions.filter(session => (
+      normalizePlatformIdentifier(session.RunID) === normalizePlatformIdentifier(existing.RunID)
+    )) : [];
+    const outsideNewBounds = timetableSessions.filter(session => {
+      const date = clean(session.SessionDate);
+      return date && (date < startDate || date > endDate);
+    });
+    if (outsideNewBounds.length) {
+      throw clientError(
+        `Run dates cannot exclude ${outsideNewBounds.length} existing global timetable session${outsideNewBounds.length === 1 ? "" : "s"}; edit the dated sessions first`,
+        409
+      );
+    }
+
     const timestamp = new Date().toISOString();
     const record = existing ? {
       ...existing,
@@ -248,6 +262,7 @@ async function readDeliveryTables(env) {
     "GlobalSubjectAccessPolicy",
     "GlobalSubjectRuns",
     "GlobalSubjectAccessMatrix",
+    "GlobalTimetableSessions",
     "GlobalResources",
     "PlatformConfig",
     "PlatformAuditLog"

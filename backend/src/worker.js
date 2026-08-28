@@ -1,4 +1,4 @@
-/* M4L V102.10 - global-subject access policies and scheduled-run foundation.
+/* M4L V102.11 - exact-dated global timetable builder and immutable publication.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.10"
+          version: "102.11"
         });
       }
 

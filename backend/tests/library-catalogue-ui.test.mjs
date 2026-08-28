@@ -10,8 +10,9 @@ const student = read("../../student/index.html");
 for (const html of [admin, student]) {
   assert.match(html, /id="library-source-selector"/);
   assert.match(html, /m4l-resources\.js\?v=102\.10/);
-  assert.match(html, /styles\.css\?v=102\.10/);
 }
+assert.match(admin, /styles\.css\?v=102\.11/);
+assert.match(student, /styles\.css\?v=102\.10/);
 
 assert.match(resources, /\/api\/library\/catalogue/);
 assert.match(resources, /\/api\/library\/course-resource\/access/);

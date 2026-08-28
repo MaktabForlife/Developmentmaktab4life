@@ -1,0 +1,130 @@
+/* M4L V102.11 - Global Curriculum exact-dated timetable builder. */
+.global-timetable-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.global-timetable-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.global-timetable-run-meta,
+.global-timetable-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.global-timetable-run-meta span,
+.global-timetable-badge {
+  border: 1px solid var(--surface-track, #d9dde8);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff;
+}
+
+.global-timetable-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.global-timetable-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.global-timetable-weekdays {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.global-timetable-weekdays legend {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.global-timetable-weekdays label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 8px 8px 0;
+  padding: 7px 9px;
+  border: 1px solid var(--surface-track, #d9dde8);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.global-timetable-session-list {
+  display: grid;
+  gap: 8px;
+}
+
+.global-timetable-session {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(105px, auto) minmax(95px, auto) minmax(180px, 1fr) minmax(150px, 1fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid var(--surface-track, #d9dde8);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: #fff;
+  color: inherit;
+}
+
+.global-timetable-session:hover,
+.global-timetable-session:focus-visible {
+  border-color: currentColor;
+}
+
+.global-timetable-session.is-inactive {
+  opacity: .6;
+}
+
+.global-timetable-session-date {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.global-timetable-session small {
+  white-space: nowrap;
+}
+
+.global-timetable-publish {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.global-timetable-publish h3,
+.global-timetable-publish p {
+  margin-top: 0;
+}
+
+@media (max-width: 850px) {
+  .global-timetable-grid,
+  .global-timetable-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .global-timetable-session {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .global-timetable-session strong,
+  .global-timetable-session small {
+    grid-column: 1 / -1;
+  }
+
+  .global-timetable-publish {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

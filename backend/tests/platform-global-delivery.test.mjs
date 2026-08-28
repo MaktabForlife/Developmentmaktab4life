@@ -127,6 +127,21 @@ try {
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT_RUN");
   const createdRunId = created.data.run.runid;
 
+  tables.GlobalTimetableSessions.push([
+    "GTS-BOUNDARY", createdRunId, "GSUBJ1", "", "2026-11-15", "09:00", "10:00", "ACCOUNT1", "", true
+  ]);
+  const blockedBoundaryShrink = await post("/api/admin/platform/global/run/save", {
+    runId: createdRunId,
+    subjectId: "GSUBJ1",
+    runName: "Long current run",
+    startDate: "2026-12-01",
+    endDate: "2026-12-31",
+    timezone: "Africa/Johannesburg",
+    active: true
+  }, token);
+  assert.equal(blockedBoundaryShrink.response.status, 409);
+  assert.match(blockedBoundaryShrink.data.error, /cannot exclude 1 existing global timetable session/);
+
   const invalidDates = await post("/api/admin/platform/global/run/save", {
     subjectId: "GSUBJ1",
     runName: "Invalid",

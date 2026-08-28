@@ -1,137 +1,118 @@
-# V102.10 update TODO — global-subject access matrix, policies and scheduled runs
+# V102.11 update TODO — exact-dated Global Subject timetable
 
-Complete in order. Development starts from the complete deployed V102.9.1 repository. Production V101.1 remains untouched.
+Complete in order. Baseline is the complete deployed and validated V102.10 development repository.
 
 ## 1. Confirm starting point
 
-- [ ] Development Worker root reports `102.9.1`.
-- [ ] GitHub development branch matches the deployed V102.9.1 source.
-- [ ] Production V101.1 remains untouched.
+- [ ] Development Worker root reports `102.10` before applying V102.11.
+- [ ] Platform validation is green on schema `102.0.5` with 13 required tabs.
 - [ ] Back up the complete central Platform Sheet.
-- [ ] Do not republish/reactivate/rollback a course timetable for V102.10.
+- [ ] Confirm V102.10 FREE/SUBSCRIPTION and protected Global Resources still work.
+- [ ] Confirm the Attendance save-reset carry-forward still works.
 
-## 2. Prepare all three additive Platform tabs while B3 stays 102.0.4
+## 2. Prepare V102.11 Platform additions while schema stays 102.0.5
 
-Follow `V102.10-PLATFORM-SHEET-MIGRATION.md` exactly.
+Follow `V102.11-PLATFORM-SHEET-MIGRATION.md` exactly.
 
-- [ ] Record `PlatformConfig!B3`, B4 and B5 when present.
-- [ ] Create `GlobalSubjectAccessMatrix`.
-- [ ] Set A1 exactly to `AccountID`.
-- [ ] Add B1 onward from the live `GlobalSubjectList.SubjectID` values, exactly once each.
-- [ ] Add exactly one row per `UserAccounts.AccountID`.
-- [ ] Seed TRUE from active legacy `UserGlobalSubjectAccess` account+subject pairs and FALSE otherwise.
-- [ ] Convert any seed formulas to explicit TRUE/FALSE values.
-- [ ] Leave legacy `UserGlobalSubjectAccess` unchanged.
-- [ ] Create `GlobalSubjectAccessPolicy` with the exact A1:J1 template.
-- [ ] Add exactly one active `SUBSCRIPTION` policy for every existing global subject.
-- [ ] Use `GSPOL-<UUID>` IDs; never create per-user rows for FREE access.
-- [ ] Create `GlobalSubjectRuns` with the exact A1:M1 template.
-- [ ] Do not manufacture historical run rows.
-- [ ] Confirm `PlatformConfig!B3` is still `102.0.4`.
+- [ ] Create `GlobalTimetableSessions` with exact A1:P1 headers.
+- [ ] Create `GlobalTimetableRunState` with exact A1:I1 headers.
+- [ ] Create `GlobalTimetablePublications` with exact A1:H1 headers.
+- [ ] Create `PublishedGlobalTimetableSessions` with exact A1:S1 headers.
+- [ ] Leave row 2 onward blank in all four tabs.
+- [ ] Add exactly one `PlatformConfig` row with `ConfigKey = GlobalTimetableVersion` and `ConfigValue = 1`.
+- [ ] Leave the schema marker at `102.0.5`.
+- [ ] Do not manufacture timetable history or publication rows.
 
-V102.9.1 ignores these three additive tabs, making Sheet-first preparation safe.
+## 3. Apply the V102.11 changed-files overlay
 
-## 3. Apply the changed-files overlay
+- [ ] Copy every included file to its matching path in the deployed V102.10 development repository.
+- [ ] Follow `DELETE-FILES.txt` (V102.11 has no intentional runtime deletion).
+- [ ] Confirm root `version.json`, backend package and Worker root are `102.11`.
+- [ ] Confirm Pages and Worker are committed/pushed from the **same GitHub commit**.
 
-- [ ] Extract `Rebootyourmaktab-V102.10-GITHUB-UPDATE-FROM-V102.9.1.zip`.
-- [ ] Copy every included file to its matching path in deployed V102.9.1 development.
-- [ ] Delete only paths listed in `DELETE-FILES.txt`.
-- [ ] Confirm `version.json`, `js/version.json`, `backend/package.json` and Worker root report `102.10`.
-- [ ] Confirm Platform schema code requires 13 tabs.
-- [ ] Commit Pages + Worker together in one GitHub commit and push that one commit.
+## 4. Confirm deployment before schema flip
 
-## 4. Confirm same-commit deployment before schema flip
+- [ ] Worker root reports `102.11`.
+- [ ] Hard refresh/private window loads the V102.11 Pages commit.
+- [ ] GLOBAL_ADMIN / ADMIN central login works.
+- [ ] Global Curriculum existing Subjects, Modules, Tasks, Resources, Delivery and Access Matrix still load.
+- [ ] If Schedule is opened before the schema flip, confirm it stays unavailable rather than writing timetable data under schema `102.0.5`.
+- [ ] Do not change the schema marker until both Pages and Worker are confirmed on the same commit.
 
-- [ ] Worker root reports `102.10`.
-- [ ] Cloudflare Pages and Worker are from the same GitHub commit.
-- [ ] Hard refresh/private window shows V102.10.
-- [ ] GLOBAL_ADMIN and course ADMIN central login still work.
-- [ ] Do not change B3 until all checks above pass.
+## 5. Advance Platform schema
 
-## 5. Advance schema
-
-- [ ] Change `PlatformConfig!B3` from `102.0.4` to `102.0.5`.
-- [ ] Do not manually change `GlobalCurriculumVersion`.
+- [ ] Change the existing `PlatformSchemaVersion` value from `102.0.5` to `102.0.6` (`PlatformConfig!B3` if the V102.10 layout is unchanged).
 - [ ] Run Platform validation.
-- [ ] Confirm schema `102.0.5` and **13 required tabs**.
-- [ ] Confirm one matrix row per central account and one SubjectID column per global subject.
-- [ ] Confirm all matrix entitlement cells are explicit TRUE/FALSE.
-- [ ] Confirm one active FREE/SUBSCRIPTION policy per subject.
-- [ ] Confirm no invalid run dates/timezones/references.
+- [ ] Confirm `102.0.6` and **17 required tabs**.
+- [ ] Confirm `GlobalTimetableVersion = 1` before first publication.
+- [ ] Confirm 0 global timetable sessions, 0 publications and 0 published session snapshots before Schedule is used.
 
-## 6. Verify access matrix and FREE/SUBSCRIPTION
+## 6. Create a safe test schedule
 
-- [ ] Existing migrated subjects begin SUBSCRIPTION.
-- [ ] Matrix TRUE grants SUBSCRIPTION subject/resource access.
-- [ ] Matrix FALSE denies that SUBSCRIPTION subject/resource access.
-- [ ] Access Matrix UI shows one row per account and one column per global subject.
-- [ ] Toggle a SUBSCRIPTION checkbox and confirm the single matrix cell changes.
-- [ ] Confirm the toggle writes PlatformAuditLog but does not change GlobalCurriculumVersion.
-- [ ] Change a safe subject to FREE in Delivery.
-- [ ] Confirm every active account can access it even with matrix FALSE.
-- [ ] Confirm FREE cells are not editable and no per-user access rows are created.
-- [ ] Confirm protected Drive resource opens for FREE access.
-- [ ] Change FREE back to SUBSCRIPTION and confirm saved matrix flags resume control.
-- [ ] Confirm legacy `UserGlobalSubjectAccess` remains unchanged.
+Use an active Global Subject run with known dates.
 
-## 7. Verify automatic matrix maintenance
+- [ ] Open Global Curriculum → **Schedule**.
+- [ ] Select the run.
+- [ ] Choose a central teacher account.
+- [ ] Choose optional module, Start/End time, optional HTTPS Zoom link and one or more weekdays.
+- [ ] Generate dates.
+- [ ] Confirm generated SessionDate values fall only inside the run StartDate/EndDate.
+- [ ] Confirm `GlobalTimetableRunState` is DEVELOPMENT.
+- [ ] Confirm `GlobalTimetableVersion` remains `1` after draft generation.
 
-- [ ] Create a new global subject through Global Curriculum.
-- [ ] Confirm it receives an active SUBSCRIPTION policy.
-- [ ] Confirm its SubjectID is added as a new matrix column.
-- [ ] Confirm every existing matrix account row receives FALSE in that new column.
-- [ ] When testing central account migration, confirm each newly created account receives one matrix row defaulted FALSE across current subjects.
+## 7. Verify individual date exceptions
 
-## 8. Verify scheduled runs
+- [ ] Select one generated session.
+- [ ] Change its date/time and save.
+- [ ] Confirm the date remains inside the run.
+- [ ] Deactivate one holiday/gap date by clearing Active and save.
+- [ ] Confirm it remains as an inactive draft row rather than being silently deleted.
+- [ ] Confirm an exact duplicate active run/date/time is rejected.
+- [ ] Confirm a run boundary change that would exclude an existing session is rejected in Delivery.
 
-- [ ] Future run derives UPCOMING.
-- [ ] Today inside StartDate/EndDate inclusive derives CURRENT in the run timezone.
-- [ ] EndDate before StartDate is rejected.
-- [ ] Invalid timezone is rejected.
-- [ ] Inactive run does not contribute CURRENT/UPCOMING.
-- [ ] Library priority is CURRENT → UPCOMING → PAST → NOT SCHEDULED.
-- [ ] Ending/deactivating a run does not revoke policy-based resource access.
+## 8. Verify first publication
 
-## 9. Verify Global Curriculum / protected resources
+- [ ] Publish the run timetable.
+- [ ] Confirm `GlobalTimetablePublications` receives version 1.
+- [ ] Confirm only Active source sessions are snapshotted.
+- [ ] Confirm `PublishedGlobalTimetableSessions` contains immutable display values RunName, SubjectName, ModuleName (when used), TeacherName and Timezone.
+- [ ] Confirm state becomes PUBLISHED and `CurrentPublicationID` points to version 1.
+- [ ] Confirm `GlobalTimetableVersion` increments by exactly 1.
 
-- [ ] Existing Subjects, Modules, Tasks and Resources still work.
-- [ ] Access Matrix works.
-- [ ] Protected V102.7 Global Resources Drive browser works unchanged.
-- [ ] Delivery saves FREE/SUBSCRIPTION and run mutations.
-- [ ] Policy/run changes create PlatformAuditLog rows and update GlobalCurriculumVersion.
-- [ ] No-op saves do not create unnecessary changes.
+## 9. Verify immutable republish behavior
 
-## 10. Focused regressions
+- [ ] Edit one source session after publishing.
+- [ ] Confirm state becomes DEVELOPMENT but `CurrentPublicationID` still points to version 1.
+- [ ] Confirm the version-1 snapshot did not change.
+- [ ] Publish again.
+- [ ] Confirm a version-2 publication and new snapshot rows are appended.
+- [ ] Confirm version-1 snapshot rows remain byte-for-byte unchanged.
+- [ ] Confirm `CurrentPublicationID` now points to version 2.
+- [ ] Confirm `GlobalTimetableVersion` increments again only on publish.
 
-- [ ] Unified Library source switching works.
-- [ ] Course Library authorization/protected files work.
-- [ ] Profile course/role switching works without another PIN.
-- [ ] TEACHER retains complete read-only selected-course timetable, Zoom only on own sessions.
-- [ ] Student timetable group filtering unchanged.
-- [ ] Attendance, Progress, Weekly Planner and Student Records permissions unchanged.
-- [ ] Attendance carry-forward: mark at least one student Absent, save successfully, and confirm the on-screen register resets all loaded students to Present; confirm a failed save does not reset marks.
-- [ ] PDF split view works.
-- [ ] Production V101.1 unchanged.
+## 10. Regression checks
 
-## 11. Rollback if required
+- [ ] FREE Global Subject remains accessible to active accounts without matrix TRUE.
+- [ ] SUBSCRIPTION subject still follows Access Matrix TRUE/FALSE.
+- [ ] Protected Global Drive link authorization works as in V102.10.
+- [ ] Delivery policy/run changes still work.
+- [ ] Course timetable Builder/read/publication remains unchanged.
+- [ ] Weekly Planner remains unchanged.
+- [ ] Attendance successful save resets the visible register to Present.
 
-- [ ] If B3 is `102.0.5`, change it back to `102.0.4` **first**.
-- [ ] Revert the one V102.10 GitHub commit.
-- [ ] Confirm Pages + Worker return together to V102.9.1.
-- [ ] Leave the three additive V102.10 tabs in place; V102.9.1 ignores them.
-- [ ] Confirm V102.9.1 resumes using unchanged legacy `UserGlobalSubjectAccess`.
-- [ ] Remember matrix-only entitlement changes made after migration are not read by V102.9.1 after rollback.
+## 11. Scope confirmation
 
-## Completion record
+- [ ] Do not expect Student/Teacher academy timetable display yet.
+- [ ] Do not add global sessions to course Sheets.
+- [ ] Do not add billing/expiry logic.
+- [ ] Do not add cross-course conflict logic.
+- [ ] Do not onboard Aalimiyah as part of V102.11.
 
-- Platform Sheet backup: ____________________
-- Development GitHub commit: ____________________
-- Worker deployment ID: ____________________
-- Pages deployment ID: ____________________
-- Worker version verified: ____________________
-- Platform schema 102.0.5 verified: ____________________
-- Matrix/FREE/SUBSCRIPTION checks: ____________________
-- Run-status checks: ____________________
-- Protected Drive checks: ____________________
-- Regression checks: ____________________
-- Verification date/result: ____________________
+## Rollback
+
+If rollback is required after schema `102.0.6` is active:
+
+1. Change `PlatformSchemaVersion` back to `102.0.5` first.
+2. Revert Pages and Worker together to the deployed V102.10 commit.
+3. Leave the four V102.11 timetable tabs and `GlobalTimetableVersion` row in place; V102.10 ignores them.
+4. Preserve all timetable/publication data unless an intentional, backed-up cleanup is required.

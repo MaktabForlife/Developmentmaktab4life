@@ -9,7 +9,7 @@ const [adminHtml, js, css, styles] = await Promise.all([
 ]);
 
 assert.match(adminHtml, /data-gcm-delivery-action="show"[^>]*>Delivery</);
-assert.match(adminHtml, /m4l-global-delivery\.js\?v=102\.10/);
+assert.match(adminHtml, /m4l-global-delivery\.js\?v=102\.11/);
 assert.match(styles, /m4l-26-global-delivery\.css\?v=102\.10/);
 assert.match(js, /\/api\/admin\/platform\/global\/delivery\/get/);
 assert.match(js, /\/api\/admin\/platform\/global\/policy\/save/);
@@ -24,4 +24,4 @@ assert.match(css, /\.global-delivery-shell/);
 assert.match(css, /\.global-delivery-badge/);
 assert.match(css, /@media \(max-width:/);
 
-console.log("V102.10 additive Global Curriculum Delivery UI checks passed.");
+console.log("V102.11 Global Curriculum Delivery coexistence UI checks passed.");

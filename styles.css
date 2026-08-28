@@ -1,4 +1,6 @@
-/* V102.10 global-subject access-policy and scheduled-run foundation.
+/* V102.11 exact-dated global-subject timetable and immutable publication.
+
+   V102.10 global-subject access-policy and scheduled-run foundation.
 
    V102.9.1 compact Timetable Builder controls and complete teacher timetable reads.
 
@@ -103,3 +105,4 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-22-timetable-builder.css?v=102.9.1");
 @import url("/css/m4l-24-global-curriculum.css?v=102.10");
 @import url("/css/m4l-26-global-delivery.css?v=102.10");
+@import url("/css/m4l-27-global-timetable.css?v=102.11");

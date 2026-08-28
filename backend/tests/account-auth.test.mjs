@@ -387,11 +387,14 @@ try {
   tables.PlatformConfig[2][1] = "102.0.5";
   const v10210SchemaCheck = await post("/api/account/check", { uniqueid: "ADMIN-LINK" });
   assert.equal(v10210SchemaCheck.response.status, 200, "V102.10 account login must accept Platform schema 102.0.5");
+  tables.PlatformConfig[2][1] = "102.0.6";
+  const v10211SchemaCheck = await post("/api/account/check", { uniqueid: "ADMIN-LINK" });
+  assert.equal(v10211SchemaCheck.response.status, 200, "V102.11 account login must accept Platform schema 102.0.6");
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.10 central account, FREE and subscription global-context authentication tests passed.");
+console.log("V102.11 central account, FREE and subscription global-context authentication tests passed.");
 
 async function post(path, body, token = "") {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

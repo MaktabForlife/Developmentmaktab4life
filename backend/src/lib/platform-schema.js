@@ -1,4 +1,4 @@
-/* M4L V102.10 - Authoritative central identity, access, delivery and global-content schema. */
+/* M4L V102.11 - Authoritative central identity, access, delivery and global timetable schema. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -96,6 +96,25 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "ModifiedByAccountName",
     "ModifiedDate"
   ]),
+  GlobalTimetableSessions: Object.freeze([
+    "SessionID", "RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime",
+    "TeacherAccountID", "ZoomLink", "Active", "CreatedDate", "CreatedByAccountID",
+    "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+  ]),
+  GlobalTimetableRunState: Object.freeze([
+    "RunID", "Stage", "CurrentPublicationID", "CreatedDate", "CreatedByAccountID",
+    "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+  ]),
+  GlobalTimetablePublications: Object.freeze([
+    "PublicationID", "RunID", "SubjectID", "VersionNo", "PublishedDate",
+    "PublishedByAccountID", "PublishedByAccountName", "SessionCount"
+  ]),
+  PublishedGlobalTimetableSessions: Object.freeze([
+    "PublishedSessionID", "PublicationID", "SourceSessionID", "RunID", "SubjectID", "ModuleID",
+    "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "PublishedDate",
+    "PublishedByAccountID", "PublishedByAccountName", "RunName", "SubjectName", "ModuleName",
+    "TeacherName", "Timezone"
+  ]),
   GlobalSubjectList: Object.freeze([
     "SubjectID",
     "SubjectName",
@@ -175,7 +194,8 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
 export const PLATFORM_CONFIG_KEYS = Object.freeze([
   "AccountLoginBaseUrl",
   "PlatformSchemaVersion",
-  "GlobalCurriculumVersion"
+  "GlobalCurriculumVersion",
+  "GlobalTimetableVersion"
 ]);
 
 export function validatePlatformSheetRows(sheetName, rows) {
