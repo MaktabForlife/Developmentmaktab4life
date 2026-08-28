@@ -1,4 +1,4 @@
-/* M4L V102.8.1 - Profile-visible Global context, segmented Library selector and Student split PDF support.
+/* M4L V102.10 - Policy-aware Global Library badges, Profile context and Student split PDF support.
    M4L v100.4.1 - Private Drive PDF.js compatibility
    Routes signed M4L Drive PDF URLs through the existing same-origin /pdf-file proxy.
 
@@ -759,6 +759,8 @@ function addLibraryResourceRecord({ subject, module, task, resource, fallbackTyp
       sourceLabel,
       sourceScope,
       sourceOrder: Number.isFinite(sourceOrder) ? sourceOrder : 0,
+      accessModel: String(subject?.accessmodel || resource?.accessmodel || "").trim().toUpperCase(),
+      deliveryStatus: String(subject?.deliverystatus || resource?.deliverystatus || "").trim().toUpperCase(),
       headingId: `library-subject-${makeDomSafeId(subjectKey)}`,
       moduleMap: new Map()
     });
@@ -1007,7 +1009,10 @@ function renderLibraryModuleSection(subject, module) {
   return `
     <section class="library-module-section m4l-ribbon-section" aria-labelledby="${escapeForAttribute(module.headingId)}" data-library-ribbon-section>
       <div class="library-module-header m4l-ribbon-header">
-        <h4 id="${escapeForAttribute(module.headingId)}" class="library-module-title m4l-ribbon-title">${escapeHtml(rowTitle)}</h4>
+        <div class="library-module-title-wrap">
+          <h4 id="${escapeForAttribute(module.headingId)}" class="library-module-title m4l-ribbon-title">${escapeHtml(rowTitle)}</h4>
+          ${renderGlobalSubjectBadges(subject)}
+        </div>
         ${renderLibraryResourceDots(resources, rowTitle)}
       </div>
       <div class="library-resource-row m4l-ribbon-track" role="list" aria-label="${escapeForAttribute(`${rowTitle} resources`)}" data-library-resource-row>
@@ -1015,6 +1020,22 @@ function renderLibraryModuleSection(subject, module) {
       </div>
       <div id="${escapeForAttribute(module.previewId)}" class="library-inline-preview hidden" aria-live="polite"></div>
     </section>
+  `;
+}
+
+function renderGlobalSubjectBadges(subject) {
+  if (String(subject?.sourceScope || "").toUpperCase() !== "GLOBAL") return "";
+  const accessModel = ["FREE", "SUBSCRIPTION"].includes(String(subject?.accessModel || "").toUpperCase())
+    ? String(subject.accessModel).toUpperCase()
+    : "SUBSCRIPTION";
+  const deliveryStatus = ["CURRENT", "UPCOMING", "PAST", "NOT SCHEDULED"].includes(String(subject?.deliveryStatus || "").toUpperCase())
+    ? String(subject.deliveryStatus).toUpperCase()
+    : "NOT SCHEDULED";
+  return `
+    <span class="library-global-subject-badges" aria-label="${escapeForAttribute(`${accessModel}; ${deliveryStatus}`)}">
+      <span class="library-subject-badge library-subject-badge--access">${escapeHtml(accessModel)}</span>
+      <span class="library-subject-badge library-subject-badge--delivery">${escapeHtml(deliveryStatus)}</span>
+    </span>
   `;
 }
 

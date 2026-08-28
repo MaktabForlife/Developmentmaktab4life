@@ -336,3 +336,40 @@
     height: 36px;
   }
 }
+
+/* V102.10 global-subject policy and delivery badges. */
+.library-module-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.library-global-subject-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.library-subject-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid rgba(35, 69, 105, 0.22);
+  border-radius: 999px;
+  background: rgba(35, 69, 105, 0.06);
+  color: #234569;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.035em;
+  white-space: nowrap;
+}
+
+.library-subject-badge--delivery {
+  background: rgba(35, 69, 105, 0.03);
+  font-weight: 700;
+}

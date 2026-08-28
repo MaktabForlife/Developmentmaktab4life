@@ -36,7 +36,7 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.4"],
+  ["PlatformSchemaVersion", "102.0.5"],
   ["GlobalCurriculumVersion", 1]
 ];
 
@@ -90,14 +90,17 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.4",
+    platformSchemaVersion: "102.0.5",
     globalCurriculumVersion: 1,
-    tabCount: 10,
+    tabCount: 13,
     rowCounts: {
       CourseRegistry: 1,
       UserAccounts: 0,
       UserCourseAccess: 0,
       UserGlobalSubjectAccess: 0,
+      GlobalSubjectAccessMatrix: 0,
+      GlobalSubjectAccessPolicy: 0,
+      GlobalSubjectRuns: 0,
       GlobalSubjectList: 0,
       GlobalModuleList: 0,
       GlobalTaskList: 0,
@@ -110,7 +113,14 @@ try {
     courseAccessCount: 0,
     globalSubjectCount: 0,
     globalSubjectAccessCount: 0,
+    globalSubjectAccessMatrixRowCount: 0,
     activeGlobalSubjectAccessCount: 0,
+    legacyGlobalSubjectAccessRowCount: 0,
+    legacyActiveGlobalSubjectAccessCount: 0,
+    globalSubjectPolicyCount: 0,
+    activeGlobalSubjectPolicyCount: 0,
+    globalSubjectRunCount: 0,
+    activeGlobalSubjectRunCount: 0,
     globalResourceCount: 0,
     globalAdminCount: 0,
     globalResourceDriveConfigured: false,
@@ -172,6 +182,9 @@ try {
     "ACCOUNT1", "Subscriber", "SUBSCRIBER1", false, "", true
   ]);
   tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Term 1", "2026-08-01", "2026-08-31", "Africa/Johannesburg", true]);
   tables.GlobalModuleList.push(["GMOD1", "GSUBJ1", "Module 1", 1, true]);
   tables.GlobalTaskList.push(["GTASK1", "GSUBJ1", "GMOD1", "Task 1", true]);
   tables.GlobalResources.push([
@@ -180,16 +193,47 @@ try {
   tables.UserGlobalSubjectAccess.push([
     "GSACCESS1", "ACCOUNT1", "GSUBJ1", true
   ]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"], ["ACCOUNT1", true]];
   const validSubscriptionSchema = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(validSubscriptionSchema.status, 200);
   const subscriptionResult = await validSubscriptionSchema.json();
   assert.equal(subscriptionResult.globalSubjectCount, 1);
   assert.equal(subscriptionResult.globalSubjectAccessCount, 1);
+  assert.equal(subscriptionResult.globalSubjectAccessMatrixRowCount, 1);
   assert.equal(subscriptionResult.activeGlobalSubjectAccessCount, 1);
+  assert.equal(subscriptionResult.legacyGlobalSubjectAccessRowCount, 1);
+  assert.equal(subscriptionResult.legacyActiveGlobalSubjectAccessCount, 1);
+  assert.equal(subscriptionResult.globalSubjectPolicyCount, 1);
+  assert.equal(subscriptionResult.activeGlobalSubjectPolicyCount, 1);
+  assert.equal(subscriptionResult.globalSubjectRunCount, 1);
+  assert.equal(subscriptionResult.activeGlobalSubjectRunCount, 1);
   assert.equal(subscriptionResult.globalResourceCount, 1);
 
+  tables = structuredClone(baseTables);
+  tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
+  const missingPolicy = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(missingPolicy.status, 503);
+  assert.match((await missingPolicy.json()).detail, /requires exactly one active access policy/);
+
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "FREE", true]);
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL2", "GSUBJ1", "SUBSCRIPTION", true]);
+  const duplicatePolicy = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(duplicatePolicy.status, 503);
+  assert.match((await duplicatePolicy.json()).detail, /duplicates an active policy/);
+
+  tables = structuredClone(baseTables);
+  tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Broken run", "2026-08-20", "2026-08-10", "Africa/Johannesburg", true]);
+  const invalidRun = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(invalidRun.status, 503);
+  assert.match((await invalidRun.json()).detail, /EndDate cannot precede StartDate/);
+
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 80);
+  assert.equal(sheetsCalls.some(call => decodeURIComponent(call.url.pathname).includes("GlobalSubjectAccessPolicy")), true);
+  assert.equal(sheetsCalls.some(call => decodeURIComponent(call.url.pathname).includes("GlobalSubjectRuns")), true);
   assert.equal(sheetsCalls.some(call => decodeURIComponent(call.url.pathname).includes("TeacherScheduleIndex")), false);
 } finally {
   globalThis.fetch = originalFetch;

@@ -1,7 +1,13 @@
-/* M4L V102.7 - Platform validation including optional Global Resources Drive configuration. */
+/* M4L V102.10 - Platform validation including global access policies, runs and protected Drive configuration. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { json } from "../lib/http.js";
+import {
+  GLOBAL_SUBJECT_ACCESS_MODELS,
+  globalSubjectAccessMatrixColumns,
+  isValidIanaTimezone,
+  validateIsoDate
+} from "../lib/global-subject-delivery.js";
 import { readPlatformSheet } from "../lib/platform-sheet.js";
 import {
   isActivePlatformValue,
@@ -9,7 +15,7 @@ import {
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.4";
+const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.5";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
@@ -151,9 +157,10 @@ export function validatePlatformTables(tables) {
   }
 
   const globalCurriculum = validateGlobalCurriculum(tables);
+  const globalDelivery = validateGlobalSubjectDelivery(tables, globalCurriculum.subjectIds, globalCurriculum.activeSubjectIds);
   const subjectAccessIds = new Set();
   const subjectAccessKeys = new Set();
-  let activeGlobalSubjectAccessCount = 0;
+  let legacyActiveGlobalSubjectAccessCount = 0;
   for (const access of tables.UserGlobalSubjectAccess) {
     const subjectAccessId = normalizePlatformIdentifier(access.SubjectAccessID);
     const accountId = normalizePlatformIdentifier(access.AccountID);
@@ -173,8 +180,14 @@ export function validatePlatformTables(tables) {
     }
     subjectAccessIds.add(subjectAccessId);
     subjectAccessKeys.add(accessKey);
-    if (isActivePlatformValue(access.Active)) activeGlobalSubjectAccessCount += 1;
+    if (isActivePlatformValue(access.Active)) legacyActiveGlobalSubjectAccessCount += 1;
   }
+
+  const globalAccessMatrix = validateGlobalSubjectAccessMatrix(
+    tables.GlobalSubjectAccessMatrix,
+    accountIds,
+    globalCurriculum.subjectIds
+  );
 
   return Object.freeze({
     platformSchemaVersion: schemaVersion,
@@ -187,8 +200,15 @@ export function validatePlatformTables(tables) {
     accountCount: accounts.length,
     courseAccessCount: tables.UserCourseAccess.length,
     globalSubjectCount: tables.GlobalSubjectList.length,
-    globalSubjectAccessCount: tables.UserGlobalSubjectAccess.length,
-    activeGlobalSubjectAccessCount,
+    globalSubjectAccessCount: globalAccessMatrix.entitlementCellCount,
+    globalSubjectAccessMatrixRowCount: globalAccessMatrix.rowCount,
+    activeGlobalSubjectAccessCount: globalAccessMatrix.activeEntitlementCount,
+    legacyGlobalSubjectAccessRowCount: tables.UserGlobalSubjectAccess.length,
+    legacyActiveGlobalSubjectAccessCount,
+    globalSubjectPolicyCount: tables.GlobalSubjectAccessPolicy.length,
+    activeGlobalSubjectPolicyCount: globalDelivery.activePolicyCount,
+    globalSubjectRunCount: tables.GlobalSubjectRuns.length,
+    activeGlobalSubjectRunCount: globalDelivery.activeRunCount,
     globalResourceCount: tables.GlobalResources.length,
     globalAdminCount: globalAdminAccounts,
     globalResourceDriveConfigured: Boolean(globalResourceDriveRootFolderId),
@@ -197,8 +217,67 @@ export function validatePlatformTables(tables) {
   });
 }
 
+function validateGlobalSubjectAccessMatrix(matrixRows, accountIds, subjectIds) {
+  const columns = globalSubjectAccessMatrixColumns(matrixRows);
+  const matrixSubjectIds = new Set(columns.map(column => normalizePlatformIdentifier(column.subjectId)));
+  if (matrixSubjectIds.size !== subjectIds.size) {
+    throw new Error("GlobalSubjectAccessMatrix must contain exactly one column for every GlobalSubjectList SubjectID");
+  }
+  for (const subjectId of subjectIds) {
+    if (!matrixSubjectIds.has(subjectId)) {
+      throw new Error(`GlobalSubjectAccessMatrix is missing the ${subjectId} subject column`);
+    }
+  }
+  for (const subjectId of matrixSubjectIds) {
+    if (!subjectIds.has(subjectId)) {
+      throw new Error(`GlobalSubjectAccessMatrix has an unknown ${subjectId} subject column`);
+    }
+  }
+
+  const matrixAccounts = new Set();
+  let activeEntitlementCount = 0;
+  for (const row of matrixRows) {
+    const accountId = normalizePlatformIdentifier(row.AccountID);
+    if (!accountId || !accountIds.has(accountId)) {
+      throw new Error(`GlobalSubjectAccessMatrix row ${row._rowNumber} has an invalid AccountID`);
+    }
+    if (matrixAccounts.has(accountId)) {
+      throw new Error(`GlobalSubjectAccessMatrix row ${row._rowNumber} duplicates AccountID ${accountId}`);
+    }
+    matrixAccounts.add(accountId);
+    for (const subjectId of matrixSubjectIds) {
+      const value = row?._subjectAccess?.[subjectId];
+      if (!isExplicitBooleanAccessValue(value)) {
+        throw new Error(`GlobalSubjectAccessMatrix row ${row._rowNumber} ${subjectId} must be TRUE or FALSE`);
+      }
+      if (isActivePlatformValue(value)) activeEntitlementCount += 1;
+    }
+  }
+
+  if (matrixAccounts.size !== accountIds.size) {
+    throw new Error("GlobalSubjectAccessMatrix must contain exactly one row for every UserAccounts AccountID");
+  }
+  for (const accountId of accountIds) {
+    if (!matrixAccounts.has(accountId)) {
+      throw new Error(`GlobalSubjectAccessMatrix is missing the ${accountId} account row`);
+    }
+  }
+
+  return Object.freeze({
+    rowCount: matrixRows.length,
+    entitlementCellCount: matrixRows.length * matrixSubjectIds.size,
+    activeEntitlementCount
+  });
+}
+
+function isExplicitBooleanAccessValue(value) {
+  if (value === true || value === false) return true;
+  return ["TRUE", "FALSE"].includes(String(value ?? "").trim().toUpperCase());
+}
+
 function validateGlobalCurriculum(tables) {
   const subjectIds = new Set();
+  const activeSubjectIds = new Set();
   for (const subject of tables.GlobalSubjectList) {
     const subjectId = normalizePlatformIdentifier(subject.SubjectID);
     if (!subjectId || !String(subject.SubjectName || "").trim()) {
@@ -208,6 +287,7 @@ function validateGlobalCurriculum(tables) {
       throw new Error(`GlobalSubjectList row ${subject._rowNumber} duplicates SubjectID`);
     }
     subjectIds.add(subjectId);
+    if (isActivePlatformValue(subject.Active)) activeSubjectIds.add(subjectId);
   }
 
   const moduleIds = new Set();
@@ -281,7 +361,81 @@ function validateGlobalCurriculum(tables) {
     resourceIds.add(resourceId);
   }
 
-  return Object.freeze({ subjectIds, moduleIds, taskIds, resourceIds });
+  return Object.freeze({ subjectIds, activeSubjectIds, moduleIds, taskIds, resourceIds });
+}
+
+function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
+  const accessModels = new Set(GLOBAL_SUBJECT_ACCESS_MODELS);
+  const policyIds = new Set();
+  const activePoliciesBySubject = new Map();
+  let activePolicyCount = 0;
+
+  for (const policy of tables.GlobalSubjectAccessPolicy) {
+    const policyId = normalizePlatformIdentifier(policy.SubjectPolicyID);
+    const subjectId = normalizePlatformIdentifier(policy.SubjectID);
+    const accessModel = normalizePlatformIdentifier(policy.AccessModel);
+    if (!policyId || policyIds.has(policyId)) {
+      throw new Error(`GlobalSubjectAccessPolicy row ${policy._rowNumber} has a blank or duplicate SubjectPolicyID`);
+    }
+    if (!subjectIds.has(subjectId)) {
+      throw new Error(`GlobalSubjectAccessPolicy row ${policy._rowNumber} has an invalid global SubjectID`);
+    }
+    if (!accessModels.has(accessModel)) {
+      throw new Error(`GlobalSubjectAccessPolicy row ${policy._rowNumber} AccessModel must be FREE or SUBSCRIPTION`);
+    }
+    policyIds.add(policyId);
+    if (isActivePlatformValue(policy.Active)) {
+      activePolicyCount += 1;
+      if (activePoliciesBySubject.has(subjectId)) {
+        throw new Error(`GlobalSubjectAccessPolicy row ${policy._rowNumber} duplicates an active policy for ${subjectId}`);
+      }
+      activePoliciesBySubject.set(subjectId, policy);
+    }
+  }
+
+  for (const subjectId of subjectIds) {
+    if (!activePoliciesBySubject.has(subjectId)) {
+      throw new Error(`Global subject ${subjectId} requires exactly one active access policy`);
+    }
+  }
+
+  const runIds = new Set();
+  let activeRunCount = 0;
+  for (const run of tables.GlobalSubjectRuns) {
+    const runId = normalizePlatformIdentifier(run.RunID);
+    const subjectId = normalizePlatformIdentifier(run.SubjectID);
+    const runName = String(run.RunName || "").trim();
+    const startDate = String(run.StartDate || "").trim();
+    const endDate = String(run.EndDate || "").trim();
+    const timezone = String(run.Timezone || "").trim();
+    if (!runId || runIds.has(runId)) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} has a blank or duplicate RunID`);
+    }
+    if (!subjectIds.has(subjectId)) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} has an invalid global SubjectID`);
+    }
+    if (!runName) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} requires RunName`);
+    }
+    if (!validateIsoDate(startDate) || !validateIsoDate(endDate)) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} requires YYYY-MM-DD StartDate and EndDate`);
+    }
+    if (endDate < startDate) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} EndDate cannot precede StartDate`);
+    }
+    if (!isValidIanaTimezone(timezone)) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} has an invalid Timezone`);
+    }
+    if (isActivePlatformValue(run.Active)) {
+      activeRunCount += 1;
+      if (!activeSubjectIds.has(subjectId)) {
+        throw new Error(`GlobalSubjectRuns row ${run._rowNumber} cannot be active for an inactive global subject`);
+      }
+    }
+    runIds.add(runId);
+  }
+
+  return Object.freeze({ activePolicyCount, activeRunCount });
 }
 
 function uniqueRowsByKey(rows, keyName, sheetName) {

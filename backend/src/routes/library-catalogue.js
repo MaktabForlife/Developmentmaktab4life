@@ -1,4 +1,4 @@
-/* M4L V102.8 - Account-authorised multi-course and global Library catalogue. */
+/* M4L V102.10 - Account-authorised multi-course and policy-aware global Library catalogue. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -6,6 +6,11 @@ import {
   resolveOperationalAccountUser
 } from "../lib/course-routing.js";
 import { json } from "../lib/http.js";
+import {
+  accessibleGlobalSubjectIds,
+  resolveGlobalSubjectAccessPolicy,
+  strongestGlobalSubjectDeliveryStatus
+} from "../lib/global-subject-delivery.js";
 import { readPlatformSheet } from "../lib/platform-sheet.js";
 import {
   authorityRank,
@@ -51,7 +56,7 @@ export async function getAccountLibraryCatalogueEndpoint(request, env) {
         id: "ALL",
         label: "All",
         scope: "ALL",
-        description: "All authorised courses and subscribed global subjects"
+        description: "All authorised courses and accessible global subjects"
       },
       ...availableCourseLibraries.map(library => ({
         id: library.id,
@@ -177,18 +182,21 @@ export function resolveAuthorisedCourses(user, tables) {
     .map(([courseId, row]) => courseDescriptor(row, bestByCourse.get(courseId)));
 }
 
-export function buildGlobalLibrary(user, tables) {
+export function buildGlobalLibrary(user, tables, now = new Date()) {
   const accountId = normalizePlatformIdentifier(user.accountid);
-  const subscribedSubjectIds = new Set((tables.UserGlobalSubjectAccess || [])
-    .filter(access => (
-      normalizePlatformIdentifier(access.AccountID) === accountId &&
-      isActivePlatformValue(access.Active)
-    ))
-    .map(access => normalizePlatformIdentifier(access.SubjectID))
-    .filter(Boolean));
+  const accountMatches = (tables.UserAccounts || []).filter(account => (
+    normalizePlatformIdentifier(account.AccountID) === accountId
+  ));
+  const account = accountMatches.length === 1 ? accountMatches[0] : null;
+  const accessibleSubjectIds = accessibleGlobalSubjectIds({
+    account,
+    subjects: tables.GlobalSubjectList,
+    policyRows: tables.GlobalSubjectAccessPolicy,
+    accessRows: tables.GlobalSubjectAccessMatrix
+  });
   const activeSubjects = new Map((tables.GlobalSubjectList || [])
     .filter(subject => (
-      subscribedSubjectIds.has(normalizePlatformIdentifier(subject.SubjectID)) &&
+      accessibleSubjectIds.has(normalizePlatformIdentifier(subject.SubjectID)) &&
       isActivePlatformValue(subject.Active)
     ))
     .map(subject => [normalizePlatformIdentifier(subject.SubjectID), subject]));
@@ -238,8 +246,10 @@ export function buildGlobalLibrary(user, tables) {
       subjectMap = new Map();
       groupSubjectMaps.set(groupKey, subjectMap);
     }
+
     let subjectRecord = subjectMap.get(subjectId);
     if (!subjectRecord) {
+      const policy = resolveGlobalSubjectAccessPolicy(tables.GlobalSubjectAccessPolicy, subjectId);
       subjectRecord = {
         subjectid: `GLOBAL:${clean(subject.SubjectID)}`,
         originsubjectid: clean(subject.SubjectID),
@@ -247,6 +257,8 @@ export function buildGlobalLibrary(user, tables) {
         sourcescope: "GLOBAL",
         sourceid: "GLOBAL",
         sourcelabel: "Global Subjects",
+        accessmodel: policy.accessModel,
+        deliverystatus: strongestGlobalSubjectDeliveryStatus(tables.GlobalSubjectRuns, subjectId, now),
         modules: [],
         _modules: new Map()
       };
@@ -268,35 +280,37 @@ export function buildGlobalLibrary(user, tables) {
       subjectRecord.modules.push(moduleRecord);
     }
 
+    const resourceId = clean(resource.ResourceID);
     moduleRecord.resources.push({
-      resourceid: `GLOBAL:${clean(resource.ResourceID)}`,
-      originresourceid: clean(resource.ResourceID),
-      name: clean(resource.ResourceName),
-      resourcename: clean(resource.ResourceName),
-      type,
-      label: globalTypeLabel(type),
+      resourceid: `GLOBAL:${resourceId}`,
+      originresourceid: resourceId,
       subjectid: subjectRecord.subjectid,
       originsubjectid: clean(subject.SubjectID),
-      subjectname: clean(subject.SubjectName),
       moduleid: moduleRecord.moduleid,
       originmoduleid: moduleRecord.originmoduleid,
-      modulename: moduleRecord.modulename,
-      taskid: taskId ? `GLOBAL:${clean(resource.TaskID)}` : "",
-      origintaskid: clean(resource.TaskID),
+      taskid: clean(resource.TaskID),
+      name: clean(resource.ResourceName),
+      resourceName: clean(resource.ResourceName),
+      type,
+      resourceType: type,
+      resourceTypeLabel: globalTypeLabel(type),
       format: clean(resource.ResourceFormat),
       description: clean(resource.ResourceDescription),
       link: clean(resource.ResourceLink),
+      resourceLink: clean(resource.ResourceLink),
       accessscope: "GLOBAL",
       sourcescope: "GLOBAL",
       sourceid: "GLOBAL",
-      sourcelabel: "Global Subjects"
+      sourcelabel: "Global Subjects",
+      accessmodel: subjectRecord.accessmodel,
+      deliverystatus: subjectRecord.deliverystatus
     });
     group.count += 1;
     catalogue.count += 1;
   }
 
   for (const group of catalogue.groups) {
-    group.subjects.forEach(subject => {
+    for (const subject of group.subjects) {
       subject.modules.sort((left, right) => (
         Number(left.modulesortorder) - Number(right.modulesortorder) ||
         clean(left.modulename).localeCompare(clean(right.modulename))
@@ -305,7 +319,7 @@ export function buildGlobalLibrary(user, tables) {
         module.resources.sort((left, right) => clean(left.name).localeCompare(clean(right.name)));
       });
       delete subject._modules;
-    });
+    }
     group.subjects.sort((left, right) => clean(left.subjectname).localeCompare(clean(right.subjectname)));
   }
 
@@ -407,7 +421,9 @@ async function readLibraryPlatformTables(env, options = {}) {
   const names = ["UserAccounts", "UserCourseAccess", "CourseRegistry"];
   if (options.global !== false) {
     names.push(
-      "UserGlobalSubjectAccess",
+      "GlobalSubjectAccessMatrix",
+      "GlobalSubjectAccessPolicy",
+      "GlobalSubjectRuns",
       "GlobalSubjectList",
       "GlobalModuleList",
       "GlobalTaskList",

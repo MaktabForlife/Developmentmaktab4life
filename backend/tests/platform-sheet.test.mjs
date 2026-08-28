@@ -17,12 +17,15 @@ import {
 } from "../src/lib/platform-sheet.js";
 
 assert.deepEqual(AUTHORITY_ORDER, ["GLOBAL_ADMIN", "ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
-assert.equal(Object.keys(PLATFORM_SHEET_HEADERS).length, 10);
+assert.equal(Object.keys(PLATFORM_SHEET_HEADERS).length, 13);
 assert.deepEqual(Object.keys(PLATFORM_SHEET_HEADERS), [
   "CourseRegistry",
   "UserAccounts",
   "UserCourseAccess",
   "UserGlobalSubjectAccess",
+  "GlobalSubjectAccessMatrix",
+  "GlobalSubjectAccessPolicy",
+  "GlobalSubjectRuns",
   "GlobalSubjectList",
   "GlobalModuleList",
   "GlobalTaskList",
@@ -36,6 +39,20 @@ assert.equal(PLATFORM_SHEET_HEADERS.UserCourseAccess.at(-1), "CourseRecordID");
 assert.equal(PLATFORM_SHEET_HEADERS.UserCourseAccess.length, 14);
 assert.equal(PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess[0], "SubjectAccessID");
 assert.equal(PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess.length, 10);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectAccessMatrix[0], "AccountID");
+const matrixRecords = validatePlatformSheetRows("GlobalSubjectAccessMatrix", [
+  ["AccountID", "GSUBJ1", "GSUBJ2"],
+  ["ACCOUNT1", true, false]
+]);
+assert.equal(matrixRecords[0].AccountID, "ACCOUNT1");
+assert.equal(matrixRecords[0]._subjectAccess.GSUBJ1, true);
+assert.equal(matrixRecords[0]._subjectAccess.GSUBJ2, false);
+assert.deepEqual(matrixRecords._subjectColumns.map(column => column.subjectId), ["GSUBJ1", "GSUBJ2"]);
+assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy, [
+  "SubjectPolicyID", "SubjectID", "AccessModel", "Active", "CreatedDate",
+  "CreatedByAccountID", "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+]);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.length, 13);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalResources.at(-1), "ModifiedDate");
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalResources.length, 16);
 

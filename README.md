@@ -1,32 +1,53 @@
 # Maktabhelper
 
-Current development release: V102.9.1 timetable display correction.
+Current development release: **V102.10 — global-subject access policy, access matrix and scheduled-run foundation**.
 
-V102.9.1 is a small modified-files overlay for a development repository that
-already contains deployed V102.9. It corrects the Timetable Builder controls
-that inherited the application's global full-width button rule, so the status,
-section, course and weekly-session actions fit and wrap normally.
+V102.10 is a modified-files overlay for the complete deployed V102.9.1 development source. Production remains stable at V101.1 and must not receive this development release.
 
-Teachers now receive the complete read-only published timetable for the
-selected course. Their own assigned sessions remain prominent and retain their
-Zoom actions; other teachers' sessions remain visible in muted text without
-exposing their Zoom actions. Attendance, Progress, Weekly Planner and student
-record scope are unchanged.
+## What V102.10 adds
 
-No Sheet, header, schema, PlatformConfig, Worker setting, secret, binding or
-Apps Script change is required. The live publication and activation state are
-not changed, and the account migration must not be rerun.
+- Global-subject access policies: `FREE` or `SUBSCRIPTION`.
+- A new `GlobalSubjectAccessMatrix`: one row per central account and one column per global `SubjectID`.
+- FREE access is implicit for every active central account; no per-user FREE rows are created.
+- SUBSCRIPTION access reads the account's TRUE/FALSE matrix cell for that SubjectID.
+- The legacy row-based `UserGlobalSubjectAccess` tab is retained unchanged for migration history and V102.9.1 rollback; V102.10 does not use it as the live entitlement source.
+- Finite, repeatable global-subject runs with timezone-aware derived status.
+- Library badges for access model and delivery state.
+- Global Curriculum **Delivery** for policy/run management and an **Access Matrix** tab for current subscription access.
+- Backend enforcement for the global Library, global-only account sessions and protected Global Resources Drive delivery.
+- New global subjects automatically receive an active `SUBSCRIPTION` policy and a new matrix SubjectID column defaulted FALSE for existing accounts.
+- Newly migrated central accounts automatically receive a matrix row defaulted FALSE across current subject columns.
 
-Start with `UPDATE-TODO.md`. Apply
-`Rebootyourmaktab-V102.9.1-GITHUB-UPDATE-FROM-V102.9.zip` directly over the
-development repository already containing V102.9. This is a modified-files
-overlay; a full repository upload is not required.
+V102.10 deliberately does **not** build the global timetable, timetable publication, academy timetable aggregation, Aalimiyah onboarding, billing, subscription expiry or cross-course conflict handling.
 
-`docs/V102.10-ACADEMY-TIMETABLE-PLAN.md` records the agreed next architecture:
-an authenticated academy-wide timetable with each person's enrolled,
-subscribed or assigned sessions highlighted. It is documentation only and is
-not active in V102.9.1.
+## Attendance hotfix carry-forward
 
-Production remains stable at V101.1 and must not receive this development-only
-overlay. A separate production merge plan will be prepared after V102
-development is complete.
+V102.10 also preserves the Attendance reset hotfix already applied to production and the GitHub development branch. On successful attendance save, all loaded register rows reset to `Present` and the register rerenders; a failed save does not reset the marks. This carry-forward is included only to prevent a later V102.10 production merge from reverting the fix. Attendance permissions and backend submission semantics are otherwise unchanged.
+
+## Platform migration
+
+V102.10 advances the Platform schema from `102.0.4` to `102.0.5` and adds three central tabs:
+
+- `GlobalSubjectAccessMatrix`
+- `GlobalSubjectAccessPolicy`
+- `GlobalSubjectRuns`
+
+Start with `V102.10-PLATFORM-SHEET-MIGRATION.md` and complete `UPDATE-TODO.md` in order. The safe sequence is:
+
+1. Back up the Platform Sheet.
+2. Create all three additive tabs while `PlatformConfig!B3` remains `102.0.4`.
+3. Populate the matrix from the existing `UserGlobalSubjectAccess` data and seed every existing global subject with an active `SUBSCRIPTION` policy.
+4. Leave the legacy `UserGlobalSubjectAccess` tab unchanged.
+5. Apply/push the complete V102.10 overlay as one GitHub commit.
+6. Confirm Pages and Worker are both from that commit and Worker reports `102.10`.
+7. Only then change `PlatformConfig!B3` to `102.0.5` and run Platform validation.
+
+Rollback changes the schema marker back to `102.0.4` first and then reverts the single code commit. Because the legacy row-based entitlement table is not rewritten, V102.9.1 can use the pre-V102.10 entitlement state again.
+
+## Package
+
+- `Rebootyourmaktab-V102.10-GITHUB-UPDATE-FROM-V102.9.1.zip` — changed/new files only for the deployed V102.9.1 development repository.
+
+The exact included/deleted paths are listed in `CHANGED-FILES.txt` and `DELETE-FILES.txt`.
+
+The future academy timetable architecture is retained as `docs/V102.12-ACADEMY-TIMETABLE-PLAN.md`; it is documentation only in V102.10.

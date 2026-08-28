@@ -1,4 +1,4 @@
-/* M4L V102.8 - Central account authentication, Profile switching and course/global workspace handoff. */
+/* M4L V102.10 - Central account authentication with FREE/SUBSCRIPTION global-subject contexts. */
 
 import {
   createAuthRateLimitKey,
@@ -10,6 +10,7 @@ import {
 } from "../lib/auth.js";
 import { batchUpdateGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { accessibleGlobalSubjectIds } from "../lib/global-subject-delivery.js";
 import {
   assertCourseContextAccess,
   getPlatformSpreadsheetId,
@@ -24,7 +25,7 @@ import {
   normalizePlatformIdentifier
 } from "../lib/platform-schema.js";
 
-const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4"]);
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4", "102.0.5"]);
 const LOGIN_RATE_LIMIT_SECONDS = 60;
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 
@@ -342,12 +343,13 @@ export async function switchAccountContextEndpoint(request, env) {
 export async function loadCentralAccountState(env, uniqueId, options = {}) {
   const includeContexts = options.includeContexts !== false;
   const includeAudit = options.includeAudit === true;
-  const [accounts, config, accessRecords, courses, globalAccessRecords, globalSubjects, auditRecords] = await Promise.all([
+  const [accounts, config, accessRecords, courses, globalAccessRecords, globalPolicies, globalSubjects, auditRecords] = await Promise.all([
     readPlatformSheet(env, "UserAccounts"),
     readPlatformSheet(env, "PlatformConfig"),
     includeContexts ? readPlatformSheet(env, "UserCourseAccess") : Promise.resolve([]),
     includeContexts ? readPlatformSheet(env, "CourseRegistry") : Promise.resolve([]),
-    includeContexts ? readPlatformSheet(env, "UserGlobalSubjectAccess") : Promise.resolve([]),
+    includeContexts ? readPlatformSheet(env, "GlobalSubjectAccessMatrix") : Promise.resolve([]),
+    includeContexts ? readPlatformSheet(env, "GlobalSubjectAccessPolicy") : Promise.resolve([]),
     includeContexts ? readPlatformSheet(env, "GlobalSubjectList") : Promise.resolve([]),
     includeAudit ? readPlatformSheet(env, "PlatformAuditLog") : Promise.resolve([])
   ]);
@@ -380,6 +382,7 @@ export async function loadCentralAccountState(env, uniqueId, options = {}) {
       accessRecords: [],
       courses: [],
       globalAccessRecords: [],
+      globalPolicies: [],
       globalSubjects: [],
       contexts: [],
       auditRecords
@@ -398,20 +401,22 @@ export async function loadCentralAccountState(env, uniqueId, options = {}) {
     accountAccess,
     courses,
     accountGlobalAccess,
-    globalSubjects
+    globalSubjects,
+    globalPolicies
   );
   return {
     account,
     accessRecords: accountAccess,
     courses,
     globalAccessRecords: accountGlobalAccess,
+    globalPolicies,
     globalSubjects,
     contexts,
     auditRecords
   };
 }
 
-export function buildAvailableContexts(account, accessRecords, courses, globalAccessRecords = [], globalSubjects = []) {
+export function buildAvailableContexts(account, accessRecords, courses, globalAccessRecords = [], globalSubjects = [], globalPolicies = []) {
   const activeCourses = uniqueActiveCourses(courses);
   if (isGlobalAdminAccount(account)) {
     return [
@@ -460,7 +465,7 @@ export function buildAvailableContexts(account, accessRecords, courses, globalAc
     left.courseName.localeCompare(right.courseName) ||
     left.role.localeCompare(right.role)
   ));
-  if (hasActiveGlobalSubjectAccess(globalAccessRecords, globalSubjects)) {
+  if (hasActiveGlobalSubjectAccess(account, globalAccessRecords, globalSubjects, globalPolicies)) {
     sorted.push({
       scope: "GLOBAL",
       courseId: "",
@@ -487,18 +492,14 @@ function selectUsableAutomaticContext(state) {
 }
 
 function selectGlobalOnlyContext(state) {
-  const activeSubjectIds = new Set((state.globalSubjects || [])
-    .filter(subject => isActivePlatformValue(subject.Active))
-    .map(subject => normalizePlatformIdentifier(subject.SubjectID)));
-  const matches = (state.globalAccessRecords || []).filter(access => (
-    isActivePlatformValue(access.Active) &&
-    activeSubjectIds.has(normalizePlatformIdentifier(access.SubjectID))
-  ));
-  if (!matches.length) throw new Error("An active global-subject subscription is required");
-  const selected = matches[0];
-  if (!Number.isInteger(selected._rowNumber) || selected._rowNumber < 2) {
-    throw new Error("Global-subject access is invalid");
-  }
+  const accessibleIds = accessibleGlobalSubjectIds({
+    account: state.account,
+    subjects: state.globalSubjects,
+    policyRows: state.globalPolicies,
+    accessRows: state.globalAccessRecords
+  });
+  if (!accessibleIds.size) throw new Error("An accessible global subject is required");
+
   return {
     accessId: "",
     accountId: String(state.account.AccountID || "").trim(),
@@ -506,8 +507,8 @@ function selectGlobalOnlyContext(state) {
     courseRecordId: "",
     role: "STUDENT",
     scope: "GLOBAL",
-    globalAccessId: String(selected.SubjectAccessID || "").trim(),
-    globalAccessRow: selected._rowNumber
+    globalAccessId: "",
+    globalAccessRow: 0
   };
 }
 
@@ -693,14 +694,13 @@ function uniqueActiveCourses(courses) {
   return output;
 }
 
-function hasActiveGlobalSubjectAccess(accessRecords, subjects) {
-  const activeSubjectIds = new Set((subjects || [])
-    .filter(subject => isActivePlatformValue(subject.Active))
-    .map(subject => normalizePlatformIdentifier(subject.SubjectID)));
-  return (accessRecords || []).some(access => (
-    isActivePlatformValue(access.Active) &&
-    activeSubjectIds.has(normalizePlatformIdentifier(access.SubjectID))
-  ));
+function hasActiveGlobalSubjectAccess(account, accessRecords, subjects, policies) {
+  return accessibleGlobalSubjectIds({
+    account,
+    subjects,
+    policyRows: policies,
+    accessRows: accessRecords
+  }).size > 0;
 }
 
 function assertAccountSchemaVersion(configRows) {

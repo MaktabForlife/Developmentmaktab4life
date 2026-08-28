@@ -13,7 +13,7 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch course or role/);
-assert.match(html, /V102\.9 adds a reviewed, reversible cutover to immutable published timetables/);
+assert.match(html, /V102\.10 adds global-subject FREE\/SUBSCRIPTION access policy and scheduled-run foundations/);
 assert.match(html, /Switch course or role directly from Profile without entering another PIN/);
 assert.match(html, /m4l-account\.js\?v=102\.8/);
 assert.match(html, /m4l-23-account\.css\?v=102\.4/);

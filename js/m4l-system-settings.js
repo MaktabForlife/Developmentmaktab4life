@@ -1,4 +1,4 @@
-/* M4L V102.7 - ADMIN settings, Platform validation and account migration. */
+/* M4L V102.10 - ADMIN settings, Platform validation and account migration. */
 (function () {
   "use strict";
 
@@ -153,6 +153,8 @@
       const accountCount = Number(result.accountCount || 0);
       const globalSubjectCount = Number(result.globalSubjectCount || 0);
       const subjectAccessCount = Number(result.globalSubjectAccessCount || 0);
+      const policyCount = Number(result.globalSubjectPolicyCount || 0);
+      const runCount = Number(result.globalSubjectRunCount || 0);
       const globalResourceDriveState = result.globalResourceDriveConfigured
         ? "Global Resources folder is configured."
         : "Global Resources folder is not configured.";
@@ -163,6 +165,7 @@
         `Ready: ${tabCount} required tabs, ${courseCount} active course${courseCount === 1 ? "" : "s"}, ` +
         `${accountCount} central account${accountCount === 1 ? "" : "s"}, ` +
         `${globalSubjectCount} global subject${globalSubjectCount === 1 ? "" : "s"}, ` +
+        `${policyCount} access polic${policyCount === 1 ? "y" : "ies"}, ${runCount} scheduled run${runCount === 1 ? "" : "s"}, ` +
         `${subjectAccessCount} global-subject subscription${subjectAccessCount === 1 ? "" : "s"}. ` +
         `${globalResourceDriveState} ${migrationState}`,
         "success"

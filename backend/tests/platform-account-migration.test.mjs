@@ -166,6 +166,7 @@ try {
   assert.equal(readyPreview.sourceCounts.excludedSystemRows, 1);
   assert.deepEqual(readyPreview.plannedWrites, {
     userAccounts: 4,
+    globalAccessMatrixRows: 4,
     courseAccess: 4,
     platformRoleUpdates: 0
   });
@@ -215,6 +216,7 @@ try {
     courseId: "COURSE1",
     courseName: "Reboot Your Maktab",
     accountsCreated: 4,
+    globalAccessMatrixRowsCreated: 4,
     courseAccessCreated: 4,
     platformRolesUpdated: 0,
     globalAdminGranted: true,
@@ -225,11 +227,13 @@ try {
   const writes = batchPayloads[0].data;
   assert.deepEqual(writes.map(write => write.range), [
     "'UserAccounts'!A2:N5",
+    "'GlobalSubjectAccessMatrix'!A2:A5",
     "'UserCourseAccess'!A2:N5",
     "'PlatformAuditLog'!A2:J2"
   ]);
   const accountRows = writes[0].values;
-  const accessRows = writes[1].values;
+  const matrixRows = writes[1].values;
+  const accessRows = writes[2].values;
   assert.equal(accountRows.find(row => row[2] === "ADMINURL")[13], "GLOBAL_ADMIN");
   assert.equal(accountRows.find(row => row[2] === "STUDENT2")[3], false);
   assert.equal(accountRows.find(row => row[2] === "STUDENT2")[4], "");
@@ -237,8 +241,9 @@ try {
   assert.equal(JSON.stringify(committed).includes(saltedHash), false);
 
   platformTables.UserAccounts = [PLATFORM_SHEET_HEADERS.UserAccounts, ...accountRows];
+  platformTables.GlobalSubjectAccessMatrix = [PLATFORM_SHEET_HEADERS.GlobalSubjectAccessMatrix, ...matrixRows];
   platformTables.UserCourseAccess = [PLATFORM_SHEET_HEADERS.UserCourseAccess, ...accessRows];
-  platformTables.PlatformAuditLog = [PLATFORM_SHEET_HEADERS.PlatformAuditLog, ...writes[2].values];
+  platformTables.PlatformAuditLog = [PLATFORM_SHEET_HEADERS.PlatformAuditLog, ...writes[3].values];
   const currentPreviewResponse = await worker.fetch(migrationRequest(adminToken, {
     action: "PREVIEW",
     grantGlobalAdmin: true
@@ -249,6 +254,7 @@ try {
   assert.equal(currentPreview.migrationCurrent, true);
   assert.deepEqual(currentPreview.plannedWrites, {
     userAccounts: 0,
+    globalAccessMatrixRows: 0,
     courseAccess: 0,
     platformRoleUpdates: 0
   });

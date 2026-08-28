@@ -30,10 +30,24 @@ const platformTables = {
     PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess,
     ["GSACCESS1", "ACCOUNT1", "GSUBJ1", true, "", "", ""]
   ],
+  GlobalSubjectAccessMatrix: [
+    ["AccountID", "GSUBJ1", "GSUBJ2"],
+    ["ACCOUNT1", true, false]
+  ],
+  GlobalSubjectAccessPolicy: [
+    PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy,
+    ["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true, "", "", "", "", "", ""],
+    ["GSPOL2", "GSUBJ2", "FREE", true, "", "", "", "", "", ""]
+  ],
+  GlobalSubjectRuns: [
+    PLATFORM_SHEET_HEADERS.GlobalSubjectRuns,
+    ["GSRUN1", "GSUBJ1", "Past subscription run", "2026-07-01", "2026-07-31", "Africa/Johannesburg", true, "", "", "", "", "", ""],
+    ["GSRUN2", "GSUBJ2", "Current free run", "2026-08-01", "2026-08-31", "Africa/Johannesburg", true, "", "", "", "", "", ""]
+  ],
   GlobalSubjectList: [
     PLATFORM_SHEET_HEADERS.GlobalSubjectList,
     ["GSUBJ1", "Subscribed Subject", true, "", "", "", "", "", "", ""],
-    ["GSUBJ2", "Unsubscribed Subject", true, "", "", "", "", "", "", ""]
+    ["GSUBJ2", "Free Subject", true, "", "", "", "", "", "", ""]
   ],
   GlobalModuleList: [
     PLATFORM_SHEET_HEADERS.GlobalModuleList,
@@ -48,12 +62,12 @@ const platformTables = {
   GlobalResources: [
     PLATFORM_SHEET_HEADERS.GlobalResources,
     ["GRES1", "GSUBJ1", "GMOD1", "GTASK1", "Subscribed Global File", "EBOOK", "PDF", "Visible", "https://drive.google.test/subscribed", true, "", "", "", "", "", ""],
-    ["GRES2", "GSUBJ2", "GMOD2", "GTASK2", "Unsubscribed Global File", "EBOOK", "PDF", "Hidden", "https://drive.google.test/hidden", true, "", "", "", "", "", ""],
+    ["GRES2", "GSUBJ2", "GMOD2", "GTASK2", "Free Global File", "EBOOK", "PDF", "Hidden", "https://drive.google.test/hidden", true, "", "", "", "", "", ""],
     ["GRES3", "GSUBJ1", "GMOD1", "GTASK1", "Inactive Global File", "EBOOK", "PDF", "Hidden", "https://drive.google.test/inactive", false, "", "", "", "", "", ""]
   ],
   PlatformConfig: [
     PLATFORM_SHEET_HEADERS.PlatformConfig,
-    ["PlatformSchemaVersion", "102.0.4", "", "", ""],
+    ["PlatformSchemaVersion", "102.0.5", "", "", ""],
     ["GlobalCurriculumVersion", "13", "", "", ""]
   ]
 };
@@ -180,18 +194,22 @@ try {
     "All", "Reboot Your Maktab", "Aalimiyah", "Global Subjects"
   ]);
   assert.equal(result.data.globalCurriculumVersion, 13);
-  assert.equal(result.data.count, 5);
+  assert.equal(result.data.count, 6);
 
   const courseOne = result.data.libraries.find(library => library.id === "COURSE:COURSE1");
   const courseTwo = result.data.libraries.find(library => library.id === "COURSE:COURSE2");
   const global = result.data.libraries.find(library => library.id === "GLOBAL");
   assert.deepEqual(resourceNames(courseOne), ["Course 1 All", "Course 1 Group 1"]);
   assert.deepEqual(resourceNames(courseTwo), ["Course 2 All", "Course 2 Group 2"]);
-  assert.deepEqual(resourceNames(global), ["Subscribed Global File"]);
-  assert.equal(global.subjectCount, 1);
+  assert.deepEqual(resourceNames(global), ["Free Global File", "Subscribed Global File"]);
+  assert.equal(global.subjectCount, 2);
   assert.equal(global.catalogue.ebooks.subjects[0].sourcescope, "GLOBAL");
   assert.equal(global.catalogue.ebooks.subjects[0].modules[0].resources[0].accessscope, "GLOBAL");
-  assert.equal(JSON.stringify(result.data).includes("Unsubscribed Global File"), false);
+  const bySubject = Object.fromEntries(global.catalogue.ebooks.subjects.map(subject => [subject.originsubjectid, subject]));
+  assert.equal(bySubject.GSUBJ1.accessmodel, "SUBSCRIPTION");
+  assert.equal(bySubject.GSUBJ1.deliverystatus, "PAST");
+  assert.equal(bySubject.GSUBJ2.accessmodel, "FREE");
+  assert.equal(bySubject.GSUBJ2.deliverystatus, "CURRENT");
   assert.equal(JSON.stringify(result.data).includes("course-sheet-one"), false);
   assert.equal(JSON.stringify(result.data).includes("course-sheet-two"), false);
   assert.equal(reads.some(read => read.spreadsheetId === "course-sheet-three"), false);
@@ -208,7 +226,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.8 multi-course and subscribed-global Library catalogue tests passed.");
+console.log("V102.10 multi-course, FREE/subscription and run-status Library catalogue tests passed.");
 
 async function post(path, body) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

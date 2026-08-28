@@ -1,4 +1,4 @@
-/* M4L V102.7 - Global curriculum, subscriptions and protected Drive resources. */
+/* M4L V102.10 - Global curriculum, access matrix and protected Drive resources. */
 (function () {
   "use strict";
 
@@ -32,7 +32,7 @@
       tasks: [],
       resources: [],
       accounts: [],
-      subjectAccess: [],
+      subjectAccessMatrix: { subjects: [], policies: {}, rows: [] },
       globalResourceDriveRoot: {
         configured: false,
         folderid: "",
@@ -106,7 +106,6 @@
     if (action === "save-module") return saveModule(target);
     if (action === "save-task") return saveTask(target);
     if (action === "save-resource") return saveResource(target);
-    if (action === "save-access") return saveAccess(target);
     if (action === "save-drive-root") return saveDriveRoot(target);
     if (action === "browse-resource") return openDriveBrowser();
     if (action === "browse-folder" || action === "drive-breadcrumb") {
@@ -119,6 +118,10 @@
   function handleChange(event) {
     const target = event?.target;
     if (!target || !target.closest("#global-curriculum-screen")) return;
+    if (target.matches("[data-gcm-access-toggle]")) {
+      saveAccessToggle(target);
+      return;
+    }
     if (target.id === "gcm-task-subject") updateTaskModuleOptions();
     if (target.id === "gcm-resource-subject" || target.id === "gcm-resource-module") {
       updateResourceBranchOptions();
@@ -144,7 +147,7 @@
         tasks: array(result.tasks),
         resources: array(result.resources),
         accounts: array(result.accounts),
-        subjectAccess: array(result.subjectAccess),
+        subjectAccessMatrix: result.subjectAccessMatrix || emptyData().subjectAccessMatrix,
         globalResourceDriveRoot: result.globalResourceDriveRoot || emptyData().globalResourceDriveRoot
       };
       model.loaded = true;
@@ -320,32 +323,57 @@
   }
 
   function renderAccess() {
-    const current = findById(model.data.subjectAccess, "subjectaccessid", model.editing.access);
-    const activeAccounts = model.data.accounts.filter(item => item.active || item.accountid === current?.accountid);
-    const selectedAccount = current?.accountid || activeAccounts[0]?.accountid || "";
-    const selectedSubject = current?.subjectid || firstActive(model.data.subjects, "subjectid");
-    const rows = [...model.data.subjectAccess].sort((left, right) => (
-      accountName(left.accountid).localeCompare(accountName(right.accountid)) ||
-      subjectName(left.subjectid).localeCompare(subjectName(right.subjectid))
-    ));
+    const matrix = model.data.subjectAccessMatrix || emptyData().subjectAccessMatrix;
+    const subjects = [...model.data.subjects].sort((left, right) => left.subjectname.localeCompare(right.subjectname));
+    const accounts = [...model.data.accounts].sort((left, right) => left.displayname.localeCompare(right.displayname));
+    const rowsByAccount = new Map(array(matrix.rows).map(row => [String(row.accountid || ""), row]));
+    const policies = matrix.policies && typeof matrix.policies === "object" ? matrix.policies : {};
+
+    if (!subjects.length) {
+      setContent('<div class="global-curriculum-empty"><h3>No global subjects</h3><p>Create a Global Subject before assigning subscription access.</p></div>');
+      return;
+    }
+
     setContent(`
-      <div class="global-curriculum-management-grid">
-        ${panelForm(current ? "Modify Direct Subscription" : "Add Direct Subscription", `
-          <input id="gcm-access-id" type="hidden" value="${attr(current?.subjectaccessid || "")}" />
-          ${field("Account", `<select id="gcm-access-account" ${current ? "disabled" : ""}>${activeAccounts.map(account => `<option value="${attr(account.accountid)}" ${account.accountid === selectedAccount ? "selected" : ""}>${html(account.displayname)} · ${html(account.uniqueid)}</option>`).join("")}</select>`)}
-          ${field("Global subject", `<select id="gcm-access-subject" ${current ? "disabled" : ""}>${subjectOptions(selectedSubject, current?.subjectid)}</select>`)}
-          ${activeField("gcm-access-active", current?.active !== false, "Access active")}
-          <p class="global-curriculum-help">This row authorises direct access to one global subject. It does not duplicate a course Student subscription.</p>
-          ${saveButtons("save-access", Boolean(current))}
-        `)}
-        ${listPanel("Direct Global-Subject Subscriptions", rows.length, recordList(
-          rows,
-          item => item.subjectaccessid,
-          item => accountName(item.accountid),
-          item => subjectName(item.subjectid),
-          item => item.active
-        ))}
-      </div>
+      <section class="global-curriculum-panel global-access-matrix-panel">
+        <div class="global-curriculum-panel-heading">
+          <div>
+            <h3>Global Subject Access</h3>
+            <p>One row per central account. FREE subjects are implicit; SUBSCRIPTION subjects are controlled here.</p>
+          </div>
+        </div>
+        <div class="global-access-matrix-scroll">
+          <table class="global-access-matrix">
+            <thead>
+              <tr>
+                <th scope="col" class="global-access-account-column">Account</th>
+                ${subjects.map(subject => {
+                  const policy = String(policies[subject.subjectid] || "SUBSCRIPTION").toUpperCase();
+                  return `<th scope="col"><span>${html(subject.subjectname)}</span><small>${html(policy)}</small></th>`;
+                }).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${accounts.map(account => {
+                const row = rowsByAccount.get(account.accountid) || { values: {} };
+                return `<tr class="${account.active ? "" : "is-inactive"}">
+                  <th scope="row" class="global-access-account-column"><strong>${html(account.displayname)}</strong><small>${html(account.uniqueid || account.accountid)}${account.active ? "" : " · inactive"}</small></th>
+                  ${subjects.map(subject => {
+                    const policy = String(policies[subject.subjectid] || "SUBSCRIPTION").toUpperCase();
+                    if (policy === "FREE") {
+                      return '<td><span class="global-access-free">FREE</span></td>';
+                    }
+                    const active = row.values?.[subject.subjectid] === true;
+                    const disabled = !account.active || !subject.active;
+                    return `<td><label title="${disabled ? "Inactive account or subject" : "Toggle subscription access"}"><input class="global-access-toggle" type="checkbox" data-gcm-access-toggle data-account-id="${attr(account.accountid)}" data-subject-id="${attr(subject.subjectid)}" ${active ? "checked" : ""} ${disabled ? "disabled" : ""} /></label></td>`;
+                  }).join("")}
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+        <p class="global-curriculum-help global-access-matrix-help">Changing a FREE subject to SUBSCRIPTION reuses the saved matrix values. Changing a SUBSCRIPTION subject to FREE does not delete them; FREE access simply overrides them while that policy is active.</p>
+      </section>
     `);
   }
 
@@ -406,13 +434,33 @@
     return submit(button, "/api/admin/platform/global/drive-root/save", { folderUrl });
   }
 
-  async function saveAccess(button) {
-    const current = findById(model.data.subjectAccess, "subjectaccessid", model.editing.access);
-    return submit(button, "/api/admin/platform/global/access/save", {
-      accountId: current?.accountid || value("gcm-access-account"),
-      subjectId: current?.subjectid || value("gcm-access-subject"),
-      active: checked("gcm-access-active")
-    });
+  async function saveAccessToggle(input) {
+    const accountId = String(input?.dataset?.accountId || "").trim();
+    const subjectId = String(input?.dataset?.subjectId || "").trim();
+    if (!accountId || !subjectId || input.disabled) return false;
+    const requested = input.checked === true;
+    input.disabled = true;
+    try {
+      const result = await apiPost("/api/admin/platform/global/access/save", {
+        accountId,
+        subjectId,
+        active: requested
+      }, appState()?.token || "");
+      if (!result.success) throw new Error(result.error || "Unable to update global-subject access");
+      const row = array(model.data.subjectAccessMatrix?.rows).find(item => item.accountid === accountId);
+      if (row) {
+        if (!row.values || typeof row.values !== "object") row.values = {};
+        row.values[subjectId] = requested;
+      }
+      setMessage(result.message || "Global-subject access updated.", "success");
+      return true;
+    } catch (error) {
+      input.checked = !requested;
+      setMessage(error.message || "Unable to update global-subject access.", "error");
+      return false;
+    } finally {
+      input.disabled = false;
+    }
   }
 
   async function submit(button, path, payload) {

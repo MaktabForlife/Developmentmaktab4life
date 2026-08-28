@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "102.9.1",
+  "version": "102.10",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -21,6 +21,9 @@
     "test:subscription-access-schema": "node tests/subscription-access-schema.test.mjs",
     "test:platform-global-management": "node tests/platform-global-management.test.mjs",
     "test:platform-global-management-ui": "node tests/platform-global-management-ui.test.mjs",
+    "test:global-subject-delivery": "node tests/global-subject-delivery.test.mjs",
+    "test:platform-global-delivery": "node tests/platform-global-delivery.test.mjs",
+    "test:platform-global-delivery-ui": "node tests/platform-global-delivery-ui.test.mjs",
     "test:sequential-ids": "node tests/sequential-ids.test.mjs",
     "test:admin-audit": "node tests/admin-audit.test.mjs",
     "test:resources": "node tests/resources.test.mjs",
@@ -29,6 +32,7 @@
     "test:admin-management": "node tests/admin-account-management.test.mjs",
     "test:admin-management-ui": "node tests/admin-management-ui.test.mjs",
     "test:attendance": "node tests/attendance.test.mjs",
+    "test:attendance-ui-reset": "node tests/attendance-ui-reset.test.mjs",
     "test:curriculum": "node tests/curriculum.test.mjs",
     "test:curriculum-write": "node tests/curriculum-write.test.mjs",
     "test:timetable-builder": "node tests/timetable-builder.test.mjs",

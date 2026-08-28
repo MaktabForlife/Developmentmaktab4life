@@ -1,5 +1,6 @@
 import { readGoogleSheetValues } from "./google-sheets.js";
 import { json } from "./http.js";
+import { accessibleGlobalSubjectIds } from "./global-subject-delivery.js";
 import {
   getPlatformSpreadsheetId,
   readPlatformSheet,
@@ -532,35 +533,24 @@ async function validateCentralAccountSession(payload, env) {
 
 
   if (tokenScope === "GLOBAL") {
-    if (
-      tokenRole !== "STUDENT" ||
-      !Number.isInteger(payload.globalaccessrow) ||
-      payload.globalaccessrow < 2 ||
-      !String(payload.globalaccessid || "").trim()
-    ) {
-      return null;
-    }
-    const accessRows = await readGoogleSheetValues(
-      env,
-      `UserGlobalSubjectAccess!A${payload.globalaccessrow}:J${payload.globalaccessrow}`,
-      { spreadsheetId: platformSpreadsheetId }
-    );
-    const accessRow = Array.isArray(accessRows[0]) ? accessRows[0] : [];
-    const subjectId = normalizePlatformIdentifier(accessRow[2]);
-    if (
-      normalizePlatformIdentifier(accessRow[1]) !== accountId ||
-      String(accessRow[0] || "").trim() !== String(payload.globalaccessid || "").trim() ||
-      !subjectId ||
-      !isActivePlatformValue(accessRow[3])
-    ) {
-      return null;
-    }
-    const matchingSubjects = (await readPlatformSheet(env, "GlobalSubjectList")).filter(subject => (
-      normalizePlatformIdentifier(subject.SubjectID) === subjectId
-    ));
-    if (matchingSubjects.length !== 1 || !isActivePlatformValue(matchingSubjects[0].Active)) {
-      return null;
-    }
+    if (tokenRole !== "STUDENT") return null;
+
+    const [accessRecords, policyRows, globalSubjects] = await Promise.all([
+      readPlatformSheet(env, "GlobalSubjectAccessMatrix"),
+      readPlatformSheet(env, "GlobalSubjectAccessPolicy"),
+      readPlatformSheet(env, "GlobalSubjectList")
+    ]);
+    const accessibleIds = accessibleGlobalSubjectIds({
+      account: {
+        AccountID: String(accountRow[0] || "").trim(),
+        Active: accountRow[5]
+      },
+      subjects: globalSubjects,
+      policyRows,
+      accessRows: accessRecords
+    });
+    if (!accessibleIds.size) return null;
+
     return {
       ...payload,
       accountid: String(accountRow[0] || "").trim(),

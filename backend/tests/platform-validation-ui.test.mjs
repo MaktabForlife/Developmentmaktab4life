@@ -12,7 +12,7 @@ assert.match(adminHtml, /data-system-settings-action="preview-account-migration"
 assert.match(adminHtml, /data-system-settings-action="commit-account-migration"/);
 assert.match(adminHtml, /id="system-settings-grant-global-admin"[^>]*checked/);
 assert.match(adminHtml, /id="system-settings-migration-confirm"/);
-assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.7/);
+assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.10/);
 
 assert.match(settingsJs, /async function validatePlatformSheet\(\)/);
 assert.match(settingsJs, /"\/api\/admin\/platform\/validate"/);

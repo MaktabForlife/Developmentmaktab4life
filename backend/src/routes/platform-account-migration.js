@@ -6,6 +6,7 @@ import {
   readGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
+import { globalSubjectAccessMatrixColumns } from "../lib/global-subject-delivery.js";
 import {
   getPlatformSpreadsheetId,
   readPlatformSheet
@@ -15,7 +16,7 @@ import {
   normalizePlatformIdentifier
 } from "../lib/platform-schema.js";
 
-const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4"]);
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4", "102.0.5"]);
 const VALID_COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const LEGACY_PIN_HASH_PATTERN = /^[a-f0-9]{64}$/i;
 const SALTED_PIN_HASH_PATTERN = /^v2\$pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[a-f0-9]{64}$/i;
@@ -93,11 +94,12 @@ export async function loadMigrationSnapshot(env, actor, grantGlobalAdmin) {
     throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
   }
 
-  const [registry, config, centralAccounts, centralAccess, centralAudit] = await Promise.all([
+  const [registry, config, centralAccounts, centralAccess, centralGlobalAccessMatrix, centralAudit] = await Promise.all([
     readPlatformSheet(env, "CourseRegistry"),
     readPlatformSheet(env, "PlatformConfig"),
     readPlatformSheet(env, "UserAccounts"),
     readPlatformSheet(env, "UserCourseAccess"),
+    readPlatformSheet(env, "GlobalSubjectAccessMatrix"),
     readPlatformSheet(env, "PlatformAuditLog")
   ]);
   assertMigrationSchemaVersion(config);
@@ -124,6 +126,7 @@ export async function loadMigrationSnapshot(env, actor, grantGlobalAdmin) {
     studentRows,
     centralAccounts,
     centralAccess,
+    centralGlobalAccessMatrix,
     centralAudit,
     platformSpreadsheetId
   });
@@ -258,7 +261,8 @@ export function buildMigrationSnapshot(input) {
       lastLoginDate: source.lastLoginDate
     })),
     centralAccounts: input.centralAccounts.map(record => centralFingerprint(record)),
-    centralAccess: input.centralAccess.map(record => centralFingerprint(record))
+    centralAccess: input.centralAccess.map(record => centralFingerprint(record)),
+    centralGlobalAccessMatrix: globalAccessMatrixFingerprint(input.centralGlobalAccessMatrix)
   };
 
   return {
@@ -276,6 +280,7 @@ export function buildMigrationSnapshot(input) {
     excluded,
     centralAccounts: input.centralAccounts,
     centralAccess: input.centralAccess,
+    centralGlobalAccessMatrix: input.centralGlobalAccessMatrix,
     centralAudit: input.centralAudit,
     platformSpreadsheetId: input.platformSpreadsheetId,
     canCommit,
@@ -549,10 +554,20 @@ async function commitMigrationSnapshot(env, snapshot) {
     ];
   });
 
+  const matrixColumns = globalSubjectAccessMatrixColumns(snapshot.centralGlobalAccessMatrix);
+  const globalAccessMatrixRows = snapshot.newAccounts.map(item => [
+    accountIdsBySource.get(item.source.sourceKey),
+    ...matrixColumns.map(() => false)
+  ]);
+
   const writes = [];
   if (accountRows.length > 0) {
     const startRow = nextPlatformRow(snapshot.centralAccounts);
     writes.push(valueRange("UserAccounts", startRow, 14, accountRows));
+  }
+  if (globalAccessMatrixRows.length > 0) {
+    const startRow = nextPlatformRow(snapshot.centralGlobalAccessMatrix);
+    writes.push(valueRange("GlobalSubjectAccessMatrix", startRow, 1 + matrixColumns.length, globalAccessMatrixRows));
   }
   if (accessRows.length > 0) {
     const startRow = nextPlatformRow(snapshot.centralAccess);
@@ -578,6 +593,7 @@ async function commitMigrationSnapshot(env, snapshot) {
     snapshot.courseId,
     JSON.stringify({
       userAccountsCreated: accountRows.length,
+      globalAccessMatrixRowsCreated: globalAccessMatrixRows.length,
       courseAccessCreated: accessRows.length,
       platformRolesUpdated: snapshot.platformRoleUpdates.length
     })
@@ -591,6 +607,7 @@ async function commitMigrationSnapshot(env, snapshot) {
     courseId: snapshot.courseId,
     courseName: snapshot.courseName,
     accountsCreated: accountRows.length,
+    globalAccessMatrixRowsCreated: globalAccessMatrixRows.length,
     courseAccessCreated: accessRows.length,
     platformRolesUpdated: snapshot.platformRoleUpdates.length,
     globalAdminGranted: snapshot.grantGlobalAdmin
@@ -608,6 +625,7 @@ function publicMigrationPreview(snapshot, previewToken) {
     },
     plannedWrites: {
       userAccounts: snapshot.newAccounts.length,
+      globalAccessMatrixRows: snapshot.newAccounts.length,
       courseAccess: snapshot.newAccess.length,
       platformRoleUpdates: snapshot.platformRoleUpdates.length
     },
@@ -728,6 +746,13 @@ function publicSourceReference(source) {
 
 function issue(code, message, records = []) {
   return { code, message, records };
+}
+
+function globalAccessMatrixFingerprint(rows) {
+  return {
+    subjects: globalSubjectAccessMatrixColumns(rows).map(column => column.subjectId),
+    accounts: (rows || []).map(row => normalizePlatformIdentifier(row.AccountID))
+  };
 }
 
 function centralFingerprint(record) {

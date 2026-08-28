@@ -1,4 +1,4 @@
-/* M4L V102.7 - Central global curriculum, subscriptions and protected Drive resources. */
+/* M4L V102.10 - Central global curriculum, policy-aware access and protected Drive resources. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { batchUpdateGoogleSheetValues } from "../lib/google-sheets.js";
@@ -8,6 +8,14 @@ import {
   listGoogleDriveFolder
 } from "../lib/google-drive.js";
 import { json } from "../lib/http.js";
+import {
+  buildGlobalSubjectAccessMatrixPayload,
+  countActiveGlobalSubjectSubscriptions,
+  globalSubjectAccessMatrixColumn,
+  globalSubjectAccessMatrixColumns,
+  hasActiveGlobalSubjectSubscription,
+  resolveGlobalSubjectAccessPolicy
+} from "../lib/global-subject-delivery.js";
 import {
   getPlatformSpreadsheetId,
   readPlatformSheet
@@ -54,7 +62,12 @@ export async function getPlatformGlobalManagementEndpoint(request, env) {
       tasks: tables.GlobalTaskList.map(mapTask),
       resources: tables.GlobalResources.map(mapResource),
       accounts: tables.UserAccounts.map(mapAccount),
-      subjectAccess: tables.UserGlobalSubjectAccess.map(mapSubjectAccess),
+      subjectAccessMatrix: buildGlobalSubjectAccessMatrixPayload(
+        tables.GlobalSubjectAccessMatrix,
+        tables.UserAccounts,
+        tables.GlobalSubjectList,
+        tables.GlobalSubjectAccessPolicy
+      ),
       globalResourceDriveRoot: mapGlobalResourceDriveRoot(driveRoot, permission.user)
     });
   } catch (error) {
@@ -234,13 +247,17 @@ export async function createPlatformGlobalDriveAccessEndpoint(request, env) {
 
     const authority = normalizePlatformIdentifier(user.role);
     if (!["ADMIN", "GLOBAL_ADMIN"].includes(authority)) {
-      const accessMatches = tables.UserGlobalSubjectAccess.filter(access => (
-        normalizePlatformIdentifier(access.AccountID) === normalizePlatformIdentifier(user.accountid) &&
-        normalizePlatformIdentifier(access.SubjectID) === normalizePlatformIdentifier(resource.SubjectID) &&
-        isActivePlatformValue(access.Active)
-      ));
-      if (accessMatches.length !== 1) {
-        throw clientError("An active global-subject subscription is required", 403);
+      const policy = resolveGlobalSubjectAccessPolicy(
+        tables.GlobalSubjectAccessPolicy,
+        resource.SubjectID
+      );
+      const entitled = policy.accessModel === "FREE" || hasActiveGlobalSubjectSubscription(
+        tables.GlobalSubjectAccessMatrix,
+        user.accountid,
+        resource.SubjectID
+      );
+      if (!entitled) {
+        throw clientError("An active global-subject subscription is required for this SUBSCRIPTION subject", 403);
       }
     }
 
@@ -327,6 +344,18 @@ export async function savePlatformGlobalSubjectEndpoint(request, env) {
       return json({ success: true, message: "No global subject changes requested", subject: mapSubject(existing) });
     }
 
+    const defaultPolicy = existing ? null : {
+      SubjectPolicyID: createPlatformId("GSPOL"),
+      SubjectID: record.SubjectID,
+      AccessModel: "SUBSCRIPTION",
+      Active: true,
+      CreatedDate: timestamp,
+      CreatedByAccountID: permission.user.accountid,
+      CreatedByAccountName: permission.user.username,
+      ModifiedByAccountID: "",
+      ModifiedByAccountName: "",
+      ModifiedDate: ""
+    };
     const dependencies = subjectDependencies(tables, record.SubjectID);
     await writeCurriculumMutation(env, permission.user, tables, {
       sheetName: "GlobalSubjectList",
@@ -336,7 +365,22 @@ export async function savePlatformGlobalSubjectEndpoint(request, env) {
       recordType: "GLOBAL_SUBJECT",
       recordId: record.SubjectID,
       changedFields,
-      timestamp
+      timestamp,
+      additionalWrites: defaultPolicy ? [
+        valueWrite(
+          "GlobalSubjectAccessPolicy",
+          nextRowNumber(tables.GlobalSubjectAccessPolicy),
+          recordToRow(defaultPolicy, PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy)
+        ),
+        ...matrixSubjectColumnWrites(tables.GlobalSubjectAccessMatrix, record.SubjectID)
+      ] : [],
+      additionalAudits: defaultPolicy ? [{
+        action: "CREATE_GLOBAL_SUBJECT_ACCESS_POLICY",
+        recordType: "GLOBAL_SUBJECT_ACCESS_POLICY",
+        recordId: defaultPolicy.SubjectPolicyID,
+        changedFields: ["SubjectID", "AccessModel", "Active"],
+        timestamp
+      }] : []
     });
 
     return json({
@@ -699,6 +743,11 @@ export async function savePlatformGlobalSubjectAccessEndpoint(request, env) {
     const tables = await readManagementTables(env);
     const account = uniqueRecord(tables.UserAccounts, "AccountID", accountId, "User account");
     const subject = uniqueRecord(tables.GlobalSubjectList, "SubjectID", subjectId, "Global subject");
+    const policy = resolveGlobalSubjectAccessPolicy(tables.GlobalSubjectAccessPolicy, subject.SubjectID);
+
+    if (policy.accessModel === "FREE") {
+      throw clientError("FREE global subjects use implicit access and do not accept per-account subscription changes", 409);
+    }
     if (requestedActive && !isActivePlatformValue(account.Active)) {
       throw clientError("Global-subject access cannot be activated for an inactive account", 409);
     }
@@ -706,56 +755,43 @@ export async function savePlatformGlobalSubjectAccessEndpoint(request, env) {
       throw clientError("Global-subject access cannot be activated for an inactive subject", 409);
     }
 
-    const matches = tables.UserGlobalSubjectAccess.filter(record => (
-      normalizePlatformIdentifier(record.AccountID) === normalizePlatformIdentifier(accountId) &&
-      normalizePlatformIdentifier(record.SubjectID) === normalizePlatformIdentifier(subjectId)
+    const accountKey = normalizePlatformIdentifier(account.AccountID);
+    const matches = tables.GlobalSubjectAccessMatrix.filter(record => (
+      normalizePlatformIdentifier(record.AccountID) === accountKey
     ));
-    if (matches.length > 1) throw clientError("Global-subject access is duplicated", 409);
-    const existing = matches[0] || null;
-    const timestamp = new Date().toISOString();
-    const record = existing
-      ? {
-          ...existing,
-          Active: requestedActive,
-          ModifiedByAccountID: permission.user.accountid,
-          ModifiedByAccountName: permission.user.username,
-          ModifiedDate: timestamp
-        }
-      : {
-          SubjectAccessID: createPlatformId("GSACCESS"),
-          AccountID: accountId,
-          SubjectID: subjectId,
-          Active: requestedActive,
-          CreatedDate: timestamp,
-          CreatedByAccountID: permission.user.accountid,
-          CreatedByAccountName: permission.user.username,
-          ModifiedByAccountID: "",
-          ModifiedByAccountName: "",
-          ModifiedDate: ""
-        };
-    const changedFields = existing
-      ? changedRecordFields(existing, record, ["Active"])
-      : ["AccountID", "SubjectID", "Active"];
-    if (existing && changedFields.length === 0) {
+    if (matches.length !== 1) {
+      throw clientError("GlobalSubjectAccessMatrix must contain exactly one row for this account", 409);
+    }
+    const matrixRow = matches[0];
+    const column = globalSubjectAccessMatrixColumn(tables.GlobalSubjectAccessMatrix, subject.SubjectID);
+    if (!column) {
+      throw clientError("GlobalSubjectAccessMatrix is missing this subject column", 409);
+    }
+    const subjectKey = normalizePlatformIdentifier(subject.SubjectID);
+    const currentActive = isActivePlatformValue(matrixRow?._subjectAccess?.[subjectKey]);
+    if (currentActive === requestedActive) {
       return json({
         success: true,
         message: "Global-subject access is already in the requested state",
-        access: mapSubjectAccess(existing)
+        access: { accountid: accountId, subjectid: subjectId, active: currentActive }
       });
     }
 
-    await writeAccessMutation(env, permission.user, tables, {
-      rowNumber: existing?._rowNumber || nextRowNumber(tables.UserGlobalSubjectAccess),
-      record,
+    const timestamp = new Date().toISOString();
+    await writeMatrixAccessMutation(env, permission.user, tables, {
+      rowNumber: matrixRow._rowNumber,
+      column,
+      accountId,
+      subjectId,
+      active: requestedActive,
       action: requestedActive ? "ACTIVATE_GLOBAL_SUBJECT_ACCESS" : "DEACTIVATE_GLOBAL_SUBJECT_ACCESS",
-      changedFields,
       timestamp
     });
 
     return json({
       success: true,
       message: requestedActive ? "Global-subject access activated" : "Global-subject access deactivated",
-      access: mapSubjectAccess(record)
+      access: { accountid: accountId, subjectid: subjectId, active: requestedActive }
     });
   } catch (error) {
     return mutationError(error, env);
@@ -806,6 +842,9 @@ async function readManagementTables(env) {
   const names = [
     "UserAccounts",
     "UserGlobalSubjectAccess",
+    "GlobalSubjectAccessMatrix",
+    "GlobalSubjectAccessPolicy",
+    "GlobalSubjectRuns",
     "GlobalSubjectList",
     "GlobalModuleList",
     "GlobalTaskList",
@@ -820,33 +859,60 @@ async function readManagementTables(env) {
 async function writeCurriculumMutation(env, user, tables, mutation) {
   const version = readGlobalCurriculumVersion(tables.PlatformConfig);
   const nextVersion = version.value + 1;
-  const auditRow = buildAuditRow(user, mutation);
   const headers = PLATFORM_SHEET_HEADERS[mutation.sheetName];
-  await batchUpdateGoogleSheetValues(env, [
+  const auditStartRow = nextRowNumber(tables.PlatformAuditLog);
+  const auditMutations = [mutation, ...(mutation.additionalAudits || [])];
+  const writes = [
     valueWrite(mutation.sheetName, mutation.rowNumber, recordToRow(mutation.record, headers)),
+    ...(mutation.additionalWrites || []),
     {
       range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
       majorDimension: "ROWS",
       values: [[nextVersion, mutation.timestamp, user.accountid, user.username]]
     },
+    ...auditMutations.map((auditMutation, index) => (
+      valueWrite("PlatformAuditLog", auditStartRow + index, buildAuditRow(user, auditMutation))
+    ))
+  ];
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+}
+
+async function writeMatrixAccessMutation(env, user, tables, mutation) {
+  const auditRow = buildAuditRow(user, {
+    action: mutation.action,
+    recordType: "GLOBAL_SUBJECT_ACCESS",
+    recordId: `${mutation.accountId}:${mutation.subjectId}`,
+    changedFields: [`${mutation.subjectId}:Active`],
+    timestamp: mutation.timestamp
+  });
+  await batchUpdateGoogleSheetValues(env, [
+    {
+      range: `'GlobalSubjectAccessMatrix'!${mutation.column.columnName}${mutation.rowNumber}`,
+      majorDimension: "ROWS",
+      values: [[mutation.active]]
+    },
     valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow)
   ], { spreadsheetId: getPlatformSpreadsheetId(env) });
 }
 
-async function writeAccessMutation(env, user, tables, mutation) {
-  const auditRow = buildAuditRow(user, {
-    ...mutation,
-    recordType: "GLOBAL_SUBJECT_ACCESS",
-    recordId: mutation.record.SubjectAccessID
-  });
-  await batchUpdateGoogleSheetValues(env, [
-    valueWrite(
-      "UserGlobalSubjectAccess",
-      mutation.rowNumber,
-      recordToRow(mutation.record, PLATFORM_SHEET_HEADERS.UserGlobalSubjectAccess)
-    ),
-    valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow)
-  ], { spreadsheetId: getPlatformSpreadsheetId(env) });
+function matrixSubjectColumnWrites(matrixRows, subjectId) {
+  if (globalSubjectAccessMatrixColumn(matrixRows, subjectId)) {
+    throw clientError("GlobalSubjectAccessMatrix already contains this subject column", 409);
+  }
+  const columnNumber = globalSubjectAccessMatrixColumns(matrixRows).length + 2;
+  const column = columnName(columnNumber);
+  return [
+    {
+      range: `'GlobalSubjectAccessMatrix'!${column}1`,
+      majorDimension: "ROWS",
+      values: [[subjectId]]
+    },
+    ...(matrixRows || []).map(row => ({
+      range: `'GlobalSubjectAccessMatrix'!${column}${row._rowNumber}`,
+      majorDimension: "ROWS",
+      values: [[false]]
+    }))
+  ];
 }
 
 function buildAuditRow(user, mutation) {
@@ -1005,8 +1071,12 @@ function subjectDependencies(tables, subjectId) {
     modules: tables.GlobalModuleList.filter(record => normalizePlatformIdentifier(record.SubjectID) === normalized).length,
     tasks: tables.GlobalTaskList.filter(record => normalizePlatformIdentifier(record.SubjectID) === normalized).length,
     resources: tables.GlobalResources.filter(record => normalizePlatformIdentifier(record.SubjectID) === normalized).length,
-    subscriptions: tables.UserGlobalSubjectAccess.filter(record => (
-      normalizePlatformIdentifier(record.SubjectID) === normalized && isActivePlatformValue(record.Active)
+    subscriptions: countActiveGlobalSubjectSubscriptions(tables.GlobalSubjectAccessMatrix, normalized),
+    policies: tables.GlobalSubjectAccessPolicy.filter(record => (
+      normalizePlatformIdentifier(record.SubjectID) === normalized
+    )).length,
+    runs: tables.GlobalSubjectRuns.filter(record => (
+      normalizePlatformIdentifier(record.SubjectID) === normalized
     )).length
   };
 }
@@ -1082,15 +1152,6 @@ function mapAccount(record) {
     uniqueid: String(record.UniqueID || "").trim(),
     active: isActivePlatformValue(record.Active),
     platformrole: normalizePlatformIdentifier(record.PlatformRole)
-  };
-}
-
-function mapSubjectAccess(record) {
-  return {
-    subjectaccessid: String(record.SubjectAccessID || "").trim(),
-    accountid: String(record.AccountID || "").trim(),
-    subjectid: String(record.SubjectID || "").trim(),
-    active: isActivePlatformValue(record.Active)
   };
 }
 

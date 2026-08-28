@@ -1,0 +1,75 @@
+/* M4L V102.10 - Global Curriculum Delivery tab. */
+.global-delivery-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.global-delivery-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.global-delivery-badges,
+.global-delivery-run-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.global-delivery-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 9px;
+  border: 1px solid rgba(35, 69, 105, 0.22);
+  border-radius: 999px;
+  background: rgba(35, 69, 105, 0.06);
+  color: #234569;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.global-delivery-badge--status {
+  background: rgba(35, 69, 105, 0.025);
+  font-weight: 700;
+}
+
+.global-delivery-grid {
+  align-items: start;
+}
+
+.global-delivery-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.global-delivery-dependencies {
+  margin: 0;
+  color: #52667c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.global-delivery-run-list .global-curriculum-record-row {
+  gap: 14px;
+}
+
+.global-delivery-runs-panel {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .global-delivery-date-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .global-delivery-run-state {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

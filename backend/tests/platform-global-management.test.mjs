@@ -20,6 +20,12 @@ tables.UserAccounts.push([
 tables.UserAccounts.push([
   "ACCOUNT3", "Course Admin", "ADMIN-LINK", true, globalHash, true, "", "2026-08-15T00:00:00.000Z"
 ]);
+tables.GlobalSubjectAccessMatrix = [
+  ["AccountID"],
+  ["ACCOUNT1"],
+  ["ACCOUNT2"],
+  ["ACCOUNT3"]
+];
 tables.UserCourseAccess.push([
   "ACCESS3", "ACCOUNT3", "COURSE1", "ADMIN", true, true, "", "2026-08-15T00:00:00.000Z",
   "", "", "", "", "", "ADMIN3"
@@ -29,7 +35,7 @@ tables.UserCourseAccess.push([
   "", "", "", "", "", "MAKTAB2"
 ]);
 tables.PlatformConfig.push(["AccountLoginBaseUrl", "https://development.example.test/account/"]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.4"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.5"]);
 tables.PlatformConfig.push(["GlobalCurriculumVersion", 1]);
 tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", ""]);
 
@@ -225,7 +231,12 @@ try {
   assert.match(subjectCreate.data.subject.subjectid, /^GSUBJ-[0-9a-f-]{36}$/i);
   assert.equal(subjectCreate.data.subject.scope, "GLOBAL");
   assert.equal(Number(tables.PlatformConfig[3][1]), 3);
-  assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT");
+  assert.equal(tables.PlatformAuditLog.at(-2)[6], "CREATE_GLOBAL_SUBJECT");
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT_ACCESS_POLICY");
+  assert.equal(tables.GlobalSubjectAccessPolicy.length, 2);
+  assert.equal(tables.GlobalSubjectAccessPolicy[1][1], subjectCreate.data.subject.subjectid);
+  assert.equal(tables.GlobalSubjectAccessPolicy[1][2], "SUBSCRIPTION");
+  assert.equal(tables.GlobalSubjectAccessPolicy[1][3], true);
   const subjectId = subjectCreate.data.subject.subjectid;
 
   const duplicateSubject = await post("/api/admin/platform/global/subject/save", {
@@ -309,6 +320,24 @@ try {
   }, subscriberToken);
   assert.equal(subscriberDenied.response.status, 403);
 
+  const makeFree = await post("/api/admin/platform/global/policy/save", {
+    subjectId,
+    accessModel: "FREE"
+  }, globalToken);
+  assert.equal(makeFree.response.status, 200, JSON.stringify(makeFree.data));
+  assert.equal(Number(tables.PlatformConfig[3][1]), 7);
+  const freeAccess = await post("/api/platform/global/resources/access", { resourceId }, subscriberToken);
+  assert.equal(freeAccess.response.status, 200, "FREE policy must authorise protected Drive delivery without a subscription row");
+
+  const restoreSubscription = await post("/api/admin/platform/global/policy/save", {
+    subjectId,
+    accessModel: "SUBSCRIPTION"
+  }, globalToken);
+  assert.equal(restoreSubscription.response.status, 200, JSON.stringify(restoreSubscription.data));
+  assert.equal(Number(tables.PlatformConfig[3][1]), 8);
+  const deniedAgain = await post("/api/platform/global/resources/access", { resourceId }, subscriberToken);
+  assert.equal(deniedAgain.response.status, 403, "SUBSCRIPTION policy must still require an active matrix entitlement");
+
   const replacementRootBlocked = await post("/api/admin/platform/global/drive-root/save", {
     folderId: secondRootFolderId
   }, globalToken);
@@ -321,8 +350,8 @@ try {
     active: true
   }, globalToken);
   assert.equal(accessCreate.response.status, 200, JSON.stringify(accessCreate.data));
-  assert.match(accessCreate.data.access.subjectaccessid, /^GSACCESS-/);
-  assert.equal(Number(tables.PlatformConfig[3][1]), 6, "Access changes must not change curriculum version");
+  assert.deepEqual(accessCreate.data.access, { accountid: "ACCOUNT2", subjectid: subjectId, active: true });
+  assert.equal(Number(tables.PlatformConfig[3][1]), 8, "Access changes must not change curriculum version");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "ACTIVATE_GLOBAL_SUBJECT_ACCESS");
 
   const subscriberAccess = await post("/api/platform/global/resources/access", {
@@ -345,9 +374,11 @@ try {
     modules: 1,
     tasks: 1,
     resources: 1,
-    subscriptions: 1
+    subscriptions: 1,
+    policies: 1,
+    runs: 0
   });
-  assert.equal(Number(tables.PlatformConfig[3][1]), 7);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 9);
 
   const inactiveSubjectAccess = await post("/api/platform/global/resources/access", {
     resourceId
@@ -367,7 +398,7 @@ try {
     active: false
   }, globalToken);
   assert.equal(accessDeactivate.response.status, 200, JSON.stringify(accessDeactivate.data));
-  assert.equal(Number(tables.PlatformConfig[3][1]), 7);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 9);
 
   const finalList = await post("/api/admin/platform/global/get", {}, globalToken);
   assert.equal(finalList.response.status, 200);
@@ -375,13 +406,14 @@ try {
   assert.equal(finalList.data.modules.length, 1);
   assert.equal(finalList.data.tasks.length, 1);
   assert.equal(finalList.data.resources.length, 1);
-  assert.equal(finalList.data.subjectAccess.length, 1);
-  assert.equal(finalList.data.subjectAccess[0].active, false);
+  assert.equal(finalList.data.subjectAccessMatrix.rows.length, 3);
+  const subscriberMatrix = finalList.data.subjectAccessMatrix.rows.find(row => row.accountid === "ACCOUNT2");
+  assert.equal(subscriberMatrix.values[subjectId], false);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.7 platform global curriculum, protected Drive and access management tests passed.");
+console.log("V102.10 global curriculum, default SUBSCRIPTION policy, protected Drive and access management tests passed.");
 
 async function post(path, body, token) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {
@@ -411,7 +443,20 @@ function applyWrite(write) {
     tables.PlatformConfig[rowNumber - 1] = row;
     return;
   }
+  const matrixCell = /^'GlobalSubjectAccessMatrix'!([A-Z]+)(\d+)$/.exec(write.range);
+  if (matrixCell) {
+    const columnIndex = columnNumber(matrixCell[1]) - 1;
+    const rowIndex = Number(matrixCell[2]) - 1;
+    const row = tables.GlobalSubjectAccessMatrix[rowIndex] || [];
+    row[columnIndex] = write.values[0][0];
+    tables.GlobalSubjectAccessMatrix[rowIndex] = row;
+    return;
+  }
   throw new Error(`Unexpected global-management write: ${write.range}`);
+}
+
+function columnNumber(name) {
+  return String(name).split("").reduce((value, char) => value * 26 + char.charCodeAt(0) - 64, 0);
 }
 
 function toPem(bytes, label) {

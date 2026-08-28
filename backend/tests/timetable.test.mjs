@@ -341,14 +341,14 @@ try {
     directEnv
   );
   assert.equal(teacherOnlyResult.data.groupno, "ALL");
-  assert.equal(teacherOnlyResult.data.teacherid, "ADMIN2");
+  assert.equal(teacherOnlyResult.data.teacherid, "ALL");
   assert.equal(teacherOnlyResult.data.viewerrole, "TEACHER");
-  assert.equal(teacherOnlyResult.data.teacheronly, true);
+  assert.equal(teacherOnlyResult.data.teacheronly, false);
   assert.equal(teacherOnlyResult.data.showgrouplabels, true);
   assert.deepEqual(
     teacherOnlyResult.data.sessions.map(session => session.sessionid),
-    ["TA2", "TA6", "TA9"],
-    "A TEACHER request must be restricted to the authenticated AdminID across its assigned groups"
+    ["TA1", "TA2", "TA3", "TA4", "TA5", "TA6", "TA8", "TA9"],
+    "V102.9.1 TEACHER reads receive the complete active course timetable; write permissions remain unchanged"
   );
 
   const oversightResult = await postTimetable(

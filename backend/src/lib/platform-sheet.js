@@ -24,7 +24,7 @@ export async function readPlatformSheet(env, sheetName) {
     throw new Error(`Unknown Platform Sheet tab: ${sheetName}`);
   }
 
-  const lastColumn = columnName(headers.length);
+  const lastColumn = sheetName === "GlobalSubjectAccessMatrix" ? "ZZ" : columnName(headers.length);
   const rows = await readGoogleSheetValues(
     env,
     `${quoteSheetName(sheetName)}!A:${lastColumn}`,

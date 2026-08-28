@@ -1,3 +1,29 @@
+V102.10
+
+# Add global-subject access matrix, policies and finite teaching runs
+
+- Carries forward the existing Attendance reset fix already applied to production and development: after a successful attendance save, the register resets to Present instead of leaving previously absent students marked Absent.
+- Adds a focused regression test and Admin cache-version bump so the eventual V102.10 production merge preserves that fix.
+- Adds `GlobalSubjectAccessMatrix`: one row per central account and one column per global SubjectID.
+- FREE subjects grant implicit access to active central accounts and never need per-user FREE entitlement rows.
+- SUBSCRIPTION subjects use the account's TRUE/FALSE matrix cell as the live entitlement.
+- Keeps the existing `UserGlobalSubjectAccess` rows unchanged as legacy migration and rollback history.
+- Introduces `FREE`/`SUBSCRIPTION` policies independent of subject active state and teaching-run state.
+- Keeps every existing subject SUBSCRIPTION during migration and fails closed if policy data is missing/invalid.
+- Adds repeatable dated runs with timezone-aware derived status; ending a run never hides recordings/resources or revokes policy-based access.
+- Shows FREE/SUBSCRIPTION plus CURRENT/UPCOMING/PAST/NOT SCHEDULED badges in the Global Library.
+- Adds Global Curriculum **Access Matrix** and **Delivery** management for authorised central administration.
+- Extends protected global Drive authorization so active accounts can open FREE resources without synthetic subscriptions, while SUBSCRIPTION resources require the matrix flag.
+- New subjects receive an active SUBSCRIPTION policy and a matrix column defaulted FALSE; newly migrated accounts receive a matrix row defaulted FALSE.
+- Advances Platform schema to `102.0.5` with three additive tabs: `GlobalSubjectAccessMatrix`, `GlobalSubjectAccessPolicy`, and `GlobalSubjectRuns` (13 required Platform tabs total).
+- Requires controlled Sheet-first preparation; Pages and Worker must deploy from the same V102.10 commit before the schema marker is advanced.
+- Leaves course Sheets, course timetables, Weekly Planner, Progress, Student Records and Apps Script unchanged. Attendance permissions/backend behavior are unchanged; the already-deployed client-side post-save reset hotfix is carried forward.
+- Does not implement the global timetable or academy timetable; that remains later work.
+
+Install `Rebootyourmaktab-V102.10-GITHUB-UPDATE-FROM-V102.9.1.zip` over the complete deployed V102.9.1 development repository and complete `UPDATE-TODO.md` in order. Follow `V102.10-PLATFORM-SHEET-MIGRATION.md` before pushing the commit.
+
+---
+
 V102.9.1
 
 # Fit Timetable Builder controls and give teachers the complete course timetable

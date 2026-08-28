@@ -1,3 +1,28 @@
+# V102.10 — Global-subject access matrix, policies and scheduled runs
+
+- Carries forward the already-applied Attendance save-reset hotfix (`js/m4l-attendance.js` v97.1.5.5): after a successful save, the on-screen register resets every loaded student to Present and rerenders; failed saves keep the current marks. This is preservation of an existing production/development fix, not a new V102.10 attendance feature.
+- Updates the Admin attendance asset cache-buster to v97.1.5.5 and adds a regression test so the eventual production merge cannot silently restore the stale post-save Absent state.
+- Adds `GlobalSubjectAccessMatrix`: one row per central account, `AccountID` in column A, and one dynamic column per global `SubjectID`.
+- Uses matrix TRUE/FALSE cells only for current SUBSCRIPTION entitlement; FREE access is implicit and does not create per-user rows.
+- Retains the existing row-based `UserGlobalSubjectAccess` tab unchanged as legacy migration/rollback history; V102.10 runtime authorization no longer depends on it.
+- Adds `GlobalSubjectAccessPolicy` with exact `FREE`/`SUBSCRIPTION` values and one active policy per global subject.
+- Migrates every existing global subject to `SUBSCRIPTION`, so rollout never widens access accidentally; missing, inactive, duplicated or invalid policy data fails closed.
+- Adds `GlobalSubjectRuns` for finite, repeatable teaching periods with timezone-aware derived `UPCOMING`, `CURRENT`, `ENDED` and `INACTIVE` status.
+- Adds subject-level delivery priority `CURRENT`, `UPCOMING`, `PAST`, then `NOT SCHEDULED`, independently of resource entitlement.
+- Applies FREE/SUBSCRIPTION authorization server-side to the unified global Library, global-only account context/session revalidation and protected V102.7 Drive resources.
+- Adds Global Curriculum **Access Matrix** management and the additive **Delivery** policy/run screen.
+- New global subjects atomically receive a default active `SUBSCRIPTION` policy plus a new matrix SubjectID column defaulted FALSE for all existing matrix rows.
+- Newly migrated central accounts receive one matrix row with FALSE in all current subject columns.
+- Writes central `PlatformAuditLog` records for matrix entitlement, policy and run changes; policy/run curriculum mutations update `GlobalCurriculumVersion`.
+- Advances Platform schema `102.0.4` → `102.0.5` and required Platform tabs from 10 to 13. Course Sheets and Apps Script are unchanged.
+- Adds exact Sheet migration instructions for seeding the matrix from legacy entitlements while leaving `UserGlobalSubjectAccess` untouched.
+- Adds focused backend/UI tests for matrix entitlement, FREE access, run status, validation, protected Drive access, audit/version behavior and Delivery controls.
+- Does not add global timetable sessions/publication, academy aggregation, Aalimiyah onboarding, billing/payment processing, subscription expiry or cross-course conflict logic.
+
+Development only: production remains stable at V101.1.
+
+---
+
 # V102.9.1 — Timetable display correction
 
 - Restores compact Timetable Builder status, section, course and weekly-session

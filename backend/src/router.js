@@ -111,6 +111,11 @@ import {
   savePlatformGlobalTaskEndpoint
 } from "./routes/platform-global-management.js";
 import {
+  getPlatformGlobalDeliveryEndpoint,
+  savePlatformGlobalSubjectPolicyEndpoint,
+  savePlatformGlobalSubjectRunEndpoint
+} from "./routes/platform-global-delivery.js";
+import {
   accountGlobalWorkspaceEndpoint,
   accountLoginEndpoint,
   accountSessionEndpoint,
@@ -186,6 +191,9 @@ const ROUTES = new Map([
   ["/api/admin/platform/global/task/save", workerRoute("platform-global-management", savePlatformGlobalTaskEndpoint)],
   ["/api/admin/platform/global/resource/save", workerRoute("platform-global-management", savePlatformGlobalResourceEndpoint)],
   ["/api/admin/platform/global/access/save", workerRoute("platform-global-management", savePlatformGlobalSubjectAccessEndpoint)],
+  ["/api/admin/platform/global/delivery/get", workerRoute("platform-global-management", getPlatformGlobalDeliveryEndpoint)],
+  ["/api/admin/platform/global/policy/save", workerRoute("platform-global-management", savePlatformGlobalSubjectPolicyEndpoint)],
+  ["/api/admin/platform/global/run/save", workerRoute("platform-global-management", savePlatformGlobalSubjectRunEndpoint)],
   ["/api/platform/global/resources/access", workerRoute("platform-global-management", createPlatformGlobalDriveAccessEndpoint)],
   ["/api/admin/system-settings/get", googleSheetsRoute("system-settings", getSystemSettingsGoogleSheetsEndpoint)],
   ["/api/admin/system-settings/save", googleSheetsRoute("system-settings", saveSystemSettingsGoogleSheetsEndpoint)],

@@ -1,4 +1,4 @@
-/* M4L V102.5 - Authoritative central identity, access and global-content schema. */
+/* M4L V102.10 - Authoritative central identity, access, delivery and global-content schema. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -58,6 +58,36 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "SubjectAccessID",
     "AccountID",
     "SubjectID",
+    "Active",
+    "CreatedDate",
+    "CreatedByAccountID",
+    "CreatedByAccountName",
+    "ModifiedByAccountID",
+    "ModifiedByAccountName",
+    "ModifiedDate"
+  ]),
+  GlobalSubjectAccessMatrix: Object.freeze([
+    "AccountID"
+  ]),
+  GlobalSubjectAccessPolicy: Object.freeze([
+    "SubjectPolicyID",
+    "SubjectID",
+    "AccessModel",
+    "Active",
+    "CreatedDate",
+    "CreatedByAccountID",
+    "CreatedByAccountName",
+    "ModifiedByAccountID",
+    "ModifiedByAccountName",
+    "ModifiedDate"
+  ]),
+  GlobalSubjectRuns: Object.freeze([
+    "RunID",
+    "SubjectID",
+    "RunName",
+    "StartDate",
+    "EndDate",
+    "Timezone",
     "Active",
     "CreatedDate",
     "CreatedByAccountID",
@@ -158,6 +188,10 @@ export function validatePlatformSheetRows(sheetName, rows) {
     throw new Error(`${sheetName} is missing its header row`);
   }
 
+  if (sheetName === "GlobalSubjectAccessMatrix") {
+    return validateGlobalSubjectAccessMatrixRows(rows);
+  }
+
   const actualHeaders = expectedHeaders.map((unused, index) => String(rows[0]?.[index] || "").trim());
   const mismatch = expectedHeaders.findIndex((header, index) => actualHeaders[index] !== header);
   if (mismatch !== -1) {
@@ -181,6 +215,55 @@ export function validatePlatformSheetRows(sheetName, rows) {
     });
     return record;
   });
+}
+
+function validateGlobalSubjectAccessMatrixRows(rows) {
+  const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
+  const firstHeader = String(headerRow[0] || "").trim();
+  if (firstHeader !== "AccountID") {
+    throw new Error(`GlobalSubjectAccessMatrix header A1 must be AccountID; found ${firstHeader || "(blank)"}`);
+  }
+
+  let lastHeaderIndex = 0;
+  headerRow.forEach((value, index) => {
+    if (String(value ?? "").trim() !== "") lastHeaderIndex = index;
+  });
+  const subjectColumns = [];
+  const seenSubjects = new Set();
+  for (let index = 1; index <= lastHeaderIndex; index += 1) {
+    const subjectId = String(headerRow[index] ?? "").trim();
+    if (!subjectId) {
+      throw new Error(`GlobalSubjectAccessMatrix header ${columnName(index + 1)}1 cannot be blank between subject columns`);
+    }
+    const normalized = normalizePlatformIdentifier(subjectId);
+    if (!normalized || seenSubjects.has(normalized)) {
+      throw new Error(`GlobalSubjectAccessMatrix has a blank or duplicate SubjectID header in ${columnName(index + 1)}1`);
+    }
+    seenSubjects.add(normalized);
+    subjectColumns.push(Object.freeze({
+      subjectId,
+      normalizedSubjectId: normalized,
+      columnNumber: index + 1,
+      columnName: columnName(index + 1)
+    }));
+  }
+
+  const records = rows.slice(1).filter(row => rowHasValue(row)).map((row, rowIndex) => {
+    const subjectAccess = Object.create(null);
+    for (const column of subjectColumns) {
+      subjectAccess[column.normalizedSubjectId] = row?.[column.columnNumber - 1] ?? "";
+    }
+    return {
+      _rowNumber: rowIndex + 2,
+      AccountID: row?.[0] ?? "",
+      _subjectAccess: subjectAccess
+    };
+  });
+  Object.defineProperty(records, "_subjectColumns", {
+    value: Object.freeze(subjectColumns),
+    enumerable: false
+  });
+  return records;
 }
 
 export function isActivePlatformValue(value) {
