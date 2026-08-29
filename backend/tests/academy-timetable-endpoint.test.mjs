@@ -1,0 +1,250 @@
+import assert from "node:assert/strict";
+import { createSaltedPinHash, createSessionToken } from "../src/lib/auth.js";
+import { PLATFORM_SHEET_HEADERS } from "../src/lib/platform-schema.js";
+import { PUBLISHED_TIMETABLE_SESSION_HEADERS, TIMETABLE_PUBLICATION_HEADERS, TIMETABLE_STATE_HEADERS } from "../src/lib/timetable-publication.js";
+import worker from "../src/worker.js";
+
+const pinSecret = "academy-pin-secret";
+const sessionSecret = "academy-session-secret";
+const accountHash = await createSaltedPinHash("1234", pinSecret);
+const keyPair = await crypto.subtle.generateKey({
+  name: "RSASSA-PKCS1-v1_5",
+  modulusLength: 2048,
+  publicExponent: new Uint8Array([1, 0, 1]),
+  hash: "SHA-256"
+}, true, ["sign", "verify"]);
+const pkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", keyPair.privateKey));
+const env = {
+  PIN_SECRET: pinSecret,
+  SESSION_SECRET: sessionSecret,
+  PLATFORM_SPREADSHEET_ID: "platform-sheet",
+  GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+    type: "service_account",
+    client_email: "academy-test@example.iam.gserviceaccount.com",
+    private_key_id: "academy-key",
+    private_key: toPem(pkcs8, "PRIVATE KEY"),
+    token_uri: "https://oauth2.googleapis.com/token"
+  }),
+  M4L_REQUIRE_CREDENTIAL_BOUND_SESSIONS: "true"
+};
+
+const tables = {
+  platform: {
+    UserAccounts: [
+      PLATFORM_SHEET_HEADERS.UserAccounts,
+      ["ACCOUNT1", "Global Admin", "ACADEMY-LINK", true, accountHash, true, "", "", "", "", "", "", "", "GLOBAL_ADMIN"],
+      ["ACCOUNT2", "Student Two", "STUDENT-LINK", true, accountHash, true, "", "", "", "", "", "", "", ""]
+    ],
+    PlatformConfig: [
+      PLATFORM_SHEET_HEADERS.PlatformConfig,
+      ["PlatformSchemaVersion", "102.0.7", "", "", ""],
+      ["PlatformTimezone", "Africa/Johannesburg", "", "", ""],
+      ["GlobalCurriculumVersion", "25", "", "", ""],
+      ["GlobalTimetableVersion", "2", "", "", ""]
+    ],
+    CourseRegistry: [
+      PLATFORM_SHEET_HEADERS.CourseRegistry,
+      ["COURSE1", "Reboot Your Maktab", "course-sheet-one", true, "101.4.3", "", "", "", "", "", ""]
+    ],
+    UserCourseAccess: [
+      PLATFORM_SHEET_HEADERS.UserCourseAccess,
+      ["ACCESS2", "ACCOUNT2", "COURSE1", "STUDENT", true, true, "", "", "", "", "", "", "", "STUD1"]
+    ],
+    GlobalSubjectList: [
+      PLATFORM_SHEET_HEADERS.GlobalSubjectList,
+      ["GSUBJ1", "Steps to My Rabb", true, "", "", "", "", "", "", ""]
+    ],
+    GlobalSubjectAccessPolicy: [
+      PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy,
+      ["GSPOL1", "GSUBJ1", "FREE", true, "", "", "", "", "", ""]
+    ],
+    GlobalSubjectAccessMatrix: [
+      ["AccountID", "GSUBJ1"],
+      ["ACCOUNT1", false]
+    ],
+    GlobalSubjectRuns: [
+      PLATFORM_SHEET_HEADERS.GlobalSubjectRuns,
+      ["GSRUN1", "GSUBJ1", "Steps to My Rabb Term 3", "2026-08-01", "2026-11-30", "Africa/Johannesburg", true, "", "", "", "", "", ""]
+    ],
+    GlobalTimetableRunState: [
+      PLATFORM_SHEET_HEADERS.GlobalTimetableRunState,
+      ["GSRUN1", "PUBLISHED", "GTPUB1", "", "", "", "", "", ""]
+    ],
+    GlobalTimetablePublications: [
+      PLATFORM_SHEET_HEADERS.GlobalTimetablePublications,
+      ["GTPUB1", "GSRUN1", "GSUBJ1", 1, "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", 1]
+    ],
+    GlobalTimetableSessionLifecycle: [
+      PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle,
+      ["GSLIFE1", "GTSES1", "GTPUB1", "SCHEDULED", "", "", "", "", "", "", "", ""]
+    ],
+    PublishedGlobalTimetableSessions: [
+      PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions,
+      ["GTPS1", "GTPUB1", "GTSES1", "GSRUN1", "GSUBJ1", "GMOD1", "2026-08-27", "20:00", "21:00", "ACCOUNT1", "https://zoom.test/global", "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", "Steps to My Rabb Term 3", "Steps to My Rabb", "Hearts Connected", "Global Admin", "Africa/Johannesburg"]
+    ]
+  },
+  course: {
+    SystemConfig: [
+      ["ConfigKey", "ConfigValue", "ModifiedDate", "ModifiedByAdminID", "ModifiedByAdminName"],
+      ["TimetableLiveSource", "PUBLISHED_TIMETABLE", "", "", ""],
+      ["GlobalZoomLink", "https://zoom.test/program-default", "", "", ""]
+    ],
+    TimetableCourseState: [
+      TIMETABLE_STATE_HEADERS,
+      ["COURSE1", "PUBLISHED", "TTPUB1", "", "", "", "", "", ""]
+    ],
+    TimetablePublications: [
+      TIMETABLE_PUBLICATION_HEADERS,
+      ["TTPUB1", "COURSE1", 1, "2026-08-01T00:00:00Z", "ADMIN1", "Admin", 1]
+    ],
+    PublishedTimetableSessions: [
+      PUBLISHED_TIMETABLE_SESSION_HEADERS,
+      ["TTPS1", "TTPUB1", "TTSES1", "COURSE1", "TS1", "Thu", "SUB1", "MOD1", "ALL", "ADMIN1", "", "2026-08-01T00:00:00Z", "ADMIN1", "Admin", "Reboot Your Maktab", "09:00", "10:00", "Fiqh", "Purification", "Muallimah One"]
+    ],
+    StudentRecords: [
+      ["StudentID", "Username", "WhatsApp", "UniqueID", "PIN", "CreatedDate", "ClassGroup", "RegisteredBy", "PINSetup", "ModifiedDate", "Active"],
+      ["STUD1", "Student Two", "", "STUDENT-LINK", "", "", "1", "", "", "", true]
+    ]
+  }
+};
+
+const token = await createSessionToken({
+  type: "account",
+  accountid: "ACCOUNT1",
+  uniqueid: "ACADEMY-LINK",
+  username: "Global Admin",
+  role: "GLOBAL_ADMIN",
+  scope: "PLATFORM",
+  courseid: "",
+  courserecordid: "",
+  accessid: "",
+  credentialHash: accountHash,
+  authrow: 2
+}, env);
+
+const studentToken = await createSessionToken({
+  type: "account",
+  accountid: "ACCOUNT2",
+  uniqueid: "STUDENT-LINK",
+  username: "Student Two",
+  role: "STUDENT",
+  scope: "COURSE",
+  courseid: "COURSE1",
+  courserecordid: "STUD1",
+  accessid: "ACCESS2",
+  accessrow: 2,
+  credentialHash: accountHash,
+  authrow: 3
+}, env);
+
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (input, init = {}) => {
+  const url = new URL(String(input));
+  if (url.hostname === "oauth2.googleapis.com") {
+    return response({ access_token: "academy-oauth", expires_in: 3600 });
+  }
+  if (url.hostname !== "sheets.googleapis.com") throw new Error(`Unexpected fetch ${url}`);
+  assert.equal(init.headers.Authorization, "Bearer academy-oauth");
+  const spreadsheet = /spreadsheets\/([^/]+)/.exec(url.pathname)?.[1] || "";
+  const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
+  const rows = lookupRange(spreadsheet, range);
+  return response({ range, majorDimension: "ROWS", values: rows });
+};
+
+try {
+  const result = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ startDate: "2026-08-24" })
+  }), env);
+  const body = await result.json();
+  assert.equal(result.status, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.version, "102.12");
+  assert.equal(body.weekStart, "2026-08-24");
+  assert.equal(body.weekEnd, "2026-08-30");
+  assert.equal(body.timezone, "Africa/Johannesburg");
+  assert.equal(body.sessions.length, 2);
+  const program = body.sessions.find(item => item.kind === "PROGRAM");
+  const global = body.sessions.find(item => item.kind === "GLOBAL");
+  assert.equal(program.visibilityLevel, "DETAIL");
+  assert.equal(program.title, "Fiqh");
+  assert.equal(program.date, "2026-08-27");
+  assert.equal(program.canOpenZoom, true);
+  assert.equal(program.zoomLink, "https://zoom.test/program-default");
+  assert.equal(global.visibilityLevel, "DETAIL");
+  assert.equal(global.title, "Steps to My Rabb");
+  assert.equal(global.date, "2026-08-27");
+  assert.equal(global.canOpenZoom, true);
+  assert.equal(global.zoomLink, "https://zoom.test/global");
+  assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002"]);
+
+  const studentResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${studentToken}`
+    },
+    body: JSON.stringify({ startDate: "2026-08-24" })
+  }), env);
+  const studentBody = await studentResult.json();
+  assert.equal(studentResult.status, 200);
+  const studentProgram = studentBody.sessions.find(item => item.kind === "PROGRAM");
+  assert.equal(studentProgram.visibilityLevel, "DETAIL", "matching active local StudentRecords identity may receive Program detail");
+
+  tables.course.StudentRecords[1][3] = "DIFFERENT-LINK";
+  const staleMembershipResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${studentToken}`
+    },
+    body: JSON.stringify({ startDate: "2026-08-24" })
+  }), env);
+  const staleMembershipBody = await staleMembershipResult.json();
+  assert.equal(staleMembershipResult.status, 200);
+  const staleProgram = staleMembershipBody.sessions.find(item => item.kind === "PROGRAM");
+  assert.equal(staleProgram.visibilityLevel, "LABEL", "stale central membership must fail closed when the local Program identity no longer matches");
+  assert.equal("subjectName" in staleProgram, false);
+  assert.equal("zoomLink" in staleProgram, false);
+  tables.course.StudentRecords[1][3] = "STUDENT-LINK";
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
+console.log("V102.12 Academy timetable endpoint integration test passed.");
+
+function lookupRange(spreadsheet, range) {
+  if (spreadsheet === "platform-sheet") {
+    const rowMatch = /^UserAccounts!A(\d+):N\1$/.exec(range);
+    if (rowMatch) {
+      const rowNumber = Number(rowMatch[1]);
+      return tables.platform.UserAccounts[rowNumber - 1] ? [tables.platform.UserAccounts[rowNumber - 1]] : [];
+    }
+    const accessMatch = /^UserCourseAccess!A(\d+):N\1$/.exec(range);
+    if (accessMatch) {
+      const rowNumber = Number(accessMatch[1]);
+      return tables.platform.UserCourseAccess[rowNumber - 1] ? [tables.platform.UserCourseAccess[rowNumber - 1]] : [];
+    }
+    const sheet = range.split("!")[0].replace(/^'|'$/g, "");
+    if (tables.platform[sheet]) return tables.platform[sheet];
+  }
+  if (spreadsheet === "course-sheet-one") {
+    const sheet = range.split("!")[0].replace(/^'|'$/g, "");
+    if (tables.course[sheet]) return tables.course[sheet];
+  }
+  throw new Error(`Unhandled Sheets range ${spreadsheet} ${range}`);
+}
+
+function response(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+}
+
+function toPem(bytes, label) {
+  const base64 = Buffer.from(bytes).toString("base64");
+  const lines = base64.match(/.{1,64}/g) || [];
+  return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----`;
+}

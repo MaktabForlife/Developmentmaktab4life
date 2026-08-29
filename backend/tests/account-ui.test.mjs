@@ -13,10 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /V102\.11\.2 refines Global Course scheduling with multi-day time periods, inline session editing and clearer Global Access/);
-assert.match(html, /Switch program or role directly from Profile without entering another PIN/);
-assert.match(html, /m4l-account\.js\?v=102\.11\.2/);
-assert.match(html, /m4l-23-account\.css\?v=102\.4/);
+assert.match(html, /m4l-account\.js\?v=102\.12/);
+assert.match(html, /m4l-23-account\.css\?v=102\.12/);
 
 for (const endpoint of [
   "/api/account/check",
@@ -25,7 +23,8 @@ for (const endpoint of [
   "/api/account/session",
   "/api/account/switch-context",
   "/api/account/workspace",
-  "/api/account/global-workspace"
+  "/api/account/global-workspace",
+  "/api/academy/timetable"
 ]) {
   assert.ok(script.includes(endpoint), `Account UI must call ${endpoint}`);
 }
@@ -33,6 +32,11 @@ assert.match(script, /m4l_account_token/);
 assert.match(script, /m4l_account_contexts/);
 assert.match(script, /maktab_token/);
 assert.match(script, /window\.location\.assign\(path\)/);
+assert.match(html, /id="academy-timetable"/);
+assert.match(html, /Academy timetable/);
+assert.match(script, /loadAcademyTimetable/);
+assert.match(script, /formatAcademyTimeRange/);
+assert.match(script, /\$\{String\(Number\(match\[1\]\)\)\.padStart\(2, "0"\)\}h\$\{match\[2\]\}/);
 assert.match(script, /clearCourseDataCaches/);
 assert.match(script, /localStorage\.removeItem\(TOKEN_KEY\)/);
 assert.match(script, /Authorization: `Bearer \$\{token\}`/);
@@ -48,4 +52,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.11.2 unified account UI terminology and compatibility tests passed.");
+console.log("V102.12 Academy timetable Home and unified account UI tests passed.");

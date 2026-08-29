@@ -7,18 +7,18 @@
   <meta name="robots" content="noindex,nofollow" />
   <title>Maktabhelper Account</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
-  <link rel="stylesheet" href="/css/m4l-23-account.css?v=102.4" />
+  <link rel="stylesheet" href="/css/m4l-23-account.css?v=102.12" />
 </head>
 <body>
   <main class="account-shell">
     <section class="account-brand" aria-labelledby="account-brand-title">
       <p class="account-bismillah" aria-label="Bismillah">﷽</p>
       <img src="/logo.png" alt="Maktabhelper" class="account-logo" />
-      <p class="account-eyebrow">One account · every program</p>
+      <p class="account-eyebrow">One account · every Program</p>
       <h1 id="account-brand-title">Maktabhelper</h1>
       <p class="account-brand-copy">
-        Use your personal account link and one PIN. Your authorised program and role
-        contexts stay attached to this account.
+        Use your personal account link and one PIN. Your authorised Program and role
+        access stays attached to this account.
       </p>
       <div class="account-security-note">
         <span class="account-security-icon" aria-hidden="true">✓</span>
@@ -28,7 +28,7 @@
 
     <section class="account-panel" aria-labelledby="account-panel-title">
       <div class="account-panel-topline">
-        <span class="account-version">V102.11.2</span>
+        <span class="account-version">V102.12</span>
         <button id="logout-button" class="account-text-button hidden" type="button">Log out</button>
       </div>
 
@@ -84,45 +84,61 @@
       </form>
 
       <div id="context-view" class="account-view account-context-view hidden">
-        <div class="account-context-heading">
+        <header class="academy-home-heading">
           <div>
-            <p class="account-kicker">Signed in as</p>
-            <h2 id="context-account-name">Account</h2>
+            <p class="account-kicker">﷽ &nbsp; Academy Home</p>
+            <h2>Timetable</h2>
+            <p class="academy-home-welcome">Welcome, <strong id="context-account-name">Account</strong></p>
           </div>
           <span class="account-status-mark" aria-label="Verified">✓</span>
-        </div>
+        </header>
 
-        <section class="account-current-context" aria-labelledby="current-context-heading">
-          <p id="current-context-heading" class="account-field-label">Current context</p>
-          <div class="account-current-line">
+        <section class="academy-timetable-card" aria-labelledby="academy-timetable-title">
+          <div class="academy-timetable-toolbar">
             <div>
+              <p class="account-field-label" id="academy-timetable-title">Academy timetable</p>
+              <strong id="academy-week-label">This week</strong>
+            </div>
+            <div class="academy-week-actions" aria-label="Timetable week controls">
+              <button id="academy-prev-week" class="academy-icon-button" type="button" aria-label="Previous week" title="Previous week">‹</button>
+              <button id="academy-current-week" class="academy-week-button" type="button">This week</button>
+              <button id="academy-next-week" class="academy-icon-button" type="button" aria-label="Next week" title="Next week">›</button>
+              <button id="academy-refresh" class="academy-icon-button" type="button" aria-label="Refresh timetable" title="Refresh timetable">↻</button>
+            </div>
+          </div>
+          <p id="academy-timetable-message" class="academy-timetable-message" role="status" aria-live="polite"></p>
+          <div id="academy-timetable" class="academy-timetable" aria-live="polite">
+            <div class="academy-loading-card">Loading your Academy timetable…</div>
+          </div>
+          <div class="academy-legend" aria-label="Timetable key">
+            <span><i class="academy-legend-dot academy-legend-dot--relevant"></i>Your classes</span>
+            <span><i class="academy-legend-dot academy-legend-dot--academy"></i>Academy activity</span>
+          </div>
+        </section>
+
+        <section class="academy-workspace-card" aria-labelledby="academy-workspace-title">
+          <div class="academy-workspace-heading">
+            <div>
+              <p class="account-field-label" id="academy-workspace-title">Programs & access</p>
               <strong id="current-course">M4L Platform</strong>
               <span id="current-scope" class="account-scope-label">Platform</span>
             </div>
             <span id="current-role" class="account-role-badge">GLOBAL ADMIN</span>
           </div>
-        </section>
 
-        <div class="account-release-boundary" role="status">
-          <strong>Account and program verified</strong>
-          <span>
-            V102.11.2 refines Global Course scheduling with multi-day time periods, inline session editing and clearer Global Access.
-            Switch program or role directly from Profile without entering another PIN.
-          </span>
-        </div>
+          <button id="open-workspace-button" class="account-primary-button account-open-workspace hidden" type="button">
+            Open selected workspace
+          </button>
 
-        <button id="open-workspace-button" class="account-primary-button hidden" type="button">
-          Open current workspace
-        </button>
-
-        <div class="account-switch-heading">
-          <div>
-            <h3>Switch program or role</h3>
-            <p>No additional PIN is required.</p>
+          <div class="account-switch-heading">
+            <div>
+              <h3>Switch program or role</h3>
+              <p>No additional PIN is required.</p>
+            </div>
           </div>
-        </div>
-        <div id="context-list" class="account-context-list" aria-live="polite"></div>
-        <p id="context-error" class="account-error" aria-live="polite"></p>
+          <div id="context-list" class="account-context-list" aria-live="polite"></div>
+          <p id="context-error" class="account-error" aria-live="polite"></p>
+        </section>
       </div>
 
       <p id="service-message" class="account-service-message" aria-live="polite"></p>
@@ -130,6 +146,6 @@
   </main>
 
   <script src="/js/m4l-config.js?v=102.4"></script>
-  <script src="/js/m4l-account.js?v=102.11.2"></script>
+  <script src="/js/m4l-account.js?v=102.12"></script>
 </body>
 </html>

@@ -448,3 +448,199 @@ button { cursor: pointer; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* V102.12 Academy timetable Home */
+body.account-home-active {
+  background:
+    radial-gradient(circle at 10% 6%, rgba(255,255,255,.72), transparent 30rem),
+    linear-gradient(135deg, #eadcea 0%, #d5bdd8 44%, #b58abb 100%);
+}
+
+.account-shell.is-home {
+  width: min(1320px, calc(100% - 28px));
+  min-height: calc(100vh - 28px);
+  margin: 14px auto;
+  grid-template-columns: 1fr;
+  border-radius: 28px;
+  background: rgba(255,255,255,.92);
+}
+
+.account-shell.is-home .account-brand { display: none; }
+.account-shell.is-home .account-panel {
+  min-width: 0;
+  padding: 26px clamp(18px, 4vw, 48px) 42px;
+  background: rgba(255,255,255,.96);
+}
+.account-shell.is-home .account-panel-topline { margin-bottom: 16px; }
+.account-shell.is-home .account-view { max-width: none; margin: 0; }
+
+.academy-home-heading,
+.academy-timetable-toolbar,
+.academy-workspace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.academy-home-heading { margin-bottom: 22px; }
+.academy-home-heading h2 { font-size: clamp(2rem, 4vw, 3.25rem); }
+.academy-home-welcome { margin: 8px 0 0; color: var(--account-muted); }
+
+.academy-timetable-card,
+.academy-workspace-card {
+  border: 1px solid #e7dce8;
+  border-radius: 22px;
+  background: rgba(255,255,255,.92);
+}
+
+.academy-timetable-card { padding: 20px; }
+.academy-workspace-card { margin-top: 20px; padding: 18px 20px 20px; }
+
+.academy-timetable-toolbar { margin-bottom: 10px; }
+.academy-timetable-toolbar .account-field-label,
+.academy-workspace-card .account-field-label { margin: 0 0 3px; }
+.academy-timetable-toolbar > div > strong { font-size: 1.08rem; }
+
+.academy-week-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.academy-icon-button,
+.academy-week-button {
+  min-height: 42px;
+  border: 1px solid #ded2df;
+  border-radius: 12px;
+  color: var(--account-brand-deep);
+  font-weight: 800;
+  background: #fbf8fb;
+}
+.academy-icon-button { width: 42px; padding: 0; font-size: 1.3rem; }
+.academy-week-button { padding: 0 13px; font-size: .78rem; }
+.academy-icon-button:hover:not(:disabled), .academy-week-button:hover { border-color: #b68ebb; background: #f2e8f3; }
+.academy-icon-button:disabled { opacity: .55; cursor: wait; }
+
+.academy-timetable-message {
+  min-height: 18px;
+  margin: 0 0 8px;
+  color: #8a623a;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.academy-timetable {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.academy-day {
+  min-width: 0;
+  min-height: 178px;
+  padding: 10px;
+  border: 1px solid #eee6ef;
+  border-radius: 16px;
+  background: #fcfafc;
+}
+.academy-day.is-today { border-color: #ad7cb2; box-shadow: inset 0 0 0 1px rgba(139,79,145,.13); }
+.academy-day-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 2px 2px 9px; }
+.academy-day-heading strong { font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+.academy-day-heading span { color: var(--account-muted); font-size: .7rem; }
+.academy-day-empty { margin: 24px 2px; color: #aaa0ab; font-size: .76rem; text-align: center; }
+
+.academy-session {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #e6dce7;
+  border-radius: 13px;
+  background: #fff;
+}
+.academy-session.is-relevant {
+  border-color: #b58abb;
+  background: linear-gradient(145deg, #fff, #f7eff8);
+}
+.academy-session.is-academy { opacity: .76; }
+.academy-session.is-label-only { background: #f6f3f6; }
+.academy-session.is-cancelled { opacity: .64; }
+.academy-session.is-cancelled h3 { text-decoration: line-through; }
+.academy-session-meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.academy-session-meta strong { color: var(--account-brand-deep); font-size: .74rem; }
+.academy-session-kind {
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #6d5f70;
+  font-size: .52rem;
+  font-weight: 850;
+  letter-spacing: .04em;
+  background: #eee8ef;
+}
+.academy-session h3 { margin: 7px 0 0; font-size: .87rem; line-height: 1.25; overflow-wrap: anywhere; }
+.academy-session-detail,
+.academy-session-secondary { margin: 5px 0 0; font-size: .68rem; line-height: 1.35; }
+.academy-session-detail { color: #554a58; }
+.academy-session-secondary { color: var(--account-muted); }
+.academy-session-status {
+  display: inline-block;
+  margin-top: 7px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #7a4a36;
+  font-size: .58rem;
+  font-weight: 850;
+  background: #f4e7df;
+}
+.academy-zoom-link {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 850;
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--account-brand), var(--account-brand-deep));
+}
+
+.academy-loading-card,
+.academy-empty-state {
+  grid-column: 1 / -1;
+  padding: 34px 20px;
+  border: 1px dashed #d9cbdc;
+  border-radius: 16px;
+  text-align: center;
+  color: var(--account-muted);
+  background: #fcfafc;
+}
+.academy-empty-state { display: grid; gap: 4px; }
+.academy-empty-state strong { color: var(--account-ink); }
+
+.academy-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 13px; color: var(--account-muted); font-size: .68rem; }
+.academy-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.academy-legend-dot { width: 9px; height: 9px; border-radius: 50%; background: #d9d2da; }
+.academy-legend-dot--relevant { background: #9d65a4; }
+.academy-legend-dot--academy { background: #d9d2da; }
+
+.academy-workspace-heading > div > strong { display: block; }
+.account-open-workspace { width: auto; min-width: 210px; margin-top: 14px; }
+.account-shell.is-home .account-context-list { max-height: 190px; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); overflow: visible; }
+.account-shell.is-home .account-context-button { min-height: 64px; }
+.account-shell.is-home .account-service-message { margin-top: 10px; }
+
+@media (max-width: 1040px) {
+  .academy-timetable { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .account-shell.is-home { width: 100%; min-height: 100vh; margin: 0; border-radius: 0; }
+  .account-shell.is-home .account-panel { min-height: 100vh; padding: 20px 14px 34px; }
+  .academy-home-heading { align-items: flex-start; }
+  .academy-timetable-card { padding: 14px; }
+  .academy-timetable-toolbar { align-items: flex-start; flex-direction: column; }
+  .academy-week-actions { width: 100%; justify-content: flex-start; }
+  .academy-timetable { grid-template-columns: 1fr; }
+  .academy-day { min-height: 0; }
+  .academy-day-empty { margin: 12px 2px; }
+  .academy-session { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .account-shell.is-home .account-context-list { grid-template-columns: 1fr; }
+  .account-open-workspace { width: 100%; }
+}

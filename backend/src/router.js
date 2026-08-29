@@ -132,6 +132,7 @@ import {
   setupAccountPinEndpoint,
   switchAccountContextEndpoint
 } from "./routes/account-auth.js";
+import { getAcademyTimetableEndpoint } from "./routes/academy-timetable.js";
 import { resolveCourseScopedRequest } from "./lib/course-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -152,6 +153,7 @@ const ROUTES = new Map([
     courseScoped: true
   })],
   ["/api/account/global-workspace", workerRoute("account-auth", accountGlobalWorkspaceEndpoint)],
+  ["/api/academy/timetable", workerRoute("academy-timetable", getAcademyTimetableEndpoint)],
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],

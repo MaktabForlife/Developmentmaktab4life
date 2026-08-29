@@ -1,29 +1,60 @@
-# V102.11.2 — Course Scheduler usability refinement
+# V102.12 — Academy timetable delivery
 
-V102.11.2 is a UI/workflow refinement over V102.11.1. It does **not** change the Platform Sheet schema, timetable publication model, FREE/PAID entitlement rules, or existing Program timetable data.
+V102.12 adds the Academy-wide timetable **delivery layer**. Program Timetables and Global Course scheduling remain separate authoritative builders; V102.12 combines only their current read/published output for delivery to authenticated central accounts.
 
-## Course Scheduler
+## Academy Home
 
-- All Course Scheduler times are entered and displayed as 24-hour values such as `04h00`, `13h00`, and `20h00–21h00`.
-- Each weekly schedule line has seven day pills (`Mon`–`Sun`); multiple days can share one time period and are expanded into exact dated sessions by the existing generator.
-- Course identity is presented in one compact row: Global Subject, Course name, Start date, End date, Active.
-- `Set up a new course` and `Modify course` live in the setup-panel header. The old separate setup button above the course list is removed.
-- Schedule-row controls use a consistent height.
-- Save actions use save icons with accessible labels/tooltips.
-- DEVELOPMENT/REVISION sessions are edited inline rather than through a separate Session Details panel.
-- Inline session rows support date, start/end time, module, teacher, Zoom link and SCHEDULED/CANCELLED status.
-- Rescheduling opens an inline replacement row linked to the original session.
-- PUBLISHED sessions remain read-only until `Modify course`/`Revise timetable` opens a DEVELOPMENT revision.
+- Unified central-account login now remains on the account page after PIN validation.
+- The first authenticated view is **Academy Home → Timetable**.
+- The timetable shows a Monday–Sunday week with previous/current/next week navigation and refresh.
+- Times display in the platform-standard `13h00` format.
+- Relevant sessions are visually prominent and other Academy activity is muted.
+- Program/Global workspace selection remains available below the timetable; entering a workspace is now explicit rather than automatic after login.
+- Unified Program/Global profile menus gain an **Academy Home** action to return to the combined timetable.
 
-## Global Access
+## Academy timetable API
 
-- Adds a dedicated `Unique ID` column sourced from `UserAccounts.UniqueID`.
-- Account display name and Unique ID are no longer combined in one cell.
-- FREE + saved subscription entitlement behavior is unchanged.
+Adds:
+
+`POST /api/academy/timetable`
+
+The endpoint:
+
+- authenticates and revalidates the central account;
+- reads every active Program's current live timetable source;
+- reads current published Global Course snapshots;
+- maps Program weekly sessions onto exact dates in the requested Academy week;
+- uses `PlatformTimezone` for the current-week boundary;
+- loads active Programs in parallel and isolates a temporarily unavailable Program rather than failing the entire Academy timetable;
+- returns only backend-authorised fields.
+
+## Program visibility
+
+- `GLOBAL_ADMIN` — full Program detail across the Academy; authorised Zoom.
+- Program `ADMIN` / `SENIOR` — full detail for that Program; authorised Zoom.
+- Program `TEACHER` — full detail for that Program; only own sessions are marked relevant and receive Zoom.
+- Program `STUDENT` — detail for own group and `ALL`; ClassGroup `0` retains all-groups read access.
+- Any other authenticated account — Program label/date/time only.
+- A Program `GroupNo = 0` is **not** treated as `ALL` for an ordinary student.
+- Before Program DETAIL is granted, the central membership must still resolve to exactly one matching active local `StudentRecords` or `AdminRecords` identity. Stale/mismatched memberships fail closed to LABEL.
+
+## Global Course visibility
+
+- `FREE` — full session detail for every active central account.
+- `PAID` / backend `SUBSCRIPTION` — full detail only for accounts with current Global Access entitlement, assigned Global Course teachers, or `GLOBAL_ADMIN`.
+- Non-entitled accounts receive Global Subject label/date/time only.
+- CANCELLED/RESCHEDULED published lifecycle state is delivered from the immutable current publication.
+- CANCELLED or RESCHEDULED source occurrences do not expose an active Zoom action; the scheduled replacement can do so when authorised.
+
+## Redaction contract
+
+LABEL responses do not include subject/module/group/teacher/Zoom/resource/attendance/planner details or underlying operational identifiers. The browser never receives hidden detail and then hides it with CSS.
 
 ## Compatibility
 
 - Platform schema remains `102.0.7` with 18 required tabs.
-- `GlobalTimetableSessionLifecycle` and `PlatformTimezone` from V102.11.1 remain unchanged.
-- Internal Sheet names, API routes, `RunID`, `CourseID`, session IDs and timetable publication records are unchanged.
-- No repository file is intentionally deleted.
+- No Sheet migration.
+- Existing Program Timetable Builder behavior is unchanged.
+- Existing Global Course Scheduler/publication behavior is unchanged.
+- Attendance reset carry-forward remains intact.
+- Global Resources protected access remains intact.

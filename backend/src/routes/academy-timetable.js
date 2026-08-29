@@ -1,0 +1,509 @@
+/* M4L V102.12 - Academy timetable delivery across Programs and Global Courses. */
+
+import { getAuthUser } from "../lib/auth.js";
+import { canAccountAccessGlobalSubject, dateInTimezone, isValidIanaTimezone } from "../lib/global-subject-delivery.js";
+import { resolveCurrentPublishedGlobalTimetable } from "../lib/global-timetable.js";
+import { readGoogleSheetValues } from "../lib/google-sheets.js";
+import { json } from "../lib/http.js";
+import {
+  readPlatformSheet
+} from "../lib/platform-sheet.js";
+import {
+  isActivePlatformValue,
+  normalizePlatformIdentifier
+} from "../lib/platform-schema.js";
+import {
+  PUBLISHED_TIMETABLE_SESSION_SHEET,
+  TIMETABLE_PUBLICATION_SHEET,
+  TIMETABLE_STATE_SHEET,
+  resolveCurrentPublishedTimetable
+} from "../lib/timetable-publication.js";
+import { buildTimetableResponse } from "./timetable.js";
+import {
+  getSystemConfigValue,
+  getTimetableLiveSource,
+  GLOBAL_ZOOM_LINK_KEY,
+  TIMETABLE_SOURCE_PUBLISHED,
+} from "../lib/system-config.js";
+
+const FULL_RANGE = "A:ZZ";
+const COURSE_ROLE_ORDER = Object.freeze({ ADMIN: 1, SENIOR: 2, TEACHER: 3, STUDENT: 4 });
+const DAY_INDEX = Object.freeze({ SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 });
+const DAY_ALIASES = Object.freeze({
+  SUNDAY: "SUN", SUN: "SUN",
+  MONDAY: "MON", MON: "MON",
+  TUESDAY: "TUE", TUE: "TUE", TUES: "TUE",
+  WEDNESDAY: "WED", WED: "WED",
+  THURSDAY: "THU", THU: "THU", THUR: "THU", THURS: "THU",
+  FRIDAY: "FRI", FRI: "FRI",
+  SATURDAY: "SAT", SAT: "SAT"
+});
+
+export async function getAcademyTimetableEndpoint(request, env) {
+  try {
+    const authUser = await getAuthUser(request, env);
+    if (!authUser || authUser.type !== "account") {
+      return json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    const body = await readJsonBody(request);
+    const platform = await loadPlatformAcademyState(env);
+    const account = platform.accounts.find(row => (
+      normalizePlatformIdentifier(row.AccountID) === normalizePlatformIdentifier(authUser.accountid)
+    ));
+    if (!account || !isActivePlatformValue(account.Active)) {
+      return json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    const timezone = resolvePlatformTimezone(platform.config);
+    const week = resolveAcademyWeek(body.startDate, timezone, new Date());
+    const isGlobalAdmin = normalizePlatformIdentifier(account.PlatformRole) === "GLOBAL_ADMIN";
+    const memberships = platform.courseAccess.filter(row => (
+      normalizePlatformIdentifier(row.AccountID) === normalizePlatformIdentifier(account.AccountID) &&
+      isActivePlatformValue(row.Active)
+    ));
+
+    const activePrograms = platform.courses.filter(row => isActivePlatformValue(row.Active));
+    const programLoads = await Promise.all(activePrograms.map(async course => {
+      try {
+        return {
+          events: await loadProgramEvents(env, course, memberships, {
+            account,
+            isGlobalAdmin,
+            week
+          }),
+          warning: null
+        };
+      } catch (error) {
+        return {
+          events: [],
+          warning: {
+            code: "PROGRAM_TIMETABLE_UNAVAILABLE",
+            program: String(course.CourseName || course.CourseID || "Program").trim(),
+            message: "This Program timetable is temporarily unavailable."
+          }
+        };
+      }
+    }));
+    const programEvents = programLoads.flatMap(result => result.events);
+    const warnings = programLoads.map(result => result.warning).filter(Boolean);
+
+    const globalEvents = buildGlobalCourseEvents(platform, account, {
+      isGlobalAdmin,
+      week
+    });
+    const sessions = [...programEvents, ...globalEvents]
+      .sort(compareAcademyEvents)
+      .map((event, index) => ({ ...event, eventKey: `AE${String(index + 1).padStart(4, "0")}` }));
+
+    return json({
+      success: true,
+      version: "102.12",
+      timezone,
+      weekStart: week.start,
+      weekEnd: week.end,
+      today: week.today,
+      sessions,
+      warnings,
+      count: sessions.length
+    });
+  } catch (error) {
+    console.error("Academy timetable failed", error);
+    return json({
+      success: false,
+      error: "The Academy timetable could not be loaded.",
+      code: "ACADEMY_TIMETABLE_UNAVAILABLE",
+      retryable: true,
+      sessions: []
+    }, 503);
+  }
+}
+
+async function loadPlatformAcademyState(env) {
+  const [config, accounts, courses, courseAccess, subjects, policies, matrix, runs, runState, publications, lifecycle, publishedSessions] = await Promise.all([
+    readPlatformSheet(env, "PlatformConfig"),
+    readPlatformSheet(env, "UserAccounts"),
+    readPlatformSheet(env, "CourseRegistry"),
+    readPlatformSheet(env, "UserCourseAccess"),
+    readPlatformSheet(env, "GlobalSubjectList"),
+    readPlatformSheet(env, "GlobalSubjectAccessPolicy"),
+    readPlatformSheet(env, "GlobalSubjectAccessMatrix"),
+    readPlatformSheet(env, "GlobalSubjectRuns"),
+    readPlatformSheet(env, "GlobalTimetableRunState"),
+    readPlatformSheet(env, "GlobalTimetablePublications"),
+    readPlatformSheet(env, "GlobalTimetableSessionLifecycle"),
+    readPlatformSheet(env, "PublishedGlobalTimetableSessions")
+  ]);
+  return {
+    config,
+    accounts,
+    courses,
+    courseAccess,
+    subjects,
+    policies,
+    matrix,
+    runs,
+    GlobalTimetableRunState: runState,
+    GlobalTimetablePublications: publications,
+    GlobalTimetableSessionLifecycle: lifecycle,
+    PublishedGlobalTimetableSessions: publishedSessions
+  };
+}
+
+async function loadProgramEvents(env, course, memberships, options) {
+  const spreadsheetId = String(course.SpreadsheetID || "").trim();
+  if (!spreadsheetId) return [];
+  const courseId = String(course.CourseID || "").trim();
+  const courseName = String(course.CourseName || courseId || "Program").trim();
+  const courseMemberships = memberships.filter(row => (
+    normalizePlatformIdentifier(row.CourseID) === normalizePlatformIdentifier(courseId)
+  ));
+  const access = await resolveProgramAccess(env, spreadsheetId, courseMemberships, options);
+  const systemRows = await readGoogleSheetValues(env, "SystemConfig!A:E", { spreadsheetId });
+  const liveSource = getTimetableLiveSource(systemRows);
+  const globalZoomLink = getSystemConfigValue(systemRows, GLOBAL_ZOOM_LINK_KEY);
+  let sessions = [];
+
+  if (liveSource === TIMETABLE_SOURCE_PUBLISHED) {
+    const [stateRows, publicationRows, snapshotRows] = await Promise.all([
+      readGoogleSheetValues(env, `${TIMETABLE_STATE_SHEET}!${FULL_RANGE}`, { spreadsheetId }),
+      readGoogleSheetValues(env, `${TIMETABLE_PUBLICATION_SHEET}!${FULL_RANGE}`, { spreadsheetId }),
+      readGoogleSheetValues(env, `${PUBLISHED_TIMETABLE_SESSION_SHEET}!${FULL_RANGE}`, { spreadsheetId })
+    ]);
+    const current = resolveCurrentPublishedTimetable({ stateRows, publicationRows, publishedSessionRows: snapshotRows }, courseId, {
+      requireCurrentHeaders: true,
+      requireDisplayValues: true
+    });
+    if (!current.ok) return [];
+    sessions = current.sessions.map(item => ({
+      dayofweek: item.dayofweek,
+      starttime: item.starttime,
+      endtime: item.endtime,
+      subjectname: item.subjectname,
+      modulename: item.modulename,
+      groupno: item.groupno,
+      teacherid: item.teacherid,
+      teachername: item.teachername,
+      zoomlink: item.zoomlink
+    }));
+  } else {
+    const [teacherRows, adminRows, subjectRows, moduleRows] = await Promise.all([
+      readGoogleSheetValues(env, "TeacherAssign!A:ZZ", { spreadsheetId }),
+      readGoogleSheetValues(env, "AdminRecords!A:ZZ", { spreadsheetId }),
+      readGoogleSheetValues(env, "SubjectList!A:ZZ", { spreadsheetId }),
+      readGoogleSheetValues(env, "ModuleList!A:ZZ", { spreadsheetId })
+    ]);
+    const transformed = buildTimetableResponse(teacherRows, {
+      adminRows,
+      subjectRows,
+      moduleRows,
+      globalZoomLink,
+      globalZoomConfigured: Boolean(globalZoomLink),
+      groupNo: "ALL",
+      teacherId: "ALL",
+      allGroupsStudent: true,
+      showGroupLabels: true
+    });
+    if (!transformed.success) return [];
+    sessions = transformed.sessions;
+  }
+
+  return sessions.map(session => programSessionToAcademyEvent(session, {
+    courseId,
+    courseName,
+    access,
+    week: options.week,
+    globalZoomLink
+  })).filter(Boolean);
+}
+
+async function resolveProgramAccess(env, spreadsheetId, memberships, options) {
+  if (options.isGlobalAdmin) {
+    return { level: "GLOBAL_ADMIN", roles: new Set(["GLOBAL_ADMIN"]), studentGroup: "", teacherIds: new Set() };
+  }
+
+  const candidates = (Array.isArray(memberships) ? memberships : [])
+    .filter(row => isActivePlatformValue(row.Active) && COURSE_ROLE_ORDER[normalizePlatformIdentifier(row.Role)]);
+  if (!candidates.length) {
+    return { level: "NONE", roles: new Set(), studentGroup: "", teacherIds: new Set() };
+  }
+
+  const needsStudent = candidates.some(row => normalizePlatformIdentifier(row.Role) === "STUDENT");
+  const needsStaff = candidates.some(row => ["ADMIN", "SENIOR", "TEACHER"].includes(normalizePlatformIdentifier(row.Role)));
+  const [studentRows, adminRows] = await Promise.all([
+    needsStudent ? readGoogleSheetValues(env, "StudentRecords!A:K", { spreadsheetId }) : Promise.resolve([]),
+    needsStaff ? readGoogleSheetValues(env, "AdminRecords!A:J", { spreadsheetId }) : Promise.resolve([])
+  ]);
+
+  if (needsStudent) {
+    assertAcademyLegacyHeaders(studentRows?.[0], [
+      [0, "StudentID"],
+      [3, "UniqueID"],
+      [6, "ClassGroup"],
+      [10, "Active"]
+    ], "StudentRecords");
+  }
+  if (needsStaff) {
+    assertAcademyLegacyHeaders(adminRows?.[0], [
+      [0, "AdminID"],
+      [2, "UniqueID"],
+      [5, "Role"],
+      [7, "Active"]
+    ], "AdminRecords");
+  }
+
+  const accountUniqueId = normalizePlatformIdentifier(options.account?.UniqueID);
+  const validated = [];
+  for (const membership of candidates) {
+    const role = normalizePlatformIdentifier(membership.Role);
+    const courseRecordId = normalizePlatformIdentifier(membership.CourseRecordID);
+    if (!courseRecordId || !accountUniqueId) continue;
+
+    if (role === "STUDENT") {
+      const matches = studentRows.slice(1).filter(row => normalizePlatformIdentifier(row?.[0]) === courseRecordId);
+      if (matches.length !== 1) continue;
+      const row = matches[0];
+      if (
+        normalizePlatformIdentifier(row?.[3]) !== accountUniqueId ||
+        !isActivePlatformValue(row?.[10])
+      ) continue;
+      validated.push({ role, courseRecordId, studentGroup: String(row?.[6] ?? "").trim() });
+      continue;
+    }
+
+    if (["ADMIN", "SENIOR", "TEACHER"].includes(role)) {
+      const matches = adminRows.slice(1).filter(row => normalizePlatformIdentifier(row?.[0]) === courseRecordId);
+      if (matches.length !== 1) continue;
+      const row = matches[0];
+      if (
+        normalizePlatformIdentifier(row?.[2]) !== accountUniqueId ||
+        normalizePlatformIdentifier(row?.[5]) !== role ||
+        !isActivePlatformValue(row?.[7])
+      ) continue;
+      validated.push({ role, courseRecordId, studentGroup: "" });
+    }
+  }
+
+  if (!validated.length) {
+    return { level: "NONE", roles: new Set(), studentGroup: "", teacherIds: new Set() };
+  }
+
+  const roles = new Set(validated.map(item => item.role));
+  const teacherIds = new Set(validated
+    .filter(item => ["ADMIN", "SENIOR", "TEACHER"].includes(item.role))
+    .map(item => item.courseRecordId));
+  const student = validated.find(item => item.role === "STUDENT");
+  const studentGroup = String(student?.studentGroup ?? "").trim();
+  const level = [...roles].sort((a, b) => COURSE_ROLE_ORDER[a] - COURSE_ROLE_ORDER[b])[0] || "NONE";
+  return { level, roles, studentGroup, teacherIds };
+}
+
+function assertAcademyLegacyHeaders(headers, required, sheetName) {
+  const row = Array.isArray(headers) ? headers : [];
+  for (const [index, expected] of required) {
+    if (normalizeAcademyHeader(row[index]) !== normalizeAcademyHeader(expected)) {
+      throw new Error(`${sheetName} header mismatch`);
+    }
+  }
+}
+
+function normalizeAcademyHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function programSessionToAcademyEvent(session, options) {
+  const date = dayOfWeekDate(options.week.start, session.dayofweek);
+  if (!date) return null;
+  const group = String(session.groupno || "ALL").trim() || "ALL";
+  const teacherId = normalizePlatformIdentifier(session.teacherid);
+  const access = options.access;
+  let visibilityLevel = "LABEL";
+  let relevant = false;
+  let canOpenZoom = false;
+
+  if (access.level === "GLOBAL_ADMIN") {
+    visibilityLevel = "DETAIL";
+    canOpenZoom = true;
+  } else if (access.roles.has("ADMIN") || access.roles.has("SENIOR")) {
+    visibilityLevel = "DETAIL";
+    relevant = true;
+    canOpenZoom = true;
+  } else if (access.roles.has("TEACHER")) {
+    visibilityLevel = "DETAIL";
+    relevant = access.teacherIds.has(teacherId);
+    canOpenZoom = relevant;
+  } else if (access.roles.has("STUDENT")) {
+    const groupKey = normalizePlatformIdentifier(group);
+    const studentGroup = normalizePlatformIdentifier(access.studentGroup);
+    const matches = studentGroup === "0" || groupKey === "ALL" || (studentGroup && groupKey === studentGroup);
+    if (matches) {
+      visibilityLevel = "DETAIL";
+      relevant = true;
+      canOpenZoom = true;
+    }
+  }
+
+  const base = {
+    kind: "PROGRAM",
+    date,
+    startTime: normalizeStoredTime(session.starttime),
+    endTime: normalizeStoredTime(session.endtime),
+    visibilityLevel,
+    relevant,
+    canOpenZoom,
+    status: "SCHEDULED",
+    title: visibilityLevel === "DETAIL"
+      ? String(session.subjectname || options.courseName).trim()
+      : options.courseName
+  };
+  if (visibilityLevel !== "DETAIL") return base;
+
+  return {
+    ...base,
+    programName: options.courseName,
+    subjectName: String(session.subjectname || "").trim(),
+    moduleName: String(session.modulename || "").trim(),
+    group: group,
+    teacherName: String(session.teachername || "").trim(),
+    zoomLink: canOpenZoom ? String(session.zoomlink || options.globalZoomLink || "").trim() : ""
+  };
+}
+
+export function buildGlobalCourseEvents(platform, account, options) {
+  const subjectMap = new Map(platform.subjects.map(subject => [normalizePlatformIdentifier(subject.SubjectID), subject]));
+  const runMap = new Map(platform.runs.map(run => [normalizePlatformIdentifier(run.RunID), run]));
+  const currentPublicationIds = new Map();
+  for (const state of platform.GlobalTimetableRunState) {
+    if (normalizePlatformIdentifier(state.Stage) !== "PUBLISHED" || !String(state.CurrentPublicationID || "").trim()) continue;
+    currentPublicationIds.set(normalizePlatformIdentifier(state.RunID), normalizePlatformIdentifier(state.CurrentPublicationID));
+  }
+  const output = [];
+  const grouped = new Map();
+  for (const snapshot of platform.PublishedGlobalTimetableSessions) {
+    const runId = normalizePlatformIdentifier(snapshot.RunID);
+    const publicationId = normalizePlatformIdentifier(snapshot.PublicationID);
+    if (!runId || currentPublicationIds.get(runId) !== publicationId) continue;
+    if (String(snapshot.SessionDate || "") < options.week.start || String(snapshot.SessionDate || "") > options.week.end) continue;
+    if (!grouped.has(runId)) grouped.set(runId, []);
+    grouped.get(runId).push(snapshot);
+  }
+
+  for (const [runId, snapshots] of grouped) {
+    const run = runMap.get(runId);
+    const subject = subjectMap.get(normalizePlatformIdentifier(run?.SubjectID || snapshots[0]?.SubjectID));
+    if (!run || !subject || !isActivePlatformValue(run.Active) || !isActivePlatformValue(subject.Active)) continue;
+    const resolved = resolveCurrentPublishedGlobalTimetable(platform, runId);
+    if (!resolved.ok) continue;
+    const policyAccess = canAccountAccessGlobalSubject({
+      account,
+      subject,
+      policyRows: platform.policies,
+      accessRows: platform.matrix
+    });
+    const lifecycleBySession = new Map((resolved.lifecycles || []).map(item => [normalizePlatformIdentifier(item?.sessionid), item]));
+    for (const session of resolved.sessions) {
+      if (session.sessiondate < options.week.start || session.sessiondate > options.week.end) continue;
+      const assignedTeacher = normalizePlatformIdentifier(session.teacheraccountid) === normalizePlatformIdentifier(account.AccountID);
+      const detail = options.isGlobalAdmin || policyAccess || assignedTeacher;
+      const lifecycle = lifecycleBySession.get(normalizePlatformIdentifier(session.sourcesessionid));
+      const status = normalizePlatformIdentifier(lifecycle?.status || "SCHEDULED") || "SCHEDULED";
+      const relevant = assignedTeacher || policyAccess;
+      const canOpenZoom = detail && status === "SCHEDULED" && (options.isGlobalAdmin || policyAccess || assignedTeacher);
+      const base = {
+        kind: "GLOBAL",
+        date: session.sessiondate,
+        startTime: session.starttime,
+        endTime: session.endtime,
+        visibilityLevel: detail ? "DETAIL" : "LABEL",
+        relevant,
+        canOpenZoom,
+        status,
+        title: session.subjectname || String(subject.SubjectName || "Global Course").trim()
+      };
+      if (!detail) {
+        output.push(base);
+        continue;
+      }
+      output.push({
+        ...base,
+        globalCourseName: session.runname,
+        subjectName: session.subjectname,
+        moduleName: session.modulename,
+        teacherName: session.teachername,
+        zoomLink: canOpenZoom ? session.zoomlink : ""
+      });
+    }
+  }
+  return output;
+}
+
+export function resolveAcademyWeek(requestedStart, timezone, now = new Date()) {
+  if (!isValidIanaTimezone(timezone)) throw new Error("PlatformTimezone is invalid");
+  const today = dateInTimezone(now, timezone);
+  const start = validIsoDate(requestedStart) ? mondayForDate(String(requestedStart)) : mondayForDate(today);
+  return Object.freeze({ start, end: addDays(start, 6), today });
+}
+
+function resolvePlatformTimezone(configRows) {
+  const matches = configRows.filter(row => normalizePlatformIdentifier(row.ConfigKey) === "PLATFORMTIMEZONE");
+  if (matches.length !== 1) throw new Error("PlatformTimezone must resolve exactly once");
+  const timezone = String(matches[0].ConfigValue || "").trim();
+  if (!isValidIanaTimezone(timezone)) throw new Error("PlatformTimezone is invalid");
+  return timezone;
+}
+
+function dayOfWeekDate(weekStart, value) {
+  const alias = DAY_ALIASES[normalizePlatformIdentifier(value)];
+  if (!alias) return "";
+  const mondayIndex = DAY_INDEX[alias] === 0 ? 6 : DAY_INDEX[alias] - 1;
+  return addDays(weekStart, mondayIndex);
+}
+
+function mondayForDate(dateText) {
+  const date = parseDate(dateText);
+  const day = date.getUTCDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + offset);
+  return formatDate(date);
+}
+
+function addDays(dateText, days) {
+  const date = parseDate(dateText);
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return formatDate(date);
+}
+
+function parseDate(value) {
+  const [year, month, day] = String(value).split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatDate(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function validIsoDate(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  return formatDate(parseDate(text)) === text;
+}
+
+function normalizeStoredTime(value) {
+  const text = String(value || "").trim();
+  const match = /^(\d{1,2}):(\d{2})/.exec(text);
+  return match ? `${String(Number(match[1])).padStart(2, "0")}:${match[2]}` : text;
+}
+
+function compareAcademyEvents(left, right) {
+  return String(left.date || "").localeCompare(String(right.date || "")) ||
+    String(left.startTime || "").localeCompare(String(right.startTime || "")) ||
+    String(left.title || "").localeCompare(String(right.title || ""));
+}
+
+async function readJsonBody(request) {
+  try {
+    return await request.json();
+  } catch (error) {
+    return {};
+  }
+}

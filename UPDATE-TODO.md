@@ -1,50 +1,64 @@
-# ﷽ V102.11.2 update TODO — Course Scheduler usability refinement
+# ﷽ V102.12 update TODO — Academy timetable delivery
 
 ## 1. Before deployment
 
-- [ ] Confirm the current deployed development baseline is V102.11.1.
+- [ ] Confirm the deployed development baseline is V102.11.2.
 - [ ] Do **not** change `PlatformConfig.PlatformSchemaVersion`; it remains `102.0.7`.
-- [ ] Do **not** add or alter Platform Sheet tabs for V102.11.2.
+- [ ] Do **not** add, delete or rename Platform/Program Sheet tabs for V102.12.
 - [ ] Apply only the paths listed in `CHANGED-FILES.txt`.
-- [ ] Follow `DELETE-FILES.txt` (there are no intentional deletions).
+- [ ] `DELETE-FILES.txt` confirms there are no intentional deletions.
 
 ## 2. Deploy
 
-- [ ] Commit the V102.11.2 changed files to development GitHub.
-- [ ] Deploy Pages and Worker from the same commit.
-- [ ] Confirm Worker root returns `version: "102.11.2"`.
-- [ ] Confirm the central account page shows `V102.11.2`.
-- [ ] Hard refresh/private-window test the Admin UI to avoid stale assets.
+- [ ] Commit the V102.12 changed files to development GitHub.
+- [ ] Deploy Pages and Worker from the **same commit**.
+- [ ] Confirm Worker root returns `version: "102.12"`.
+- [ ] Confirm `/account/<uniqueid>` displays `V102.12`.
+- [ ] Use a hard refresh/private window for the first browser check so the new account/shell assets cannot be masked by old cache entries.
 
-## 3. Course Scheduler checks
+## 3. Login / Academy Home
 
-- [ ] Course setup header contains `Set up a new course` and `Modify course`.
-- [ ] Course identity/name/start/end/active controls align in one row on a large screen.
-- [ ] Every schedule line shows seven day pills and allows multiple days to be selected.
-- [ ] Example: select Mon/Tue/Wed/Thu with `04h00`–`05h00`; saving generates the correct exact dates inside the course range.
-- [ ] Start/end time inputs and session rows display 24-hour `13h00` format; no AM/PM time control is shown in Course Scheduler.
-- [ ] Schedule-row inputs and remove control have consistent heights.
-- [ ] Save actions use save icons and retain accessible labels/tooltips.
-- [ ] DEVELOPMENT sessions can be edited inline and saved individually.
-- [ ] A session can be changed to CANCELLED inline.
-- [ ] Reschedule creates a linked replacement session inline.
-- [ ] PUBLISHED rows are read-only; opening a revision enables editing without rewriting the previous publication.
-- [ ] Publication still blocks if a SCHEDULED session has no valid active teacher.
+- [ ] Log in through a central `/account/<uniqueid>` link.
+- [ ] After PIN validation, confirm the first authenticated page is **Academy Home → Timetable**; it must not auto-open the current Program workspace.
+- [ ] Confirm current week is displayed Monday–Sunday.
+- [ ] Confirm previous week, This week, next week and refresh controls work.
+- [ ] Confirm displayed times use `13h00–14h00`, never AM/PM.
+- [ ] Confirm the selected Program/Global workspace can still be opened explicitly below the timetable.
+- [ ] From a Program/Global workspace, use Profile → Academy Home and confirm the combined timetable returns.
 
-## 4. Global Access checks
+## 4. Program visibility checks
 
-- [ ] Global Access shows separate `Account` and `Unique ID` columns.
-- [ ] Unique ID matches `UserAccounts.UniqueID`.
-- [ ] FREE subjects still show FREE plus any saved subscription tick.
-- [ ] PAID/FREE authorization behavior is unchanged.
+Use accounts with known Program membership/group roles.
 
-## 5. Regression checks
+- [ ] Ordinary student: own group and `ALL` sessions return subject/module detail and authorised Zoom.
+- [ ] Ordinary student: another group's session shows **Program name/date/time only**.
+- [ ] Ordinary student: Program `GroupNo = 0` is not incorrectly treated as `ALL`.
+- [ ] ClassGroup `0` student retains all-groups detail access.
+- [ ] Program Teacher sees complete subject/module timetable for the authorised Program.
+- [ ] Teacher's own session is prominent and has Zoom when configured.
+- [ ] Another teacher's session remains detailed but muted and has no Zoom action.
+- [ ] Program ADMIN/SENIOR sees full detail for that authorised Program.
+- [ ] Active account with no Program membership sees Program label/date/time only.
+- [ ] Temporarily make a central Program membership stale/mismatched only in a controlled test environment; confirm the Academy endpoint fails closed to LABEL rather than returning Program detail.
 
+## 5. Global Course visibility checks
+
+- [ ] FREE Global Course: active central account sees full subject/module detail.
+- [ ] FREE Global Course: authorised Zoom appears for a scheduled session when configured.
+- [ ] PAID Global Course: subscribed account sees full detail and authorised Zoom.
+- [ ] PAID Global Course: non-subscriber sees Global Subject label/date/time only; teacher/module/Zoom are absent.
+- [ ] Assigned Global Course teacher receives teaching detail without a learner subscription.
+- [ ] CANCELLED occurrence is visibly cancelled and has no Join Zoom action.
+- [ ] RESCHEDULED source occurrence is visible as rescheduled and has no active Join Zoom action; its scheduled replacement is delivered separately.
+
+## 6. Regression checks
+
+- [ ] Program Timetables builder/read behavior is unchanged.
+- [ ] Global Course Scheduler creation/revision/publication is unchanged.
 - [ ] Attendance successful save still resets the visible register to Present.
 - [ ] Protected Global Resources/Drive authorization still follows current FREE/PAID entitlement.
-- [ ] Program Timetables remain available and unchanged functionally.
-- [ ] Weekly Planner, Progress and Student Records still open normally.
+- [ ] Weekly Planner, Progress, Library, Student Records and Admin continue to open normally.
 
 ## Rollback
 
-V102.11.2 has no Sheet migration. To roll back, revert the V102.11.2 code commit to the deployed V102.11.1 commit and redeploy Pages + Worker together. Leave Platform schema `102.0.7` and all timetable/publication data unchanged.
+V102.12 has **no Sheet migration**. To roll back, revert the V102.12 code commit to the deployed V102.11.2 commit and redeploy Pages + Worker together. Leave Platform schema `102.0.7` and all timetable/publication data unchanged.

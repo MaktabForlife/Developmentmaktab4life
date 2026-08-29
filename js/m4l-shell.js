@@ -2306,6 +2306,15 @@ function getUserBandProfileMarkup(username, role) {
         <span class="app-user-profile-menu__value">${escapeHtml(groupLabel)}</span>
       </div>
     ` : ""}
+    ${hasUnifiedAccountProfile() ? `
+      <button type="button" class="app-user-profile-menu__context is-switchable" data-user-profile-academy-home>
+        <span>
+          <strong>Academy Home</strong>
+          <small>Combined timetable</small>
+        </span>
+        <em>Open</em>
+      </button>
+    ` : ""}
     <p class="app-user-profile-menu__section-label">Switch program or role</p>
     <div class="app-user-profile-menu__contexts">${contextMarkup}</div>
     <p class="app-user-profile-menu__feedback" data-user-profile-feedback role="status" aria-live="polite"></p>
@@ -3040,6 +3049,17 @@ function attachUserBandProfileHandler(band) {
   bindUserBandMenuDismissHandler();
 
   menu.addEventListener("click", event => {
+    const academyHomeButton = event.target && typeof event.target.closest === "function"
+      ? event.target.closest("[data-user-profile-academy-home]")
+      : null;
+    if (academyHomeButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (window.M4LAuth && typeof window.M4LAuth.openUnifiedAccountSwitcher === "function") {
+        window.M4LAuth.openUnifiedAccountSwitcher();
+      }
+      return;
+    }
     const contextButton = event.target && typeof event.target.closest === "function"
       ? event.target.closest("[data-user-profile-context]")
       : null;
