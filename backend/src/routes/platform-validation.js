@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Platform validation including Academy Calendar, global access and immutable publication. */
+/* M4L V102.12.7 - Platform validation including publishable TBA, Academy Calendar and immutable publication. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { isHiddenIslamicEvent, validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
@@ -23,7 +23,6 @@ import {
   PLATFORM_SHEET_HEADERS
 } from "../lib/platform-schema.js";
 import {
-  GLOBAL_SESSION_STATUS_SCHEDULED,
   GLOBAL_SESSION_STATUSES,
   normalizeGlobalSessionStatus
 } from "../lib/global-timetable-lifecycle.js";
@@ -683,13 +682,7 @@ function validateGlobalTimetable(tables, context) {
     if (!sessionWithinRun(snapshot, runById.get(runId)) || !validateTimeRange(snapshot.StartTime, snapshot.EndTime)) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has invalid date/time values`);
     }
-    const publishedLifecycle = publishedLifecycleByKey.get(`${publicationId}|${sourceSessionId}`);
-    const publishedStatus = normalizeGlobalSessionStatus(publishedLifecycle?.Status);
-    if (publishedStatus === GLOBAL_SESSION_STATUS_SCHEDULED) {
-      if (!accountIds.has(teacherAccountId)) {
-        throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} requires a valid TeacherAccountID while SCHEDULED`);
-      }
-    } else if (teacherAccountId && !accountIds.has(teacherAccountId)) {
+    if (teacherAccountId && !accountIds.has(teacherAccountId)) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid TeacherAccountID`);
     }
     if (String(snapshot.ZoomLink || "").trim() && !isHttpsUrl(snapshot.ZoomLink)) {
@@ -705,7 +698,7 @@ function validateGlobalTimetable(tables, context) {
     if (
       !String(snapshot.RunName || "").trim() ||
       !String(snapshot.SubjectName || "").trim() ||
-      (publishedStatus === GLOBAL_SESSION_STATUS_SCHEDULED && !String(snapshot.TeacherName || "").trim()) ||
+      !String(snapshot.TeacherName || "").trim() ||
       !String(snapshot.Timezone || "").trim() ||
       (moduleId && !String(snapshot.ModuleName || "").trim())
     ) {

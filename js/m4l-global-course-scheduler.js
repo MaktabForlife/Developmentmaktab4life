@@ -1,4 +1,4 @@
-/* M4L V102.12.6 - Responsive Global Course Scheduler with draft/batch session editing. */
+/* M4L V102.12.7 - Responsive Global Course Scheduler with draft/batch session editing. */
 (function () {
   "use strict";
 

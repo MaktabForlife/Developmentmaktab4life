@@ -9,12 +9,12 @@ const [adminHtml, js, css, styles] = await Promise.all([
 ]);
 
 assert.match(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=102\.12\.6/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=102\.12\.7/);
 assert.doesNotMatch(adminHtml, /data-gcm-delivery-action="show"/);
 assert.doesNotMatch(adminHtml, /data-gcm-timetable-action="show"/);
 assert.doesNotMatch(adminHtml, /m4l-global-delivery\.js\?v=102\.11/);
 assert.doesNotMatch(adminHtml, /m4l-global-timetable\.js\?v=102\.11/);
-assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=102\.12\.6/);
+assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=102\.12\.7/);
 
 assert.match(js, /Set up a new course/);
 assert.match(js, /Modify course/);
@@ -41,4 +41,4 @@ assert.match(js, /void load\(true\)/, "Header refresh must force a fresh Course 
 assert.match(css, /\.global-course-scheduler-shell/);
 assert.match(css, /\.global-course-schedule-row/);
 
-console.log("V102.12.6 responsive Global Course Scheduler setup UI checks passed.");
+console.log("V102.12.7 responsive Global Course Scheduler setup UI checks passed.");

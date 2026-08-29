@@ -1,4 +1,4 @@
-/* M4L V102.12.6 - Academic Calendar responsive section-level batch editing. */
+/* M4L V102.12.7 - Academic Calendar compact-toolbar and responsive section-level batch editing. */
 (function () {
   "use strict";
 

@@ -1,13 +1,10 @@
-/* M4L V102.11.1 - Exact-dated Global Course timetable, revision and publication helpers. */
+/* M4L V102.12.7 - Exact-dated Global Course timetable, publishable TBA and immutable publication helpers. */
 
 import {
   isActivePlatformValue,
   normalizePlatformIdentifier
 } from "./platform-schema.js";
-import {
-  GLOBAL_SESSION_STATUS_SCHEDULED,
-  resolvePublishedSessionLifecycle
-} from "./global-timetable-lifecycle.js";
+import { resolvePublishedSessionLifecycle } from "./global-timetable-lifecycle.js";
 
 export const GLOBAL_TIMETABLE_DEVELOPMENT_STAGE = "DEVELOPMENT";
 export const GLOBAL_TIMETABLE_PUBLISHED_STAGE = "PUBLISHED";
@@ -160,18 +157,14 @@ export function resolveCurrentPublishedGlobalTimetable(tables, runId) {
       tables?.GlobalTimetableSessionLifecycle || [], publication.publicationid, session.sourcesessionid
     )
   ]));
-  const incomplete = sessions.filter(session => {
-    const lifecycle = lifecycles.get(normalizePlatformIdentifier(session.sourcesessionid));
-    const teacherRequired = lifecycle?.status === GLOBAL_SESSION_STATUS_SCHEDULED;
-    return (
+  const incomplete = sessions.filter(session => (
       !session.publishedsessionid || !session.sourcesessionid || !session.runid || !session.subjectid ||
       normalizePlatformIdentifier(session.subjectid) !== normalizePlatformIdentifier(publication.subjectid) ||
       !session.sessiondate || !session.starttime || !session.endtime ||
-      (teacherRequired && (!session.teacheraccountid || !session.teachername)) ||
+      !session.teachername ||
       !session.runname || !session.subjectname || !session.timezone ||
       (session.moduleid && !session.modulename)
-    );
-  });
+    ));
   if (incomplete.length) {
     return integrityFailure(
       "GLOBAL_TIMETABLE_DISPLAY_VALUES_MISSING",

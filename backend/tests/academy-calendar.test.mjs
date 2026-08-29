@@ -61,4 +61,4 @@ assert.throws(() => validateAcademyCalendarRecord({ ...islamicRows[0], Descripti
 assert.equal(validateAcademyCalendarRecord({ ...publicOverrides.at(-1), Description: "Heritage Day" }), true, "Holiday descriptions are editable");
 assert.throws(() => validateAcademyCalendarRecord({ ...islamicRows[3], EndDate: "2026-05-27" }), /cannot precede/);
 
-console.log("V102.12.6 Academic Calendar informational Islamic delivery and editable Holiday override tests passed.");
+console.log("V102.12.7 Academic Calendar informational Islamic delivery and editable Holiday override tests passed.");

@@ -1,23 +1,25 @@
-# V102.12.6 Release Notes
+# V102.12.7 Release Notes
 
-V102.12.6 completes the current V102 UI refinement pass before the next architecture phase. It focuses on responsive Global Curriculum / Course Scheduler and Academic Calendar editing, while preserving existing login, Attendance, Progress, Library, planner and timetable behaviour.
+V102.12.7 is a focused correction to V102.12.6. It preserves the V102.12.6 batch-editing and responsive Global/Academic Calendar work while correcting teacher publication semantics and polishing the Calendar controls on desktop/mobile.
 
-## Course Scheduler sessions
+## Publishable TBA sessions
 
-Session editing is now draft-first. Admin can change multiple existing sessions and press one section-level Save icon. The UI sends one batch request and the Worker validates the complete proposed set before issuing one Google Sheets batch write. If validation fails, none of the session changes are written.
+A Global Course session no longer requires a confirmed teacher before publication. `TBA` means the teacher is not yet confirmed, but the session is valid and publishable.
 
-Existing session rows no longer expose individual Save, Reschedule or Delete actions. Changing date/time updates that same session; cancelling is performed with `Status = CANCELLED`. Existing legacy reschedule API support remains for compatibility, but it is no longer exposed by the editor.
+For TBA sessions, `TeacherAccountID` remains blank. No synthetic TBA account is created. Publication snapshots retain the immutable display value `TeacherName = TBA`, so published delivery can show TBA consistently. If a real teacher is selected later, the session can be revised and republished normally.
 
-## Academic Calendar
+A nonblank TeacherAccountID is still validated and must resolve to an active account.
 
-Terms, Islamic Dates and Holidays each use one section-level Save icon. Multiple edits can be made before saving. Holiday `×` is now a local pending removal until Holidays is saved; `+` continues to add a local draft row.
+## Academic Calendar toolbar
 
-Islamic Dates no longer show a Status field, and Islamic API delivery no longer includes legacy `AlternateDate` or `TeachingImpact` properties. The unchanged Sheet columns remain internally compatible.
+The Month navigator, Today button and Year control remain on one compact responsive row. The Today button now explicitly opts out of the application's global full-width button rule, preventing it from stretching across the Calendar toolbar or pushing the Year control off screen.
 
-The month navigator, Today and Year controls share one responsive toolbar row. The Calendar, Terms, Islamic Dates and Holidays layouts now reflow for tablet/mobile instead of forcing wide fixed layouts. The Calendar Refresh action uses the actual refresh icon with no coloured background.
+## Mobile Holidays
 
-## Global responsive styling
+Holiday rows on phones now remain a neat one-line list:
 
-Global Curriculum tabs and management screens now respect the viewport. Course/subject tables become mobile cards where appropriate, session rows reflow to two-column/one-column cards, and the Course Scheduler setup actions are compact instead of full-width bars. Save actions use the same transparent save-icon treatment as Attendance.
+`Description | Date | ×`
+
+The description flexes, the date stays compact, and the remove action remains at the right. The existing batch-save behaviour is unchanged: `×` marks a pending removal and the Holidays section Save commits all changes together.
 
 There is **no Sheet migration**. `PlatformSchemaVersion` remains `102.0.8` with 19 required tabs.

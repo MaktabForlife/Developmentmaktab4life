@@ -1,4 +1,4 @@
-V102.12.6 changed/new files only
+V102.12.7 changed/new files only
 
 CHANGED-FILES.txt
 CHANGES.md
@@ -10,10 +10,11 @@ account/index.html
 admin/index.html
 backend/package.json
 backend/src/lib/academy-calendar.js
-backend/src/router.js
+backend/src/lib/global-timetable.js
 backend/src/routes/academy-timetable.js
 backend/src/routes/platform-academy-calendar.js
 backend/src/routes/platform-global-timetable.js
+backend/src/routes/platform-validation.js
 backend/src/worker.js
 backend/tests/academy-calendar-endpoint.test.mjs
 backend/tests/academy-calendar-ui.test.mjs
@@ -26,6 +27,7 @@ backend/tests/platform-global-delivery-ui.test.mjs
 backend/tests/platform-global-management-ui.test.mjs
 backend/tests/platform-global-timetable-ui.test.mjs
 backend/tests/platform-global-timetable.test.mjs
+backend/tests/platform-validation.test.mjs
 backend/tests/router.test.mjs
 backend/tests/student-task-assignment-ui.test.mjs
 backend/tests/timetable-teacher-ui.test.mjs
@@ -33,11 +35,10 @@ backend/tests/unified-workspace-ui.test.mjs
 css/m4l-24-global-curriculum.css
 css/m4l-28-global-course-scheduler.css
 css/m4l-29-academy-calendar.css
-docs/V102.12.6-RESPONSIVE-BATCH-EDITING.md
+docs/V102.12.7-TBA-CALENDAR-POLISH.md
 index.html
 js/m4l-academy-calendar.js
 js/m4l-global-course-scheduler.js
-js/m4l-global-curriculum.js
 js/version.json
 student/index.html
 styles.css

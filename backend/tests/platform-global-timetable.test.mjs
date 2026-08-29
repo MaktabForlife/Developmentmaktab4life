@@ -89,7 +89,7 @@ try {
 
   const initial = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.6");
+  assert.equal(initial.data.version, "102.12.7");
   assert.equal(initial.data.globalTimetableVersion, 1);
   assert.equal(initial.data.runs.length, 1);
   assert.equal(initial.data.teachers.some(item => item.accountid === "TEACHER1"), true);
@@ -102,12 +102,8 @@ try {
   assert.equal(tbaDraft.data.sessions.length, 4);
   assert.equal(tbaDraft.data.sessions.every(item => !item.teacheraccountid), true);
 
-  const blockedPublishWithoutTeacher = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN1" }, token);
-  assert.equal(blockedPublishWithoutTeacher.response.status, 400);
-  assert.match(blockedPublishWithoutTeacher.data.error, /Assign a teacher before publishing/);
-  assert.equal(Number(tables.PlatformConfig[2][1]), 1, "Blocked publication must not change GlobalTimetableVersion");
-
-  // Retire the TBA-only draft rows so the main publication can proceed.
+  // Retire these planning-only TBA rows so the main publication-history scenario below stays focused.
+  // A dedicated TBA publication assertion is exercised after the revision-history scenario.
   for (const session of tbaDraft.data.sessions) {
     const retired = await post("/api/admin/platform/global/timetable/session/save", {
       sessionId: session.sessionid,
@@ -194,7 +190,7 @@ try {
   assert.equal(revised.data.state.currentpublicationid, publication1Id);
   assert.equal(tables.GlobalTimetableRunState[1][1], "DEVELOPMENT");
 
-  // V102.12.6 session editing is draft-first: cancellation and date/time edits commit together in one batch.
+  // V102.12.7 session editing is draft-first: cancellation and date/time edits commit together in one batch.
   const cancelSource = generated.data.sessions[1];
   const movedSource = generated.data.sessions[3];
   const beforeInvalidSessionBatch = batchUpdateRequests;
@@ -252,7 +248,7 @@ try {
   assert.equal(batchEdited.data.lifecycles.find(item => item.sessionid === movedSource.sessionid)?.status, "SCHEDULED");
   assert.equal(tables.PlatformAuditLog.some(row => row[6] === "RESCHEDULE_GLOBAL_TIMETABLE_SESSION"), false, "A direct date change is audited as an update, not as legacy rescheduling");
 
-  // Legacy reschedule remains API-compatible, although the V102.12.6 editor no longer exposes a separate Reschedule action.
+  // Legacy reschedule remains API-compatible, although the V102.12.7 editor no longer exposes a separate Reschedule action.
   const rescheduleSource = generated.data.sessions[2];
   const rescheduled = await post("/api/admin/platform/global/timetable/session/reschedule", {
     sessionId: rescheduleSource.sessionid,
@@ -287,11 +283,38 @@ try {
   assert.equal(publication2Lifecycle.filter(row => row[3] === "SCHEDULED").length, 7);
   assert.equal(tables.PlatformAuditLog.some(row => row[6] === "RESCHEDULE_GLOBAL_TIMETABLE_SESSION"), true);
   assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 2);
+
+  // V102.12.7: TBA is a valid publishable teacher state. Keep TeacherAccountID blank and snapshot TeacherName as TBA.
+  tables.GlobalSubjectRuns.push([
+    "GSRUN-TBA", "GSUBJ1", "October TBA run", "2026-10-01", "2026-10-31", "Africa/Johannesburg", true,
+    "", "", "", "", "", ""
+  ]);
+  const publishableTbaDraft = await post("/api/admin/platform/global/timetable/generate", {
+    runId: "GSRUN-TBA", moduleId: "GMOD1", weekdays: ["FRI"], startTime: "12:00", endTime: "13:00"
+  }, token);
+  assert.equal(publishableTbaDraft.response.status, 200, JSON.stringify(publishableTbaDraft.data));
+  assert.equal(publishableTbaDraft.data.sessions.length, 5);
+  assert.equal(publishableTbaDraft.data.sessions.every(item => !item.teacheraccountid), true);
+
+  const tbaPublication = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN-TBA" }, token);
+  assert.equal(tbaPublication.response.status, 200, JSON.stringify(tbaPublication.data));
+  assert.equal(tbaPublication.data.publication.versionno, 1);
+  assert.equal(tbaPublication.data.publication.sessioncount, 5);
+  assert.equal(Number(tables.PlatformConfig[2][1]), 4);
+  const tbaPublicationId = tbaPublication.data.publication.publicationid;
+  const publicationIdIndex = PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.indexOf("PublicationID");
+  const teacherIdIndex = PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.indexOf("TeacherAccountID");
+  const teacherNameIndex = PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.indexOf("TeacherName");
+  const tbaSnapshots = tables.PublishedGlobalTimetableSessions.slice(1).filter(row => row[publicationIdIndex] === tbaPublicationId);
+  assert.equal(tbaSnapshots.length, 5);
+  assert.equal(tbaSnapshots.every(row => !row[teacherIdIndex]), true, "TBA must not create a fake teacher AccountID");
+  assert.equal(tbaSnapshots.every(row => row[teacherNameIndex] === "TBA"), true, "Published TBA sessions must keep an immutable TBA display label");
+  assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 3);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.6 Global Course batch session edit/cancel/date-change and immutable publication tests passed.");
+console.log("V102.12.7 Global Course batch editing, immutable publication and publishable TBA tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

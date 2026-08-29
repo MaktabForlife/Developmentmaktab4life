@@ -243,6 +243,13 @@ try {
   assert.equal(subscriptionResult.publishedGlobalTimetableSessionCount, 1);
   assert.equal(subscriptionResult.globalResourceCount, 1);
 
+  // V102.12.7: a published scheduled session may remain TBA without a fake TeacherAccountID.
+  tables.GlobalTimetableSessions[1][7] = "";
+  tables.PublishedGlobalTimetableSessions[1][9] = "";
+  tables.PublishedGlobalTimetableSessions[1][17] = "TBA";
+  const validTbaPublication = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(validTbaPublication.status, 200, await validTbaPublication.text());
+
   tables.PublishedGlobalTimetableSessions[1][11] = "2026-08-03T00:00:00.000Z";
   const badSnapshotAudit = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(badSnapshotAudit.status, 503);

@@ -113,14 +113,14 @@ const expectedPaths = [
   "/api/progress/task-detail"
 ];
 
-assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include the V102.12.6 Academic Calendar and batch timetable routes");
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include the V102.12.7 Academic Calendar and batch timetable routes");
 
 const root = await worker.fetch(new Request("https://worker.test/"), {});
 assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.12.6"
+  version: "102.12.7"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

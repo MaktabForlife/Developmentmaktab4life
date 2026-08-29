@@ -1,4 +1,4 @@
-/* M4L V102.12.6 - Global Course batch session editing with Academy Calendar conflict warnings. */
+/* M4L V102.12.7 - Global Course batch session editing with publishable TBA and Calendar conflict warnings. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -49,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.12.6",
+      version: "102.12.7",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -686,9 +686,6 @@ function buildSnapshotRows(tables, publication, run, subject, sessions, sessionL
     const module = resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
     const lifecycle = sessionLifecycles.get(normalizePlatformIdentifier(session.SessionID)) || resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, session.SessionID);
     const teacher = optionalActiveTeacher(tables, session.TeacherAccountID);
-    if (lifecycleNeedsTeacher(lifecycle) && !teacher) {
-      throw clientError(`Assign a teacher before publishing ${clean(session.SessionDate)} ${normalizeSubmittedTime(session.StartTime)}`, 409);
-    }
     snapshots.push({
       PublishedSessionID: createPlatformId("GTPSESSION"),
       PublicationID: publication.PublicationID,
@@ -707,7 +704,7 @@ function buildSnapshotRows(tables, publication, run, subject, sessions, sessionL
       RunName: clean(run.RunName),
       SubjectName: clean(subject.SubjectName),
       ModuleName: module ? clean(module.ModuleName) : "",
-      TeacherName: clean(teacher?.DisplayName),
+      TeacherName: clean(teacher?.DisplayName) || "TBA",
       Timezone: clean(run.Timezone)
     });
     lifecycleSnapshots.push({
@@ -822,8 +819,7 @@ function validateSessionsForPublication(tables, run, subject, sessions) {
     resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
     const lifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, session.SessionID);
     lifecycles.set(sourceId, lifecycle);
-    if (lifecycleNeedsTeacher(lifecycle)) activeTeacher(tables, session.TeacherAccountID);
-    else optionalActiveTeacher(tables, session.TeacherAccountID);
+    optionalActiveTeacher(tables, session.TeacherAccountID);
     validateZoomLink(session.ZoomLink);
     if (lifecycle.status === GLOBAL_SESSION_STATUS_SCHEDULED) {
       const slot = `${clean(session.SessionDate)}|${normalizeSubmittedTime(session.StartTime)}|${normalizeSubmittedTime(session.EndTime)}`;
@@ -871,7 +867,6 @@ function resolveModule(tables, moduleId, subjectId, { requireActive = false } = 
 }
 
 function activeTeacher(tables, accountId) {
-  if (!clean(accountId)) throw clientError("Assign a teacher before publishing", 400);
   const teacher = uniqueRecord(tables.UserAccounts, "AccountID", accountId, "Teacher account");
   if (!isActivePlatformValue(teacher.Active)) throw clientError("Teacher account must be active", 409);
   return teacher;

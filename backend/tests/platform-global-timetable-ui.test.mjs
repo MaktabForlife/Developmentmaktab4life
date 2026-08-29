@@ -9,7 +9,7 @@ const [adminHtml, js, css] = await Promise.all([
 
 assert.match(adminHtml, /Course Scheduler/);
 assert.match(adminHtml, /Program Timetables/);
-assert.match(adminHtml, /styles\.css\?v=102\.12\.6/);
+assert.match(adminHtml, /styles\.css\?v=102\.12\.7/);
 assert.match(js, /Revise timetable/);
 assert.match(js, /Publish revision/);
 assert.doesNotMatch(js, /Reschedule session/);
@@ -37,4 +37,4 @@ assert.match(css, /global-session-inline-row\.is-cancelled/);
 assert.match(css, /global-save-icon-button[\s\S]*background:transparent !important/);
 assert.match(css, /global-course-compact-action/);
 
-console.log("V102.12.6 Global Course batch session editing and responsive UI checks passed.");
+console.log("V102.12.7 Global Course batch session editing and responsive UI checks passed.");

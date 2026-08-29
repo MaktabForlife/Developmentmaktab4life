@@ -9,7 +9,7 @@ const accountUi = fs.readFileSync(new URL("../../js/m4l-account.js", import.meta
 
 assert.match(admin, /Academic Calendar/);
 assert.match(admin, /data-academy-calendar-action="open"/);
-assert.match(admin, /m4l-academy-calendar\.js\?v=102\.12\.6/);
+assert.match(admin, /m4l-academy-calendar\.js\?v=102\.12\.7/);
 assert.match(ui, /<h3>Holidays<\/h3>/);
 assert.match(ui, /Islamic Dates/);
 assert.match(ui, /data-academy-calendar-action="add-term"/);
@@ -34,6 +34,10 @@ assert.match(ui, /saveButton\("Save Holidays", "save-public"/);
 assert.match(ui, /saveButton\("Save Terms", "save-terms"/);
 assert.match(ui, /app-icon app-icon-small save-mode-icon/);
 assert.match(css, /academy-calendar-toolbar[\s\S]*flex-wrap:nowrap/);
+assert.match(css, /academy-calendar-today-button[^}]*width:auto !important[^}]*min-width:112px/);
+assert.match(css, /academy-calendar-year-field[^}]*margin-left:auto/);
+assert.match(css, /academy-calendar-public-row \{[\s\S]*grid-template-columns:minmax\(0,1fr\) minmax\(112px,\.78fr\) 34px/);
+assert.doesNotMatch(css, /academy-calendar-public-row > input:first-child \{ grid-column:1 \/ -1/);
 assert.doesNotMatch(css, /min-width:\s*760px/);
 assert.match(css, /--app-icon-url:url\('\/icons\/refresh\.svg'\)/);
 assert.match(css, /academy-calendar-reference-grid/);
@@ -44,4 +48,4 @@ assert.match(accountUi, /academy-calendar-day-badges/);
 assert.match(accountUi, /event\.islamicDate/);
 assert.match(accountUi, /RELIGIOUS_PERIOD/);
 
-console.log("V102.12.6 Academic Calendar responsive section-save and informational Islamic UI tests passed.");
+console.log("V102.12.7 Academic Calendar compact-toolbar, one-row mobile Holidays and section-save UI tests passed.");
