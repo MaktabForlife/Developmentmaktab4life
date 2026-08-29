@@ -1,10 +1,19 @@
-# V102.12.3 app-loader hotfix — deployment
+# V102.12.4 UPDATE TODO
 
-1. Apply the changed-files overlay to the current V102.12.3 development repository.
-2. Confirm repository root contains `app.js`.
-3. Deploy Cloudflare Pages from the updated commit. If the Worker auto-deploys from the same commit, no Worker configuration change is required.
-4. Hard-refresh the Reboot workspace once after deployment.
-5. Confirm DevTools Network shows `/app.js?v=102.12.3` returning HTTP 200 with JavaScript content.
-6. Confirm the prior `ReferenceError: state is not defined` is gone.
-7. Open both an Admin/Teacher Reboot workspace and a Student Reboot workspace.
-8. No Platform Sheet/schema change is required.
+1. Apply all changed files from this overlay to the V102.12.3 development repository.
+2. Confirm root `/app.js` exists in GitHub.
+3. Deploy Pages and Worker from the same commit.
+4. Keep `PlatformConfig!B3 = 102.0.8`; no Sheet migration is required.
+5. Confirm Worker health reports `102.12.4`.
+6. Confirm `/app.js?v=102.12.4` returns HTTP 200.
+7. Academy Home checks:
+   - green verified tick and `Academy timetable` label are absent;
+   - current day reads `TODAY - dd-MMM-yy`;
+   - second card uses its weekday name;
+   - mobile shows one card and horizontal swipe reaches the second;
+   - large screens show two cards side by side;
+   - long cards scroll vertically;
+   - session pills are compact;
+   - Program roll-up pills do not display session counts;
+   - current authorised session remains the only Zoom-capable pill.
+8. Smoke-check Reboot login, Attendance, Library, Progress and Program Timetables.

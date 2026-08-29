@@ -184,7 +184,7 @@ assert.deepEqual(
   { date: "2026-08-24", minutes: 9 * 60 + 30 }
 );
 
-console.log("V102.12.3 Academy timetable personalisation, redaction and current-session Zoom tests passed.");
+console.log("V102.12.4 Academy timetable personalisation, redaction and current-session Zoom tests passed.");
 
 function makeGlobalPlatform(accessModel, subscribed, teacherAccountId = "TEACHER1", status = "SCHEDULED") {
   return {

@@ -13,8 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /m4l-account\.js\?v=102\.12\.3/);
-assert.match(html, /m4l-23-account\.css\?v=102\.12\.3/);
+assert.match(html, /m4l-account\.js\?v=102\.12\.4/);
+assert.match(html, /m4l-23-account\.css\?v=102\.12\.4/);
 
 for (const endpoint of [
   "/api/account/check",
@@ -33,15 +33,24 @@ assert.match(script, /m4l_account_contexts/);
 assert.match(script, /maktab_token/);
 assert.match(script, /window\.location\.assign\(path\)/);
 assert.match(html, /id="academy-timetable"/);
-assert.match(html, /Academy timetable/);
+assert.doesNotMatch(html, /Academy timetable/);
 assert.match(script, /loadAcademyTimetable/);
 assert.match(script, /formatAcademyTimeRange/);
-assert.match(html, /id="academy-prev-day"/);
-assert.match(html, /id="academy-today"/);
-assert.match(html, /id="academy-next-day"/);
+assert.doesNotMatch(html, /id="academy-today"/);
+assert.doesNotMatch(html, /aria-label="Verified"/);
+assert.match(script, /data-academy-move/);
+assert.match(script, /formatAcademyCompactDate/);
+assert.match(css, /scroll-snap-type:\s*x mandatory/);
+assert.match(css, /overflow-x:\s*auto/);
+assert.match(css, /max-height:\s*620px/);
 assert.match(script, /createProgramRollupPill/);
+assert.match(script, /const label = programName;/);
+assert.doesNotMatch(script, /other\" : \"\"} sessions/);
+assert.match(css, /flex:\s*0 1 118px/);
+assert.match(css, /flex-basis:\s*100%/);
+assert.match(css, /overflow-y:\s*auto/);
 assert.match(script, /academy-session-pill/);
-assert.match(script, /date === today\s*\? "TODAY"/);
+assert.match(script, /date === today \? "TODAY"/);
 assert.match(script, /weekday: "long"/);
 assert.match(script, /session\.isCurrent && session\.canOpenZoom && session\.zoomLink/);
 assert.match(script, /\$\{String\(Number\(match\[1\]\)\)\.padStart\(2, "0"\)\}h\$\{match\[2\]\}/);
@@ -60,4 +69,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.12.3 pill-based two-day Academy Home and unified account UI tests passed.");
+console.log("V102.12.4 swipeable Academy Home and unified account UI tests passed.");

@@ -1,4 +1,4 @@
-/* M4L V102.12.3 - Personalised Academy Home, Academy Calendar and global scheduling.
+/* M4L V102.12.4 - Swipeable Academy Home, Academy Calendar and global scheduling.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.12.3"
+          version: "102.12.4"
         });
       }
 

@@ -1,4 +1,4 @@
-/* M4L V102.12.3 - Personalised two-day Academy Home delivery with Program roll-ups. */
+/* M4L V102.12.4 - Swipeable two-day Academy Home delivery with Program roll-ups. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "102.12.3",
+      version: "102.12.4",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,

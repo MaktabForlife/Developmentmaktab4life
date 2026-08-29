@@ -1,5 +1,5 @@
-# V102.12.3 app-loader hotfix
+# Maktab4Life V102.12.4
 
-Apply this overlay on top of V102.12.3.
+Changed-files release from V102.12.3. Apply the overlay to the development repository and deploy Pages + Worker from the same commit. No Sheet migration is required.
 
-This is a Pages/runtime-loader correction only. The deployed console symptom was `/app.js` returning 404, followed by `m4l-shell.js` throwing `ReferenceError: state is not defined`. `state` is defined by root `app.js`, so the shell error is downstream of the missing loader.
+This release also carries forward the required root `app.js` loader file so the Reboot/Admin/Student portals cannot regress to the V102.12.3 loader 404.

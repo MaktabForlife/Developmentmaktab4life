@@ -1,5 +1,5 @@
-# V102.12.3 app-loader hotfix
+# V102.12.4 Release Notes
 
-Fixes Reboot/Admin/Student Program workspaces failing to open when the shared root `app.js` asset is absent from the deployed Pages output.
+Academy Home timetable presentation refinement. Backend DETAIL/LABEL redaction, Program roll-up permissions, current-session Zoom gating, Academy Calendar behavior, Course Scheduler and Program Timetables are unchanged.
 
-No Platform Sheet migration is required. Keep `PlatformConfig!B3` unchanged.
+PlatformSchemaVersion remains `102.0.8` with 19 required tabs.

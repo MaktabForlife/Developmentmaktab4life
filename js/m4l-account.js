@@ -1,4 +1,4 @@
-/* M4L V102.12.3 - Unified account login with personalised two-day Academy timetable. */
+/* M4L V102.12.4 - Swipeable one/two-card personalised Academy timetable. */
 (function () {
   "use strict";
 
@@ -46,10 +46,13 @@
     byId("setup-form").addEventListener("submit", submitSetup);
     byId("logout-button").addEventListener("click", logout);
     byId("open-workspace-button").addEventListener("click", () => openCurrentWorkspace());
-    byId("academy-prev-day").addEventListener("click", () => moveAcademyWindow(-1));
-    byId("academy-next-day").addEventListener("click", () => moveAcademyWindow(1));
-    byId("academy-today").addEventListener("click", () => loadAcademyTimetable({ resetView: true, force: true }));
     byId("academy-refresh").addEventListener("click", () => loadAcademyTimetable({ force: true }));
+    byId("academy-timetable").addEventListener("click", event => {
+      const button = event.target.closest("[data-academy-move]");
+      if (!button) return;
+      const amount = Number(button.dataset.academyMove || 0);
+      if (amount) moveAcademyWindow(amount);
+    });
     document.querySelectorAll("[data-toggle-pin]").forEach(button => {
       button.addEventListener("click", () => togglePin(button));
     });
@@ -320,8 +323,6 @@
     const viewEnd = String(result.viewEnd || addAcademyDays(viewStart, 1)).trim();
     state.academyViewStart = viewStart;
 
-    byId("academy-view-label").textContent =
-      `${formatAcademyDate(viewStart, { day: "numeric", month: "short" })} – ${formatAcademyDate(viewEnd, { day: "numeric", month: "short", year: "numeric" })}`;
     renderAcademyViewContext(calendarEvents, viewStart, viewEnd);
     container.replaceChildren();
 
@@ -332,13 +333,27 @@
 
       const heading = document.createElement("header");
       heading.className = "academy-day-heading";
-      const dayName = document.createElement("strong");
-      dayName.textContent = date === today
-        ? "TODAY"
-        : formatAcademyDate(date, { weekday: "long" });
-      const dayDate = document.createElement("span");
-      dayDate.textContent = formatAcademyDate(date, { day: "2-digit", month: "short" });
-      heading.append(dayName, dayDate);
+
+      const previous = document.createElement("button");
+      previous.type = "button";
+      previous.className = "academy-day-chevron";
+      previous.dataset.academyMove = "-1";
+      previous.setAttribute("aria-label", "Previous day");
+      previous.setAttribute("title", "Previous day");
+      previous.textContent = "‹";
+
+      const dayLabel = document.createElement("strong");
+      dayLabel.textContent = `${date === today ? "TODAY" : formatAcademyDate(date, { weekday: "long" })} - ${formatAcademyCompactDate(date)}`;
+
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "academy-day-chevron";
+      next.dataset.academyMove = "1";
+      next.setAttribute("aria-label", "Next day");
+      next.setAttribute("title", "Next day");
+      next.textContent = "›";
+
+      heading.append(previous, dayLabel, next);
       day.appendChild(heading);
 
       const dayEvents = calendarEvents.filter(event => String(event.startDate || "") <= date && String(event.endDate || "") >= date);
@@ -416,17 +431,9 @@
         otherPrograms.get(programName).push(session);
       });
 
-      const relevantProgramNames = new Set(relevant
-        .filter(session => String(session.kind || "").toUpperCase() === "PROGRAM")
-        .map(session => String(session.programName || "").trim())
-        .filter(Boolean));
 
       for (const [programName, programSessions] of otherPrograms) {
-        sessionsRoot.appendChild(createProgramRollupPill(
-          programName,
-          programSessions,
-          relevantProgramNames.has(programName)
-        ));
+        sessionsRoot.appendChild(createProgramRollupPill(programName, programSessions));
       }
       otherGlobal.forEach(session => sessionsRoot.appendChild(createAcademySessionPill(session)));
 
@@ -435,12 +442,9 @@
     }
   }
 
-  function createProgramRollupPill(programName, sessions, hasRelevantSession) {
+  function createProgramRollupPill(programName, sessions) {
     const detailsAvailable = sessions.some(session => String(session.visibilityLevel || "").toUpperCase() === "DETAIL");
-    const count = sessions.length;
-    const label = detailsAvailable
-      ? `${programName}${count > 1 ? ` · ${count}${hasRelevantSession ? " other" : ""} sessions` : ""}`
-      : programName;
+    const label = programName;
 
     const wrapper = document.createElement("div");
     wrapper.className = "academy-program-rollup-wrap";
@@ -598,6 +602,15 @@
     const startText = formatAcademyTime(start);
     const endText = formatAcademyTime(end);
     return endText ? `${startText}–${endText}` : startText;
+  }
+
+  function formatAcademyCompactDate(value) {
+    const date = parseAcademyDate(value);
+    if (!date) return String(value || "");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getUTCMonth()];
+    const year = String(date.getUTCFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
   }
 
   function formatAcademyDate(value, options) {
