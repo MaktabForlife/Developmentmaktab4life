@@ -42,8 +42,8 @@ assert.equal(islamicDateLabel("New Islamic Year", "2026-06-17"), "1 Muharram 144
 const legacyNoTeachingIslamic = buildAcademyCalendarEvents([
   { ...islamicRows[0], TeachingImpact: "NO_TEACHING", AlternateDate: "2026-02-17" }
 ], "2026-02-18", "2026-02-18")[0];
-assert.equal(legacyNoTeachingIslamic.teachingImpact, "INFORMATION", "Islamic dates are informational regardless of legacy TeachingImpact values");
-assert.equal(legacyNoTeachingIslamic.alternateDate, "", "Alternate Islamic dates are no longer delivered");
+assert.equal(Object.hasOwn(legacyNoTeachingIslamic, "teachingImpact"), false, "Islamic dates must not deliver Teaching status/impact");
+assert.equal(Object.hasOwn(legacyNoTeachingIslamic, "alternateDate"), false, "Alternate Islamic dates must not be delivered");
 
 
 const publicOverrides = [
@@ -61,4 +61,4 @@ assert.throws(() => validateAcademyCalendarRecord({ ...islamicRows[0], Descripti
 assert.equal(validateAcademyCalendarRecord({ ...publicOverrides.at(-1), Description: "Heritage Day" }), true, "Holiday descriptions are editable");
 assert.throws(() => validateAcademyCalendarRecord({ ...islamicRows[3], EndDate: "2026-05-27" }), /cannot precede/);
 
-console.log("V102.12.5 Academic Calendar Islamic-information and editable Holiday override tests passed.");
+console.log("V102.12.6 Academic Calendar informational Islamic delivery and editable Holiday override tests passed.");

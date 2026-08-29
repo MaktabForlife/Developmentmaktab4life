@@ -1,7 +1,8 @@
-/* M4L V102.12.5 - Academic Calendar refreshed inline administration UI. */
+/* M4L V102.12.6 - Academic Calendar responsive section-level batch editing. */
 (function () {
   "use strict";
 
+  const NEW_KEY = "__new__";
   const model = {
     year: new Date().getFullYear(),
     month: new Date().getMonth(),
@@ -10,7 +11,13 @@
     loaded: false,
     loading: false,
     newTerm: false,
-    newPublicHoliday: false
+    newPublicHoliday: false,
+    drafts: {
+      TERM: new Map(),
+      ISLAMIC_DAY: new Map(),
+      PUBLIC_HOLIDAY: new Map()
+    },
+    deletedPublicHolidays: new Map()
   };
   let bound = false;
 
@@ -46,6 +53,7 @@
     bound = true;
     document.addEventListener("click", handleClick);
     document.addEventListener("change", handleChange);
+    document.addEventListener("input", handleInput);
   }
 
   async function handleClick(event) {
@@ -55,28 +63,66 @@
     if (action === "open") { event.preventDefault(); return show(); }
     if (!target.closest("#academy-calendar-screen")) return;
     event.preventDefault();
-    if (action === "reload") return load(true);
+
+    if (action === "reload") {
+      if (!confirmDiscardPending()) return;
+      resetAllDrafts();
+      return load(true);
+    }
     if (action === "prev-month") return moveMonth(-1);
     if (action === "next-month") return moveMonth(1);
     if (action === "today") return goToday();
-    if (action === "add-term") { model.newTerm = true; return render(); }
-    if (action === "cancel-new-term") { model.newTerm = false; return render(); }
-    if (action === "save-term") return saveInlineTerm(target);
-    if (action === "save-islamic") return saveInlineIslamic(target);
-    if (action === "add-public") { model.newPublicHoliday = true; return render(); }
-    if (action === "cancel-new-public") { model.newPublicHoliday = false; return render(); }
-    if (action === "save-public") return saveInlinePublicHoliday(target);
-    if (action === "delete-public") return deleteInlinePublicHoliday(target);
+    if (action === "add-term") {
+      captureAllDrafts();
+      model.newTerm = true;
+      return render();
+    }
+    if (action === "cancel-new-term") {
+      model.drafts.TERM.delete(NEW_KEY);
+      model.newTerm = false;
+      return render();
+    }
+    if (action === "save-terms") return saveSection("TERM", target);
+    if (action === "save-islamic") return saveSection("ISLAMIC_DAY", target);
+    if (action === "add-public") {
+      captureAllDrafts();
+      model.newPublicHoliday = true;
+      return render();
+    }
+    if (action === "cancel-new-public") {
+      model.drafts.PUBLIC_HOLIDAY.delete(NEW_KEY);
+      model.newPublicHoliday = false;
+      return render();
+    }
+    if (action === "save-public") return saveSection("PUBLIC_HOLIDAY", target);
+    if (action === "delete-public") return markHolidayDeleted(target);
   }
 
   function handleChange(event) {
     if (!event.target?.closest?.("#academy-calendar-screen")) return;
     if (event.target.id === "academy-calendar-year") {
-      model.year = Number(event.target.value) || new Date().getFullYear();
+      const nextYear = Number(event.target.value) || new Date().getFullYear();
+      if (nextYear === model.year) return;
+      captureAllDrafts();
+      if (!confirmDiscardPending()) {
+        event.target.value = model.year;
+        return;
+      }
+      resetAllDrafts();
+      model.year = nextYear;
       model.newTerm = false;
       model.newPublicHoliday = false;
       void load(true);
+      return;
     }
+    const row = event.target.closest("[data-calendar-row]");
+    if (row) captureRowDraft(row);
+  }
+
+  function handleInput(event) {
+    if (!event.target?.closest?.("#academy-calendar-screen")) return;
+    const row = event.target.closest("[data-calendar-row]");
+    if (row) captureRowDraft(row);
   }
 
   async function load(force) {
@@ -111,8 +157,8 @@
             <button type="button" class="academy-calendar-icon-button" data-academy-calendar-action="prev-month" aria-label="Previous month" title="Previous month">‹</button>
             <strong>${html(monthName(model.month))} ${model.year}</strong>
             <button type="button" class="academy-calendar-icon-button" data-academy-calendar-action="next-month" aria-label="Next month" title="Next month">›</button>
-            <button type="button" class="academy-calendar-today-button" data-academy-calendar-action="today">Today</button>
           </div>
+          <button type="button" class="academy-calendar-today-button" data-academy-calendar-action="today">Today</button>
           <label class="academy-calendar-year-field"><span>Year</span><input id="academy-calendar-year" type="number" min="2025" max="2100" value="${model.year}" /></label>
         </div>
         ${monthGrid()}
@@ -123,8 +169,11 @@
         </div>
       </div>
     `);
-    if (model.newTerm) requestAnimationFrame(() => document.querySelector('[data-new-calendar-row="term"] [data-field="description"]')?.focus());
-    if (model.newPublicHoliday) requestAnimationFrame(() => document.querySelector('[data-new-calendar-row="public"] [data-field="startDate"]')?.focus());
+    requestAnimationFrame(() => {
+      if (model.newTerm) document.querySelector('[data-new-calendar-row="term"] [data-field="description"]')?.focus();
+      if (model.newPublicHoliday) document.querySelector('[data-new-calendar-row="public"] [data-field="startDate"]')?.focus();
+      updateSectionSaveButtons();
+    });
   }
 
   function monthGrid() {
@@ -164,7 +213,10 @@
     return `<section class="academy-calendar-panel academy-calendar-terms academy-calendar-full-width">
       <div class="academy-calendar-panel-heading">
         <h3>Terms</h3>
-        <button type="button" class="academy-calendar-icon-button" data-academy-calendar-action="add-term" aria-label="Add term" title="Add term">+</button>
+        <div class="academy-calendar-heading-actions">
+          ${saveButton("Save Terms", "save-terms", sectionHasPending("TERM"))}
+          <button type="button" class="academy-calendar-icon-button" data-academy-calendar-action="add-term" aria-label="Add term" title="Add term">+</button>
+        </div>
       </div>
       <div class="academy-calendar-table-wrap"><table class="academy-calendar-table academy-calendar-inline-table"><thead><tr><th>Term</th><th>Start</th><th>End</th><th>Status</th><th class="academy-calendar-action-column"></th></tr></thead><tbody>
         ${rows || (!model.newTerm ? '<tr><td colspan="5" class="academy-calendar-empty-row">No terms have been set up for this year.</td></tr>' : "")}${newRow}
@@ -173,12 +225,15 @@
   }
 
   function termRow(event, isNew) {
-    return `<tr data-calendar-row data-event-type="TERM" data-event-id="${attr(event.id || "")}" ${isNew ? 'data-new-calendar-row="term"' : ""}>
-      <td><input class="academy-calendar-inline-input" data-field="description" type="text" maxlength="120" value="${attr(event.description || "")}" aria-label="Term name" /></td>
-      <td><input class="academy-calendar-inline-input" data-field="startDate" type="date" value="${attr(event.startDate || "")}" aria-label="Term start date" /></td>
-      <td><input class="academy-calendar-inline-input" data-field="endDate" type="date" value="${attr(event.endDate || "")}" aria-label="Term end date" /></td>
-      <td>${activeSelect(event.active !== false)}</td>
-      <td class="academy-calendar-inline-actions">${saveButton("Save term", "save-term", event.id || "")}${isNew ? iconButton("×", "cancel-new-term", "Cancel new term") : ""}</td>
+    const draft = draftFor("TERM", event, isNew);
+    const key = isNew ? NEW_KEY : event.id;
+    const dirty = model.drafts.TERM.has(key);
+    return `<tr class="${dirty ? "is-dirty" : ""}" data-calendar-row data-event-type="TERM" data-event-id="${attr(event.id || "")}" ${isNew ? 'data-new-calendar-row="term"' : ""}>
+      <td data-label="Term"><input class="academy-calendar-inline-input" data-field="description" type="text" maxlength="120" value="${attr(draft.description)}" aria-label="Term name" /></td>
+      <td data-label="Start"><input class="academy-calendar-inline-input" data-field="startDate" type="date" value="${attr(draft.startDate)}" aria-label="Term start date" /></td>
+      <td data-label="End"><input class="academy-calendar-inline-input" data-field="endDate" type="date" value="${attr(draft.endDate)}" aria-label="Term end date" /></td>
+      <td data-label="Status">${activeSelect(draft.active !== false)}</td>
+      <td class="academy-calendar-inline-actions">${isNew ? iconButton("×", "cancel-new-term", "Cancel new term") : ""}</td>
     </tr>`;
   }
 
@@ -187,7 +242,10 @@
       .filter(event => event.eventType === "ISLAMIC_DAY" && event.description !== "First Fast" && String(event.startDate).startsWith(`${model.year}-`))
       .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
     return `<section class="academy-calendar-panel academy-calendar-islamic-panel">
-      <div class="academy-calendar-panel-heading"><h3>Islamic Dates</h3></div>
+      <div class="academy-calendar-panel-heading">
+        <h3>Islamic Dates</h3>
+        ${saveButton("Save Islamic Dates", "save-islamic", sectionHasPending("ISLAMIC_DAY"))}
+      </div>
       <div class="academy-calendar-inline-list">
         ${events.length ? events.map(islamicRow).join("") : '<div class="academy-calendar-empty-row">No Islamic reference dates are stored for this year.</div>'}
       </div>
@@ -195,26 +253,30 @@
   }
 
   function islamicRow(event) {
-    return `<div class="academy-calendar-inline-item academy-calendar-islamic-row" data-calendar-row data-event-type="ISLAMIC_DAY" data-event-id="${attr(event.id)}">
+    const draft = draftFor("ISLAMIC_DAY", event, false);
+    const dirty = model.drafts.ISLAMIC_DAY.has(event.id);
+    return `<div class="academy-calendar-inline-item academy-calendar-islamic-row ${dirty ? "is-dirty" : ""}" data-calendar-row data-event-type="ISLAMIC_DAY" data-event-id="${attr(event.id)}">
       <div class="academy-calendar-islamic-name">
         <strong>${html(event.description)}</strong>
         ${event.islamicDate ? `<small>${html(event.islamicDate)}</small>` : ""}
       </div>
       <div class="academy-calendar-islamic-fields">
-        ${compactField("Date", `<input data-field="startDate" type="date" value="${attr(event.startDate)}" />`)}
-        ${compactField("Status", activeSelect(event.active !== false, true))}
+        ${compactField("Date", `<input data-field="startDate" type="date" value="${attr(draft.startDate)}" aria-label="${attr(event.description)} date" />`)}
       </div>
-      <div class="academy-calendar-inline-actions">${saveButton("Save Islamic date", "save-islamic", event.id)}</div>
     </div>`;
   }
 
   function publicHolidayPanel() {
     const events = model.events
       .filter(event => event.eventType === "PUBLIC_HOLIDAY" && String(event.startDate).startsWith(`${model.year}-`))
+      .filter(event => !model.deletedPublicHolidays.has(event.id))
       .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
     const newRow = model.newPublicHoliday ? publicHolidayRow({ id: "", description: "Public Holiday", startDate: "" }, true) : "";
     return `<section class="academy-calendar-panel academy-calendar-public-panel">
-      <div class="academy-calendar-panel-heading"><h3>Holidays</h3></div>
+      <div class="academy-calendar-panel-heading">
+        <h3>Holidays</h3>
+        ${saveButton("Save Holidays", "save-public", sectionHasPending("PUBLIC_HOLIDAY"))}
+      </div>
       <div class="academy-calendar-inline-list academy-calendar-public-list">
         ${events.length ? events.map(event => publicHolidayRow(event, false)).join("") : (!model.newPublicHoliday ? '<div class="academy-calendar-empty-row">No Holidays are active for this year.</div>' : "")}
         ${newRow}
@@ -224,127 +286,239 @@
   }
 
   function publicHolidayRow(event, isNew) {
-    return `<div class="academy-calendar-inline-item academy-calendar-public-row" data-calendar-row data-event-type="PUBLIC_HOLIDAY" data-event-id="${attr(event.id || "")}" data-original-date="${attr(event.startDate || "")}" ${isNew ? 'data-new-calendar-row="public"' : ""}>
-      <input class="academy-calendar-inline-input" data-field="description" type="text" maxlength="120" value="${attr(event.description || "Public Holiday")}" aria-label="Holiday description" />
-      <input class="academy-calendar-inline-input" data-field="startDate" type="date" value="${attr(event.startDate || "")}" aria-label="Holiday date" />
+    const draft = draftFor("PUBLIC_HOLIDAY", event, isNew);
+    const key = isNew ? NEW_KEY : event.id;
+    const dirty = model.drafts.PUBLIC_HOLIDAY.has(key);
+    return `<div class="academy-calendar-inline-item academy-calendar-public-row ${dirty ? "is-dirty" : ""}" data-calendar-row data-event-type="PUBLIC_HOLIDAY" data-event-id="${attr(event.id || "")}" data-original-date="${attr(event.startDate || "")}" ${isNew ? 'data-new-calendar-row="public"' : ""}>
+      <input class="academy-calendar-inline-input" data-field="description" type="text" maxlength="120" value="${attr(draft.description || "Public Holiday")}" aria-label="Holiday description" />
+      <input class="academy-calendar-inline-input" data-field="startDate" type="date" value="${attr(draft.startDate)}" aria-label="Holiday date" />
       <div class="academy-calendar-inline-actions">
-        ${saveButton("Save Holiday", "save-public", event.id || "")}
-        ${iconButton("×", isNew ? "cancel-new-public" : "delete-public", isNew ? "Cancel new Holiday" : "Delete Holiday", event.id || "")}
+        ${iconButton("×", isNew ? "cancel-new-public" : "delete-public", isNew ? "Cancel new Holiday" : "Remove Holiday", event.id || "")}
       </div>
     </div>`;
   }
 
-  async function saveInlineTerm(button) {
-    const row = button.closest("[data-calendar-row]");
-    if (!row) return;
-    return saveRow(button, {
-      eventId: row.dataset.eventId || "",
-      eventType: "TERM",
+  function captureAllDrafts() {
+    document.querySelectorAll("#academy-calendar-screen [data-calendar-row]").forEach(captureRowDraft);
+  }
+
+  function captureRowDraft(row) {
+    const type = String(row.dataset.eventType || "").toUpperCase();
+    const map = model.drafts[type];
+    if (!map) return;
+    const eventId = String(row.dataset.eventId || "");
+    const key = eventId || NEW_KEY;
+    const current = currentRowDraft(row, type, eventId);
+    const baseline = baselineFor(type, eventId);
+    const dirty = !baseline || draftDiffers(type, current, baseline);
+    if (dirty) map.set(key, current);
+    else map.delete(key);
+    row.classList.toggle("is-dirty", dirty);
+    updateSectionSaveButtons();
+  }
+
+  function currentRowDraft(row, type, eventId) {
+    if (type === "TERM") return {
+      eventId,
+      eventType: type,
       description: rowValue(row, "description"),
       startDate: rowValue(row, "startDate"),
       endDate: rowValue(row, "endDate"),
       teachingImpact: "INFORMATION",
       active: rowValue(row, "active") === "TRUE"
-    }, "Term saved.", () => { model.newTerm = false; });
-  }
-
-  async function saveInlineIslamic(button) {
-    const row = button.closest("[data-calendar-row]");
-    if (!row) return;
-    return saveRow(button, {
-      eventId: row.dataset.eventId || "",
-      eventType: "ISLAMIC_DAY",
-      startDate: rowValue(row, "startDate"),
-      teachingImpact: "INFORMATION",
-      active: rowValue(row, "active") === "TRUE"
-    }, "Islamic date saved.");
-  }
-
-  async function saveInlinePublicHoliday(button) {
-    const row = button.closest("[data-calendar-row]");
-    if (!row) return;
-    return saveRow(button, {
-      eventId: row.dataset.eventId || "",
+    };
+    if (type === "ISLAMIC_DAY") return {
+      eventId,
+      eventType: type,
+      startDate: rowValue(row, "startDate")
+    };
+    return {
+      eventId,
       eventType: "PUBLIC_HOLIDAY",
-      originalDate: row.dataset.originalDate || "",
+      originalDate: String(row.dataset.originalDate || ""),
       description: rowValue(row, "description") || "Public Holiday",
       startDate: rowValue(row, "startDate"),
       endDate: rowValue(row, "startDate"),
-      teachingImpact: "NO_TEACHING",
       active: true
-    }, "Holiday saved.", () => { model.newPublicHoliday = false; });
+    };
   }
 
-  async function deleteInlinePublicHoliday(button) {
+  function baselineFor(type, eventId) {
+    if (!eventId) return null;
+    const source = type === "PUBLIC_HOLIDAY" ? model.events : model.storedEvents;
+    return source.find(event => event.id === eventId) || null;
+  }
+
+  function draftFor(type, event, isNew) {
+    const key = isNew ? NEW_KEY : event.id;
+    const draft = model.drafts[type]?.get(key);
+    return { ...event, ...(draft || {}) };
+  }
+
+  function draftDiffers(type, draft, baseline) {
+    if (type === "ISLAMIC_DAY") return String(draft.startDate || "") !== String(baseline.startDate || "");
+    if (type === "TERM") return ["description", "startDate", "endDate"].some(key => String(draft[key] ?? "") !== String(baseline[key] ?? "")) || Boolean(draft.active) !== (baseline.active !== false);
+    return String(draft.description || "") !== String(baseline.description || "") || String(draft.startDate || "") !== String(baseline.startDate || "");
+  }
+
+  function markHolidayDeleted(button) {
+    captureAllDrafts();
     const row = button.closest("[data-calendar-row]");
     if (!row) return;
+    if (!row.dataset.eventId) {
+      model.drafts.PUBLIC_HOLIDAY.delete(NEW_KEY);
+      model.newPublicHoliday = false;
+      render();
+      return;
+    }
+    const eventId = row.dataset.eventId;
+    const baseline = baselineFor("PUBLIC_HOLIDAY", eventId);
+    model.drafts.PUBLIC_HOLIDAY.delete(eventId);
+    model.deletedPublicHolidays.set(eventId, {
+      eventId,
+      eventType: "PUBLIC_HOLIDAY",
+      originalDate: row.dataset.originalDate || baseline?.startDate || "",
+      startDate: baseline?.startDate || row.dataset.originalDate || rowValue(row, "startDate"),
+      active: false
+    });
+    setMessage("Holiday marked for removal. Save Holidays to apply.", "");
+    render();
+  }
+
+  async function saveSection(type, button) {
+    captureAllDrafts();
+    const map = model.drafts[type];
+    const changes = map ? [...map.values()] : [];
+    if (type === "PUBLIC_HOLIDAY") changes.push(...model.deletedPublicHolidays.values());
+    if (!changes.length) {
+      setMessage("No changes to save.", "");
+      updateSectionSaveButtons();
+      return;
+    }
+    const validation = validateDrafts(type, changes);
+    if (validation) {
+      setMessage(validation, "error");
+      return;
+    }
+
     button.disabled = true;
+    button.classList.add("is-saving");
     try {
-      const result = await apiPost("/api/admin/platform/calendar/save", {
-        eventId: row.dataset.eventId || "",
-        eventType: "PUBLIC_HOLIDAY",
-        originalDate: row.dataset.originalDate || "",
-        startDate: row.dataset.originalDate || rowValue(row, "startDate"),
-        active: false
-      });
-      if (!result.success) throw new Error(result.detail || result.error || "Unable to delete Holiday");
+      const result = await apiPost("/api/admin/platform/calendar/batch-save", { changes });
+      if (!result.success) throw new Error(result.detail || result.error || "Unable to save Academic Calendar changes");
+      clearSectionDrafts(type);
       model.loaded = false;
       await load(true);
-      setMessage("Holiday removed.", "success");
+      setMessage(result.message || "Academic Calendar changes saved.", "success");
     } catch (error) {
-      setMessage(error.message || "Unable to delete Holiday.", "error");
+      setMessage(error.message || "Unable to save Academic Calendar changes.", "error");
     } finally {
       button.disabled = false;
+      button.classList.remove("is-saving");
+      updateSectionSaveButtons();
     }
   }
 
-  async function saveRow(button, payload, successMessage, onSuccess) {
-    button.disabled = true;
-    try {
-      const result = await apiPost("/api/admin/platform/calendar/save", payload);
-      if (!result.success) throw new Error(result.detail || result.error || "Unable to save Academic Calendar event");
-      if (typeof onSuccess === "function") onSuccess();
-      model.loaded = false;
-      await load(true);
-      setMessage(successMessage, "success");
-    } catch (error) {
-      setMessage(error.message || "Unable to save Academic Calendar event.", "error");
-    } finally {
-      button.disabled = false;
+  function validateDrafts(type, changes) {
+    for (const change of changes) {
+      if (type === "TERM") {
+        if (!String(change.description || "").trim()) return "Every Term requires a name.";
+        if (!change.startDate || !change.endDate) return "Every Term requires a start and end date.";
+        if (change.endDate < change.startDate) return "A Term end date cannot be before its start date.";
+      } else if (type === "ISLAMIC_DAY") {
+        if (!change.startDate) return "Every Islamic Date requires a date.";
+      } else if (change.active !== false) {
+        if (!String(change.description || "").trim()) return "Every Holiday requires a description.";
+        if (!change.startDate) return "Every Holiday requires a date.";
+      }
     }
+    return "";
+  }
+
+  function sectionHasPending(type) {
+    if (type === "TERM") return model.drafts.TERM.size > 0 || model.newTerm;
+    if (type === "ISLAMIC_DAY") return model.drafts.ISLAMIC_DAY.size > 0;
+    return model.drafts.PUBLIC_HOLIDAY.size > 0 || model.deletedPublicHolidays.size > 0 || model.newPublicHoliday;
+  }
+
+  function hasAnyPending() {
+    return sectionHasPending("TERM") || sectionHasPending("ISLAMIC_DAY") || sectionHasPending("PUBLIC_HOLIDAY");
+  }
+
+  function updateSectionSaveButtons() {
+    const root = document.getElementById("academy-calendar-screen");
+    if (!root) return;
+    [["save-terms", "TERM"], ["save-islamic", "ISLAMIC_DAY"], ["save-public", "PUBLIC_HOLIDAY"]].forEach(([action, type]) => {
+      const button = root.querySelector(`[data-academy-calendar-action="${action}"]`);
+      if (!button || button.classList.contains("is-saving")) return;
+      const pending = sectionHasPending(type);
+      button.disabled = !pending;
+      button.classList.toggle("has-pending-changes", pending);
+    });
+  }
+
+  function clearSectionDrafts(type) {
+    model.drafts[type]?.clear();
+    if (type === "TERM") model.newTerm = false;
+    if (type === "PUBLIC_HOLIDAY") {
+      model.newPublicHoliday = false;
+      model.deletedPublicHolidays.clear();
+    }
+  }
+
+  function resetAllDrafts() {
+    Object.values(model.drafts).forEach(map => map.clear());
+    model.deletedPublicHolidays.clear();
+    model.newTerm = false;
+    model.newPublicHoliday = false;
+  }
+
+  function confirmDiscardPending() {
+    captureAllDrafts();
+    if (!hasAnyPending()) return true;
+    return typeof window.confirm !== "function" || window.confirm("Discard unsaved Academic Calendar changes?");
   }
 
   function moveMonth(delta) {
+    captureAllDrafts();
+    if (!confirmDiscardPending()) return;
+    resetAllDrafts();
     let month = model.month + delta;
     let year = model.year;
     if (month < 0) { month = 11; year -= 1; }
     if (month > 11) { month = 0; year += 1; }
     model.month = month;
+    const yearChanged = year !== model.year;
     model.year = year;
-    model.newTerm = false;
-    model.newPublicHoliday = false;
-    void load(true);
+    if (yearChanged) void load(true);
+    else render();
   }
 
   function goToday() {
+    captureAllDrafts();
+    if (!confirmDiscardPending()) return;
+    resetAllDrafts();
     const now = new Date();
-    model.year = now.getFullYear();
+    const nextYear = now.getFullYear();
     model.month = now.getMonth();
-    model.newTerm = false;
-    model.newPublicHoliday = false;
-    void load(true);
+    if (nextYear !== model.year) {
+      model.year = nextYear;
+      void load(true);
+    } else {
+      render();
+    }
   }
 
-  function activeSelect(active, compact) {
-    return `<select ${compact ? "" : 'class="academy-calendar-inline-select"'} data-field="active" aria-label="Status"><option value="TRUE" ${active ? "selected" : ""}>ACTIVE</option><option value="FALSE" ${active ? "" : "selected"}>INACTIVE</option></select>`;
+  function activeSelect(active) {
+    return `<select class="academy-calendar-inline-select" data-field="active" aria-label="Status"><option value="TRUE" ${active ? "selected" : ""}>ACTIVE</option><option value="FALSE" ${active ? "" : "selected"}>INACTIVE</option></select>`;
   }
 
   function compactField(label, control) {
     return `<label class="academy-calendar-compact-field"><span>${html(label)}</span>${control}</label>`;
   }
 
-  function saveButton(label, action, id) {
-    return `<button type="button" class="global-save-icon-button academy-calendar-save" data-academy-calendar-action="${action}" data-event-id="${attr(id)}" aria-label="${attr(label)}" title="${attr(label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l2 2v16H5V3Zm2 2v5h8V5H7Zm0 14h10v-7H7v7Zm2-12h4V5H9v2Z" fill="currentColor"/></svg></button>`;
+  function saveButton(label, action, pending) {
+    return `<button type="button" class="global-save-icon-button academy-calendar-save ${pending ? "has-pending-changes" : ""}" data-academy-calendar-action="${attr(action)}" aria-label="${attr(label)}" title="${attr(label)}" ${pending ? "" : "disabled"}><span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span><span class="global-save-icon-label">SAVE</span></button>`;
   }
 
   function iconButton(glyph, action, label, id) {

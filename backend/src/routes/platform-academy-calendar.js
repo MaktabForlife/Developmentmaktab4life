@@ -1,4 +1,4 @@
-/* M4L V102.12.5 - Academic Calendar inline administration and editable Holiday overrides. */
+/* M4L V102.12.6 - Academic Calendar responsive batch administration and editable Holiday overrides. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -30,12 +30,169 @@ export async function getAcademyCalendarAdminEndpoint(request, env) {
     return json({
       success: true,
       service: "academy-calendar",
-      version: "102.12.5",
+      version: "102.12.6",
       year,
       events: buildAcademyCalendarEvents(tables.AcademyCalendar, startDate, endDate),
       storedEvents: tables.AcademyCalendar.map(mapAcademyCalendarRow)
         .filter(event => !isHiddenIslamicEvent(event))
         .filter(event => event.startDate.slice(0, 4) === String(year) || event.endDate.slice(0, 4) === String(year))
+    });
+  } catch (error) {
+    return calendarError(error, env);
+  }
+}
+
+export async function saveAcademyCalendarBatchEndpoint(request, env) {
+  const permission = await requireCalendarAdmin(request, env);
+  if (!permission.ok) return permission.response;
+  try {
+    const body = await readBody(request);
+    const changes = Array.isArray(body.changes) ? body.changes : [];
+    if (changes.length > 100) throw clientError("Save no more than 100 Academic Calendar changes at once", 400);
+    if (!changes.length) return json({ success: true, message: "No Academic Calendar changes requested", changed: 0, events: [] });
+
+    const tables = await readCalendarTables(env);
+    requireCalendarSchema(tables.PlatformConfig);
+    const timestamp = new Date().toISOString();
+    const seen = new Set();
+    const calendarWrites = [];
+    const auditRows = [];
+    const responseEvents = [];
+    let nextCalendarRow = nextRowNumber(tables.AcademyCalendar);
+
+    const allocateRecord = (record, rowNumber, auditAction, auditTargetId, changedFields) => {
+      validateAcademyCalendarRecord(record);
+      const targetRow = rowNumber || nextCalendarRow++;
+      calendarWrites.push(valueWrite("AcademyCalendar", targetRow, recordToRow(record, PLATFORM_SHEET_HEADERS.AcademyCalendar)));
+      auditRows.push(auditRow(permission, timestamp, auditAction, auditTargetId || record.CalendarEventID, changedFields));
+      return { ...record, _rowNumber: targetRow };
+    };
+
+    for (const rawChange of changes) {
+      const change = rawChange && typeof rawChange === "object" ? rawChange : {};
+      const eventId = clean(change.eventId || change.calendarEventId);
+      const generatedPublicHolidayDate = generatedPublicHolidayDateFromId(eventId);
+      const existing = eventId && !generatedPublicHolidayDate ? uniqueCalendarEvent(tables.AcademyCalendar, eventId) : null;
+      const eventType = normalizePlatformIdentifier(existing?.EventType || change.eventType || "TERM");
+      if (!ACADEMY_CALENDAR_EVENT_TYPES.includes(eventType)) throw clientError("EventType must be TERM, ISLAMIC_DAY or PUBLIC_HOLIDAY", 400);
+      if (!existing && !generatedPublicHolidayDate && !["TERM", "PUBLIC_HOLIDAY"].includes(eventType)) {
+        throw clientError("New Academy Calendar entries must be Terms or Public Holidays", 400);
+      }
+      const identity = eventId || `NEW:${eventType}:${clean(change.startDate)}:${clean(change.description)}`;
+      if (seen.has(identity)) throw clientError("The same Academic Calendar record cannot be changed twice in one save", 400);
+      seen.add(identity);
+
+      if (eventType === "PUBLIC_HOLIDAY") {
+        const active = readBoolean(change.active, existing ? isActivePlatformValue(existing.Active) : true);
+        const requestedDate = clean(change.startDate ?? existing?.StartDate ?? generatedPublicHolidayDate);
+        const description = clean(change.description ?? existing?.Description ?? "Public Holiday") || "Public Holiday";
+        if (!requestedDate) throw clientError("Holiday date is required", 400);
+
+        if (generatedPublicHolidayDate) {
+          if (active && requestedDate === generatedPublicHolidayDate && description === "Public Holiday") continue;
+          const suppression = newCalendarRecord({
+            eventType: "PUBLIC_HOLIDAY", description: "Public Holiday",
+            startDate: generatedPublicHolidayDate, endDate: generatedPublicHolidayDate,
+            alternateDate: "", teachingImpact: "NO_TEACHING", active: false, timestamp, permission
+          });
+          allocateRecord(
+            suppression, 0,
+            active ? "MOVE_ACADEMY_PUBLIC_HOLIDAY" : "DELETE_ACADEMY_PUBLIC_HOLIDAY",
+            `${GENERATED_PUBLIC_HOLIDAY_PREFIX}${generatedPublicHolidayDate}`,
+            ["Description", "StartDate", "Active"]
+          );
+          if (active) {
+            const override = newCalendarRecord({
+              eventType: "PUBLIC_HOLIDAY", description,
+              startDate: requestedDate, endDate: requestedDate,
+              alternateDate: "", teachingImpact: "NO_TEACHING", active: true, timestamp, permission
+            });
+            const visible = allocateRecord(override, 0, "CREATE_ACADEMY_PUBLIC_HOLIDAY_OVERRIDE", override.CalendarEventID, ["Description", "StartDate", "Active"]);
+            responseEvents.push(mapAcademyCalendarRow(visible));
+          } else {
+            responseEvents.push(mapAcademyCalendarRow(suppression));
+          }
+          continue;
+        }
+
+        if (existing) {
+          const record = {
+            ...existing,
+            Description: description,
+            StartDate: requestedDate,
+            EndDate: requestedDate,
+            AlternateDate: "",
+            TeachingImpact: "NO_TEACHING",
+            Active: active,
+            ModifiedByAccountID: permission.user.accountid,
+            ModifiedByAccountName: permission.user.username,
+            ModifiedDate: timestamp
+          };
+          validateAcademyCalendarRecord(record);
+          const changedFields = changedRecordFields(existing, record, ["Description", "StartDate", "EndDate", "Active"]);
+          if (!changedFields.length) continue;
+          const saved = allocateRecord(record, existing._rowNumber, active ? "UPDATE_ACADEMY_PUBLIC_HOLIDAY" : "DELETE_ACADEMY_PUBLIC_HOLIDAY", record.CalendarEventID, changedFields);
+          responseEvents.push(mapAcademyCalendarRow(saved));
+          continue;
+        }
+
+        if (!active) throw clientError("A new Holiday must be active", 400);
+        const record = newCalendarRecord({
+          eventType: "PUBLIC_HOLIDAY", description,
+          startDate: requestedDate, endDate: requestedDate,
+          alternateDate: "", teachingImpact: "NO_TEACHING", active: true, timestamp, permission
+        });
+        const saved = allocateRecord(record, 0, "CREATE_ACADEMY_PUBLIC_HOLIDAY", record.CalendarEventID, ["EventType", "Description", "StartDate", "Active"]);
+        responseEvents.push(mapAcademyCalendarRow(saved));
+        continue;
+      }
+
+      const description = eventType === "ISLAMIC_DAY" ? clean(existing?.Description) : clean(change.description ?? existing?.Description);
+      const startDate = clean(change.startDate ?? existing?.StartDate);
+      const endDate = eventType === "ISLAMIC_DAY" ? startDate : clean(change.endDate ?? existing?.EndDate ?? startDate);
+      const alternateDate = eventType === "ISLAMIC_DAY" ? clean(existing?.AlternateDate) : "";
+      const teachingImpact = eventType === "ISLAMIC_DAY" ? "INFORMATION" : normalizeTeachingImpact(change.teachingImpact ?? existing?.TeachingImpact ?? "INFORMATION");
+      const active = eventType === "ISLAMIC_DAY"
+        ? isActivePlatformValue(existing?.Active)
+        : readBoolean(change.active, existing ? isActivePlatformValue(existing.Active) : true);
+      const record = existing ? {
+        ...existing,
+        Description: description,
+        StartDate: startDate,
+        EndDate: endDate,
+        AlternateDate: alternateDate,
+        TeachingImpact: teachingImpact,
+        Active: active,
+        ModifiedByAccountID: permission.user.accountid,
+        ModifiedByAccountName: permission.user.username,
+        ModifiedDate: timestamp
+      } : newCalendarRecord({ eventType, description, startDate, endDate, alternateDate, teachingImpact, active, timestamp, permission });
+      validateAcademyCalendarRecord(record);
+      const changedFields = existing
+        ? changedRecordFields(existing, record, eventType === "ISLAMIC_DAY" ? ["StartDate", "EndDate"] : ["Description", "StartDate", "EndDate", "Active"])
+        : ["EventType", "Description", "StartDate", "EndDate", "TeachingImpact", "Active"];
+      if (!changedFields.length) continue;
+      const saved = allocateRecord(
+        record,
+        existing?._rowNumber || 0,
+        existing ? "UPDATE_ACADEMY_CALENDAR_EVENT" : "CREATE_ACADEMY_CALENDAR_EVENT",
+        record.CalendarEventID,
+        changedFields
+      );
+      responseEvents.push(mapAcademyCalendarRow(saved));
+    }
+
+    if (!calendarWrites.length) {
+      return json({ success: true, message: "No Academic Calendar changes requested", changed: 0, events: [] });
+    }
+    const writes = [...calendarWrites];
+    if (auditRows.length) writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRows));
+    await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+    return json({
+      success: true,
+      message: `${calendarWrites.length} Academic Calendar change${calendarWrites.length === 1 ? "" : "s"} saved`,
+      changed: calendarWrites.length,
+      events: responseEvents
     });
   } catch (error) {
     return calendarError(error, env);
@@ -301,6 +458,8 @@ function readBoolean(value, fallback) {
 function clientError(message, status = 400) { const error = new Error(message); error.status = status; return error; }
 function calendarError(error, env) { return json({ success: false, error: error?.status ? error.message : "Academy Calendar request failed", detail: env?.DEBUG_ERRORS === "true" ? String(error?.message || error) : undefined }, Number(error?.status) || 503); }
 function clean(value) { return String(value ?? "").trim(); }
+function changedRecordFields(existing, next, keys) { return keys.filter(key => String(existing?.[key] ?? "") !== String(next?.[key] ?? "")); }
+function rangeWrite(sheetName, startRow, rows) { const width = rows[0]?.length || PLATFORM_SHEET_HEADERS[sheetName]?.length || 1; const endRow = startRow + rows.length - 1; return { range: `'${sheetName}'!A${startRow}:${columnName(width)}${endRow}`, majorDimension: "ROWS", values: rows }; }
 function recordToRow(record, headers) { return headers.map(header => record?.[header] ?? ""); }
 function nextRowNumber(rows) { return Math.max(1, ...(rows || []).map(row => Number(row?._rowNumber) || 1)) + 1; }
 function valueWrite(sheetName, rowNumber, row) { return { range: `'${sheetName}'!A${rowNumber}:${columnName(row.length)}${rowNumber}`, majorDimension: "ROWS", values: [row] }; }

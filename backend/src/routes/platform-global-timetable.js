@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Global Course scheduling with Academy Calendar conflict warnings. */
+/* M4L V102.12.6 - Global Course batch session editing with Academy Calendar conflict warnings. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -49,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.12.2",
+      version: "102.12.6",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -230,6 +230,172 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
       message: requestedStatus === GLOBAL_SESSION_STATUS_CANCELLED ? "Session marked CANCELLED" : "Global timetable session updated",
       session: enrichSession(mapGlobalTimetableSession(record, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables),
       lifecycle: lifecycleMutation ? mapGlobalTimetableSessionLifecycle(lifecycleMutation.record) : existingLifecycle
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+export async function savePlatformGlobalTimetableSessionBatchEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const runId = clean(body.runId || body.runid);
+    const changes = Array.isArray(body.changes) ? body.changes : [];
+    if (!runId) throw clientError("RunID is required", 400);
+    if (changes.length > 100) throw clientError("Save no more than 100 session changes at once", 400);
+    if (!changes.length) return json({ success: true, message: "No session changes requested", changed: 0, sessions: [], lifecycles: [], calendarWarnings: [] });
+
+    const tables = await readGlobalTimetableTables(env);
+    const run = activeRun(tables, runId);
+    requireEditableGlobalTimetable(tables, run.RunID);
+    const subject = activeSubject(tables, run.SubjectID);
+    const timestamp = new Date().toISOString();
+    const stagedSessions = tables.GlobalTimetableSessions.map(row => ({ ...row }));
+    const stagedLifecycles = tables.GlobalTimetableSessionLifecycle.map(row => ({ ...row }));
+    const seen = new Set();
+    const mutations = [];
+    let nextLifecycleRow = nextRowNumber(stagedLifecycles);
+
+    for (const rawChange of changes) {
+      const change = rawChange && typeof rawChange === "object" ? rawChange : {};
+      const sessionId = clean(change.sessionId || change.sessionid);
+      if (!sessionId) throw clientError("Every session change requires SessionID", 400);
+      const sessionKey = normalizePlatformIdentifier(sessionId);
+      if (seen.has(sessionKey)) throw clientError("The same session cannot be changed twice in one save", 400);
+      seen.add(sessionKey);
+
+      const existingIndex = stagedSessions.findIndex(row => normalizePlatformIdentifier(row.SessionID) === sessionKey);
+      if (existingIndex < 0) throw clientError(`Session ${sessionId} was not found`, 404);
+      const existing = stagedSessions[existingIndex];
+      if (normalizePlatformIdentifier(existing.RunID) !== normalizePlatformIdentifier(run.RunID)) {
+        throw clientError("Every session change must belong to the selected course", 409);
+      }
+
+      const existingLifecycle = resolveCurrentSessionLifecycle(stagedLifecycles, existing.SessionID);
+      if (existingLifecycle.status === GLOBAL_SESSION_STATUS_RESCHEDULED) {
+        throw clientError("A historical RESCHEDULED source session cannot be edited; edit its replacement session instead", 409);
+      }
+      const requestedStatus = normalizeGlobalSessionStatus(change.status || existingLifecycle.status);
+      if (![GLOBAL_SESSION_STATUS_SCHEDULED, GLOBAL_SESSION_STATUS_CANCELLED].includes(requestedStatus)) {
+        throw clientError("Session status must be SCHEDULED or CANCELLED", 400);
+      }
+
+      const moduleId = clean(change.moduleId ?? change.moduleid ?? existing.ModuleID);
+      const sessionDate = clean(change.sessionDate ?? change.sessiondate ?? existing.SessionDate);
+      const startTime = normalizeSubmittedTime(change.startTime ?? change.starttime ?? existing.StartTime);
+      const endTime = normalizeSubmittedTime(change.endTime ?? change.endtime ?? existing.EndTime);
+      const teacherAccountId = clean(change.teacherAccountId ?? change.teacheraccountid ?? existing.TeacherAccountID);
+      const zoomLink = clean(change.zoomLink ?? change.zoomlink ?? existing.ZoomLink);
+      const active = readBoolean(change.active, isActivePlatformValue(existing.Active));
+
+      if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
+        throw clientError(`Session ${sessionId} date must be within the selected course`, 400);
+      }
+      if (!validateTimeRange(startTime, endTime)) throw clientError(`Session ${sessionId} requires a valid increasing HH:MM time range`, 400);
+      validateZoomLink(zoomLink);
+      const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: false });
+      const teacher = optionalActiveTeacher(tables, teacherAccountId);
+
+      const record = {
+        ...existing,
+        ModuleID: module ? clean(module.ModuleID) : "",
+        SessionDate: sessionDate,
+        StartTime: startTime,
+        EndTime: endTime,
+        TeacherAccountID: clean(teacher?.AccountID),
+        ZoomLink: zoomLink,
+        Active: active,
+        ModifiedByAccountID: permission.user.accountid,
+        ModifiedByAccountName: permission.user.username,
+        ModifiedDate: timestamp
+      };
+      const changedFields = changedRecordFields(existing, record, [
+        "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"
+      ]);
+      const stagedTables = { ...tables, GlobalTimetableSessionLifecycle: stagedLifecycles };
+      const lifecycleMutation = buildCurrentLifecycleMutation(stagedTables, existing.SessionID, {
+        status: requestedStatus,
+        rescheduledFromSessionId: existingLifecycle.rescheduledfromsessionid,
+        rescheduledToSessionId: existingLifecycle.rescheduledtosessionid
+      }, permission.user, timestamp);
+
+      if (!changedFields.length && !lifecycleMutation) continue;
+      stagedSessions[existingIndex] = record;
+
+      let lifecycleRowNumber = 0;
+      if (lifecycleMutation) {
+        lifecycleRowNumber = lifecycleMutation.existingRowNumber || nextLifecycleRow++;
+        const stagedLifecycleRecord = { ...lifecycleMutation.record, _rowNumber: lifecycleRowNumber };
+        const lifecycleIndex = stagedLifecycles.findIndex(row => Number(row._rowNumber) === Number(lifecycleRowNumber));
+        if (lifecycleIndex >= 0) stagedLifecycles[lifecycleIndex] = stagedLifecycleRecord;
+        else stagedLifecycles.push(stagedLifecycleRecord);
+      }
+      mutations.push({ existing, record, changedFields, lifecycleMutation, lifecycleRowNumber });
+    }
+
+    if (!mutations.length) {
+      return json({ success: true, message: "No session changes requested", changed: 0, sessions: [], lifecycles: [], calendarWarnings: [] });
+    }
+
+    // Validate conflicts against the complete proposed timetable, not change-by-change.
+    // This allows safe swaps/moves that would fail if each row were written separately.
+    for (const mutation of mutations) {
+      const lifecycle = resolveCurrentSessionLifecycle(stagedLifecycles, mutation.record.SessionID);
+      if (!isActivePlatformValue(mutation.record.Active) || lifecycle.status !== GLOBAL_SESSION_STATUS_SCHEDULED) continue;
+      if (hasActiveSlotConflict(stagedSessions, {
+        runId: run.RunID,
+        sessionDate: clean(mutation.record.SessionDate),
+        startTime: normalizeSubmittedTime(mutation.record.StartTime),
+        endTime: normalizeSubmittedTime(mutation.record.EndTime),
+        excludeSessionId: mutation.record.SessionID
+      }, stagedLifecycles)) {
+        throw clientError(`Session ${mutation.record.SessionID} overlaps another scheduled session in this course`, 409);
+      }
+    }
+
+    const writes = [];
+    const audits = [];
+    for (const mutation of mutations) {
+      if (mutation.changedFields.length) {
+        writes.push(valueWrite("GlobalTimetableSessions", mutation.existing._rowNumber, recordToRow(mutation.record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessions)));
+        audits.push(auditRow(permission.user, timestamp, "UPDATE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", mutation.record.SessionID, mutation.changedFields));
+      }
+      if (mutation.lifecycleMutation) {
+        writes.push(valueWrite(
+          "GlobalTimetableSessionLifecycle",
+          mutation.lifecycleRowNumber,
+          recordToRow(mutation.lifecycleMutation.record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle)
+        ));
+        audits.push(mutation.lifecycleMutation.audit);
+      }
+    }
+    const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, permission.user, timestamp);
+    if (stateMutation) {
+      writes.push(stateMutation.write);
+      audits.push(stateMutation.audit);
+    }
+    if (audits.length) writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
+
+    // All validation above completes before this single Google Sheets batch write.
+    await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+    const publishedSourceIds = publishedSourceIdSet(tables.PublishedGlobalTimetableSessions);
+    const savedSessions = mutations.map(mutation => enrichSession(mapGlobalTimetableSession(mutation.record, publishedSourceIds), tables));
+    const savedLifecycles = mutations.map(mutation => resolveCurrentSessionLifecycle(stagedLifecycles, mutation.record.SessionID));
+    const warningDates = mutations
+      .filter(mutation => resolveCurrentSessionLifecycle(stagedLifecycles, mutation.record.SessionID).status === GLOBAL_SESSION_STATUS_SCHEDULED)
+      .map(mutation => clean(mutation.record.SessionDate));
+    const calendarWarnings = noTeachingEventsOnDates(tables.AcademyCalendar, warningDates);
+
+    return json({
+      success: true,
+      message: `${mutations.length} session change${mutations.length === 1 ? "" : "s"} saved`,
+      changed: mutations.length,
+      sessions: savedSessions,
+      lifecycles: savedLifecycles,
+      calendarWarnings
     });
   } catch (error) {
     return globalTimetableMutationError(error, env);

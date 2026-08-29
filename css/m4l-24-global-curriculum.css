@@ -1,4 +1,4 @@
-/* M4L V102.7 - Global curriculum, subscriptions and protected Drive resources. */
+/* M4L V102.12.6 - Responsive Global Curriculum, subscriptions and protected Drive resources. */
 
 body:has(#global-curriculum-screen.active) .app-shell {
   width: min(100%, 1440px);
@@ -573,3 +573,69 @@ body:has(#global-curriculum-screen.active) .app-shell {
 .global-access-matrix thead .global-access-unique-column { z-index:2; background:var(--surface-track,#f4f1ef); }
 .global-access-unique-column code { font-family:inherit; font-size:.86rem; white-space:nowrap; }
 .global-access-account-column small { display:block; margin-top:2px; font-weight:500; opacity:.7; }
+
+/* V102.12.6 responsive Global Curriculum shell and mobile navigation. */
+body:has(#global-curriculum-screen.active) .app-shell {
+  width:100%;
+  max-width:1440px;
+  min-width:0;
+}
+.global-curriculum-screen,
+.global-curriculum-content,
+.global-curriculum-panel,
+.global-curriculum-management-grid,
+.global-curriculum-record-list {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+.global-curriculum-screen { overflow-x:hidden; }
+.global-curriculum-content { overflow-x:visible; }
+.global-curriculum-panel { overflow-wrap:anywhere; }
+.global-curriculum-header { min-width:0; }
+.global-curriculum-header > div:first-child { min-width:0; }
+.global-curriculum-header h2 { overflow-wrap:anywhere; }
+.global-curriculum-form input,
+.global-curriculum-form select,
+.global-curriculum-form textarea { min-width:0; max-width:100%; }
+.global-access-matrix-panel { width:100%; max-width:100%; overflow:hidden; }
+.global-access-matrix-scroll { max-width:100%; overscroll-behavior-x:contain; }
+
+@media (max-width:820px) {
+  .global-curriculum-tabs {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:4px;
+    overflow:visible;
+  }
+  .global-curriculum-tabs button {
+    width:100%;
+    min-width:0;
+    max-width:none;
+    padding-inline:8px;
+    white-space:normal;
+    line-height:1.15;
+  }
+  .global-curriculum-header { align-items:flex-start; }
+  .global-curriculum-header-actions { flex:0 0 auto; }
+  .global-access-account-column { min-width:150px; width:150px; }
+  .global-access-unique-column { left:150px; min-width:125px; width:125px; }
+  .global-access-unique-column code { font-size:.75rem; }
+}
+
+@media (max-width:520px) {
+  .global-curriculum-screen { padding:12px 8px 24px; }
+  .global-curriculum-header { gap:8px; }
+  .global-curriculum-header h2 { font-size:clamp(1.42rem,8vw,1.8rem); }
+  .global-curriculum-status-band { padding:9px 10px; }
+  .global-curriculum-tabs { border-radius:10px; }
+  .global-curriculum-tabs button { min-height:40px; font-size:.82rem; }
+  .global-curriculum-panel { padding-inline:10px; }
+  .global-curriculum-record-row { gap:8px; align-items:flex-start; }
+  .global-curriculum-record-row > span:first-child { min-width:0; }
+  .global-curriculum-record-row strong,
+  .global-curriculum-record-row small { overflow-wrap:anywhere; }
+  .global-access-account-column { min-width:130px; width:130px; }
+  .global-access-unique-column { left:130px; min-width:110px; width:110px; }
+}

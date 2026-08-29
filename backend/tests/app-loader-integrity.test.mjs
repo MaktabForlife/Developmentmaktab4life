@@ -12,7 +12,7 @@ assert.ok(fs.statSync(appPath).size > 1000, "root app.js must not be empty/trunc
 
 for (const rel of ["index.html", "admin/index.html", "student/index.html"]) {
   const html = fs.readFileSync(path.join(root, rel), "utf8");
-  assert.match(html, /<script src="\/app\.js\?v=102\.12\.5"><\/script>/, `${rel} must load the current app.js asset`);
+  assert.match(html, /<script src="\/app\.js\?v=102\.12\.6"><\/script>/, `${rel} must load the current app.js asset`);
 }
 
 console.log("app-loader-integrity.test.mjs: PASS");

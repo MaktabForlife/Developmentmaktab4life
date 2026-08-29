@@ -58,6 +58,7 @@ const token = await createSessionToken({
 }, env);
 
 const originalFetch = globalThis.fetch;
+let batchUpdateRequests = 0;
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
   if (url.hostname === "oauth2.googleapis.com") return response({ access_token: "google-token", expires_in: 3600 });
@@ -65,6 +66,7 @@ globalThis.fetch = async (input, init = {}) => {
   assert.match(url.pathname, /spreadsheets\/platform-global-timetable-sheet/);
 
   if (url.pathname.endsWith("/values:batchUpdate")) {
+    batchUpdateRequests += 1;
     const payload = JSON.parse(init.body);
     payload.data.forEach(applyWrite);
     return response({ totalUpdatedRanges: payload.data.length });
@@ -87,7 +89,7 @@ try {
 
   const initial = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.2");
+  assert.equal(initial.data.version, "102.12.6");
   assert.equal(initial.data.globalTimetableVersion, 1);
   assert.equal(initial.data.runs.length, 1);
   assert.equal(initial.data.teachers.some(item => item.accountid === "TEACHER1"), true);
@@ -192,23 +194,65 @@ try {
   assert.equal(revised.data.state.currentpublicationid, publication1Id);
   assert.equal(tables.GlobalTimetableRunState[1][1], "DEVELOPMENT");
 
-  // One published occurrence can remain visible as CANCELLED in the next publication.
+  // V102.12.6 session editing is draft-first: cancellation and date/time edits commit together in one batch.
   const cancelSource = generated.data.sessions[1];
-  const cancelled = await post("/api/admin/platform/global/timetable/session/save", {
-    sessionId: cancelSource.sessionid,
-    sessionDate: cancelSource.sessiondate,
-    startTime: cancelSource.starttime,
-    endTime: cancelSource.endtime,
-    moduleId: cancelSource.moduleid,
-    teacherAccountId: cancelSource.teacheraccountid,
-    zoomLink: cancelSource.zoomlink,
-    active: true,
-    status: "CANCELLED"
+  const movedSource = generated.data.sessions[3];
+  const beforeInvalidSessionBatch = batchUpdateRequests;
+  const invalidSessionBatch = await post("/api/admin/platform/global/timetable/session/batch-save", {
+    runId: "GSRUN1",
+    changes: [
+      {
+        sessionId: cancelSource.sessionid, sessionDate: cancelSource.sessiondate, startTime: cancelSource.starttime, endTime: cancelSource.endtime,
+        moduleId: cancelSource.moduleid, teacherAccountId: cancelSource.teacheraccountid, zoomLink: cancelSource.zoomlink, active: true, status: "CANCELLED"
+      },
+      {
+        sessionId: movedSource.sessionid, sessionDate: "2026-10-04", startTime: "16:00", endTime: "17:00",
+        moduleId: movedSource.moduleid, teacherAccountId: movedSource.teacheraccountid, zoomLink: movedSource.zoomlink, active: true, status: "SCHEDULED"
+      }
+    ]
   }, token);
-  assert.equal(cancelled.response.status, 200, JSON.stringify(cancelled.data));
-  assert.equal(cancelled.data.lifecycle.status, "CANCELLED");
+  assert.equal(invalidSessionBatch.response.status, 400);
+  assert.equal(batchUpdateRequests, beforeInvalidSessionBatch, "An invalid session batch must not write any partial changes");
+  assert.equal(tables.PlatformAuditLog.some(row => row[6] === "CANCEL_GLOBAL_TIMETABLE_SESSION"), false);
 
-  // A reschedule keeps the original occurrence and links it to a new exact-dated replacement.
+  const beforeSessionBatchRequests = batchUpdateRequests;
+  const batchEdited = await post("/api/admin/platform/global/timetable/session/batch-save", {
+    runId: "GSRUN1",
+    changes: [
+      {
+        sessionId: cancelSource.sessionid,
+        sessionDate: cancelSource.sessiondate,
+        startTime: cancelSource.starttime,
+        endTime: cancelSource.endtime,
+        moduleId: cancelSource.moduleid,
+        teacherAccountId: cancelSource.teacheraccountid,
+        zoomLink: cancelSource.zoomlink,
+        active: true,
+        status: "CANCELLED"
+      },
+      {
+        sessionId: movedSource.sessionid,
+        sessionDate: "2026-09-04",
+        startTime: "16:00",
+        endTime: "17:00",
+        moduleId: movedSource.moduleid,
+        teacherAccountId: movedSource.teacheraccountid,
+        zoomLink: "https://zoom.example.test/date-change",
+        active: true,
+        status: "SCHEDULED"
+      }
+    ]
+  }, token);
+  assert.equal(batchEdited.response.status, 200, JSON.stringify(batchEdited.data));
+  assert.equal(batchEdited.data.changed, 2);
+  assert.equal(batchUpdateRequests, beforeSessionBatchRequests + 1, "Multiple session edits must commit in one Google Sheets batchUpdate request");
+  assert.equal(batchEdited.data.lifecycles.find(item => item.sessionid === cancelSource.sessionid)?.status, "CANCELLED");
+  const movedResult = batchEdited.data.sessions.find(item => item.sessionid === movedSource.sessionid);
+  assert.equal(movedResult?.sessiondate, "2026-09-04", "Changing the date updates the same session rather than creating a separate reschedule record");
+  assert.equal(batchEdited.data.lifecycles.find(item => item.sessionid === movedSource.sessionid)?.status, "SCHEDULED");
+  assert.equal(tables.PlatformAuditLog.some(row => row[6] === "RESCHEDULE_GLOBAL_TIMETABLE_SESSION"), false, "A direct date change is audited as an update, not as legacy rescheduling");
+
+  // Legacy reschedule remains API-compatible, although the V102.12.6 editor no longer exposes a separate Reschedule action.
   const rescheduleSource = generated.data.sessions[2];
   const rescheduled = await post("/api/admin/platform/global/timetable/session/reschedule", {
     sessionId: rescheduleSource.sessionid,
@@ -247,7 +291,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.11.2 Global Course draft/revision/cancel/reschedule/immutable publication tests passed.");
+console.log("V102.12.6 Global Course batch session edit/cancel/date-change and immutable publication tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

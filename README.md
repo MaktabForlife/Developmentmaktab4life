@@ -1,5 +1,5 @@
-# Maktab4Life V102.12.5
+# Maktab4Life V102.12.6
 
-Changed-files release from V102.12.4. Apply the overlay to the development repository and deploy Pages + Worker from the same commit.
+Changed-files release from V102.12.5. Apply the overlay to the V102.12.5 development repository and deploy Pages + Worker from the same commit.
 
-This is an Academic Calendar UI/behavior refinement. No Sheet migration is required. Existing `AcademyCalendar` tab/headers remain unchanged internally for compatibility.
+V102.12.6 is a responsive UI and batch-editing refinement for Global Curriculum / Course Scheduler and Academic Calendar. It does not change the Platform Sheet schema. Keep `PlatformConfig!B3 = 102.0.8` with 19 required tabs.

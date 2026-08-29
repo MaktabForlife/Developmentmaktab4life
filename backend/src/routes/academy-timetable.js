@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "102.12.5",
+      version: "102.12.6",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,

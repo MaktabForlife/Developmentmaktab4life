@@ -119,6 +119,7 @@ import {
   getPlatformGlobalTimetableEndpoint,
   generatePlatformGlobalTimetableSessionsEndpoint,
   savePlatformGlobalTimetableSessionEndpoint,
+  savePlatformGlobalTimetableSessionBatchEndpoint,
   reschedulePlatformGlobalTimetableSessionEndpoint,
   revisePlatformGlobalTimetableEndpoint,
   publishPlatformGlobalTimetableEndpoint
@@ -135,6 +136,7 @@ import {
 import { getAcademyTimetableEndpoint } from "./routes/academy-timetable.js";
 import {
   getAcademyCalendarAdminEndpoint,
+  saveAcademyCalendarBatchEndpoint,
   saveAcademyCalendarEventEndpoint
 } from "./routes/platform-academy-calendar.js";
 import { resolveCourseScopedRequest } from "./lib/course-routing.js";
@@ -160,6 +162,7 @@ const ROUTES = new Map([
   ["/api/academy/timetable", workerRoute("academy-timetable", getAcademyTimetableEndpoint)],
   ["/api/admin/platform/calendar/get", workerRoute("academy-calendar", getAcademyCalendarAdminEndpoint)],
   ["/api/admin/platform/calendar/save", workerRoute("academy-calendar", saveAcademyCalendarEventEndpoint)],
+  ["/api/admin/platform/calendar/batch-save", workerRoute("academy-calendar", saveAcademyCalendarBatchEndpoint)],
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
@@ -213,6 +216,7 @@ const ROUTES = new Map([
   ["/api/admin/platform/global/timetable/get", workerRoute("platform-global-timetable", getPlatformGlobalTimetableEndpoint)],
   ["/api/admin/platform/global/timetable/generate", workerRoute("platform-global-timetable", generatePlatformGlobalTimetableSessionsEndpoint)],
   ["/api/admin/platform/global/timetable/session/save", workerRoute("platform-global-timetable", savePlatformGlobalTimetableSessionEndpoint)],
+  ["/api/admin/platform/global/timetable/session/batch-save", workerRoute("platform-global-timetable", savePlatformGlobalTimetableSessionBatchEndpoint)],
   ["/api/admin/platform/global/timetable/session/reschedule", workerRoute("platform-global-timetable", reschedulePlatformGlobalTimetableSessionEndpoint)],
   ["/api/admin/platform/global/timetable/revise", workerRoute("platform-global-timetable", revisePlatformGlobalTimetableEndpoint)],
   ["/api/admin/platform/global/timetable/publish", workerRoute("platform-global-timetable", publishPlatformGlobalTimetableEndpoint)],

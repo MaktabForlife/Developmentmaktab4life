@@ -13,6 +13,7 @@ const expectedPaths = [
   "/api/academy/timetable",
   "/api/admin/platform/calendar/get",
   "/api/admin/platform/calendar/save",
+  "/api/admin/platform/calendar/batch-save",
   "/api/resources/list",
   "/api/student/resources/list",
   "/api/admin/resources/list",
@@ -64,6 +65,7 @@ const expectedPaths = [
   "/api/admin/platform/global/timetable/get",
   "/api/admin/platform/global/timetable/generate",
   "/api/admin/platform/global/timetable/session/save",
+  "/api/admin/platform/global/timetable/session/batch-save",
   "/api/admin/platform/global/timetable/session/reschedule",
   "/api/admin/platform/global/timetable/revise",
   "/api/admin/platform/global/timetable/publish",
@@ -111,14 +113,14 @@ const expectedPaths = [
   "/api/progress/task-detail"
 ];
 
-assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include the V102.12.5 Academy timetable and calendar routes");
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include the V102.12.6 Academic Calendar and batch timetable routes");
 
 const root = await worker.fetch(new Request("https://worker.test/"), {});
 assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "102.12.5"
+  version: "102.12.6"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

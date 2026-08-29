@@ -9,11 +9,13 @@ const [adminHtml, js, css] = await Promise.all([
 
 assert.match(adminHtml, /Course Scheduler/);
 assert.match(adminHtml, /Program Timetables/);
-assert.match(adminHtml, /styles\.css\?v=102\.12\.2/);
+assert.match(adminHtml, /styles\.css\?v=102\.12\.6/);
 assert.match(js, /Revise timetable/);
 assert.match(js, /Publish revision/);
-assert.match(js, /Reschedule session/);
-assert.match(js, /save-session-inline/);
+assert.doesNotMatch(js, /Reschedule session/);
+assert.doesNotMatch(js, /save-session-inline/);
+assert.match(js, /save-session-batch/);
+assert.match(js, /Save all session changes/);
 assert.match(js, /data-inline-session-field="status"/);
 assert.match(js, /<option value="CANCELLED"/);
 assert.match(js, /global-session-inline-row/);
@@ -22,12 +24,17 @@ assert.match(js, /Use 24-hour times such as 13h00/);
 assert.doesNotMatch(js, /Edit session/);
 assert.doesNotMatch(js, /Session details/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/generate/);
-assert.match(js, /\/api\/admin\/platform\/global\/timetable\/session\/save/);
-assert.match(js, /\/api\/admin\/platform\/global\/timetable\/session\/reschedule/);
+assert.match(js, /\/api\/admin\/platform\/global\/timetable\/session\/batch-save/);
+assert.doesNotMatch(js, /\/api\/admin\/platform\/global\/timetable\/session\/reschedule/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/revise/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/publish/);
 assert.match(css, /\.global-session-inline-row\.is-lifecycle-changed/);
 assert.match(css, /\.global-session-inline-table/);
 assert.match(css, /@media \(max-width:760px\)/);
+assert.doesNotMatch(css, /min-width:1320px/);
+assert.match(css, /global-session-inline-row\.is-dirty/);
+assert.match(css, /global-session-inline-row\.is-cancelled/);
+assert.match(css, /global-save-icon-button[\s\S]*background:transparent !important/);
+assert.match(css, /global-course-compact-action/);
 
-console.log("V102.11.2 Global Course revision/cancel/reschedule UI checks passed.");
+console.log("V102.12.6 Global Course batch session editing and responsive UI checks passed.");

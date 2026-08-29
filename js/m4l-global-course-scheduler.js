@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Global Course Scheduler with Academy Calendar conflict warnings. */
+/* M4L V102.12.6 - Responsive Global Course Scheduler with draft/batch session editing. */
 (function () {
   "use strict";
 
@@ -8,8 +8,8 @@
     loading: false,
     selectedSubjectId: "",
     selectedRunId: "",
-    rescheduleSessionId: "",
     scheduleRows: [blankScheduleRow()],
+    sessionDrafts: new Map(),
     delivery: emptyDelivery(),
     timetable: emptyTimetable()
   };
@@ -36,11 +36,29 @@
 
   function handleRefreshCapture(event) {
     if (!model.active) return;
-    const target = event.target?.closest?.('#global-curriculum-screen [data-gcm-action="reload"]');
-    if (!target) return;
+    const root = event.target?.closest?.("#global-curriculum-screen");
+    if (!root) return;
+
+    const reload = event.target?.closest?.('[data-gcm-action="reload"]');
+    if (reload) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      captureAllSessionDrafts();
+      if (!discardSessionDraftsConfirmed()) return;
+      void load(true);
+      return;
+    }
+
+    const leaving = event.target?.closest?.("[data-header-action], [data-gcm-action=\"show-tab\"]");
+    if (!leaving) return;
+    captureAllSessionDrafts();
+    if (!model.sessionDrafts.size) return;
+    if (window.confirm("Discard unsaved session changes?")) {
+      model.sessionDrafts.clear();
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
-    void load(true);
   }
 
   async function handleClick(event) {
@@ -63,10 +81,7 @@
     if (action === "remove-schedule-row") return removeScheduleRow(target.dataset.rowKey || "");
     if (action === "save-course") return saveCourse(target);
     if (action === "revise") return reviseCourse(target);
-    if (action === "save-session-inline") return saveSessionInline(target);
-    if (action === "open-reschedule-inline") return openReschedule(target.dataset.sessionId || "");
-    if (action === "close-reschedule") return openReschedule("");
-    if (action === "save-reschedule-inline") return saveRescheduleInline(target);
+    if (action === "save-session-batch") return saveSessionBatch(target);
     if (action === "publish") return publishCourse(target);
   }
 
@@ -81,11 +96,13 @@
     }
     if (target.matches("[data-time24]")) normalizeTimeField(target);
     if (target.matches("[data-course-schedule-field], [data-course-schedule-day]")) syncScheduleRowsFromDom();
+    if (target.matches("[data-inline-session-field]")) captureSessionDraft(target.closest("[data-session-row-id]"));
   }
 
   function handleInput(event) {
     if (!model.active || !event.target?.closest?.("#global-curriculum-screen")) return;
     if (event.target.matches("[data-course-schedule-field]")) syncScheduleRowsFromDom();
+    if (event.target.matches("[data-inline-session-field]")) captureSessionDraft(event.target.closest("[data-session-row-id]"));
   }
 
   async function show() {
@@ -122,7 +139,10 @@
       if (!model.selectedSubjectId || !model.delivery.subjects.some(item => item.subjectid === model.selectedSubjectId)) {
         model.selectedSubjectId = model.delivery.subjects.find(item => item.active)?.subjectid || model.delivery.subjects[0]?.subjectid || "";
       }
-      if (model.selectedRunId && !model.delivery.runs.some(item => item.runid === model.selectedRunId)) model.selectedRunId = "";
+      if (model.selectedRunId && !model.delivery.runs.some(item => item.runid === model.selectedRunId)) {
+        model.selectedRunId = "";
+        model.sessionDrafts.clear();
+      }
       model.loaded = true;
       setMessage("", "");
       render();
@@ -149,14 +169,13 @@
     const locked = state?.stage === "PUBLISHED";
     const selectedSubject = subjectById(model.selectedSubjectId);
     const sessions = selectedRun ? sessionsForRun(selectedRun.runid) : [];
-    const rescheduling = sessions.find(item => item.sessionid === model.rescheduleSessionId) || null;
 
     setContent(`
       <div class="global-course-scheduler-shell">
         ${subjectTable()}
         ${courseTable()}
         ${courseSetup(selectedRun, selectedSubject, state, locked)}
-        ${selectedRun ? sessionSection(selectedRun, sessions, rescheduling, state) : ""}
+        ${selectedRun ? sessionSection(selectedRun, sessions, state) : ""}
       </div>
     `);
   }
@@ -167,11 +186,11 @@
         <thead><tr><th>Subject</th><th>Access</th><th>Modules</th><th>Status</th><th></th></tr></thead>
         <tbody>${model.delivery.subjects.map(subject => `
           <tr class="${subject.subjectid === model.selectedSubjectId ? "is-selected" : ""}">
-            <td><input data-course-subject-name="${attr(subject.subjectid)}" type="text" value="${attr(subject.subjectname)}" maxlength="160" /></td>
-            <td><select data-course-subject-access="${attr(subject.subjectid)}"><option value="SUBSCRIPTION" ${subject.accessmodel === "SUBSCRIPTION" ? "selected" : ""}>PAID</option><option value="FREE" ${subject.accessmodel === "FREE" ? "selected" : ""}>FREE</option></select></td>
-            <td>${Number(subject.modulecount) || moduleCount(subject.subjectid)}</td>
-            <td><select data-course-subject-status="${attr(subject.subjectid)}"><option value="ACTIVE" ${subject.active ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${subject.active ? "" : "selected"}>INACTIVE</option></select></td>
-            <td>${saveIconButton("Save subject", "save-subject-row", `data-subject-id="${attr(subject.subjectid)}"`)}</td>
+            <td data-label="Subject"><input data-course-subject-name="${attr(subject.subjectid)}" type="text" value="${attr(subject.subjectname)}" maxlength="160" /></td>
+            <td data-label="Access"><select data-course-subject-access="${attr(subject.subjectid)}"><option value="SUBSCRIPTION" ${subject.accessmodel === "SUBSCRIPTION" ? "selected" : ""}>PAID</option><option value="FREE" ${subject.accessmodel === "FREE" ? "selected" : ""}>FREE</option></select></td>
+            <td data-label="Modules">${Number(subject.modulecount) || moduleCount(subject.subjectid)}</td>
+            <td data-label="Status"><select data-course-subject-status="${attr(subject.subjectid)}"><option value="ACTIVE" ${subject.active ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${subject.active ? "" : "selected"}>INACTIVE</option></select></td>
+            <td data-label="Save" class="global-course-table-action">${saveIconButton("Save subject", "save-subject-row", `data-subject-id="${attr(subject.subjectid)}"`)}</td>
           </tr>`).join("")}</tbody>
       </table></div>
     </section>`;
@@ -181,14 +200,14 @@
     const runs = [...model.delivery.runs].sort((a, b) => String(b.startdate || "").localeCompare(String(a.startdate || "")));
     return `<section class="global-curriculum-panel global-course-list-panel">
       <div class="global-curriculum-panel-heading"><h3>Global Courses</h3></div>
-      <div class="global-table-scroll"><table class="global-course-table">
+      <div class="global-table-scroll"><table class="global-course-table global-course-runs-table">
         <thead><tr><th>Course</th><th>Scheduled dates</th><th>Sessions</th><th>Status</th></tr></thead>
         <tbody>${runs.length ? runs.map(run => {
           const state = stateForRun(run.runid);
           const count = sessionsForRun(run.runid).filter(item => item.active).length;
           const status = run.active === false ? "INACTIVE" : (state?.stage || "DEVELOPMENT");
           return `<tr class="global-course-row ${run.runid === model.selectedRunId ? "is-selected" : ""}" data-gcm-course-action="select-course" data-run-id="${attr(run.runid)}">
-            <td><strong>${html(run.runname)}</strong></td><td>${html(formatDate(run.startdate))} – ${html(formatDate(run.enddate))}</td><td>${count}</td><td>${html(status)}</td>
+            <td data-label="Course"><strong>${html(run.runname)}</strong></td><td data-label="Scheduled dates">${html(formatDate(run.startdate))} – ${html(formatDate(run.enddate))}</td><td data-label="Sessions">${count}</td><td data-label="Status">${html(status)}</td>
           </tr>`;
         }).join("") : '<tr><td colspan="4">No Global Courses have been set up.</td></tr>'}</tbody>
       </table></div>
@@ -203,10 +222,10 @@
     const hasPublication = Boolean(state?.currentpublicationid);
     return `<section class="global-curriculum-panel global-course-setup-panel" id="global-course-setup-panel">
       <div class="global-course-setup-header-actions">
-        <button type="button" data-gcm-course-action="new-course">Set up a new course</button>
-        <button type="button" data-gcm-course-action="modify-course" ${run ? "" : "disabled"}>Modify course</button>
+        <button type="button" class="global-course-compact-action" data-gcm-course-action="new-course">Set up a new course</button>
+        <button type="button" class="global-course-compact-action" data-gcm-course-action="modify-course" ${run ? "" : "disabled"}>Modify course</button>
       </div>
-      ${locked ? `<div class="global-course-locked"><strong>PUBLISHED</strong><button type="button" class="global-curriculum-primary" data-gcm-course-action="revise">Revise timetable</button></div>` : `
+      ${locked ? `<div class="global-course-locked"><strong>PUBLISHED</strong><button type="button" class="global-curriculum-primary global-course-compact-action" data-gcm-course-action="revise">Revise timetable</button></div>` : `
       <div class="global-curriculum-form">
         <div class="global-course-summary-edit-row">
           ${field("Global subject", `<select id="gcm-course-subject">${subjectOptions(subject?.subjectid)}</select>`)}
@@ -215,9 +234,9 @@
           ${field("End date", `<input id="gcm-course-end" type="date" value="${attr(endDate)}" />`)}
           <label class="global-course-active-field"><span>Active</span><input id="gcm-course-active" type="checkbox" ${active ? "checked" : ""} /></label>
         </div>
-        <div class="global-course-weekly-heading"><h4>Weekly schedule</h4><button type="button" data-gcm-course-action="add-schedule-row">Add time period</button></div>
+        <div class="global-course-weekly-heading"><h4>Weekly schedule</h4><button type="button" class="global-course-compact-action" data-gcm-course-action="add-schedule-row">Add time period</button></div>
         <div class="global-course-schedule-rows">${model.scheduleRows.map((row, index) => scheduleRow(row, index, subject?.subjectid)).join("")}</div>
-        <div class="global-curriculum-form-actions">${saveIconButton(run ? "Save course and add schedule" : "Save course and generate schedule", "save-course", "", "global-curriculum-primary")}</div>
+        <div class="global-curriculum-form-actions">${saveIconButton(run ? "Save course and add schedule" : "Save course and generate schedule", "save-course")}</div>
       </div>`}
       ${run && !locked && hasPublication ? '<div class="global-course-revision-state">REVISION</div>' : ""}
     </section>`;
@@ -232,53 +251,135 @@
       ${field("Module", `<select data-course-schedule-field="moduleid"><option value="">No module</option>${moduleOptions(subjectId, row.moduleid)}</select>`)}
       ${field("Teacher", `<select data-course-schedule-field="teacherid">${teacherOptions(row.teacherid)}</select>`)}
       ${field("Zoom link", `<input data-course-schedule-field="zoom" type="url" value="${attr(row.zoom)}" inputmode="url" placeholder="https://…" />`)}
-      <button type="button" class="global-course-remove-row" data-gcm-course-action="remove-schedule-row" data-row-key="${attr(row.key)}" ${model.scheduleRows.length === 1 && index === 0 ? "disabled" : ""} aria-label="Remove time period" title="Remove time period">×</button>
+      <button type="button" class="global-course-remove-row" data-gcm-course-action="remove-schedule-row" data-row-key="${attr(row.key)}" ${model.scheduleRows.length === 1 && index === 0 ? "disabled" : ""} aria-label="Remove unsaved time period" title="Remove unsaved time period">×</button>
     </div>`;
   }
 
-  function sessionSection(run, sessions, rescheduling, state) {
+  function sessionSection(run, sessions, state) {
     const lifecycleMap = new Map(model.timetable.lifecycles.map(item => [item.sessionid, item]));
     const stage = state?.stage || "DEVELOPMENT";
+    const canEdit = stage === "DEVELOPMENT";
+    const pending = model.sessionDrafts.size;
     return `<section class="global-curriculum-panel global-course-sessions-panel">
-      <div class="global-curriculum-panel-heading"><h3>Sessions</h3><span>${sessions.filter(item => item.active).length}</span></div>
+      <div class="global-curriculum-panel-heading global-course-session-heading">
+        <div class="global-course-session-title"><h3>Sessions</h3><span>${sessions.filter(item => item.active).length}</span>${pending ? `<span class="global-session-unsaved-count">${pending} unsaved</span>` : ""}</div>
+        ${canEdit ? saveIconButton("Save all session changes", "save-session-batch", pending ? "" : "disabled", "global-session-section-save") : ""}
+      </div>
       <div class="global-session-inline-scroll">
         <div class="global-session-inline-table" role="table" aria-label="Global Course sessions">
-          <div class="global-session-inline-row global-session-inline-header" role="row"><span>Date</span><span>Start</span><span>End</span><span>Module</span><span>Teacher</span><span>Zoom link</span><span>Status</span><span>Actions</span></div>
-          ${sessions.length ? sessions.map(session => sessionInlineRow(session, lifecycleMap.get(session.sessionid) || { status: "SCHEDULED" }, stage, rescheduling)).join("") : '<p class="global-curriculum-empty-list">No sessions have been generated.</p>'}
+          <div class="global-session-inline-row global-session-inline-header" role="row"><span>Date</span><span>Start</span><span>End</span><span>Module</span><span>Teacher</span><span>Zoom link</span><span>Status</span></div>
+          ${sessions.length ? sessions.map(session => sessionInlineRow(session, lifecycleMap.get(session.sessionid) || { status: "SCHEDULED" }, stage)).join("") : '<p class="global-curriculum-empty-list">No sessions have been generated.</p>'}
         </div>
       </div>
-      ${stage === "DEVELOPMENT" ? `<div class="global-course-publish-row"><button type="button" class="global-curriculum-primary" data-gcm-course-action="publish" ${sessions.some(item => item.active) ? "" : "disabled"}>${state?.currentpublicationid ? "Publish revision" : "Publish course"}</button></div>` : ""}
+      ${canEdit ? `<div class="global-course-publish-row"><button type="button" class="global-curriculum-primary global-course-compact-action" data-gcm-course-action="publish" ${sessions.some(item => item.active) ? "" : "disabled"}>${state?.currentpublicationid ? "Publish revision" : "Publish course"}</button></div>` : ""}
     </section>`;
   }
 
-  function sessionInlineRow(session, lifecycle, stage, rescheduling) {
+  function sessionInlineRow(session, lifecycle, stage) {
     const readOnly = stage === "PUBLISHED" || lifecycle.status === "RESCHEDULED";
     const replacement = Boolean(lifecycle.rescheduledfromsessionid);
-    const relation = replacement ? '<span class="global-session-relation">replacement</span>' : "";
+    const draft = model.sessionDrafts.get(session.sessionid) || null;
+    const values = draft || {
+      date: session.sessiondate,
+      start: formatUiTime(session.starttime),
+      end: formatUiTime(session.endtime),
+      moduleid: session.moduleid || "",
+      teacherid: session.teacheraccountid || "",
+      zoom: session.zoomlink || "",
+      status: lifecycle.status || "SCHEDULED"
+    };
+    const rowClasses = [
+      "global-session-inline-row",
+      lifecycle.status !== "SCHEDULED" ? "is-lifecycle-changed" : "",
+      values.status === "CANCELLED" ? "is-cancelled" : "",
+      draft ? "is-dirty" : ""
+    ].filter(Boolean).join(" ");
+
     const fields = readOnly
-      ? `<span>${html(formatDate(session.sessiondate))}</span><span>${html(formatUiTime(session.starttime))}</span><span>${html(formatUiTime(session.endtime))}</span><span>${html(session.modulename || session.subjectname || "Session")}</span><span>${html(session.teachername || "TBA")}</span><span class="global-session-zoom-display">${session.zoomlink ? html(session.zoomlink) : "—"}</span><span>${html(lifecycle.status)}${relation}</span><span>—</span>`
-      : `<input data-inline-session-field="date" type="date" value="${attr(session.sessiondate)}" aria-label="Session date" />
-         <input data-inline-session-field="start" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(session.starttime))}" aria-label="Start time" />
-         <input data-inline-session-field="end" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(session.endtime))}" aria-label="End time" />
-         <select data-inline-session-field="moduleid" aria-label="Module"><option value="">No module</option>${moduleOptions(session.subjectid, session.moduleid)}</select>
-         <select data-inline-session-field="teacherid" aria-label="Teacher">${teacherOptions(session.teacheraccountid)}</select>
-         <input data-inline-session-field="zoom" type="url" value="${attr(session.zoomlink)}" aria-label="Zoom link" />
-         <select data-inline-session-field="status" aria-label="Session status"><option value="SCHEDULED" ${lifecycle.status === "SCHEDULED" ? "selected" : ""}>SCHEDULED</option><option value="CANCELLED" ${lifecycle.status === "CANCELLED" ? "selected" : ""}>CANCELLED</option></select>
-         <span class="global-session-inline-actions">${saveIconButton("Save session", "save-session-inline", `data-session-id="${attr(session.sessionid)}"`)}<button type="button" class="global-session-reschedule-button" data-gcm-course-action="open-reschedule-inline" data-session-id="${attr(session.sessionid)}" aria-label="Reschedule session" title="Reschedule session">↪</button></span>`;
-    return `<div class="global-session-inline-row ${lifecycle.status !== "SCHEDULED" ? "is-lifecycle-changed" : ""}" role="row" data-session-row-id="${attr(session.sessionid)}">${fields}</div>${rescheduling?.sessionid === session.sessionid ? rescheduleInlineRow(session) : ""}`;
+      ? [
+          readOnlySessionCell("Date", formatDate(session.sessiondate)),
+          readOnlySessionCell("Start", formatUiTime(session.starttime)),
+          readOnlySessionCell("End", formatUiTime(session.endtime)),
+          readOnlySessionCell("Module", session.modulename || session.subjectname || "Session"),
+          readOnlySessionCell("Teacher", session.teachername || "TBA"),
+          readOnlySessionCell("Zoom link", session.zoomlink || "—", "global-session-zoom-display"),
+          readOnlySessionCell("Status", `${lifecycle.status}${replacement ? " · replacement" : ""}`)
+        ].join("")
+      : [
+          sessionCell("Date", `<input data-inline-session-field="date" type="date" value="${attr(values.date)}" aria-label="Session date" />`),
+          sessionCell("Start", `<input data-inline-session-field="start" data-time24 type="text" inputmode="numeric" value="${attr(values.start)}" aria-label="Start time" />`),
+          sessionCell("End", `<input data-inline-session-field="end" data-time24 type="text" inputmode="numeric" value="${attr(values.end)}" aria-label="End time" />`),
+          sessionCell("Module", `<select data-inline-session-field="moduleid" aria-label="Module"><option value="">No module</option>${moduleOptions(session.subjectid, values.moduleid)}</select>`),
+          sessionCell("Teacher", `<select data-inline-session-field="teacherid" aria-label="Teacher">${teacherOptions(values.teacherid)}</select>`),
+          sessionCell("Zoom link", `<input data-inline-session-field="zoom" type="url" value="${attr(values.zoom)}" aria-label="Zoom link" />`, "global-session-zoom-cell"),
+          sessionCell("Status", `<select data-inline-session-field="status" aria-label="Session status"><option value="SCHEDULED" ${values.status === "SCHEDULED" ? "selected" : ""}>SCHEDULED</option><option value="CANCELLED" ${values.status === "CANCELLED" ? "selected" : ""}>CANCELLED</option></select>`)
+        ].join("");
+    return `<div class="${rowClasses}" role="row" data-session-row-id="${attr(session.sessionid)}">${fields}</div>`;
   }
 
-  function rescheduleInlineRow(session) {
-    return `<div class="global-session-reschedule-inline" data-reschedule-row-id="${attr(session.sessionid)}">
-      <strong>Reschedule</strong>
-      <input data-reschedule-field="date" type="date" aria-label="Replacement date" />
-      <input data-reschedule-field="start" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(session.starttime))}" aria-label="Replacement start time" />
-      <input data-reschedule-field="end" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(session.endtime))}" aria-label="Replacement end time" />
-      <select data-reschedule-field="moduleid" aria-label="Replacement module"><option value="">No module</option>${moduleOptions(session.subjectid, session.moduleid)}</select>
-      <select data-reschedule-field="teacherid" aria-label="Replacement teacher">${teacherOptions(session.teacheraccountid)}</select>
-      <input data-reschedule-field="zoom" type="url" value="${attr(session.zoomlink)}" aria-label="Replacement Zoom link" />
-      <span class="global-session-inline-actions">${saveIconButton("Save rescheduled session", "save-reschedule-inline", `data-session-id="${attr(session.sessionid)}"`)}<button type="button" data-gcm-course-action="close-reschedule" aria-label="Cancel reschedule" title="Cancel reschedule">×</button></span>
-    </div>`;
+  function sessionCell(label, control, extraClass = "") {
+    return `<label class="global-session-cell ${attr(extraClass)}"><span class="global-session-cell-label">${html(label)}</span>${control}</label>`;
+  }
+  function readOnlySessionCell(label, value, extraClass = "") {
+    return `<div class="global-session-cell global-session-readonly-cell ${attr(extraClass)}"><span class="global-session-cell-label">${html(label)}</span><span>${html(value)}</span></div>`;
+  }
+
+  function captureSessionDraft(row) {
+    if (!row) return;
+    const sessionId = String(row.dataset.sessionRowId || "");
+    const session = sessionsForRun(model.selectedRunId).find(item => item.sessionid === sessionId);
+    if (!session) return;
+    const lifecycle = model.timetable.lifecycles.find(item => item.sessionid === sessionId) || { status: "SCHEDULED" };
+    if ((stateForRun(model.selectedRunId)?.stage || "DEVELOPMENT") !== "DEVELOPMENT" || lifecycle.status === "RESCHEDULED") return;
+
+    const current = {
+      date: String(row.querySelector('[data-inline-session-field="date"]')?.value || ""),
+      start: String(row.querySelector('[data-inline-session-field="start"]')?.value || ""),
+      end: String(row.querySelector('[data-inline-session-field="end"]')?.value || ""),
+      moduleid: String(row.querySelector('[data-inline-session-field="moduleid"]')?.value || ""),
+      teacherid: String(row.querySelector('[data-inline-session-field="teacherid"]')?.value || ""),
+      zoom: String(row.querySelector('[data-inline-session-field="zoom"]')?.value || "").trim(),
+      status: String(row.querySelector('[data-inline-session-field="status"]')?.value || "SCHEDULED")
+    };
+    const startCompared = parseUiTime(current.start) || current.start.trim();
+    const endCompared = parseUiTime(current.end) || current.end.trim();
+    const changed = current.date !== String(session.sessiondate || "")
+      || startCompared !== (parseUiTime(session.starttime) || String(session.starttime || "").trim())
+      || endCompared !== (parseUiTime(session.endtime) || String(session.endtime || "").trim())
+      || current.moduleid !== String(session.moduleid || "")
+      || current.teacherid !== String(session.teacheraccountid || "")
+      || current.zoom !== String(session.zoomlink || "").trim()
+      || current.status !== String(lifecycle.status || "SCHEDULED");
+
+    if (changed) model.sessionDrafts.set(sessionId, current);
+    else model.sessionDrafts.delete(sessionId);
+    row.classList.toggle("is-dirty", changed);
+    row.classList.toggle("is-cancelled", current.status === "CANCELLED");
+    refreshSessionSaveState();
+  }
+
+  function captureAllSessionDrafts() {
+    document.querySelectorAll("#global-curriculum-screen [data-session-row-id]").forEach(captureSessionDraft);
+  }
+
+  function refreshSessionSaveState() {
+    const button = document.querySelector('#global-curriculum-screen [data-gcm-course-action="save-session-batch"]');
+    if (button) button.disabled = model.sessionDrafts.size === 0;
+    const badge = document.querySelector("#global-curriculum-screen .global-session-unsaved-count");
+    if (badge) {
+      if (model.sessionDrafts.size) badge.textContent = `${model.sessionDrafts.size} unsaved`;
+      else badge.remove();
+    } else if (model.sessionDrafts.size) {
+      const title = document.querySelector("#global-curriculum-screen .global-course-session-title");
+      title?.insertAdjacentHTML("beforeend", `<span class="global-session-unsaved-count">${model.sessionDrafts.size} unsaved</span>`);
+    }
+  }
+
+  function discardSessionDraftsConfirmed() {
+    if (!model.sessionDrafts.size) return true;
+    if (!window.confirm("Discard unsaved session changes?")) return false;
+    model.sessionDrafts.clear();
+    return true;
   }
 
   async function saveSubjectRow(button) {
@@ -288,7 +389,7 @@
     const name = document.querySelector(`[data-course-subject-name="${cssEscape(subjectId)}"]`)?.value?.trim() || "";
     const access = document.querySelector(`[data-course-subject-access="${cssEscape(subjectId)}"]`)?.value || "SUBSCRIPTION";
     const status = document.querySelector(`[data-course-subject-status="${cssEscape(subjectId)}"]`)?.value || "ACTIVE";
-    await withBusy(button, "Saving…", async () => {
+    await withBusy(button, "…", async () => {
       const token = appState()?.token || "";
       const subjectResult = await apiPost("/api/admin/platform/global/subject/save", { subjectId, subjectName: name, active: status === "ACTIVE" }, token);
       if (!subjectResult.success) throw new Error(subjectResult.error || "Unable to save subject");
@@ -313,7 +414,7 @@
       endDate: value("gcm-course-end"),
       active: checked("gcm-course-active")
     };
-    await withBusy(button, "Saving…", async () => {
+    await withBusy(button, "…", async () => {
       const token = appState()?.token || "";
       const saved = await apiPost("/api/admin/platform/global/run/save", payload, token);
       if (!saved.success) throw new Error(saved.error || saved.detail || "Unable to save course");
@@ -338,7 +439,7 @@
       await load(true);
       if (calendarWarnings.length) {
         const dates = [...new Set(calendarWarnings.map(item => formatDate(item.date)))].join(", ");
-        setMessage(`Course saved. ${calendarWarnings.length} scheduled session${calendarWarnings.length === 1 ? "" : "s"} fall on Academy no-teaching date${calendarWarnings.length === 1 ? "" : "s"}: ${dates}. Review and cancel/reschedule where required.`, "error");
+        setMessage(`Course saved. ${calendarWarnings.length} scheduled session${calendarWarnings.length === 1 ? "" : "s"} fall on Academy no-teaching date${calendarWarnings.length === 1 ? "" : "s"}: ${dates}. Review the dates or set the relevant sessions to CANCELLED.`, "error");
       } else {
         setMessage(scheduleRows.length ? "Course and schedule saved." : "Course saved.", "success");
       }
@@ -347,6 +448,10 @@
 
   async function reviseCourse(button) {
     if (!model.selectedRunId) return;
+    if (model.sessionDrafts.size) {
+      setMessage("Save or discard the pending session changes before opening a revision.", "error");
+      return;
+    }
     await withBusy(button, "Opening…", async () => {
       const result = await apiPost("/api/admin/platform/global/timetable/revise", { runId: model.selectedRunId }, appState()?.token || "");
       if (!result.success) throw new Error(result.error || result.detail || "Unable to open revision");
@@ -356,61 +461,57 @@
     });
   }
 
-  async function saveSessionInline(button) {
-    const sessionId = String(button.dataset.sessionId || button.closest("[data-session-row-id]")?.dataset.sessionRowId || "");
-    const session = sessionsForRun(model.selectedRunId).find(item => item.sessionid === sessionId);
-    const row = button.closest("[data-session-row-id]");
-    if (!session || !row) return;
-    const startTime = parseUiTime(row.querySelector('[data-inline-session-field="start"]')?.value);
-    const endTime = parseUiTime(row.querySelector('[data-inline-session-field="end"]')?.value);
-    if (!startTime || !endTime) { setMessage("Use 24-hour times such as 13h00.", "error"); return; }
-    await withBusy(button, "…", async () => {
-      const result = await apiPost("/api/admin/platform/global/timetable/session/save", {
-        sessionId: session.sessionid,
-        sessionDate: String(row.querySelector('[data-inline-session-field="date"]')?.value || session.sessiondate),
+  async function saveSessionBatch(button) {
+    captureAllSessionDrafts();
+    if (!model.selectedRunId || !model.sessionDrafts.size) return;
+    const sessions = sessionsForRun(model.selectedRunId);
+    const changes = [];
+    for (const [sessionId, draft] of model.sessionDrafts) {
+      const session = sessions.find(item => item.sessionid === sessionId);
+      if (!session) continue;
+      const startTime = parseUiTime(draft.start);
+      const endTime = parseUiTime(draft.end);
+      if (!draft.date) { setMessage("Every changed session requires a date.", "error"); return; }
+      if (!startTime || !endTime) { setMessage("Use 24-hour times such as 13h00 for every changed session.", "error"); return; }
+      changes.push({
+        sessionId,
+        sessionDate: draft.date,
         startTime,
         endTime,
-        moduleId: String(row.querySelector('[data-inline-session-field="moduleid"]')?.value || ""),
-        teacherAccountId: String(row.querySelector('[data-inline-session-field="teacherid"]')?.value || ""),
-        zoomLink: String(row.querySelector('[data-inline-session-field="zoom"]')?.value || "").trim(),
-        active: true,
-        status: String(row.querySelector('[data-inline-session-field="status"]')?.value || "SCHEDULED")
-      }, appState()?.token || "");
-      if (!result.success) throw new Error(result.error || result.detail || "Unable to save session");
-      invalidateAll();
-      await load(true);
-      setMessage(result.message || "Session saved.", "success");
-    });
-  }
+        moduleId: draft.moduleid,
+        teacherAccountId: draft.teacherid,
+        zoomLink: draft.zoom,
+        active: session.active !== false,
+        status: draft.status
+      });
+    }
+    if (!changes.length) return;
 
-  async function saveRescheduleInline(button) {
-    const sessionId = String(button.dataset.sessionId || model.rescheduleSessionId || "");
-    const session = sessionsForRun(model.selectedRunId).find(item => item.sessionid === sessionId);
-    const row = document.querySelector(`[data-reschedule-row-id="${cssEscape(sessionId)}"]`);
-    if (!session || !row) return;
-    const startTime = parseUiTime(row.querySelector('[data-reschedule-field="start"]')?.value);
-    const endTime = parseUiTime(row.querySelector('[data-reschedule-field="end"]')?.value);
-    if (!startTime || !endTime) { setMessage("Use 24-hour times such as 13h00.", "error"); return; }
     await withBusy(button, "…", async () => {
-      const result = await apiPost("/api/admin/platform/global/timetable/session/reschedule", {
-        sessionId: session.sessionid,
-        sessionDate: String(row.querySelector('[data-reschedule-field="date"]')?.value || ""),
-        startTime,
-        endTime,
-        moduleId: String(row.querySelector('[data-reschedule-field="moduleid"]')?.value || ""),
-        teacherAccountId: String(row.querySelector('[data-reschedule-field="teacherid"]')?.value || ""),
-        zoomLink: String(row.querySelector('[data-reschedule-field="zoom"]')?.value || "").trim()
+      const result = await apiPost("/api/admin/platform/global/timetable/session/batch-save", {
+        runId: model.selectedRunId,
+        changes
       }, appState()?.token || "");
-      if (!result.success) throw new Error(result.error || result.detail || "Unable to reschedule session");
-      model.rescheduleSessionId = "";
+      if (!result.success) throw new Error(result.error || result.detail || "Unable to save session changes");
+      model.sessionDrafts.clear();
       invalidateAll();
       await load(true);
-      setMessage(result.message || "Session rescheduled.", "success");
+      if (array(result.calendarWarnings).length) {
+        const dates = [...new Set(result.calendarWarnings.map(item => formatDate(item.date)))].join(", ");
+        setMessage(`${result.message || "Session changes saved."} Review Academy no-teaching date${result.calendarWarnings.length === 1 ? "" : "s"}: ${dates}. Change the date or set the session to CANCELLED if required.`, "error");
+      } else {
+        setMessage(result.message || "Session changes saved.", "success");
+      }
     });
   }
 
   async function publishCourse(button) {
     if (!model.selectedRunId) return;
+    captureAllSessionDrafts();
+    if (model.sessionDrafts.size) {
+      setMessage("Save the pending session changes before publishing.", "error");
+      return;
+    }
     await withBusy(button, "Publishing…", async () => {
       const result = await apiPost("/api/admin/platform/global/timetable/publish", { runId: model.selectedRunId }, appState()?.token || "");
       if (!result.success) throw new Error(result.error || result.detail || "Unable to publish course");
@@ -421,18 +522,20 @@
   }
 
   function selectCourse(runId) {
+    captureAllSessionDrafts();
+    if (!discardSessionDraftsConfirmed()) return;
     syncScheduleRowsFromDom();
     model.selectedRunId = String(runId || "");
     const run = runById(model.selectedRunId);
     if (run) model.selectedSubjectId = run.subjectid;
-    model.rescheduleSessionId = "";
     model.scheduleRows = [blankScheduleRow()];
     render();
   }
   function newCourse(subjectId, focus = false) {
+    captureAllSessionDrafts();
+    if (!discardSessionDraftsConfirmed()) return;
     model.selectedRunId = "";
     model.selectedSubjectId = String(subjectId || model.selectedSubjectId || "");
-    model.rescheduleSessionId = "";
     model.scheduleRows = [blankScheduleRow()];
     render();
     if (focus) focusCourseSetup();
@@ -452,7 +555,6 @@
   }
   function addScheduleRow() { syncScheduleRowsFromDom(); model.scheduleRows.push(blankScheduleRow()); render(); }
   function removeScheduleRow(key) { syncScheduleRowsFromDom(); model.scheduleRows = model.scheduleRows.filter(row => row.key !== key); if (!model.scheduleRows.length) model.scheduleRows = [blankScheduleRow()]; render(); }
-  function openReschedule(id) { model.rescheduleSessionId = String(id || ""); render(); }
 
   function syncScheduleRowsFromDom() {
     const rows = [...document.querySelectorAll("[data-schedule-row-key]")];
@@ -481,7 +583,7 @@
   function moduleOptions(subjectId, selectedId) { return model.timetable.modules.filter(item => item.subjectid === subjectId).map(item => `<option value="${attr(item.moduleid)}" ${item.moduleid === selectedId ? "selected" : ""}>${html(item.modulename)}${item.active ? "" : " — inactive"}</option>`).join(""); }
   function teacherOptions(selectedId) { return `<option value="" ${selectedId ? "" : "selected"}>TBA</option>${model.timetable.teachers.filter(item => item.active).map(item => `<option value="${attr(item.accountid)}" ${item.accountid === selectedId ? "selected" : ""}>${html(item.displayname || item.accountid)}</option>`).join("")}`; }
   function subjectOptions(selectedId) { return model.delivery.subjects.map(item => `<option value="${attr(item.subjectid)}" ${item.subjectid === selectedId ? "selected" : ""}>${html(item.subjectname)}</option>`).join(""); }
-  function dayPills(selected, rowKey) { return [["MON","Mon"],["TUE","Tue"],["WED","Wed"],["THU","Thu"],["FRI","Fri"],["SAT","Sat"],["SUN","Sun"]].map(([value,label]) => `<label class="global-course-day-pill"><input type="checkbox" data-course-schedule-day value="${value}" ${selected.has(value) ? "checked" : ""} aria-label="${label}" /><span>${label}</span></label>`).join(""); }
+  function dayPills(selected) { return [["MON","Mon"],["TUE","Tue"],["WED","Wed"],["THU","Thu"],["FRI","Fri"],["SAT","Sat"],["SUN","Sun"]].map(([value,label]) => `<label class="global-course-day-pill"><input type="checkbox" data-course-schedule-day value="${value}" ${selected.has(value) ? "checked" : ""} aria-label="${label}" /><span>${label}</span></label>`).join(""); }
   function field(label, control) { return `<label class="global-curriculum-field"><span>${html(label)}</span>${control}</label>`; }
   function formatDate(value) { const text=String(value||""); const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(text); if(!m) return text; return `${m[3]} ${["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m[2])]} ${m[1]}`; }
   function parseUiTime(value) {
@@ -498,7 +600,7 @@
   }
   function normalizeTimeField(input) { const parsed=parseUiTime(input?.value); if(parsed) input.value=formatUiTime(parsed); }
   function saveIconButton(label, action, extraAttrs = "", classes = "") {
-    return `<button type="button" class="global-save-icon-button ${attr(classes)}" data-gcm-course-action="${attr(action)}" ${extraAttrs} aria-label="${attr(label)}" title="${attr(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h12l2 2v16H5V3Zm2 2v5h8V5H7Zm0 14h10v-7H7v7Zm2-12h4V5H9v2Z" fill="currentColor"/></svg></button>`;
+    return `<button type="button" class="global-save-icon-button ${attr(classes)}" data-gcm-course-action="${attr(action)}" ${extraAttrs} aria-label="${attr(label)}" title="${attr(label)}"><span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span><span class="global-save-icon-label">SAVE</span></button>`;
   }
 
   function markTabActive() {
@@ -507,7 +609,7 @@
   }
   function setMessage(message, type) { const el=document.getElementById("global-curriculum-message"); if(!el)return; el.textContent=message||""; el.classList.toggle("is-error",type==="error"); el.classList.toggle("is-success",type==="success"); }
   function setContent(markup) { const el=document.getElementById("global-curriculum-content"); if(el)el.innerHTML=markup; }
-  async function withBusy(button, label, work) { const original=button?.innerHTML||""; if(button){button.disabled=true;button.textContent=label;} try{await work();}catch(error){setMessage(error.message||"Course Scheduler request failed.","error");}finally{if(button){button.disabled=false;button.innerHTML=original;}} }
+  async function withBusy(button, label, work) { const original=button?.innerHTML||""; if(button){button.disabled=true;button.textContent=label;} try{await work();}catch(error){setMessage(error.message||"Course Scheduler request failed.","error");}finally{if(button?.isConnected){button.disabled=false;button.innerHTML=original;}} }
   function value(id){return String(document.getElementById(id)?.value||"").trim();}
   function checked(id){return document.getElementById(id)?.checked===true;}
   function array(value){return Array.isArray(value)?value:[];}

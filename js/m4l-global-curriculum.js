@@ -705,7 +705,7 @@
 
   function saveButtons(action, editing) {
     const label = editing ? "Save changes" : "Create";
-    return `<div class="global-curriculum-form-actions">${editing ? '<button type="button" class="global-curriculum-secondary" data-gcm-action="new">Cancel</button>' : ""}<button type="button" class="global-curriculum-primary global-save-icon-button" data-gcm-action="${attr(action)}" aria-label="${attr(label)}" title="${attr(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h12l2 2v16H5V3Zm2 2v5h8V5H7Zm0 14h10v-7H7v7Zm2-12h4V5H9v2Z" fill="currentColor"/></svg></button></div>`;
+    return `<div class="global-curriculum-form-actions">${editing ? '<button type="button" class="global-curriculum-secondary" data-gcm-action="new">Cancel</button>' : ""}<button type="button" class="global-save-icon-button" data-gcm-action="${attr(action)}" aria-label="${attr(label)}" title="${attr(label)}"><span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span><span class="global-save-icon-label">SAVE</span></button></div>`;
   }
 
   function recordList(items, id, title, subtitle, active) {

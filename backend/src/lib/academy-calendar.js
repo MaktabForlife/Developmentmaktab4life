@@ -1,4 +1,4 @@
-/* M4L V102.12.5 - Academic Calendar generation, editable Holiday overrides and presentation helpers. */
+/* M4L V102.12.6 - Academic Calendar batch editing and simplified Islamic-date delivery. */
 
 import { isActivePlatformValue, normalizePlatformIdentifier } from "./platform-schema.js";
 
@@ -45,21 +45,27 @@ export function mapAcademyCalendarRow(row) {
   const eventType = normalizePlatformIdentifier(row?.EventType);
   const description = String(row?.Description || "").trim();
   const startDate = String(row?.StartDate || "").trim();
-  return {
+  const event = {
     id: String(row?.CalendarEventID || "").trim(),
     eventType,
     description,
     islamicDate: eventType === "ISLAMIC_DAY" ? islamicDateLabel(description, startDate) : "",
     startDate,
     endDate: String(row?.EndDate || row?.StartDate || "").trim(),
-    alternateDate: eventType === "ISLAMIC_DAY" ? "" : String(row?.AlternateDate || "").trim(),
-    teachingImpact: eventType === "ISLAMIC_DAY" ? "INFORMATION" : normalizeTeachingImpact(row?.TeachingImpact),
     active: isActivePlatformValue(row?.Active),
     source: eventType === "ISLAMIC_DAY" ? "ISLAMIC_REFERENCE" : eventType === "PUBLIC_HOLIDAY" ? "PUBLIC_HOLIDAY_OVERRIDE" : "ADMIN",
     editable: true,
     derived: false,
     rowNumber: Number(row?._rowNumber) || 0
   };
+  // V102.12.6: Islamic dates are informational reference dates. Legacy Sheet
+  // columns remain untouched, but AlternateDate and TeachingImpact are no longer
+  // part of Islamic-date UI/API delivery.
+  if (eventType !== "ISLAMIC_DAY") {
+    event.alternateDate = String(row?.AlternateDate || "").trim();
+    event.teachingImpact = normalizeTeachingImpact(row?.TeachingImpact);
+  }
+  return event;
 }
 
 export function generateSouthAfricanPublicHolidays(yearInput) {

@@ -164,7 +164,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "102.12.5");
+  assert.equal(body.version, "102.12.6");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -238,7 +238,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.5 two-day Academy timetable endpoint integration test passed.");
+console.log("V102.12.6 two-day Academy timetable endpoint integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {
