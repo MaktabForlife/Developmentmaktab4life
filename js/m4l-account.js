@@ -1,4 +1,4 @@
-/* M4L V102.12 - Unified account login, Academy timetable Home and workspace handoff. */
+/* M4L V102.12.1 - Unified account login with Academy timetable and calendar context. */
 (function () {
   "use strict";
 
@@ -314,10 +314,12 @@
   function renderAcademyTimetable(result) {
     const container = byId("academy-timetable");
     const sessions = Array.isArray(result.sessions) ? result.sessions : [];
+    const calendarEvents = Array.isArray(result.calendarEvents) ? result.calendarEvents : [];
     const weekStart = String(result.weekStart || state.academyWeekStart || "").trim();
     const weekEnd = String(result.weekEnd || "").trim();
     const today = String(result.today || "").trim();
     byId("academy-week-label").textContent = `${formatAcademyDate(weekStart, { month: "short", day: "numeric" })} – ${formatAcademyDate(weekEnd, { month: "short", day: "numeric", year: "numeric" })}`;
+    renderAcademyWeekContext(calendarEvents, weekStart, weekEnd);
     container.replaceChildren();
 
     for (let offset = 0; offset < 7; offset += 1) {
@@ -334,6 +336,14 @@
       dayDate.textContent = formatAcademyDate(date, { day: "2-digit", month: "short" });
       heading.append(dayName, dayDate);
       day.appendChild(heading);
+      const dayEvents = calendarEvents.filter(event => String(event.startDate || "") <= date && String(event.endDate || "") >= date);
+      const daySpecificEvents = dayEvents.filter(event => ["PUBLIC_HOLIDAY", "ISLAMIC_DAY"].includes(String(event.eventType || "").toUpperCase()));
+      if (daySpecificEvents.length) {
+        const badges = document.createElement("div");
+        badges.className = "academy-calendar-day-badges";
+        daySpecificEvents.forEach(event => badges.appendChild(createAcademyCalendarBadge(event)));
+        day.appendChild(badges);
+      }
 
       const daySessions = sessions.filter(session => String(session.date || "") === date);
       if (!daySessions.length) {
@@ -346,6 +356,28 @@
       }
       container.appendChild(day);
     }
+  }
+
+
+  function renderAcademyWeekContext(events, weekStart, weekEnd) {
+    const root = byId("academy-week-context");
+    if (!root) return;
+    root.replaceChildren();
+    const context = (Array.isArray(events) ? events : []).filter(event => {
+      const type = String(event.eventType || "").toUpperCase();
+      return ["TERM", "RELIGIOUS_PERIOD"].includes(type) && String(event.startDate || "") <= weekEnd && String(event.endDate || "") >= weekStart;
+    });
+    context.forEach(event => root.appendChild(createAcademyCalendarBadge(event)));
+    root.classList.toggle("hidden", context.length === 0);
+  }
+
+  function createAcademyCalendarBadge(event) {
+    const badge = document.createElement("span");
+    const type = String(event.eventType || "EVENT").toUpperCase();
+    badge.className = `academy-calendar-badge is-${type.toLowerCase().replace(/_/g, "-")}`;
+    badge.textContent = String(event.description || "Calendar");
+    if (String(event.teachingImpact || "").toUpperCase() === "NO_TEACHING") badge.classList.add("is-no-teaching");
+    return badge;
   }
 
   function createAcademySessionCard(session) {

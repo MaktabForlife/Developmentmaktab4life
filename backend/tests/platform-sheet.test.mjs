@@ -17,7 +17,7 @@ import {
 } from "../src/lib/platform-sheet.js";
 
 assert.deepEqual(AUTHORITY_ORDER, ["GLOBAL_ADMIN", "ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
-assert.equal(Object.keys(PLATFORM_SHEET_HEADERS).length, 18);
+assert.equal(Object.keys(PLATFORM_SHEET_HEADERS).length, 19);
 assert.deepEqual(Object.keys(PLATFORM_SHEET_HEADERS), [
   "CourseRegistry",
   "UserAccounts",
@@ -31,6 +31,7 @@ assert.deepEqual(Object.keys(PLATFORM_SHEET_HEADERS), [
   "GlobalTimetablePublications",
   "GlobalTimetableSessionLifecycle",
   "PublishedGlobalTimetableSessions",
+  "AcademyCalendar",
   "GlobalSubjectList",
   "GlobalModuleList",
   "GlobalTaskList",
@@ -68,6 +69,11 @@ assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle, [
   "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
 ]);
 assert.equal(PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.length, 19);
+assert.deepEqual(PLATFORM_SHEET_HEADERS.AcademyCalendar, [
+  "CalendarEventID", "EventType", "Description", "StartDate", "EndDate", "AlternateDate",
+  "TeachingImpact", "Active", "CreatedDate", "CreatedByAccountID", "CreatedByAccountName",
+  "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+]);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalResources.at(-1), "ModifiedDate");
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalResources.length, 16);
 

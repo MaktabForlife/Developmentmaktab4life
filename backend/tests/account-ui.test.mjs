@@ -13,8 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /m4l-account\.js\?v=102\.12/);
-assert.match(html, /m4l-23-account\.css\?v=102\.12/);
+assert.match(html, /m4l-account\.js\?v=102\.12\.1/);
+assert.match(html, /m4l-23-account\.css\?v=102\.12\.1/);
 
 for (const endpoint of [
   "/api/account/check",

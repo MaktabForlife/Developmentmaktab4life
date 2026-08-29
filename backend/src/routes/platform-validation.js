@@ -1,6 +1,7 @@
-/* M4L V102.11.1 - Platform validation including global access, courses, lifecycle and immutable publication. */
+/* M4L V102.12.1 - Platform validation including Academy Calendar, global access and immutable publication. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
+import { validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
 import { json } from "../lib/http.js";
 import {
   GLOBAL_SUBJECT_ACCESS_MODELS,
@@ -27,7 +28,7 @@ import {
   normalizeGlobalSessionStatus
 } from "../lib/global-timetable-lifecycle.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.7";
+const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.8";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
@@ -218,6 +219,7 @@ export function validatePlatformTables(tables) {
     runIds: globalDelivery.runIds,
     runSubjects: globalDelivery.runSubjects
   });
+  const academyCalendar = validateAcademyCalendar(tables.AcademyCalendar);
 
   return Object.freeze({
     platformSchemaVersion: schemaVersion,
@@ -245,12 +247,38 @@ export function validatePlatformTables(tables) {
     globalTimetablePublicationCount: globalTimetable.publicationCount,
     globalTimetableSessionLifecycleCount: globalTimetable.lifecycleCount,
     publishedGlobalTimetableSessionCount: globalTimetable.publishedSessionCount,
+    academyCalendarEventCount: academyCalendar.eventCount,
+    academyCalendarTermCount: academyCalendar.termCount,
+    academyCalendarIslamicDayCount: academyCalendar.islamicDayCount,
     globalResourceCount: tables.GlobalResources.length,
     globalAdminCount: globalAdminAccounts,
     globalResourceDriveConfigured: Boolean(globalResourceDriveRootFolderId),
     readyForAccountMigration: true,
     readyForUnifiedLogin: accounts.length > 0 && globalAdminAccounts > 0
   });
+}
+
+
+function validateAcademyCalendar(rows) {
+  const ids = new Set();
+  let termCount = 0;
+  let islamicDayCount = 0;
+  for (const row of rows) {
+    const id = normalizePlatformIdentifier(row.CalendarEventID);
+    if (!id || ids.has(id)) {
+      throw new Error(`AcademyCalendar row ${row._rowNumber} has a blank or duplicate CalendarEventID`);
+    }
+    try {
+      validateAcademyCalendarRecord(row);
+    } catch (error) {
+      throw new Error(`AcademyCalendar row ${row._rowNumber}: ${error.message}`);
+    }
+    ids.add(id);
+    const type = normalizePlatformIdentifier(row.EventType);
+    if (type === "TERM") termCount += 1;
+    if (type === "ISLAMIC_DAY") islamicDayCount += 1;
+  }
+  return Object.freeze({ eventCount: rows.length, termCount, islamicDayCount });
 }
 
 function validateGlobalSubjectAccessMatrix(matrixRows, accountIds, subjectIds) {

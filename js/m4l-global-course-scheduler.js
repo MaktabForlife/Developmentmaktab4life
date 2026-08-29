@@ -1,4 +1,4 @@
-/* M4L V102.11.2 - Global Course Scheduler: compact course setup, multi-day schedule rows and inline session editing. */
+/* M4L V102.12.1 - Global Course Scheduler with Academy Calendar conflict warnings. */
 (function () {
   "use strict";
 
@@ -319,6 +319,7 @@
       if (!saved.success) throw new Error(saved.error || saved.detail || "Unable to save course");
       const runId = saved.run?.runid || model.selectedRunId;
       const scheduleRows = model.scheduleRows.filter(row => array(row.days).length || row.start || row.end);
+      const calendarWarnings = [];
       for (const row of scheduleRows) {
         const startTime = parseUiTime(row.start);
         const endTime = parseUiTime(row.end);
@@ -328,13 +329,19 @@
           teacherAccountId: row.teacherid, zoomLink: row.zoom
         }, token);
         if (!generated.success) throw new Error(generated.error || generated.detail || "Course saved, but a schedule row could not be generated");
+        calendarWarnings.push(...array(generated.calendarWarnings));
       }
       model.selectedRunId = runId;
       model.selectedSubjectId = subjectId;
       model.scheduleRows = [blankScheduleRow()];
       invalidateAll();
       await load(true);
-      setMessage(scheduleRows.length ? "Course and schedule saved." : "Course saved.", "success");
+      if (calendarWarnings.length) {
+        const dates = [...new Set(calendarWarnings.map(item => formatDate(item.date)))].join(", ");
+        setMessage(`Course saved. ${calendarWarnings.length} scheduled session${calendarWarnings.length === 1 ? "" : "s"} fall on Academy no-teaching date${calendarWarnings.length === 1 ? "" : "s"}: ${dates}. Review and cancel/reschedule where required.`, "error");
+      } else {
+        setMessage(scheduleRows.length ? "Course and schedule saved." : "Course saved.", "success");
+      }
     });
   }
 

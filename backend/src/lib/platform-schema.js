@@ -1,4 +1,4 @@
-/* M4L V102.11.1 - Authoritative central identity, access, delivery and global timetable schema. */
+/* M4L V102.12.1 - Authoritative central identity, access, delivery, timetable and Academy Calendar schema. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -120,6 +120,22 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "PublishedDate",
     "PublishedByAccountID", "PublishedByAccountName", "RunName", "SubjectName", "ModuleName",
     "TeacherName", "Timezone"
+  ]),
+  AcademyCalendar: Object.freeze([
+    "CalendarEventID",
+    "EventType",
+    "Description",
+    "StartDate",
+    "EndDate",
+    "AlternateDate",
+    "TeachingImpact",
+    "Active",
+    "CreatedDate",
+    "CreatedByAccountID",
+    "CreatedByAccountName",
+    "ModifiedByAccountID",
+    "ModifiedByAccountName",
+    "ModifiedDate"
   ]),
   GlobalSubjectList: Object.freeze([
     "SubjectID",

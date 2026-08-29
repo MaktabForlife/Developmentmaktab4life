@@ -9,7 +9,7 @@ const [adminHtml, js, css, styles] = await Promise.all([
 ]);
 
 assert.match(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=102\.11\.2/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=102\.12\.1/);
 assert.doesNotMatch(adminHtml, /data-gcm-delivery-action="show"/);
 assert.doesNotMatch(adminHtml, /data-gcm-timetable-action="show"/);
 assert.doesNotMatch(adminHtml, /m4l-global-delivery\.js\?v=102\.11/);

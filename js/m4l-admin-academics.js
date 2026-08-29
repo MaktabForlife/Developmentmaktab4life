@@ -1,4 +1,4 @@
-/* M4L V100.7 - Admin menu home and Admin Academics / Curriculum module
+/* M4L V102.12.1 - Admin menu home and Admin Academics / Curriculum module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-attendance.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe
    while the app is split gradually.
@@ -85,6 +85,10 @@ function prepareAdminAcademicsScreen() {
 
   if (window.M4LGlobalCurriculum && typeof window.M4LGlobalCurriculum.syncAccess === "function") {
     window.M4LGlobalCurriculum.syncAccess();
+  }
+
+  if (window.M4LAcademyCalendar && typeof window.M4LAcademyCalendar.syncAccess === "function") {
+    window.M4LAcademyCalendar.syncAccess();
   }
 
   syncAdminLandingLayout();

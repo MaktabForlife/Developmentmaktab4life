@@ -133,6 +133,10 @@ import {
   switchAccountContextEndpoint
 } from "./routes/account-auth.js";
 import { getAcademyTimetableEndpoint } from "./routes/academy-timetable.js";
+import {
+  getAcademyCalendarAdminEndpoint,
+  saveAcademyCalendarEventEndpoint
+} from "./routes/platform-academy-calendar.js";
 import { resolveCourseScopedRequest } from "./lib/course-routing.js";
 import {
   BACKEND_APPS_SCRIPT,
@@ -154,6 +158,8 @@ const ROUTES = new Map([
   })],
   ["/api/account/global-workspace", workerRoute("account-auth", accountGlobalWorkspaceEndpoint)],
   ["/api/academy/timetable", workerRoute("academy-timetable", getAcademyTimetableEndpoint)],
+  ["/api/admin/platform/calendar/get", workerRoute("academy-calendar", getAcademyCalendarAdminEndpoint)],
+  ["/api/admin/platform/calendar/save", workerRoute("academy-calendar", saveAcademyCalendarEventEndpoint)],
   ["/api/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/student/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],
   ["/api/admin/resources/list", googleSheetsRoute("resources", getResourcesGoogleSheetsEndpoint)],

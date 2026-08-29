@@ -48,6 +48,7 @@ const FEATURE_DEFINITIONS = Object.freeze({
   "platform-global-timetable": defineFixedFeature(BACKEND_WORKER),
   "account-auth": defineFixedFeature(BACKEND_WORKER),
   "academy-timetable": defineFixedFeature(BACKEND_WORKER),
+  "academy-calendar": defineFixedFeature(BACKEND_WORKER),
   "account-library-catalogue": defineFixedFeature(BACKEND_WORKER),
   "account-library-access": defineFixedFeature(BACKEND_WORKER),
   routing: defineFixedFeature(BACKEND_WORKER)

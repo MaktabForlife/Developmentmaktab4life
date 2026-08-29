@@ -1,15 +1,14 @@
-V102.12
+# Maktabhelper V102.12.1
 
-Academy timetable delivery over V102.11.2.
+V102.12.1 adds the Academy Calendar to the Academy timetable foundation introduced in V102.12.
 
-- Academy timetable becomes Home after central-account login.
-- Combines current Program Timetables and current published Global Courses.
-- Adds backend-enforced DETAIL/LABEL redaction.
-- Program membership is revalidated against the Program's own active identity before DETAIL is returned.
-- FREE Global Courses show detail to active accounts; PAID Global Courses require current entitlement or authorised teaching/admin access.
-- Zoom is shown only where the backend authorises the session.
-- Relevant classes are prominent; label-only Academy activity is muted.
-- Academy Home times use `13h00` format and support week navigation.
-- Existing Program and Global timetable builders remain separate and unchanged.
-- Platform schema remains `102.0.7`; no Sheet migration is required.
-- No repository paths are intentionally deleted.
+The Academy now has one central calendar for Admin-defined Terms, automatically generated South African public holidays, and Significant Islamic Dates sourced from the supplied 2025–2030 South African reference document. Academy Home displays this context alongside the combined Program and Global Course timetable.
+
+South African public holidays always display as **Public Holiday**. Good Friday and Family Day are calculated from Easter, and when a public holiday falls on Sunday the following Monday is also marked as a public holiday.
+
+Islamic descriptions are preserved from the supplied document. Most Likely Date is seeded as the active date and Alternate Date is retained for Admin adjustment. Ramadaan and the first 10 days of Zul Hijjah are derived informational periods.
+
+Published timetables remain immutable. Calendar closures warn scheduling but never silently rewrite publication history.
+
+Platform migration: `102.0.7` → `102.0.8`, adding the `AcademyCalendar` tab. See `docs/V102.12.1-PLATFORM-SHEET-MIGRATION.md`.
+Verification: 59/59 test files pass; changed JavaScript/MJS files pass syntax validation.

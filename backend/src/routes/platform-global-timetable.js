@@ -1,6 +1,7 @@
-/* M4L V102.11.2 - Global-subject course scheduling, lifecycle and immutable publication. */
+/* M4L V102.12.1 - Global Course scheduling with Academy Calendar conflict warnings. */
 
 import { getAuthUser } from "../lib/auth.js";
+import { noTeachingEventsOnDates } from "../lib/academy-calendar.js";
 import {
   activeGlobalTimetableSessionsForRun,
   generateSessionDates,
@@ -36,7 +37,7 @@ import {
 
 const MAX_ZOOM_LINK_LENGTH = 1000;
 const HTTPS_URL_PATTERN = /^https:\/\//i;
-const TIMETABLE_SCHEMA_VERSION = "102.0.7";
+const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8"]);
 
 export async function getPlatformGlobalTimetableEndpoint(request, env) {
   const permission = await requireGlobalTimetableAdmin(request, env);
@@ -48,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.11.2",
+      version: "102.12.1",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -130,12 +131,14 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
       ModifiedDate: ""
     }));
 
+    const calendarWarnings = noTeachingEventsOnDates(tables.AcademyCalendar, dates);
     await writeGeneratedSessions(env, permission.user, tables, run, records, timestamp);
     const publishedSourceIds = publishedSourceIdSet(tables.PublishedGlobalTimetableSessions);
     return json({
       success: true,
       message: `${records.length} exact-dated global timetable session${records.length === 1 ? "" : "s"} generated`,
       sessions: records.map(row => enrichSession(mapGlobalTimetableSession(row, publishedSourceIds), tables)),
+      calendarWarnings,
       state: developmentStateForResponse(tables, run.RunID)
     });
   } catch (error) {
@@ -410,6 +413,7 @@ async function readGlobalTimetableTables(env) {
     "GlobalTimetablePublications",
     "PublishedGlobalTimetableSessions",
     "GlobalTimetableSessionLifecycle",
+    "AcademyCalendar",
     "PlatformConfig",
     "PlatformAuditLog"
   ];
@@ -424,8 +428,8 @@ function requireGlobalTimetableSchema(configRows) {
     normalizePlatformIdentifier(row.ConfigKey) === "PLATFORMSCHEMAVERSION"
   ));
   const version = clean(matches[0]?.ConfigValue);
-  if (matches.length !== 1 || version !== TIMETABLE_SCHEMA_VERSION) {
-    throw new Error(`Global timetable requires PlatformSchemaVersion ${TIMETABLE_SCHEMA_VERSION}`);
+  if (matches.length !== 1 || !TIMETABLE_SCHEMA_VERSIONS.has(version)) {
+    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7 or 102.0.8");
   }
 }
 

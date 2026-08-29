@@ -37,7 +37,7 @@ const tables = {
     ],
     PlatformConfig: [
       PLATFORM_SHEET_HEADERS.PlatformConfig,
-      ["PlatformSchemaVersion", "102.0.7", "", "", ""],
+      ["PlatformSchemaVersion", "102.0.8", "", "", ""],
       ["PlatformTimezone", "Africa/Johannesburg", "", "", ""],
       ["GlobalCurriculumVersion", "25", "", "", ""],
       ["GlobalTimetableVersion", "2", "", "", ""]
@@ -78,6 +78,7 @@ const tables = {
       PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle,
       ["GSLIFE1", "GTSES1", "GTPUB1", "SCHEDULED", "", "", "", "", "", "", "", ""]
     ],
+    AcademyCalendar: [PLATFORM_SHEET_HEADERS.AcademyCalendar],
     PublishedGlobalTimetableSessions: [
       PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions,
       ["GTPS1", "GTPUB1", "GTSES1", "GSRUN1", "GSUBJ1", "GMOD1", "2026-08-27", "20:00", "21:00", "ACCOUNT1", "https://zoom.test/global", "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", "Steps to My Rabb Term 3", "Steps to My Rabb", "Hearts Connected", "Global Admin", "Africa/Johannesburg"]
@@ -163,7 +164,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "102.12");
+  assert.equal(body.version, "102.12.1");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.weekEnd, "2026-08-30");
   assert.equal(body.timezone, "Africa/Johannesburg");

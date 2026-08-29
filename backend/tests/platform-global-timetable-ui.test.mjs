@@ -9,7 +9,7 @@ const [adminHtml, js, css] = await Promise.all([
 
 assert.match(adminHtml, /Course Scheduler/);
 assert.match(adminHtml, /Program Timetables/);
-assert.match(adminHtml, /styles\.css\?v=102\.11\.2/);
+assert.match(adminHtml, /styles\.css\?v=102\.12\.1/);
 assert.match(js, /Revise timetable/);
 assert.match(js, /Publish revision/);
 assert.match(js, /Reschedule session/);

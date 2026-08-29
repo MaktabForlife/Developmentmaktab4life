@@ -1,4 +1,4 @@
-/* M4L V102.12 - Global Course Scheduler, lifecycle revisions and immutable publication.
+/* M4L V102.12.1 - Academy Calendar, Academy timetable delivery and global scheduling.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "102.12"
+          version: "102.12.1"
         });
       }
 

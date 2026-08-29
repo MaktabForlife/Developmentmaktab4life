@@ -1,6 +1,7 @@
-/* M4L V102.12 - Academy timetable delivery across Programs and Global Courses. */
+/* M4L V102.12.1 - Academy timetable delivery with Academy Calendar context. */
 
 import { getAuthUser } from "../lib/auth.js";
+import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
 import { canAccountAccessGlobalSubject, dateInTimezone, isValidIanaTimezone } from "../lib/global-subject-delivery.js";
 import { resolveCurrentPublishedGlobalTimetable } from "../lib/global-timetable.js";
 import { readGoogleSheetValues } from "../lib/google-sheets.js";
@@ -95,15 +96,17 @@ export async function getAcademyTimetableEndpoint(request, env) {
     const sessions = [...programEvents, ...globalEvents]
       .sort(compareAcademyEvents)
       .map((event, index) => ({ ...event, eventKey: `AE${String(index + 1).padStart(4, "0")}` }));
+    const calendarEvents = buildAcademyCalendarEvents(platform.academyCalendar, week.start, week.end);
 
     return json({
       success: true,
-      version: "102.12",
+      version: "102.12.1",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,
       today: week.today,
       sessions,
+      calendarEvents,
       warnings,
       count: sessions.length
     });
@@ -120,7 +123,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 }
 
 async function loadPlatformAcademyState(env) {
-  const [config, accounts, courses, courseAccess, subjects, policies, matrix, runs, runState, publications, lifecycle, publishedSessions] = await Promise.all([
+  const [config, accounts, courses, courseAccess, subjects, policies, matrix, runs, runState, publications, lifecycle, publishedSessions, academyCalendar] = await Promise.all([
     readPlatformSheet(env, "PlatformConfig"),
     readPlatformSheet(env, "UserAccounts"),
     readPlatformSheet(env, "CourseRegistry"),
@@ -132,7 +135,8 @@ async function loadPlatformAcademyState(env) {
     readPlatformSheet(env, "GlobalTimetableRunState"),
     readPlatformSheet(env, "GlobalTimetablePublications"),
     readPlatformSheet(env, "GlobalTimetableSessionLifecycle"),
-    readPlatformSheet(env, "PublishedGlobalTimetableSessions")
+    readPlatformSheet(env, "PublishedGlobalTimetableSessions"),
+    readPlatformSheet(env, "AcademyCalendar")
   ]);
   return {
     config,
@@ -143,6 +147,7 @@ async function loadPlatformAcademyState(env) {
     policies,
     matrix,
     runs,
+    academyCalendar,
     GlobalTimetableRunState: runState,
     GlobalTimetablePublications: publications,
     GlobalTimetableSessionLifecycle: lifecycle,

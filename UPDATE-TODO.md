@@ -1,64 +1,61 @@
-# ﷽ V102.12 update TODO — Academy timetable delivery
+# V102.12.1 UPDATE TODO
 
-## 1. Before deployment
+## 1. Platform Sheet — before code deployment
 
-- [ ] Confirm the deployed development baseline is V102.11.2.
-- [ ] Do **not** change `PlatformConfig.PlatformSchemaVersion`; it remains `102.0.7`.
-- [ ] Do **not** add, delete or rename Platform/Program Sheet tabs for V102.12.
-- [ ] Apply only the paths listed in `CHANGED-FILES.txt`.
-- [ ] `DELETE-FILES.txt` confirms there are no intentional deletions.
+- [ ] Back up the Platform Sheet.
+- [ ] Leave `PlatformConfig!B3` at `102.0.7`.
+- [ ] Create the `AcademyCalendar` tab.
+- [ ] Import `docs/V102.12.1-AcademyCalendar-template.csv` at `A1`.
+- [ ] Confirm 14 exact headers and 42 Islamic reference rows.
+- [ ] Do not create public-holiday rows.
 
 ## 2. Deploy
 
-- [ ] Commit the V102.12 changed files to development GitHub.
-- [ ] Deploy Pages and Worker from the **same commit**.
-- [ ] Confirm Worker root returns `version: "102.12"`.
-- [ ] Confirm `/account/<uniqueid>` displays `V102.12`.
-- [ ] Use a hard refresh/private window for the first browser check so the new account/shell assets cannot be masked by old cache entries.
+- [ ] Apply this changed-files overlay to the deployed V102.12 development repo.
+- [ ] Commit all V102.12.1 files together.
+- [ ] Deploy Pages and Worker from the same commit.
+- [ ] Confirm Worker `/` reports `102.12.1`.
+- [ ] Change `PlatformConfig!B3` to `102.0.8` only after Pages and Worker are both live.
+- [ ] Run Platform validation; confirm 19 required tabs.
 
-## 3. Login / Academy Home
+## 3. Academy Calendar verification
 
-- [ ] Log in through a central `/account/<uniqueid>` link.
-- [ ] After PIN validation, confirm the first authenticated page is **Academy Home → Timetable**; it must not auto-open the current Program workspace.
-- [ ] Confirm current week is displayed Monday–Sunday.
-- [ ] Confirm previous week, This week, next week and refresh controls work.
-- [ ] Confirm displayed times use `13h00–14h00`, never AM/PM.
-- [ ] Confirm the selected Program/Global workspace can still be opened explicitly below the timetable.
-- [ ] From a Program/Global workspace, use Profile → Academy Home and confirm the combined timetable returns.
+- [ ] Open Admin → Academy Calendar.
+- [ ] Confirm the current month's South African public holidays display only as `Public Holiday`.
+- [ ] Confirm a Sunday public holiday also creates the following Monday public holiday.
+- [ ] Check at least one Good Friday and Family Day date.
+- [ ] Check Significant Islamic Dates against the supplied source document.
+- [ ] Confirm the Alternate Date is visible/editable for Islamic dates.
+- [ ] Create the Academy Terms through the UI and save them.
+- [ ] Confirm Terms appear on the calendar.
 
-## 4. Program visibility checks
+## 4. Academy Home
 
-Use accounts with known Program membership/group roles.
+- [ ] Log in through a central account.
+- [ ] Confirm the Academy timetable remains Home.
+- [ ] Confirm current Term/religious-period context displays when applicable.
+- [ ] Confirm public holidays/Islamic dates appear on their dates.
+- [ ] Confirm published sessions are still visible even on a no-teaching date.
 
-- [ ] Ordinary student: own group and `ALL` sessions return subject/module detail and authorised Zoom.
-- [ ] Ordinary student: another group's session shows **Program name/date/time only**.
-- [ ] Ordinary student: Program `GroupNo = 0` is not incorrectly treated as `ALL`.
-- [ ] ClassGroup `0` student retains all-groups detail access.
-- [ ] Program Teacher sees complete subject/module timetable for the authorised Program.
-- [ ] Teacher's own session is prominent and has Zoom when configured.
-- [ ] Another teacher's session remains detailed but muted and has no Zoom action.
-- [ ] Program ADMIN/SENIOR sees full detail for that authorised Program.
-- [ ] Active account with no Program membership sees Program label/date/time only.
-- [ ] Temporarily make a central Program membership stale/mismatched only in a controlled test environment; confirm the Academy endpoint fails closed to LABEL rather than returning Program detail.
+## 5. Course Scheduler
 
-## 5. Global Course visibility checks
+- [ ] In DEVELOPMENT, generate a Global Course schedule that includes a public holiday.
+- [ ] Confirm the course is saved and a calendar warning identifies the affected date.
+- [ ] Confirm no session is silently deleted or cancelled.
+- [ ] Use Cancel/Reschedule where required and republish normally.
 
-- [ ] FREE Global Course: active central account sees full subject/module detail.
-- [ ] FREE Global Course: authorised Zoom appears for a scheduled session when configured.
-- [ ] PAID Global Course: subscribed account sees full detail and authorised Zoom.
-- [ ] PAID Global Course: non-subscriber sees Global Subject label/date/time only; teacher/module/Zoom are absent.
-- [ ] Assigned Global Course teacher receives teaching detail without a learner subscription.
-- [ ] CANCELLED occurrence is visibly cancelled and has no Join Zoom action.
-- [ ] RESCHEDULED source occurrence is visible as rescheduled and has no active Join Zoom action; its scheduled replacement is delivered separately.
+## 6. Focused regression
 
-## 6. Regression checks
-
-- [ ] Program Timetables builder/read behavior is unchanged.
-- [ ] Global Course Scheduler creation/revision/publication is unchanged.
-- [ ] Attendance successful save still resets the visible register to Present.
-- [ ] Protected Global Resources/Drive authorization still follows current FREE/PAID entitlement.
-- [ ] Weekly Planner, Progress, Library, Student Records and Admin continue to open normally.
+- [ ] Program Timetables.
+- [ ] Global Course Scheduler and publication/revision.
+- [ ] Global Access FREE/PAID behavior.
+- [ ] Protected Global resources and Zoom authorization.
+- [ ] Attendance reset carry-forward.
+- [ ] Academy DETAIL/LABEL redaction.
 
 ## Rollback
 
-V102.12 has **no Sheet migration**. To roll back, revert the V102.12 code commit to the deployed V102.11.2 commit and redeploy Pages + Worker together. Leave Platform schema `102.0.7` and all timetable/publication data unchanged.
+- [ ] Set `PlatformConfig!B3` back to `102.0.7` first.
+- [ ] Revert Pages and Worker to V102.12 together.
+- [ ] Leave the additive `AcademyCalendar` tab in place.
+- [ ] Do not alter published timetable data.
