@@ -39,20 +39,26 @@ assert.equal(february.some(item => item.description === "First Fast"), false, "F
 assert.equal(february.find(item => item.description === "First Taraweeh")?.islamicDate, "1 Ramadaan 1447");
 assert.equal(islamicDateLabel("Eid-ul-Fitr", "2026-03-21"), "1 Shawwal 1447");
 assert.equal(islamicDateLabel("New Islamic Year", "2026-06-17"), "1 Muharram 1448");
+const legacyNoTeachingIslamic = buildAcademyCalendarEvents([
+  { ...islamicRows[0], TeachingImpact: "NO_TEACHING", AlternateDate: "2026-02-17" }
+], "2026-02-18", "2026-02-18")[0];
+assert.equal(legacyNoTeachingIslamic.teachingImpact, "INFORMATION", "Islamic dates are informational regardless of legacy TeachingImpact values");
+assert.equal(legacyNoTeachingIslamic.alternateDate, "", "Alternate Islamic dates are no longer delivered");
+
 
 const publicOverrides = [
   ...islamicRows,
   { CalendarEventID: "PH-OFF", EventType: "PUBLIC_HOLIDAY", Description: "Public Holiday", StartDate: "2026-08-09", EndDate: "2026-08-09", AlternateDate: "", TeachingImpact: "NO_TEACHING", Active: false },
-  { CalendarEventID: "PH-ADD", EventType: "PUBLIC_HOLIDAY", Description: "Public Holiday", StartDate: "2026-08-12", EndDate: "2026-08-12", AlternateDate: "", TeachingImpact: "NO_TEACHING", Active: true }
+  { CalendarEventID: "PH-ADD", EventType: "PUBLIC_HOLIDAY", Description: "School Holiday", StartDate: "2026-08-12", EndDate: "2026-08-12", AlternateDate: "", TeachingImpact: "NO_TEACHING", Active: true }
 ];
 const overriddenAugust = buildAcademyCalendarEvents(publicOverrides, "2026-08-01", "2026-08-31");
 assert.equal(overriddenAugust.some(item => item.eventType === "PUBLIC_HOLIDAY" && item.startDate === "2026-08-09"), false, "inactive override suppresses generated Public Holiday");
-assert.equal(overriddenAugust.some(item => item.eventType === "PUBLIC_HOLIDAY" && item.startDate === "2026-08-12"), true, "active override adds Public Holiday");
+assert.equal(overriddenAugust.some(item => item.eventType === "PUBLIC_HOLIDAY" && item.startDate === "2026-08-12" && item.description === "School Holiday"), true, "active override adds an editable Holiday description");
 
 assert.equal(validateAcademyCalendarRecord(islamicRows[0]), true);
 assert.equal(validateAcademyCalendarRecord(publicOverrides.at(-1)), true);
 assert.throws(() => validateAcademyCalendarRecord({ ...islamicRows[0], Description: "Changed description" }), /must match the reference document/);
-assert.throws(() => validateAcademyCalendarRecord({ ...publicOverrides.at(-1), Description: "Heritage Day" }), /description must be Public Holiday/);
+assert.equal(validateAcademyCalendarRecord({ ...publicOverrides.at(-1), Description: "Heritage Day" }), true, "Holiday descriptions are editable");
 assert.throws(() => validateAcademyCalendarRecord({ ...islamicRows[3], EndDate: "2026-05-27" }), /cannot precede/);
 
-console.log("V102.12.2 Academy Calendar date generation, Islamic labels and Public Holiday override tests passed.");
+console.log("V102.12.5 Academic Calendar Islamic-information and editable Holiday override tests passed.");

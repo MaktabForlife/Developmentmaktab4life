@@ -1,65 +1,117 @@
-/* M4L V102.12.2 - Academy Calendar full-width / split reference layout with inline editing. */
+/* M4L V102.12.5 - Academic Calendar refreshed cards, inline editing and Holidays. */
 .academy-calendar-screen { padding-bottom:42px; }
-.academy-calendar-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
-.academy-calendar-header h2 { margin:0; }
-.academy-calendar-message { min-height:20px; margin:0 0 10px; font-weight:700; }
+.academy-calendar-header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; }
+.academy-calendar-header h2 { margin:0; font-size:clamp(1.75rem,3vw,2.45rem); letter-spacing:-.02em; }
+.academy-calendar-message { min-height:20px; margin:0 0 10px; font-weight:750; }
 .academy-calendar-message.is-error { color:#9b2c2c; }
 .academy-calendar-message.is-success { color:#2f6b46; }
 .academy-calendar-shell { display:grid; gap:18px; }
-.academy-calendar-panel { border:1px solid #e7dde8; border-radius:18px; background:#fff; padding:16px; min-width:0; }
+
+.academy-calendar-panel {
+  min-width:0;
+  padding:18px;
+  border:1px solid #ece3ed;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 12px 30px rgba(52,35,55,.055);
+}
 .academy-calendar-full-width { width:100%; }
-.academy-calendar-toolbar,.academy-calendar-month-actions,.academy-calendar-panel-heading { display:flex; align-items:center; gap:10px; }
-.academy-calendar-toolbar,.academy-calendar-panel-heading { justify-content:space-between; }
+.academy-calendar-toolbar,
+.academy-calendar-month-actions,
+.academy-calendar-panel-heading { display:flex; align-items:center; gap:10px; }
+.academy-calendar-toolbar {
+  justify-content:space-between;
+  padding:12px 14px;
+  border:1px solid #eee6ef;
+  border-radius:18px;
+  background:#faf8fb;
+}
+.academy-calendar-panel-heading { justify-content:space-between; margin-bottom:12px; }
+.academy-calendar-panel-heading h3 { margin:0; font-size:1.05rem; }
 .academy-calendar-month-actions { flex-wrap:wrap; }
-.academy-calendar-icon-button,.academy-calendar-today-button { min-height:42px; border:1px solid #ddd2df; border-radius:11px; background:#fbf8fb; color:#713a78; font-weight:800; }
-.academy-calendar-icon-button { width:42px; min-width:42px; padding:0; font-size:1.2rem; display:inline-flex; align-items:center; justify-content:center; }
-.academy-calendar-today-button { padding:0 13px; }
+
+.academy-calendar-icon-button,
+.academy-calendar-today-button {
+  min-height:40px;
+  border:1px solid #e5dce7;
+  border-radius:999px;
+  color:#713a78;
+  font-weight:850;
+  background:#fff;
+}
+.academy-calendar-icon-button { width:40px; min-width:40px; padding:0; font-size:1.18rem; display:inline-flex; align-items:center; justify-content:center; }
+.academy-calendar-today-button { padding:0 14px; }
+.academy-calendar-icon-button:hover,
+.academy-calendar-today-button:hover { border-color:#cdbbd0; background:#f8f3f9; }
+.academy-calendar-header-refresh,
+.academy-calendar-save {
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.academy-calendar-header-refresh { border-color:transparent !important; }
+.academy-calendar-header-refresh:hover { background:transparent !important; border-color:#d9cedb !important; }
+.academy-calendar-save { border:0 !important; color:#713a78 !important; }
+.academy-calendar-save:hover { background:transparent !important; color:#4f2456 !important; }
+
 .academy-calendar-year-field { display:flex; align-items:center; gap:8px; font-weight:800; }
-.academy-calendar-year-field input { width:92px; min-height:42px; border:1px solid #ddd2df; border-radius:10px; padding:0 10px; }
+.academy-calendar-year-field input {
+  width:92px; min-height:40px; border:1px solid #e1d7e3; border-radius:12px; padding:0 10px; background:#fff;
+}
+
 .academy-calendar-weekdays,.academy-calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; }
-.academy-calendar-weekdays { margin-bottom:8px; text-align:center; font-weight:800; font-size:.8rem; }
-.academy-calendar-day { min-height:112px; min-width:0; padding:8px; border:1px solid #eee7ef; border-radius:13px; background:#fcfafc; }
+.academy-calendar-weekdays { margin-bottom:8px; text-align:center; font-weight:850; font-size:.78rem; color:#625866; }
+.academy-calendar-day {
+  min-height:112px; min-width:0; padding:9px; border:1px solid #eee7ef; border-radius:16px; background:#fcfbfc;
+}
 .academy-calendar-day.is-blank { visibility:hidden; }
-.academy-calendar-day.is-today { border-color:#9e67a5; box-shadow:inset 0 0 0 1px rgba(126,67,135,.14); }
-.academy-calendar-day-number { display:block; margin-bottom:6px; font-weight:850; }
-.academy-calendar-day-events { display:grid; gap:4px; }
-.academy-calendar-chip { display:grid; gap:1px; padding:4px 6px; border-radius:7px; overflow:hidden; font-size:.68rem; font-weight:800; background:#eee8ef; }
+.academy-calendar-day.is-today { border-color:#b997be; box-shadow:inset 0 0 0 1px rgba(126,67,135,.12); background:#fff; }
+.academy-calendar-day-number { display:block; margin-bottom:7px; font-weight:900; }
+.academy-calendar-day-events { display:grid; gap:5px; }
+.academy-calendar-chip { display:grid; gap:2px; padding:5px 7px; border-radius:999px; overflow:hidden; font-size:.66rem; font-weight:800; background:#eee8ef; }
 .academy-calendar-chip>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.academy-calendar-chip small { font-size:.61rem; font-weight:700; opacity:.78; white-space:normal; }
-.academy-calendar-chip.is-public-holiday { background:#f1e2e2; color:#7b3434; }
-.academy-calendar-chip.is-islamic-day { background:#e7f2e8; color:#2f6641; }
-.academy-calendar-chip.is-religious-period { background:#eef0df; color:#656224; }
-.academy-calendar-chip.is-term { background:#eee5f1; color:#713a78; }
+.academy-calendar-chip small { padding:0 2px; font-size:.59rem; font-weight:700; opacity:.78; white-space:normal; }
+.academy-calendar-chip.is-public-holiday { background:#f4e9ea; color:#7a4146; }
+.academy-calendar-chip.is-islamic-day { background:#e9f3eb; color:#356944; }
+.academy-calendar-chip.is-religious-period { background:#f2f1e5; color:#68652d; }
+.academy-calendar-chip.is-term { background:#f1eaf3; color:#713a78; }
 
 .academy-calendar-reference-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start; }
-.academy-calendar-table-wrap { overflow-x:auto; }
-.academy-calendar-table { width:100%; border-collapse:collapse; }
-.academy-calendar-table th,.academy-calendar-table td { padding:9px; border-bottom:1px solid #eee7ef; text-align:left; vertical-align:middle; }
-.academy-calendar-table th { font-size:.8rem; }
-.academy-calendar-inline-table input,.academy-calendar-inline-table select,.academy-calendar-inline-item input,.academy-calendar-inline-item select { min-height:42px; border:1px solid #d9cedb; border-radius:10px; padding:0 10px; font:inherit; background:#fff; min-width:0; }
+.academy-calendar-table-wrap { overflow-x:auto; border:1px solid #eee7ef; border-radius:16px; }
+.academy-calendar-table { width:100%; border-collapse:separate; border-spacing:0; }
+.academy-calendar-table th,.academy-calendar-table td { padding:10px; border-bottom:1px solid #eee7ef; text-align:left; vertical-align:middle; }
+.academy-calendar-table tr:last-child td { border-bottom:0; }
+.academy-calendar-table th { font-size:.78rem; color:#655b68; background:#faf8fb; }
+.academy-calendar-inline-table input,
+.academy-calendar-inline-table select,
+.academy-calendar-inline-item input,
+.academy-calendar-inline-item select {
+  min-height:42px; border:1px solid #ded4e0; border-radius:12px; padding:0 11px; font:inherit; background:#fff; min-width:0;
+}
 .academy-calendar-inline-input,.academy-calendar-inline-select { width:100%; }
-.academy-calendar-action-column { width:96px; }
-.academy-calendar-inline-actions { display:flex; align-items:center; gap:6px; justify-content:flex-end; white-space:nowrap; }
-.academy-calendar-save { flex:0 0 auto; }
-.academy-calendar-empty-row { color:#817783; padding:14px 8px; }
+.academy-calendar-action-column { width:92px; }
+.academy-calendar-inline-actions { display:flex; align-items:center; gap:5px; justify-content:flex-end; white-space:nowrap; }
+.academy-calendar-empty-row { color:#817783; padding:16px 10px; }
 
-.academy-calendar-inline-list { display:grid; gap:10px; }
-.academy-calendar-inline-item { display:grid; gap:10px; align-items:center; border-bottom:1px solid #eee7ef; padding:0 0 10px; }
-.academy-calendar-inline-item:last-child { border-bottom:0; }
-.academy-calendar-islamic-row { grid-template-columns:minmax(150px,1.1fr) minmax(0,2fr) auto; }
+.academy-calendar-inline-list { display:grid; gap:8px; }
+.academy-calendar-inline-item {
+  display:grid; gap:10px; align-items:center; padding:10px; border:1px solid #eee7ef; border-radius:16px; background:#fcfbfc;
+}
+.academy-calendar-islamic-row { grid-template-columns:minmax(155px,1.25fr) minmax(0,1.4fr) auto; }
 .academy-calendar-islamic-name { display:grid; gap:3px; min-width:0; }
 .academy-calendar-islamic-name strong { line-height:1.25; }
-.academy-calendar-islamic-name small { color:#716977; font-size:.76rem; font-weight:700; }
-.academy-calendar-islamic-fields { display:grid; grid-template-columns:repeat(2,minmax(118px,1fr)); gap:8px; min-width:0; }
+.academy-calendar-islamic-name small { color:#716977; font-size:.76rem; font-weight:750; }
+.academy-calendar-islamic-fields { display:grid; grid-template-columns:minmax(132px,1fr) minmax(116px,.7fr); gap:8px; min-width:0; }
 .academy-calendar-compact-field { display:grid; gap:4px; min-width:0; }
-.academy-calendar-compact-field>span { font-size:.7rem; font-weight:800; color:#756a77; }
+.academy-calendar-compact-field>span { font-size:.68rem; font-weight:850; color:#756a77; }
 .academy-calendar-compact-field input,.academy-calendar-compact-field select { width:100%; }
 
 .academy-calendar-public-list { display:grid; gap:8px; }
-.academy-calendar-public-row { grid-template-columns:minmax(112px,1fr) minmax(145px,1.25fr) auto; padding-bottom:8px; }
-.academy-calendar-public-name { font-weight:800; color:#5f5661; }
-.academy-calendar-add-after-list { width:42px; height:42px; margin-top:10px; border:1px solid #ddd2df; border-radius:11px; background:#fbf8fb; color:#713a78; font-weight:900; font-size:1.25rem; display:inline-flex; align-items:center; justify-content:center; }
-.academy-calendar-empty { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:20px; border:1px solid #eee7ef; border-radius:15px; }
+.academy-calendar-public-row { grid-template-columns:minmax(160px,1.3fr) minmax(145px,1fr) auto; }
+.academy-calendar-add-after-list {
+  width:40px; height:40px; margin-top:10px; border:1px solid #e1d7e3; border-radius:999px; background:#fff; color:#713a78; font-weight:900; font-size:1.2rem; display:inline-flex; align-items:center; justify-content:center;
+}
+.academy-calendar-add-after-list:hover { border-color:#cdbbd0; background:#f8f3f9; }
+.academy-calendar-empty { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:20px; border:1px solid #eee7ef; border-radius:18px; background:#fff; }
 
 @media (max-width:1100px) {
   .academy-calendar-islamic-row { grid-template-columns:1fr; }

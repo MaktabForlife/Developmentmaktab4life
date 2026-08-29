@@ -16,7 +16,7 @@
   <!-- PWA: Admin install settings -->
   <!-- M4L v79.7: Admin index Progress HTML cleanup; quarantined legacy Progress sections removed. -->
 <link rel="stylesheet" href="/styles.css?v=102.12.2">
-<link rel="stylesheet" href="/css/m4l-29-academy-calendar.css?v=102.12.2">
+<link rel="stylesheet" href="/css/m4l-29-academy-calendar.css?v=102.12.5">
   <link rel="manifest" href="/admin-manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="/admin-apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/admin-favicon-32x32.png" />
@@ -278,12 +278,12 @@
             type="button"
             aria-hidden="true"
             style="--cover-home-icon: url('/icons/timetable.svg?v=101.4')"
-            aria-label="Open Academy Calendar"
+            aria-label="Open Academic Calendar"
           >
             <span class="home-cover-icon-tile" aria-hidden="true">
               <span class="home-cover-icon-glyph"></span>
             </span>
-            <span class="home-cover-icon-label">Academy Calendar</span>
+            <span class="home-cover-icon-label">Academic Calendar</span>
           </button>
 
           <button
@@ -518,16 +518,16 @@
     <!-- ACADEMY CALENDAR -->
     <section id="academy-calendar-screen" class="screen admin-theme academy-calendar-screen" aria-labelledby="academy-calendar-title">
       <header class="academy-calendar-header">
-        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close Academy Calendar" title="Close">
+        <button type="button" class="xclose-home-btn icon-action-btn" data-header-action="screen" data-header-target="admin-academics" aria-label="Close Academic Calendar" title="Close">
           <span class="app-icon app-icon-xclose" aria-hidden="true"></span><span class="visually-hidden">Close</span>
         </button>
-        <h2 id="academy-calendar-title">Academy Calendar</h2>
-        <button type="button" class="icon-action-btn" data-academy-calendar-action="reload" aria-label="Reload Academy Calendar" title="Reload">
+        <h2 id="academy-calendar-title">Academic Calendar</h2>
+        <button type="button" class="icon-action-btn academy-calendar-header-refresh" data-academy-calendar-action="reload" aria-label="Refresh Academic Calendar" title="Refresh">
           <span class="app-icon" aria-hidden="true"></span><span class="visually-hidden">Reload</span>
         </button>
       </header>
       <p id="academy-calendar-message" class="academy-calendar-message" role="status" aria-live="polite"></p>
-      <div id="academy-calendar-content"><p class="helper-text">Loading Academy Calendar...</p></div>
+      <div id="academy-calendar-content"><p class="helper-text">Loading Academic Calendar...</p></div>
     </section>
 
     <!-- SHARED LIBRARY SCREEN -->
@@ -1747,7 +1747,7 @@
   </main>
 <script src="/js/m4l-dom.js?v=11"></script>
 <script src="/js/m4l-config.js?v=94.1"></script>
-<script src="/app.js?v=102.12.4"></script>
+<script src="/app.js?v=102.12.5"></script>
 <script src="/js/m4l-cache.js?v=102.4"></script>
 <script src="/js/m4l-auth.js?v=102.9.1"></script>
 <script src="/js/m4l-shell.js?v=102.12"></script>
@@ -1757,7 +1757,7 @@
   <script src="/js/m4l-recorder.js?v=97.1.5.1"></script>
 <script src="/js/m4l-attendance.js?v=97.1.5.5"></script>
 <script src="/js/m4l-admin-academics.js?v=102.12.2"></script>
-<script src="/js/m4l-academy-calendar.js?v=102.12.2"></script>
+<script src="/js/m4l-academy-calendar.js?v=102.12.5"></script>
 <script src="/js/m4l-system-settings.js?v=102.10"></script>
 <script src="/js/m4l-timetable-builder.js?v=102.11.2"></script>
 <script src="/js/m4l-global-curriculum.js?v=102.11.2"></script>

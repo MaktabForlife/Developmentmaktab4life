@@ -1,11 +1,13 @@
-# V102.12.4 Changes
+# V102.12.5 Changes
 
-- Refines Academy Home into swipeable day cards using the existing app visual language.
-- Mobile shows one day card at a time; larger screens show two cards side by side.
-- Each card scrolls vertically and the card rail scrolls/swipes horizontally.
-- Day headings use `‹ DAY - dd-MMM-yy ›`, preserving `TODAY` for the current date.
-- Removes the `Academy timetable` label and the green verified tick from Academy Home.
-- Reduces timetable session/Program pill width by about 40% for denser flexible layouts.
-- Removes session-count text from staff Program roll-up pills.
-- Carries forward the V102.12.3 `/app.js` loader hotfix and bumps the loader cache key to V102.12.4.
-- No Platform Sheet/schema change.
+- Renames the user-facing **Academy Calendar** to **Academic Calendar**.
+- Refreshes the Academic Calendar styling to match the newer Academy Home timetable language: clean white cards, softer borders, rounded controls and compact pill-style calendar markers.
+- Renames **Public Holidays** to **Holidays** in the Admin UI.
+- South African statutory holidays still generate automatically and default to the description `Public Holiday`.
+- Holiday descriptions are now editable inline, so Admin can add a more useful description when needed.
+- Holiday dates remain editable, removable with `×`, and additional holidays can still be added with `+`.
+- Removes the Alternate Date field from the Islamic Dates UI and stops exposing alternate Islamic dates through the calendar API.
+- Removes the Teaching field from Islamic Dates; Islamic dates are always informational.
+- Retains the Islamic date underneath the event description.
+- Save and Refresh icons on Academic Calendar use transparent/no-fill backgrounds.
+- No Platform Sheet/schema change: `PlatformSchemaVersion` remains `102.0.8` with 19 required tabs.

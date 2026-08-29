@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Academy Calendar inline administration UI. */
+/* M4L V102.12.5 - Academic Calendar refreshed inline administration UI. */
 (function () {
   "use strict";
 
@@ -32,7 +32,7 @@
 
   async function show() {
     if (!syncAccess()) {
-      alert("Academy Calendar is available to ADMIN and GLOBAL_ADMIN accounts only.");
+      alert("Academic Calendar is available to ADMIN and GLOBAL_ADMIN accounts only.");
       return false;
     }
     bind();
@@ -83,11 +83,11 @@
     if (model.loading || !allowed()) return false;
     if (model.loaded && !force) { render(); return true; }
     model.loading = true;
-    setMessage("Loading Academy Calendar…", "");
-    setContent('<p class="helper-text">Loading Academy Calendar…</p>');
+    setMessage("Loading Academic Calendar…", "");
+    setContent('<p class="helper-text">Loading Academic Calendar…</p>');
     try {
       const result = await apiPost("/api/admin/platform/calendar/get", { year: model.year });
-      if (!result.success) throw new Error(result.detail || result.error || "Unable to load Academy Calendar");
+      if (!result.success) throw new Error(result.detail || result.error || "Unable to load Academic Calendar");
       model.events = array(result.events);
       model.storedEvents = array(result.storedEvents);
       model.loaded = true;
@@ -95,8 +95,8 @@
       setMessage("", "");
       return true;
     } catch (error) {
-      setMessage(error.message || "Academy Calendar unavailable.", "error");
-      setContent('<div class="academy-calendar-empty"><strong>Academy Calendar unavailable</strong><button type="button" data-academy-calendar-action="reload">Try again</button></div>');
+      setMessage(error.message || "Academic Calendar unavailable.", "error");
+      setContent('<div class="academy-calendar-empty"><strong>Academic Calendar unavailable</strong><button type="button" data-academy-calendar-action="reload">Try again</button></div>');
       return false;
     } finally {
       model.loading = false;
@@ -202,8 +202,6 @@
       </div>
       <div class="academy-calendar-islamic-fields">
         ${compactField("Date", `<input data-field="startDate" type="date" value="${attr(event.startDate)}" />`)}
-        ${compactField("Alternate", `<input data-field="alternateDate" type="date" value="${attr(event.alternateDate)}" />`)}
-        ${compactField("Teaching", `<select data-field="teachingImpact"><option value="INFORMATION" ${event.teachingImpact === "INFORMATION" ? "selected" : ""}>INFORMATION</option><option value="NO_TEACHING" ${event.teachingImpact === "NO_TEACHING" ? "selected" : ""}>NO TEACHING</option></select>`)}
         ${compactField("Status", activeSelect(event.active !== false, true))}
       </div>
       <div class="academy-calendar-inline-actions">${saveButton("Save Islamic date", "save-islamic", event.id)}</div>
@@ -214,24 +212,24 @@
     const events = model.events
       .filter(event => event.eventType === "PUBLIC_HOLIDAY" && String(event.startDate).startsWith(`${model.year}-`))
       .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
-    const newRow = model.newPublicHoliday ? publicHolidayRow({ id: "", startDate: "" }, true) : "";
+    const newRow = model.newPublicHoliday ? publicHolidayRow({ id: "", description: "Public Holiday", startDate: "" }, true) : "";
     return `<section class="academy-calendar-panel academy-calendar-public-panel">
-      <div class="academy-calendar-panel-heading"><h3>Public Holidays</h3></div>
+      <div class="academy-calendar-panel-heading"><h3>Holidays</h3></div>
       <div class="academy-calendar-inline-list academy-calendar-public-list">
-        ${events.length ? events.map(event => publicHolidayRow(event, false)).join("") : (!model.newPublicHoliday ? '<div class="academy-calendar-empty-row">No Public Holidays are active for this year.</div>' : "")}
+        ${events.length ? events.map(event => publicHolidayRow(event, false)).join("") : (!model.newPublicHoliday ? '<div class="academy-calendar-empty-row">No Holidays are active for this year.</div>' : "")}
         ${newRow}
       </div>
-      <button type="button" class="academy-calendar-add-after-list" data-academy-calendar-action="add-public" aria-label="Add Public Holiday" title="Add Public Holiday">+</button>
+      <button type="button" class="academy-calendar-add-after-list" data-academy-calendar-action="add-public" aria-label="Add Holiday" title="Add Holiday">+</button>
     </section>`;
   }
 
   function publicHolidayRow(event, isNew) {
     return `<div class="academy-calendar-inline-item academy-calendar-public-row" data-calendar-row data-event-type="PUBLIC_HOLIDAY" data-event-id="${attr(event.id || "")}" data-original-date="${attr(event.startDate || "")}" ${isNew ? 'data-new-calendar-row="public"' : ""}>
-      <span class="academy-calendar-public-name">Public Holiday</span>
-      <input class="academy-calendar-inline-input" data-field="startDate" type="date" value="${attr(event.startDate || "")}" aria-label="Public Holiday date" />
+      <input class="academy-calendar-inline-input" data-field="description" type="text" maxlength="120" value="${attr(event.description || "Public Holiday")}" aria-label="Holiday description" />
+      <input class="academy-calendar-inline-input" data-field="startDate" type="date" value="${attr(event.startDate || "")}" aria-label="Holiday date" />
       <div class="academy-calendar-inline-actions">
-        ${saveButton("Save Public Holiday", "save-public", event.id || "")}
-        ${iconButton("×", isNew ? "cancel-new-public" : "delete-public", isNew ? "Cancel new Public Holiday" : "Delete Public Holiday", event.id || "")}
+        ${saveButton("Save Holiday", "save-public", event.id || "")}
+        ${iconButton("×", isNew ? "cancel-new-public" : "delete-public", isNew ? "Cancel new Holiday" : "Delete Holiday", event.id || "")}
       </div>
     </div>`;
   }
@@ -257,8 +255,7 @@
       eventId: row.dataset.eventId || "",
       eventType: "ISLAMIC_DAY",
       startDate: rowValue(row, "startDate"),
-      alternateDate: rowValue(row, "alternateDate"),
-      teachingImpact: rowValue(row, "teachingImpact") || "INFORMATION",
+      teachingImpact: "INFORMATION",
       active: rowValue(row, "active") === "TRUE"
     }, "Islamic date saved.");
   }
@@ -270,11 +267,12 @@
       eventId: row.dataset.eventId || "",
       eventType: "PUBLIC_HOLIDAY",
       originalDate: row.dataset.originalDate || "",
+      description: rowValue(row, "description") || "Public Holiday",
       startDate: rowValue(row, "startDate"),
       endDate: rowValue(row, "startDate"),
       teachingImpact: "NO_TEACHING",
       active: true
-    }, "Public Holiday saved.", () => { model.newPublicHoliday = false; });
+    }, "Holiday saved.", () => { model.newPublicHoliday = false; });
   }
 
   async function deleteInlinePublicHoliday(button) {
@@ -289,12 +287,12 @@
         startDate: row.dataset.originalDate || rowValue(row, "startDate"),
         active: false
       });
-      if (!result.success) throw new Error(result.detail || result.error || "Unable to delete Public Holiday");
+      if (!result.success) throw new Error(result.detail || result.error || "Unable to delete Holiday");
       model.loaded = false;
       await load(true);
-      setMessage("Public Holiday removed.", "success");
+      setMessage("Holiday removed.", "success");
     } catch (error) {
-      setMessage(error.message || "Unable to delete Public Holiday.", "error");
+      setMessage(error.message || "Unable to delete Holiday.", "error");
     } finally {
       button.disabled = false;
     }
@@ -304,13 +302,13 @@
     button.disabled = true;
     try {
       const result = await apiPost("/api/admin/platform/calendar/save", payload);
-      if (!result.success) throw new Error(result.detail || result.error || "Unable to save Academy Calendar event");
+      if (!result.success) throw new Error(result.detail || result.error || "Unable to save Academic Calendar event");
       if (typeof onSuccess === "function") onSuccess();
       model.loaded = false;
       await load(true);
       setMessage(successMessage, "success");
     } catch (error) {
-      setMessage(error.message || "Unable to save Academy Calendar event.", "error");
+      setMessage(error.message || "Unable to save Academic Calendar event.", "error");
     } finally {
       button.disabled = false;
     }

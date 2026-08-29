@@ -1,5 +1,7 @@
-# V102.12.4 Release Notes
+# V102.12.5 Release Notes
 
-Academy Home timetable presentation refinement. Backend DETAIL/LABEL redaction, Program roll-up permissions, current-session Zoom gating, Academy Calendar behavior, Course Scheduler and Program Timetables are unchanged.
+Academic Calendar refinement only. Academy Home timetable permissions, Program roll-ups, current-session Zoom gating, Course Scheduler, Program Timetables, Global Access and Attendance behavior are unchanged.
 
-PlatformSchemaVersion remains `102.0.8` with 19 required tabs.
+The internal Sheet/API identifiers remain `AcademyCalendar` / `PUBLIC_HOLIDAY`; only user-facing terminology changes to **Academic Calendar** and **Holidays**.
+
+`PlatformSchemaVersion` remains `102.0.8` with 19 required tabs.

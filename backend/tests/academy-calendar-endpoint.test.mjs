@@ -85,7 +85,7 @@ try {
 
   const initial = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.2");
+  assert.equal(initial.data.version, "102.12.5");
   assert.equal(initial.data.year, 2026);
   assert.equal(initial.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-09" && event.description === "Public Holiday"), true);
   assert.equal(initial.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-10" && event.description === "Public Holiday"), true);
@@ -93,6 +93,17 @@ try {
   assert.equal(initial.data.events.some(event => event.description === "First Fast"), false, "First Fast is suppressed from Academy Calendar delivery");
   assert.equal(initial.data.storedEvents.some(event => event.description === "First Fast"), false, "First Fast is suppressed from Admin Calendar list");
   assert.equal(initial.data.storedEvents.find(event => event.id === "ACEVT-TARAWEEH")?.islamicDate, "1 Ramadaan 1447");
+
+  const renamedGeneratedHoliday = await post("/api/admin/platform/calendar/save", {
+    eventId: "SA-PUBLIC-HOLIDAY-2026-09-24",
+    eventType: "PUBLIC_HOLIDAY",
+    description: "Heritage Weekend",
+    startDate: "2026-09-24",
+    active: true
+  }, token);
+  assert.equal(renamedGeneratedHoliday.response.status, 200, JSON.stringify(renamedGeneratedHoliday.data));
+  const afterRename = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
+  assert.equal(afterRename.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-09-24" && event.description === "Heritage Weekend"), true, "Generated South African holidays must allow an editable description");
 
   const created = await post("/api/admin/platform/calendar/save", {
     eventType: "TERM",
@@ -118,14 +129,15 @@ try {
   assert.equal(updatedIslamic.response.status, 200, JSON.stringify(updatedIslamic.data));
   assert.equal(updatedIslamic.data.event.description, "First Taraweeh");
   assert.equal(updatedIslamic.data.event.startDate, "2026-02-19");
-  assert.equal(updatedIslamic.data.event.alternateDate, "2026-02-18");
-  assert.equal(updatedIslamic.data.event.teachingImpact, "NO_TEACHING");
+  assert.equal(updatedIslamic.data.event.alternateDate, "", "Alternate Islamic dates are no longer exposed");
+  assert.equal(updatedIslamic.data.event.teachingImpact, "INFORMATION", "Islamic dates are informational only");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "UPDATE_ACADEMY_CALENDAR_EVENT");
 
   const movedPublic = await post("/api/admin/platform/calendar/save", {
     eventId: "SA-PUBLIC-HOLIDAY-2026-08-09",
     eventType: "PUBLIC_HOLIDAY",
     originalDate: "2026-08-09",
+    description: "Academy Holiday",
     startDate: "2026-08-11",
     active: true
   }, token);
@@ -134,7 +146,7 @@ try {
 
   const afterMove = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
   assert.equal(afterMove.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-09"), false);
-  assert.equal(afterMove.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-11"), true);
+  assert.equal(afterMove.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-11" && event.description === "Academy Holiday"), true);
 
   const deletedObserved = await post("/api/admin/platform/calendar/save", {
     eventId: "SA-PUBLIC-HOLIDAY-2026-08-10",
@@ -147,17 +159,19 @@ try {
 
   const addedPublic = await post("/api/admin/platform/calendar/save", {
     eventType: "PUBLIC_HOLIDAY",
+    description: "Mid-term Break",
     startDate: "2026-08-12",
     active: true
   }, token);
   assert.equal(addedPublic.response.status, 200, JSON.stringify(addedPublic.data));
   assert.equal(addedPublic.data.event.eventType, "PUBLIC_HOLIDAY");
   assert.equal(addedPublic.data.event.startDate, "2026-08-12");
+  assert.equal(addedPublic.data.event.description, "Mid-term Break");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_ACADEMY_PUBLIC_HOLIDAY");
 
   const finalCalendar = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
   assert.equal(finalCalendar.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-10"), false);
-  assert.equal(finalCalendar.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-12"), true);
+  assert.equal(finalCalendar.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-12" && event.description === "Mid-term Break"), true);
 
   const blockedNewIslamic = await post("/api/admin/platform/calendar/save", {
     eventType: "ISLAMIC_DAY",
@@ -172,7 +186,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.2 Academy Calendar inline admin, Public Holiday override and audit tests passed.");
+console.log("V102.12.5 Academic Calendar informational Islamic dates and editable Holiday description tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

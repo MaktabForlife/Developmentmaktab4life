@@ -1,5 +1,5 @@
-# Maktab4Life V102.12.4
+# Maktab4Life V102.12.5
 
-Changed-files release from V102.12.3. Apply the overlay to the development repository and deploy Pages + Worker from the same commit. No Sheet migration is required.
+Changed-files release from V102.12.4. Apply the overlay to the development repository and deploy Pages + Worker from the same commit.
 
-This release also carries forward the required root `app.js` loader file so the Reboot/Admin/Student portals cannot regress to the V102.12.3 loader 404.
+This is an Academic Calendar UI/behavior refinement. No Sheet migration is required. Existing `AcademyCalendar` tab/headers remain unchanged internally for compatibility.

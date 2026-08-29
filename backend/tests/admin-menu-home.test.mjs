@@ -28,7 +28,7 @@ assert.match(landing, />Admin Records</);
 assert.match(landing, />Resources</);
 assert.match(landing, />Program Timetables</);
 assert.match(landing, />Global Curriculum</);
-assert.match(landing, />Academy Calendar</);
+assert.match(landing, />Academic Calendar</);
 assert.match(landing, />System Settings</);
 assert.doesNotMatch(landing, /class="list-stack"/);
 assert.doesNotMatch(landing, />Curriculum</);

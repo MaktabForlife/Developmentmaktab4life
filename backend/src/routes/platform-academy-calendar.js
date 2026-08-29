@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Academy Calendar inline administration and Public Holiday overrides. */
+/* M4L V102.12.5 - Academic Calendar inline administration and editable Holiday overrides. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -30,7 +30,7 @@ export async function getAcademyCalendarAdminEndpoint(request, env) {
     return json({
       success: true,
       service: "academy-calendar",
-      version: "102.12.2",
+      version: "102.12.5",
       year,
       events: buildAcademyCalendarEvents(tables.AcademyCalendar, startDate, endDate),
       storedEvents: tables.AcademyCalendar.map(mapAcademyCalendarRow)
@@ -70,9 +70,11 @@ export async function saveAcademyCalendarEventEndpoint(request, env) {
       ? startDate
       : clean(body.endDate || existing?.EndDate || startDate);
     const alternateDate = eventType === "ISLAMIC_DAY"
-      ? clean(body.alternateDate ?? existing?.AlternateDate)
+      ? clean(existing?.AlternateDate)
       : "";
-    const teachingImpact = normalizeTeachingImpact(body.teachingImpact ?? existing?.TeachingImpact ?? "INFORMATION");
+    const teachingImpact = eventType === "ISLAMIC_DAY"
+      ? "INFORMATION"
+      : normalizeTeachingImpact(body.teachingImpact ?? existing?.TeachingImpact ?? "INFORMATION");
     const active = readBoolean(body.active, existing ? isActivePlatformValue(existing.Active) : true);
     const timestamp = new Date().toISOString();
 
@@ -102,7 +104,7 @@ export async function saveAcademyCalendarEventEndpoint(request, env) {
 
     const rowNumber = existing?._rowNumber || nextRowNumber(tables.AcademyCalendar);
     const changedFields = existing
-      ? ["Description", "StartDate", "EndDate", "AlternateDate", "TeachingImpact", "Active"]
+      ? ["Description", "StartDate", "EndDate", "Active"]
       : ["EventType", "Description", "StartDate", "EndDate", "TeachingImpact", "Active"];
     const audit = auditRow(permission, timestamp, existing ? "UPDATE_ACADEMY_CALENDAR_EVENT" : "CREATE_ACADEMY_CALENDAR_EVENT", record.CalendarEventID, changedFields);
 
@@ -121,20 +123,21 @@ async function savePublicHoliday({ body, tables, permission, existing, generated
   const timestamp = new Date().toISOString();
   const active = readBoolean(body.active, existing ? isActivePlatformValue(existing.Active) : true);
   const requestedDate = clean(body.startDate || existing?.StartDate || generatedPublicHolidayDate);
-  if (!requestedDate) throw clientError("Public Holiday date is required", 400);
+  const description = clean(body.description || existing?.Description || "Public Holiday") || "Public Holiday";
+  if (!requestedDate) throw clientError("Holiday date is required", 400);
   const records = [];
-  const actionFields = ["StartDate", "Active"];
+  const actionFields = ["Description", "StartDate", "Active"];
   let auditAction = "UPDATE_ACADEMY_PUBLIC_HOLIDAY";
 
   if (generatedPublicHolidayDate) {
-    if (active && requestedDate === generatedPublicHolidayDate) {
+    if (active && requestedDate === generatedPublicHolidayDate && description === "Public Holiday") {
       return json({
         success: true,
         unchanged: true,
         event: {
           id: `${GENERATED_PUBLIC_HOLIDAY_PREFIX}${generatedPublicHolidayDate}`,
           eventType: "PUBLIC_HOLIDAY",
-          description: "Public Holiday",
+          description,
           startDate: generatedPublicHolidayDate,
           endDate: generatedPublicHolidayDate,
           teachingImpact: "NO_TEACHING",
@@ -162,7 +165,7 @@ async function savePublicHoliday({ body, tables, permission, existing, generated
     if (active) {
       records.push(newCalendarRecord({
         eventType: "PUBLIC_HOLIDAY",
-        description: "Public Holiday",
+        description,
         startDate: requestedDate,
         endDate: requestedDate,
         alternateDate: "",
@@ -175,7 +178,7 @@ async function savePublicHoliday({ body, tables, permission, existing, generated
   } else if (existing) {
     const record = {
       ...existing,
-      Description: "Public Holiday",
+      Description: description,
       StartDate: requestedDate,
       EndDate: requestedDate,
       AlternateDate: "",
@@ -191,7 +194,7 @@ async function savePublicHoliday({ body, tables, permission, existing, generated
   } else {
     const record = newCalendarRecord({
       eventType: "PUBLIC_HOLIDAY",
-      description: "Public Holiday",
+      description,
       startDate: requestedDate,
       endDate: requestedDate,
       alternateDate: "",

@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Academy Calendar generation, inline-edit overrides and presentation helpers. */
+/* M4L V102.12.5 - Academic Calendar generation, editable Holiday overrides and presentation helpers. */
 
 import { isActivePlatformValue, normalizePlatformIdentifier } from "./platform-schema.js";
 
@@ -52,8 +52,8 @@ export function mapAcademyCalendarRow(row) {
     islamicDate: eventType === "ISLAMIC_DAY" ? islamicDateLabel(description, startDate) : "",
     startDate,
     endDate: String(row?.EndDate || row?.StartDate || "").trim(),
-    alternateDate: String(row?.AlternateDate || "").trim(),
-    teachingImpact: normalizeTeachingImpact(row?.TeachingImpact),
+    alternateDate: eventType === "ISLAMIC_DAY" ? "" : String(row?.AlternateDate || "").trim(),
+    teachingImpact: eventType === "ISLAMIC_DAY" ? "INFORMATION" : normalizeTeachingImpact(row?.TeachingImpact),
     active: isActivePlatformValue(row?.Active),
     source: eventType === "ISLAMIC_DAY" ? "ISLAMIC_REFERENCE" : eventType === "PUBLIC_HOLIDAY" ? "PUBLIC_HOLIDAY_OVERRIDE" : "ADMIN",
     editable: true,
@@ -101,6 +101,7 @@ export function buildEffectivePublicHolidays(rows, startDate, endDate) {
     byDate.set(event.startDate, publicHolidayEvent({
       id: event.id,
       date: event.startDate,
+      description: event.description,
       source: "PUBLIC_HOLIDAY_OVERRIDE",
       derived: false,
       rowNumber: event.rowNumber
@@ -188,7 +189,6 @@ export function validateAcademyCalendarRecord(record) {
     throw new Error("AcademyCalendar Islamic description must match the reference document");
   }
   if (type === "PUBLIC_HOLIDAY") {
-    if (description !== "Public Holiday") throw new Error("AcademyCalendar PUBLIC_HOLIDAY description must be Public Holiday");
     if (startDate !== endDate) throw new Error("AcademyCalendar PUBLIC_HOLIDAY rows must use the same StartDate and EndDate");
     if (impact !== "NO_TEACHING") throw new Error("AcademyCalendar PUBLIC_HOLIDAY TeachingImpact must be NO_TEACHING");
   }
@@ -248,11 +248,11 @@ export function islamicDateLabel(descriptionInput, startDateInput) {
   return label ? `${label} ${hijriYear}` : "";
 }
 
-function publicHolidayEvent({ id, date, source, derived, rowNumber }) {
+function publicHolidayEvent({ id, date, description = "Public Holiday", source, derived, rowNumber }) {
   return {
     id,
     eventType: "PUBLIC_HOLIDAY",
-    description: "Public Holiday",
+    description: String(description || "Public Holiday").trim() || "Public Holiday",
     islamicDate: "",
     startDate: date,
     endDate: date,
