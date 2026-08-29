@@ -1,4 +1,4 @@
-/* M4L V102.12.1 - Academy timetable delivery with Academy Calendar context. */
+/* M4L V102.12.2 - Academy timetable delivery with Academy Calendar context. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -100,7 +100,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "102.12.1",
+      version: "102.12.2",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,

@@ -1,9 +1,10 @@
-/* M4L V102.12.1 - Academy Calendar administration. */
+/* M4L V102.12.2 - Academy Calendar inline administration and Public Holiday overrides. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
   ACADEMY_CALENDAR_EVENT_TYPES,
   buildAcademyCalendarEvents,
+  isHiddenIslamicEvent,
   mapAcademyCalendarRow,
   normalizeTeachingImpact,
   validateAcademyCalendarRecord
@@ -14,6 +15,7 @@ import { getPlatformSpreadsheetId, readPlatformSheet } from "../lib/platform-she
 import { isActivePlatformValue, normalizePlatformIdentifier, PLATFORM_SHEET_HEADERS } from "../lib/platform-schema.js";
 
 const CALENDAR_SCHEMA_VERSION = "102.0.8";
+const GENERATED_PUBLIC_HOLIDAY_PREFIX = "SA-PUBLIC-HOLIDAY-";
 
 export async function getAcademyCalendarAdminEndpoint(request, env) {
   const permission = await requireCalendarAdmin(request, env);
@@ -28,10 +30,11 @@ export async function getAcademyCalendarAdminEndpoint(request, env) {
     return json({
       success: true,
       service: "academy-calendar",
-      version: "102.12.1",
+      version: "102.12.2",
       year,
       events: buildAcademyCalendarEvents(tables.AcademyCalendar, startDate, endDate),
       storedEvents: tables.AcademyCalendar.map(mapAcademyCalendarRow)
+        .filter(event => !isHiddenIslamicEvent(event))
         .filter(event => event.startDate.slice(0, 4) === String(year) || event.endDate.slice(0, 4) === String(year))
     });
   } catch (error) {
@@ -47,10 +50,17 @@ export async function saveAcademyCalendarEventEndpoint(request, env) {
     const tables = await readCalendarTables(env);
     requireCalendarSchema(tables.PlatformConfig);
     const eventId = clean(body.eventId || body.calendarEventId);
-    const existing = eventId ? uniqueCalendarEvent(tables.AcademyCalendar, eventId) : null;
+    const generatedPublicHolidayDate = generatedPublicHolidayDateFromId(eventId);
+    const existing = eventId && !generatedPublicHolidayDate ? uniqueCalendarEvent(tables.AcademyCalendar, eventId) : null;
     const eventType = normalizePlatformIdentifier(existing?.EventType || body.eventType || "TERM");
-    if (!existing && eventType !== "TERM") throw clientError("New Academy Calendar entries must be Terms", 400);
-    if (!ACADEMY_CALENDAR_EVENT_TYPES.includes(eventType)) throw clientError("EventType must be TERM or ISLAMIC_DAY", 400);
+    if (!ACADEMY_CALENDAR_EVENT_TYPES.includes(eventType)) throw clientError("EventType must be TERM, ISLAMIC_DAY or PUBLIC_HOLIDAY", 400);
+    if (!existing && !generatedPublicHolidayDate && !["TERM", "PUBLIC_HOLIDAY"].includes(eventType)) {
+      throw clientError("New Academy Calendar entries must be Terms or Public Holidays", 400);
+    }
+
+    if (eventType === "PUBLIC_HOLIDAY") {
+      return await savePublicHoliday({ body, tables, permission, existing, generatedPublicHolidayDate, env });
+    }
 
     const description = eventType === "ISLAMIC_DAY"
       ? clean(existing?.Description)
@@ -77,33 +87,24 @@ export async function saveAcademyCalendarEventEndpoint(request, env) {
       ModifiedByAccountID: permission.user.accountid,
       ModifiedByAccountName: permission.user.username,
       ModifiedDate: timestamp
-    } : {
-      CalendarEventID: createId("ACEVT"),
-      EventType: eventType,
-      Description: description,
-      StartDate: startDate,
-      EndDate: endDate,
-      AlternateDate: alternateDate,
-      TeachingImpact: teachingImpact,
-      Active: active,
-      CreatedDate: timestamp,
-      CreatedByAccountID: permission.user.accountid,
-      CreatedByAccountName: permission.user.username,
-      ModifiedByAccountID: "",
-      ModifiedByAccountName: "",
-      ModifiedDate: ""
-    };
+    } : newCalendarRecord({
+      eventType,
+      description,
+      startDate,
+      endDate,
+      alternateDate,
+      teachingImpact,
+      active,
+      timestamp,
+      permission
+    });
     validateAcademyCalendarRecord(record);
 
     const rowNumber = existing?._rowNumber || nextRowNumber(tables.AcademyCalendar);
     const changedFields = existing
       ? ["Description", "StartDate", "EndDate", "AlternateDate", "TeachingImpact", "Active"]
       : ["EventType", "Description", "StartDate", "EndDate", "TeachingImpact", "Active"];
-    const audit = [
-      createId("AUDIT"), timestamp, permission.user.accountid, permission.user.username, permission.user.role,
-      permission.user.courseid || "", existing ? "UPDATE_ACADEMY_CALENDAR_EVENT" : "CREATE_ACADEMY_CALENDAR_EVENT",
-      "ACADEMY_CALENDAR_EVENT", record.CalendarEventID, JSON.stringify(changedFields)
-    ];
+    const audit = auditRow(permission, timestamp, existing ? "UPDATE_ACADEMY_CALENDAR_EVENT" : "CREATE_ACADEMY_CALENDAR_EVENT", record.CalendarEventID, changedFields);
 
     await batchUpdateGoogleSheetValues(env, [
       valueWrite("AcademyCalendar", rowNumber, recordToRow(record, PLATFORM_SHEET_HEADERS.AcademyCalendar)),
@@ -114,6 +115,134 @@ export async function saveAcademyCalendarEventEndpoint(request, env) {
   } catch (error) {
     return calendarError(error, env);
   }
+}
+
+async function savePublicHoliday({ body, tables, permission, existing, generatedPublicHolidayDate, env }) {
+  const timestamp = new Date().toISOString();
+  const active = readBoolean(body.active, existing ? isActivePlatformValue(existing.Active) : true);
+  const requestedDate = clean(body.startDate || existing?.StartDate || generatedPublicHolidayDate);
+  if (!requestedDate) throw clientError("Public Holiday date is required", 400);
+  const records = [];
+  const actionFields = ["StartDate", "Active"];
+  let auditAction = "UPDATE_ACADEMY_PUBLIC_HOLIDAY";
+
+  if (generatedPublicHolidayDate) {
+    if (active && requestedDate === generatedPublicHolidayDate) {
+      return json({
+        success: true,
+        unchanged: true,
+        event: {
+          id: `${GENERATED_PUBLIC_HOLIDAY_PREFIX}${generatedPublicHolidayDate}`,
+          eventType: "PUBLIC_HOLIDAY",
+          description: "Public Holiday",
+          startDate: generatedPublicHolidayDate,
+          endDate: generatedPublicHolidayDate,
+          teachingImpact: "NO_TEACHING",
+          active: true,
+          source: "SA_PUBLIC_HOLIDAY",
+          editable: true,
+          derived: true
+        }
+      });
+    }
+
+    records.push(newCalendarRecord({
+      eventType: "PUBLIC_HOLIDAY",
+      description: "Public Holiday",
+      startDate: generatedPublicHolidayDate,
+      endDate: generatedPublicHolidayDate,
+      alternateDate: "",
+      teachingImpact: "NO_TEACHING",
+      active: false,
+      timestamp,
+      permission
+    }));
+    auditAction = active ? "MOVE_ACADEMY_PUBLIC_HOLIDAY" : "DELETE_ACADEMY_PUBLIC_HOLIDAY";
+
+    if (active) {
+      records.push(newCalendarRecord({
+        eventType: "PUBLIC_HOLIDAY",
+        description: "Public Holiday",
+        startDate: requestedDate,
+        endDate: requestedDate,
+        alternateDate: "",
+        teachingImpact: "NO_TEACHING",
+        active: true,
+        timestamp,
+        permission
+      }));
+    }
+  } else if (existing) {
+    const record = {
+      ...existing,
+      Description: "Public Holiday",
+      StartDate: requestedDate,
+      EndDate: requestedDate,
+      AlternateDate: "",
+      TeachingImpact: "NO_TEACHING",
+      Active: active,
+      ModifiedByAccountID: permission.user.accountid,
+      ModifiedByAccountName: permission.user.username,
+      ModifiedDate: timestamp
+    };
+    validateAcademyCalendarRecord(record);
+    records.push(record);
+    if (!active) auditAction = "DELETE_ACADEMY_PUBLIC_HOLIDAY";
+  } else {
+    const record = newCalendarRecord({
+      eventType: "PUBLIC_HOLIDAY",
+      description: "Public Holiday",
+      startDate: requestedDate,
+      endDate: requestedDate,
+      alternateDate: "",
+      teachingImpact: "NO_TEACHING",
+      active: true,
+      timestamp,
+      permission
+    });
+    validateAcademyCalendarRecord(record);
+    records.push(record);
+    auditAction = "CREATE_ACADEMY_PUBLIC_HOLIDAY";
+  }
+
+  records.forEach(validateAcademyCalendarRecord);
+  const firstRow = nextRowNumber(tables.AcademyCalendar);
+  const writes = records.map((record, index) => {
+    const rowNumber = existing ? existing._rowNumber : firstRow + index;
+    return valueWrite("AcademyCalendar", rowNumber, recordToRow(record, PLATFORM_SHEET_HEADERS.AcademyCalendar));
+  });
+  const auditTargetId = records.at(-1)?.CalendarEventID || existing?.CalendarEventID || `${GENERATED_PUBLIC_HOLIDAY_PREFIX}${generatedPublicHolidayDate}`;
+  writes.push(valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow(permission, timestamp, auditAction, auditTargetId, actionFields)));
+
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+  const visibleRecord = active ? records.at(-1) : records[0];
+  return json({ success: true, event: mapAcademyCalendarRow({ ...visibleRecord, _rowNumber: existing?._rowNumber || firstRow }) });
+}
+
+function newCalendarRecord({ eventType, description, startDate, endDate, alternateDate, teachingImpact, active, timestamp, permission }) {
+  return {
+    CalendarEventID: createId("ACEVT"),
+    EventType: eventType,
+    Description: description,
+    StartDate: startDate,
+    EndDate: endDate,
+    AlternateDate: alternateDate,
+    TeachingImpact: teachingImpact,
+    Active: active,
+    CreatedDate: timestamp,
+    CreatedByAccountID: permission.user.accountid,
+    CreatedByAccountName: permission.user.username,
+    ModifiedByAccountID: "",
+    ModifiedByAccountName: "",
+    ModifiedDate: ""
+  };
+}
+
+function auditRow(permission, timestamp, action, targetId, changedFields) {
+  return [
+    createId("AUDIT"), timestamp, permission.user.accountid, permission.user.username, permission.user.role,
+    permission.user.courseid || "", action, "ACADEMY_CALENDAR_EVENT", targetId, JSON.stringify(changedFields)
+  ];
 }
 
 async function requireCalendarAdmin(request, env) {
@@ -145,6 +274,13 @@ function uniqueCalendarEvent(rows, id) {
   if (matches.length === 0) throw clientError("Academy Calendar event was not found", 404);
   if (matches.length > 1) throw clientError("Academy Calendar event is duplicated", 409);
   return matches[0];
+}
+
+function generatedPublicHolidayDateFromId(id) {
+  const value = clean(id);
+  if (!value.startsWith(GENERATED_PUBLIC_HOLIDAY_PREFIX)) return "";
+  const date = value.slice(GENERATED_PUBLIC_HOLIDAY_PREFIX.length);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
 }
 
 function normalizeYear(value) {

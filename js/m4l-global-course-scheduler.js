@@ -1,4 +1,4 @@
-/* M4L V102.12.1 - Global Course Scheduler with Academy Calendar conflict warnings. */
+/* M4L V102.12.2 - Global Course Scheduler with Academy Calendar conflict warnings. */
 (function () {
   "use strict";
 

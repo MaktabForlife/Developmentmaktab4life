@@ -1,4 +1,4 @@
-/* M4L V102.12.1 - Admin menu home and Admin Academics / Curriculum module
+/* M4L V102.12.2 - Admin menu home and Admin Academics / Curriculum module
    Load after /app.js, /js/m4l-auth.js, /js/m4l-shell.js, and /js/m4l-attendance.js.
    This is a classic script, not type=module, so existing onclick/global calls remain safe
    while the app is split gradually.

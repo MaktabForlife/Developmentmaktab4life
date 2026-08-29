@@ -1,3 +1,5 @@
+V102.12.2 changed/new files from V102.12.1
+
 CHANGED-FILES.txt
 CHANGES.md
 DELETE-FILES.txt
@@ -8,13 +10,9 @@ account/index.html
 admin/index.html
 backend/package.json
 backend/src/lib/academy-calendar.js
-backend/src/lib/backend-routing.js
 backend/src/lib/platform-schema.js
-backend/src/router.js
 backend/src/routes/academy-timetable.js
-backend/src/routes/account-auth.js
 backend/src/routes/platform-academy-calendar.js
-backend/src/routes/platform-account-migration.js
 backend/src/routes/platform-global-timetable.js
 backend/src/routes/platform-validation.js
 backend/src/worker.js
@@ -25,21 +23,17 @@ backend/tests/academy-timetable-endpoint.test.mjs
 backend/tests/account-auth.test.mjs
 backend/tests/account-ui.test.mjs
 backend/tests/admin-management-ui.test.mjs
-backend/tests/admin-menu-home.test.mjs
 backend/tests/library-catalogue-ui.test.mjs
 backend/tests/platform-global-delivery-ui.test.mjs
 backend/tests/platform-global-timetable-ui.test.mjs
 backend/tests/platform-global-timetable.test.mjs
-backend/tests/platform-sheet.test.mjs
-backend/tests/platform-validation.test.mjs
 backend/tests/router.test.mjs
 backend/tests/student-task-assignment-ui.test.mjs
 backend/tests/timetable-teacher-ui.test.mjs
 css/m4l-23-account.css
 css/m4l-29-academy-calendar.css
-docs/V102.12.1-ACADEMY-CALENDAR.md
-docs/V102.12.1-AcademyCalendar-template.csv
-docs/V102.12.1-PLATFORM-SHEET-MIGRATION.md
+docs/V102.12.2-ACADEMY-CALENDAR.md
+docs/V102.12.2-AcademyCalendar-template.csv
 js/m4l-academy-calendar.js
 js/m4l-account.js
 js/m4l-admin-academics.js

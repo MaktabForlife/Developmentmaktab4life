@@ -1,16 +1,18 @@
-# Maktabhelper development — V102.12.1
+# Maktabhelper development — V102.12.2
 
-V102.12.1 extends the V102.12 Academy Home timetable with a central Academy Calendar.
+V102.12.2 refines the V102.12.1 Academy Calendar without changing the Platform Sheet schema.
 
-Key additions:
+Main changes:
 
-- Admin-managed Academy Terms.
-- Automatic South African public holidays with Sunday-observed Monday handling.
-- Significant Islamic Dates for 2025–2030 seeded from the supplied South African reference document.
-- Derived Ramadaan and first 10 days of Zul Hijjah periods.
-- Calendar context on Academy Home.
-- Course Scheduler warnings for sessions generated on Academy no-teaching dates.
+- full-width Calendar and Terms sections;
+- 50/50 Islamic Dates and Public Holidays sections on larger screens;
+- inline editing for all Calendar administration rows;
+- editable/deleteable/addable Public Holidays through exceptions to the automatic South African holiday generator;
+- Islamic date shown beneath the Islamic description;
+- `First Fast` removed from Calendar display;
+- Ramadaan derived from First Taraweeh;
+- Academy Home receives the same Islamic-date presentation.
 
-This release does not merge Program and Global timetable storage. It only adds a central calendar layer consumed by Academy delivery and scheduling validation.
+Platform schema remains `102.0.8` / 19 required tabs.
 
-Deployment requires the Platform Sheet migration in `docs/V102.12.1-PLATFORM-SHEET-MIGRATION.md` before changing `PlatformSchemaVersion` to `102.0.8`.
+For implementation and validation steps see `UPDATE-TODO.md`. Detailed Calendar behavior is in `docs/V102.12.2-ACADEMY-CALENDAR.md`.

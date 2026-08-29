@@ -1,4 +1,4 @@
-/* M4L V102.12.1 - Unified account login with Academy timetable and calendar context. */
+/* M4L V102.12.2 - Unified account login with Academy timetable and calendar context. */
 (function () {
   "use strict";
 
@@ -375,7 +375,14 @@
     const badge = document.createElement("span");
     const type = String(event.eventType || "EVENT").toUpperCase();
     badge.className = `academy-calendar-badge is-${type.toLowerCase().replace(/_/g, "-")}`;
-    badge.textContent = String(event.description || "Calendar");
+    const description = document.createElement("span");
+    description.textContent = String(event.description || "Calendar");
+    badge.appendChild(description);
+    if (type === "ISLAMIC_DAY" && String(event.islamicDate || "").trim()) {
+      const islamicDate = document.createElement("small");
+      islamicDate.textContent = String(event.islamicDate || "").trim();
+      badge.appendChild(islamicDate);
+    }
     if (String(event.teachingImpact || "").toUpperCase() === "NO_TEACHING") badge.classList.add("is-no-teaching");
     return badge;
   }

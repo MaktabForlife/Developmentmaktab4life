@@ -164,7 +164,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "102.12.1");
+  assert.equal(body.version, "102.12.2");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.weekEnd, "2026-08-30");
   assert.equal(body.timezone, "Africa/Johannesburg");

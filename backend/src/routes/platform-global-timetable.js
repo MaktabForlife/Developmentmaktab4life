@@ -1,4 +1,4 @@
-/* M4L V102.12.1 - Global Course scheduling with Academy Calendar conflict warnings. */
+/* M4L V102.12.2 - Global Course scheduling with Academy Calendar conflict warnings. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -49,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.12.1",
+      version: "102.12.2",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),

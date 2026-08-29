@@ -14,6 +14,10 @@ tables.UserAccounts.push([
 ]);
 tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.8"]);
 tables.AcademyCalendar.push([
+  "ACEVT-TARAWEEH", "ISLAMIC_DAY", "First Taraweeh", "2026-02-18", "2026-02-18", "2026-02-19", "INFORMATION", true,
+  "", "", "", "", "", ""
+]);
+tables.AcademyCalendar.push([
   "ACEVT-FAST", "ISLAMIC_DAY", "First Fast", "2026-02-19", "2026-02-19", "2026-02-20", "INFORMATION", true,
   "", "", "", "", "", ""
 ]);
@@ -81,11 +85,14 @@ try {
 
   const initial = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.1");
+  assert.equal(initial.data.version, "102.12.2");
   assert.equal(initial.data.year, 2026);
   assert.equal(initial.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-09" && event.description === "Public Holiday"), true);
   assert.equal(initial.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-10" && event.description === "Public Holiday"), true);
   assert.equal(initial.data.events.some(event => event.eventType === "RELIGIOUS_PERIOD" && event.description === "Ramadaan" && event.startDate === "2026-02-19" && event.endDate === "2026-03-20"), true);
+  assert.equal(initial.data.events.some(event => event.description === "First Fast"), false, "First Fast is suppressed from Academy Calendar delivery");
+  assert.equal(initial.data.storedEvents.some(event => event.description === "First Fast"), false, "First Fast is suppressed from Admin Calendar list");
+  assert.equal(initial.data.storedEvents.find(event => event.id === "ACEVT-TARAWEEH")?.islamicDate, "1 Ramadaan 1447");
 
   const created = await post("/api/admin/platform/calendar/save", {
     eventType: "TERM",
@@ -102,33 +109,70 @@ try {
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_ACADEMY_CALENDAR_EVENT");
 
   const updatedIslamic = await post("/api/admin/platform/calendar/save", {
-    eventId: "ACEVT-FAST",
-    startDate: "2026-02-20",
-    alternateDate: "2026-02-19",
+    eventId: "ACEVT-TARAWEEH",
+    startDate: "2026-02-19",
+    alternateDate: "2026-02-18",
     teachingImpact: "NO_TEACHING",
     active: true
   }, token);
   assert.equal(updatedIslamic.response.status, 200, JSON.stringify(updatedIslamic.data));
-  assert.equal(updatedIslamic.data.event.description, "First Fast");
-  assert.equal(updatedIslamic.data.event.startDate, "2026-02-20");
-  assert.equal(updatedIslamic.data.event.alternateDate, "2026-02-19");
+  assert.equal(updatedIslamic.data.event.description, "First Taraweeh");
+  assert.equal(updatedIslamic.data.event.startDate, "2026-02-19");
+  assert.equal(updatedIslamic.data.event.alternateDate, "2026-02-18");
   assert.equal(updatedIslamic.data.event.teachingImpact, "NO_TEACHING");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "UPDATE_ACADEMY_CALENDAR_EVENT");
 
+  const movedPublic = await post("/api/admin/platform/calendar/save", {
+    eventId: "SA-PUBLIC-HOLIDAY-2026-08-09",
+    eventType: "PUBLIC_HOLIDAY",
+    originalDate: "2026-08-09",
+    startDate: "2026-08-11",
+    active: true
+  }, token);
+  assert.equal(movedPublic.response.status, 200, JSON.stringify(movedPublic.data));
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "MOVE_ACADEMY_PUBLIC_HOLIDAY");
+
+  const afterMove = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
+  assert.equal(afterMove.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-09"), false);
+  assert.equal(afterMove.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-11"), true);
+
+  const deletedObserved = await post("/api/admin/platform/calendar/save", {
+    eventId: "SA-PUBLIC-HOLIDAY-2026-08-10",
+    eventType: "PUBLIC_HOLIDAY",
+    startDate: "2026-08-10",
+    active: false
+  }, token);
+  assert.equal(deletedObserved.response.status, 200, JSON.stringify(deletedObserved.data));
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "DELETE_ACADEMY_PUBLIC_HOLIDAY");
+
+  const addedPublic = await post("/api/admin/platform/calendar/save", {
+    eventType: "PUBLIC_HOLIDAY",
+    startDate: "2026-08-12",
+    active: true
+  }, token);
+  assert.equal(addedPublic.response.status, 200, JSON.stringify(addedPublic.data));
+  assert.equal(addedPublic.data.event.eventType, "PUBLIC_HOLIDAY");
+  assert.equal(addedPublic.data.event.startDate, "2026-08-12");
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_ACADEMY_PUBLIC_HOLIDAY");
+
+  const finalCalendar = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
+  assert.equal(finalCalendar.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-10"), false);
+  assert.equal(finalCalendar.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-12"), true);
+
   const blockedNewIslamic = await post("/api/admin/platform/calendar/save", {
     eventType: "ISLAMIC_DAY",
-    description: "First Fast",
+    description: "First Taraweeh",
     startDate: "2031-01-01",
     alternateDate: "2030-12-31",
     active: true
   }, token);
   assert.equal(blockedNewIslamic.response.status, 400);
-  assert.match(blockedNewIslamic.data.error, /must be Terms/);
+  assert.match(blockedNewIslamic.data.error, /Terms or Public Holidays/);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.1 Academy Calendar admin endpoint and audit tests passed.");
+console.log("V102.12.2 Academy Calendar inline admin, Public Holiday override and audit tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

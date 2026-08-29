@@ -1,7 +1,7 @@
-/* M4L V102.12.1 - Platform validation including Academy Calendar, global access and immutable publication. */
+/* M4L V102.12.2 - Platform validation including Academy Calendar, global access and immutable publication. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
-import { validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
+import { isHiddenIslamicEvent, validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
 import { json } from "../lib/http.js";
 import {
   GLOBAL_SUBJECT_ACCESS_MODELS,
@@ -276,7 +276,7 @@ function validateAcademyCalendar(rows) {
     ids.add(id);
     const type = normalizePlatformIdentifier(row.EventType);
     if (type === "TERM") termCount += 1;
-    if (type === "ISLAMIC_DAY") islamicDayCount += 1;
+    if (type === "ISLAMIC_DAY" && !isHiddenIslamicEvent(row)) islamicDayCount += 1;
   }
   return Object.freeze({ eventCount: rows.length, termCount, islamicDayCount });
 }

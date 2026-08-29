@@ -1,4 +1,4 @@
-/* M4L V102.12.1 - Authoritative central identity, access, delivery, timetable and Academy Calendar schema. */
+/* M4L V102.12.2 - Authoritative central identity, access, delivery, timetable and Academy Calendar schema. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
