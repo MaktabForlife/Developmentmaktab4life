@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Academic Calendar responsive batch administration and editable Holiday overrides. */
+/* M4L V102.12.8 - Academic Calendar responsive batch administration and editable Holiday overrides. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -30,7 +30,7 @@ export async function getAcademyCalendarAdminEndpoint(request, env) {
     return json({
       success: true,
       service: "academy-calendar",
-      version: "102.12.7",
+      version: "102.12.8",
       year,
       events: buildAcademyCalendarEvents(tables.AcademyCalendar, startDate, endDate),
       storedEvents: tables.AcademyCalendar.map(mapAcademyCalendarRow)

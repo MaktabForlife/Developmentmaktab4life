@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Platform validation including publishable TBA, Academy Calendar and immutable publication. */
+/* M4L V102.12.8 - Platform validation including ongoing Global Courses, publishable TBA, Academy Calendar and immutable publication. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { isHiddenIslamicEvent, validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
@@ -481,10 +481,11 @@ function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
     if (!runName) {
       throw new Error(`GlobalSubjectRuns row ${run._rowNumber} requires RunName`);
     }
-    if (!validateIsoDate(startDate) || !validateIsoDate(endDate)) {
-      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} requires YYYY-MM-DD StartDate and EndDate`);
+    const ongoing = !startDate && !endDate;
+    if (!ongoing && (!validateIsoDate(startDate) || !validateIsoDate(endDate))) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} requires both YYYY-MM-DD StartDate and EndDate, or both blank for Ongoing`);
     }
-    if (endDate < startDate) {
+    if (!ongoing && endDate < startDate) {
       throw new Error(`GlobalSubjectRuns row ${run._rowNumber} EndDate cannot precede StartDate`);
     }
     if (!isValidIanaTimezone(timezone)) {

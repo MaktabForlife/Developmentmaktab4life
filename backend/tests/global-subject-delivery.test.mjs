@@ -5,6 +5,7 @@ import {
   dateInTimezone,
   deriveGlobalSubjectRunStatus,
   isValidIanaTimezone,
+  isOngoingGlobalSubjectRun,
   mapGlobalSubjectRun,
   resolveGlobalSubjectAccessPolicy,
   strongestGlobalSubjectDeliveryStatus,
@@ -75,6 +76,18 @@ assert.equal(deriveGlobalSubjectRunStatus({ ...baseRun, Active: false }, new Dat
 assert.throws(() => deriveGlobalSubjectRunStatus({ ...baseRun, EndDate: "2026-08-01" }), /invalid dates/);
 assert.throws(() => deriveGlobalSubjectRunStatus({ ...baseRun, Timezone: "Bad/Timezone" }), /timezone is invalid/);
 
+const ongoingRun = {
+  ...baseRun,
+  RunID: "ONGOING",
+  RunName: "Ongoing course",
+  StartDate: "",
+  EndDate: ""
+};
+assert.equal(isOngoingGlobalSubjectRun(ongoingRun), true);
+assert.equal(isOngoingGlobalSubjectRun(baseRun), false);
+assert.equal(deriveGlobalSubjectRunStatus(ongoingRun, new Date("2026-08-17T10:00:00.000Z")), "CURRENT");
+assert.throws(() => deriveGlobalSubjectRunStatus({ ...ongoingRun, StartDate: "2026-08-01" }), /invalid dates/);
+
 const now = new Date("2026-08-17T10:00:00.000Z");
 const ended = { ...baseRun, RunID: "ENDED", StartDate: "2026-07-01", EndDate: "2026-07-31" };
 const upcoming = { ...baseRun, RunID: "UPCOMING", StartDate: "2026-09-01", EndDate: "2026-09-30" };
@@ -91,7 +104,19 @@ assert.deepEqual(mapGlobalSubjectRun(baseRun, now), {
   enddate: "2026-08-20",
   timezone: "Africa/Johannesburg",
   active: true,
+  ongoing: false,
+  status: "CURRENT"
+});
+assert.deepEqual(mapGlobalSubjectRun(ongoingRun, now), {
+  runid: "ONGOING",
+  subjectid: "FREE1",
+  runname: "Ongoing course",
+  startdate: "",
+  enddate: "",
+  timezone: "Africa/Johannesburg",
+  active: true,
+  ongoing: true,
   status: "CURRENT"
 });
 
-console.log("V102.10 global-subject policy and scheduled-run helper tests passed.");
+console.log("V102.12.8 global-subject policy, fixed-run and ongoing-course helper tests passed.");

@@ -416,6 +416,12 @@
       sessionsRoot.className = "academy-session-pills";
 
       const relevant = timeSessions.filter(session => Boolean(session.relevant));
+      const relevantProgramNames = new Set(relevant
+        .filter(session => (
+          String(session.kind || "").toUpperCase() === "PROGRAM" &&
+          String(session.visibilityLevel || "").toUpperCase() === "DETAIL"
+        ))
+        .map(session => String(session.programName || session.title || "Program").trim() || "Program"));
       const otherPrograms = new Map();
       const otherGlobal = [];
 
@@ -431,8 +437,11 @@
         otherPrograms.get(programName).push(session);
       });
 
-
       for (const [programName, programSessions] of otherPrograms) {
+        const labelOnly = programSessions.every(session => (
+          String(session.visibilityLevel || "").toUpperCase() === "LABEL"
+        ));
+        if (labelOnly && relevantProgramNames.has(programName)) continue;
         sessionsRoot.appendChild(createProgramRollupPill(programName, programSessions));
       }
       otherGlobal.forEach(session => sessionsRoot.appendChild(createAcademySessionPill(session)));
@@ -539,18 +548,23 @@
     pill.appendChild(title);
 
     if (String(session.visibilityLevel || "").toUpperCase() === "DETAIL") {
-      const contextName = String(session.programName || session.globalCourseName || "").trim();
-      if (contextName && contextName !== title.textContent) {
-        const context = document.createElement("span");
-        context.className = "academy-session-pill-context";
-        context.textContent = contextName;
-        pill.appendChild(context);
+      const kind = String(session.kind || "").toUpperCase();
+      if (kind !== "GLOBAL") {
+        const contextName = String(session.programName || "").trim();
+        if (contextName && contextName !== title.textContent) {
+          const context = document.createElement("span");
+          context.className = "academy-session-pill-context";
+          context.textContent = contextName;
+          pill.appendChild(context);
+        }
       }
-      const detailText = [
-        session.moduleName,
-        session.group ? `Group ${session.group}` : "",
-        session.teacherName
-      ].filter(Boolean).join(" · ");
+      const rawTeacherName = String(session.teacherName || "").trim();
+      const teacherName = kind === "GLOBAL" && /^(?:TBA|Teacher not assigned)$/i.test(rawTeacherName)
+        ? ""
+        : rawTeacherName;
+      const detailText = kind === "GLOBAL"
+        ? [session.moduleName, teacherName].filter(Boolean).join(" · ")
+        : [session.moduleName, session.group ? `Group ${session.group}` : "", teacherName].filter(Boolean).join(" · ");
       if (detailText) {
         const detail = document.createElement("span");
         detail.className = "academy-session-pill-detail";

@@ -1,4 +1,4 @@
-/* M4L V102.10 - Global-subject access-policy and scheduled-run helpers. */
+/* M4L V102.12.8 - Global-subject access-policy, fixed-run and ongoing-course helpers. */
 
 import {
   isActivePlatformValue,
@@ -179,11 +179,19 @@ export function dateInTimezone(now, timezone) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+export function isOngoingGlobalSubjectRun(run) {
+  const startDate = String(run?.StartDate || run?.startdate || "").trim();
+  const endDate = String(run?.EndDate || run?.enddate || "").trim();
+  return !startDate && !endDate;
+}
+
 export function deriveGlobalSubjectRunStatus(run, now = new Date()) {
   if (!run || !isActivePlatformValue(run.Active)) return "INACTIVE";
   const startDate = String(run.StartDate || "").trim();
   const endDate = String(run.EndDate || "").trim();
   const timezone = String(run.Timezone || "").trim();
+  if (!isValidIanaTimezone(timezone)) throw new Error("Global-subject run timezone is invalid");
+  if (isOngoingGlobalSubjectRun(run)) return "CURRENT";
   if (!validateIsoDate(startDate) || !validateIsoDate(endDate) || endDate < startDate) {
     throw new Error("Global-subject run has invalid dates");
   }
@@ -217,6 +225,7 @@ export function mapGlobalSubjectRun(run, now = new Date()) {
     enddate: String(run?.EndDate || "").trim(),
     timezone: String(run?.Timezone || "").trim(),
     active: isActivePlatformValue(run?.Active),
+    ongoing: isOngoingGlobalSubjectRun(run),
     status: deriveGlobalSubjectRunStatus(run, now)
   });
 }

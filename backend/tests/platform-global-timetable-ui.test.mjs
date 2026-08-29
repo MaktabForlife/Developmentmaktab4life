@@ -9,7 +9,7 @@ const [adminHtml, js, css] = await Promise.all([
 
 assert.match(adminHtml, /Course Scheduler/);
 assert.match(adminHtml, /Program Timetables/);
-assert.match(adminHtml, /styles\.css\?v=102\.12\.7/);
+assert.match(adminHtml, /styles\.css\?v=102\.12\.8/);
 assert.match(js, /Revise timetable/);
 assert.match(js, /Publish revision/);
 assert.doesNotMatch(js, /Reschedule session/);
@@ -28,6 +28,12 @@ assert.match(js, /\/api\/admin\/platform\/global\/timetable\/session\/batch-save
 assert.doesNotMatch(js, /\/api\/admin\/platform\/global\/timetable\/session\/reschedule/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/revise/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/publish/);
+assert.match(js, /id="gcm-course-ongoing"/);
+assert.match(js, /Generate sessions from/);
+assert.match(js, /Generate through/);
+assert.match(js, /generationStartDate/);
+assert.match(js, /run\.ongoing \? "Ongoing"/);
+assert.match(css, /\.global-course-ongoing-window/);
 assert.match(css, /\.global-session-inline-row\.is-lifecycle-changed/);
 assert.match(css, /\.global-session-inline-table/);
 assert.match(css, /@media \(max-width:760px\)/);
@@ -37,4 +43,4 @@ assert.match(css, /global-session-inline-row\.is-cancelled/);
 assert.match(css, /global-save-icon-button[\s\S]*background:transparent !important/);
 assert.match(css, /global-course-compact-action/);
 
-console.log("V102.12.7 Global Course batch session editing and responsive UI checks passed.");
+console.log("V102.12.8 Global Course ongoing setup, batch session editing and responsive UI checks passed.");

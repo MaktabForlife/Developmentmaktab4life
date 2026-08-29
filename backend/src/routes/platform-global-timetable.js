@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Global Course batch session editing with publishable TBA and Calendar conflict warnings. */
+/* M4L V102.12.8 - Global Course ongoing scheduling, batch session editing, publishable TBA and Calendar conflict warnings. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -49,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.12.7",
+      version: "102.12.8",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -86,6 +86,8 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
     const endTime = normalizeSubmittedTime(body.endTime || body.endtime);
     const zoomLink = clean(body.zoomLink || body.zoomlink);
     const weekdays = Array.isArray(body.weekdays) ? body.weekdays : [];
+    const requestedGenerationStart = clean(body.generationStartDate || body.generationstartdate || body.scheduleStartDate || body.schedulestartdate);
+    const requestedGenerationEnd = clean(body.generationEndDate || body.generationenddate || body.scheduleEndDate || body.scheduleenddate);
 
     if (!runId) throw clientError("RunID is required", 400);
     if (!validateTimeRange(startTime, endTime)) throw clientError("StartTime and EndTime require a valid increasing HH:MM range", 400);
@@ -97,8 +99,20 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
     const subject = activeSubject(tables, run.SubjectID);
     const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: true });
     const teacher = optionalActiveTeacher(tables, teacherAccountId);
-    const dates = generateSessionDates(clean(run.StartDate), clean(run.EndDate), weekdays);
-    if (!dates.length) throw clientError("The selected weekdays do not occur inside this run", 400);
+    const runStartDate = clean(run.StartDate);
+    const runEndDate = clean(run.EndDate);
+    const ongoing = !runStartDate && !runEndDate;
+    let generationStartDate = runStartDate;
+    let generationEndDate = runEndDate;
+    if (ongoing) {
+      generationStartDate = requestedGenerationStart;
+      generationEndDate = requestedGenerationEnd;
+      if (!validateIsoDate(generationStartDate) || !validateIsoDate(generationEndDate) || generationEndDate < generationStartDate) {
+        throw clientError("Ongoing courses require valid Generate from and Generate through dates for schedule generation", 400);
+      }
+    }
+    const dates = generateSessionDates(generationStartDate, generationEndDate, weekdays);
+    if (!dates.length) throw clientError("The selected weekdays do not occur inside this schedule window", 400);
 
     for (const sessionDate of dates) {
       if (hasActiveSlotConflict(tables.GlobalTimetableSessions, {

@@ -87,7 +87,7 @@ try {
 
   const initial = await post("/api/admin/platform/calendar/get", { year: 2026 }, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.7");
+  assert.equal(initial.data.version, "102.12.8");
   assert.equal(initial.data.year, 2026);
   assert.equal(initial.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-09" && event.description === "Public Holiday"), true);
   assert.equal(initial.data.events.some(event => event.eventType === "PUBLIC_HOLIDAY" && event.startDate === "2026-08-10" && event.description === "Public Holiday"), true);
@@ -221,7 +221,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.7 Academic Calendar batch section saving, informational Islamic delivery and editable Holiday tests passed.");
+console.log("V102.12.8 Academic Calendar batch section saving, informational Islamic delivery and editable Holiday tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

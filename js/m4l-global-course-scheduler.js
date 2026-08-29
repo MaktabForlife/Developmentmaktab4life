@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Responsive Global Course Scheduler with draft/batch session editing. */
+/* M4L V102.12.8 - Responsive Global Course Scheduler with ongoing courses and draft/batch session editing. */
 (function () {
   "use strict";
 
@@ -9,6 +9,7 @@
     selectedSubjectId: "",
     selectedRunId: "",
     scheduleRows: [blankScheduleRow()],
+    ongoingWindow: { start: "", end: "" },
     sessionDrafts: new Map(),
     delivery: emptyDelivery(),
     timetable: emptyTimetable()
@@ -92,6 +93,10 @@
       model.selectedSubjectId = String(target.value || "");
       syncScheduleRowsFromDom();
       render();
+      return;
+    }
+    if (target.id === "gcm-course-ongoing") {
+      updateOngoingCourseControls();
       return;
     }
     if (target.matches("[data-time24]")) normalizeTimeField(target);
@@ -178,6 +183,7 @@
         ${selectedRun ? sessionSection(selectedRun, sessions, state) : ""}
       </div>
     `);
+    updateOngoingCourseControls();
   }
 
   function subjectTable() {
@@ -197,7 +203,10 @@
   }
 
   function courseTable() {
-    const runs = [...model.delivery.runs].sort((a, b) => String(b.startdate || "").localeCompare(String(a.startdate || "")));
+    const runs = [...model.delivery.runs].sort((a, b) => {
+      if (Boolean(a.ongoing) !== Boolean(b.ongoing)) return a.ongoing ? -1 : 1;
+      return String(b.startdate || "").localeCompare(String(a.startdate || ""));
+    });
     return `<section class="global-curriculum-panel global-course-list-panel">
       <div class="global-curriculum-panel-heading"><h3>Global Courses</h3></div>
       <div class="global-table-scroll"><table class="global-course-table global-course-runs-table">
@@ -207,7 +216,7 @@
           const count = sessionsForRun(run.runid).filter(item => item.active).length;
           const status = run.active === false ? "INACTIVE" : (state?.stage || "DEVELOPMENT");
           return `<tr class="global-course-row ${run.runid === model.selectedRunId ? "is-selected" : ""}" data-gcm-course-action="select-course" data-run-id="${attr(run.runid)}">
-            <td data-label="Course"><strong>${html(run.runname)}</strong></td><td data-label="Scheduled dates">${html(formatDate(run.startdate))} – ${html(formatDate(run.enddate))}</td><td data-label="Sessions">${count}</td><td data-label="Status">${html(status)}</td>
+            <td data-label="Course"><strong>${html(run.runname)}</strong></td><td data-label="Scheduled dates">${run.ongoing ? "Ongoing" : `${html(formatDate(run.startdate))} – ${html(formatDate(run.enddate))}`}</td><td data-label="Sessions">${count}</td><td data-label="Status">${html(status)}</td>
           </tr>`;
         }).join("") : '<tr><td colspan="4">No Global Courses have been set up.</td></tr>'}</tbody>
       </table></div>
@@ -218,6 +227,7 @@
     const runName = run?.runname || "";
     const startDate = run?.startdate || "";
     const endDate = run?.enddate || "";
+    const ongoing = run ? Boolean(run.ongoing || (!startDate && !endDate)) : false;
     const active = run?.active !== false;
     const hasPublication = Boolean(state?.currentpublicationid);
     return `<section class="global-curriculum-panel global-course-setup-panel" id="global-course-setup-panel">
@@ -232,7 +242,13 @@
           ${field("Course name", `<input id="gcm-course-name" type="text" maxlength="160" value="${attr(runName)}" />`)}
           ${field("Start date", `<input id="gcm-course-start" type="date" value="${attr(startDate)}" />`)}
           ${field("End date", `<input id="gcm-course-end" type="date" value="${attr(endDate)}" />`)}
+          <label class="global-course-active-field global-course-ongoing-field"><span>Ongoing</span><input id="gcm-course-ongoing" type="checkbox" ${ongoing ? "checked" : ""} /></label>
           <label class="global-course-active-field"><span>Active</span><input id="gcm-course-active" type="checkbox" ${active ? "checked" : ""} /></label>
+        </div>
+        <div class="global-course-ongoing-window ${ongoing ? "" : "hidden"}" data-ongoing-generation-window>
+          ${field("Generate sessions from", `<input id="gcm-course-generate-start" type="date" value="${attr(model.ongoingWindow.start)}" />`)}
+          ${field("Generate through", `<input id="gcm-course-generate-end" type="date" value="${attr(model.ongoingWindow.end)}" />`)}
+          <p class="global-course-ongoing-help">These dates only set the batch of exact sessions to generate. They do not become course start/end dates.</p>
         </div>
         <div class="global-course-weekly-heading"><h4>Weekly schedule</h4><button type="button" class="global-course-compact-action" data-gcm-course-action="add-schedule-row">Add time period</button></div>
         <div class="global-course-schedule-rows">${model.scheduleRows.map((row, index) => scheduleRow(row, index, subject?.subjectid)).join("")}</div>
@@ -406,20 +422,31 @@
   async function saveCourse(button) {
     syncScheduleRowsFromDom();
     const subjectId = value("gcm-course-subject") || model.selectedSubjectId;
+    const ongoing = checked("gcm-course-ongoing");
+    syncOngoingWindowFromDom();
     const payload = {
       runId: model.selectedRunId,
       subjectId,
       runName: value("gcm-course-name"),
-      startDate: value("gcm-course-start"),
-      endDate: value("gcm-course-end"),
+      startDate: ongoing ? "" : value("gcm-course-start"),
+      endDate: ongoing ? "" : value("gcm-course-end"),
+      ongoing,
       active: checked("gcm-course-active")
     };
+    const scheduleRows = model.scheduleRows.filter(row => array(row.days).length || row.start || row.end);
+    if (ongoing && scheduleRows.length && (
+      !/^\d{4}-\d{2}-\d{2}$/.test(model.ongoingWindow.start) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(model.ongoingWindow.end) ||
+      model.ongoingWindow.end < model.ongoingWindow.start
+    )) {
+      setMessage("Ongoing courses need valid Generate sessions from / Generate through dates before a weekly schedule can be generated.", "error");
+      return;
+    }
     await withBusy(button, "…", async () => {
       const token = appState()?.token || "";
       const saved = await apiPost("/api/admin/platform/global/run/save", payload, token);
       if (!saved.success) throw new Error(saved.error || saved.detail || "Unable to save course");
       const runId = saved.run?.runid || model.selectedRunId;
-      const scheduleRows = model.scheduleRows.filter(row => array(row.days).length || row.start || row.end);
       const calendarWarnings = [];
       for (const row of scheduleRows) {
         const startTime = parseUiTime(row.start);
@@ -427,7 +454,11 @@
         if (!array(row.days).length || !startTime || !endTime) throw new Error("Each schedule line requires at least one day plus valid start/end times in 24-hour format, for example 04h00–05h00");
         const generated = await apiPost("/api/admin/platform/global/timetable/generate", {
           runId, moduleId: row.moduleid, weekdays: row.days, startTime, endTime,
-          teacherAccountId: row.teacherid, zoomLink: row.zoom
+          teacherAccountId: row.teacherid, zoomLink: row.zoom,
+          ...(ongoing ? {
+            generationStartDate: model.ongoingWindow.start,
+            generationEndDate: model.ongoingWindow.end
+          } : {})
         }, token);
         if (!generated.success) throw new Error(generated.error || generated.detail || "Course saved, but a schedule row could not be generated");
         calendarWarnings.push(...array(generated.calendarWarnings));
@@ -435,6 +466,7 @@
       model.selectedRunId = runId;
       model.selectedSubjectId = subjectId;
       model.scheduleRows = [blankScheduleRow()];
+      model.ongoingWindow = { start: "", end: "" };
       invalidateAll();
       await load(true);
       if (calendarWarnings.length) {
@@ -529,6 +561,7 @@
     const run = runById(model.selectedRunId);
     if (run) model.selectedSubjectId = run.subjectid;
     model.scheduleRows = [blankScheduleRow()];
+    model.ongoingWindow = { start: "", end: "" };
     render();
   }
   function newCourse(subjectId, focus = false) {
@@ -537,6 +570,7 @@
     model.selectedRunId = "";
     model.selectedSubjectId = String(subjectId || model.selectedSubjectId || "");
     model.scheduleRows = [blankScheduleRow()];
+    model.ongoingWindow = { start: "", end: "" };
     render();
     if (focus) focusCourseSetup();
   }
@@ -557,6 +591,7 @@
   function removeScheduleRow(key) { syncScheduleRowsFromDom(); model.scheduleRows = model.scheduleRows.filter(row => row.key !== key); if (!model.scheduleRows.length) model.scheduleRows = [blankScheduleRow()]; render(); }
 
   function syncScheduleRowsFromDom() {
+    syncOngoingWindowFromDom();
     const rows = [...document.querySelectorAll("[data-schedule-row-key]")];
     if (!rows.length) return;
     model.scheduleRows = rows.map(element => ({
@@ -568,6 +603,48 @@
       teacherid: element.querySelector('[data-course-schedule-field="teacherid"]')?.value || "",
       zoom: element.querySelector('[data-course-schedule-field="zoom"]')?.value || ""
     }));
+  }
+
+  function syncOngoingWindowFromDom() {
+    const start = document.getElementById("gcm-course-generate-start");
+    const end = document.getElementById("gcm-course-generate-end");
+    if (start || end) {
+      model.ongoingWindow = {
+        start: String(start?.value || "").trim(),
+        end: String(end?.value || "").trim()
+      };
+    }
+  }
+
+  function updateOngoingCourseControls() {
+    const ongoing = document.getElementById("gcm-course-ongoing");
+    if (!ongoing) return;
+    const enabled = ongoing.checked === true;
+    const start = document.getElementById("gcm-course-start");
+    const end = document.getElementById("gcm-course-end");
+    const windowRoot = document.querySelector("[data-ongoing-generation-window]");
+    if (enabled) {
+      if (start) {
+        if (start.value) start.dataset.previousCourseDate = start.value;
+        start.value = "";
+        start.disabled = true;
+      }
+      if (end) {
+        if (end.value) end.dataset.previousCourseDate = end.value;
+        end.value = "";
+        end.disabled = true;
+      }
+    } else {
+      if (start) {
+        start.disabled = false;
+        if (!start.value && start.dataset.previousCourseDate) start.value = start.dataset.previousCourseDate;
+      }
+      if (end) {
+        end.disabled = false;
+        if (!end.value && end.dataset.previousCourseDate) end.value = end.dataset.previousCourseDate;
+      }
+    }
+    windowRoot?.classList.toggle("hidden", !enabled);
   }
 
   function invalidateAll() {

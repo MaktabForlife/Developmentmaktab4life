@@ -989,3 +989,32 @@ button.academy-program-rollup:hover {
   }
 }
 
+
+/* V102.12.8 Academy timetable pill hierarchy.
+   Detailed sessions carry the useful academic context and therefore receive
+   more horizontal space than compact Program roll-ups / label-only pills. */
+.academy-session-pill:not(.is-label-only) {
+  flex: 1 1 190px;
+  min-width: 150px;
+  max-width: 260px;
+}
+.academy-session-pill.is-label-only,
+.academy-program-rollup-wrap {
+  flex: 0 1 118px;
+  min-width: 104px;
+  max-width: 150px;
+}
+
+@media (max-width: 520px) {
+  .academy-session-pill:not(.is-label-only) {
+    flex-basis: 165px;
+    min-width: 145px;
+    max-width: 220px;
+  }
+  .academy-session-pill.is-label-only,
+  .academy-program-rollup-wrap {
+    flex-basis: 108px;
+    min-width: 98px;
+    max-width: 132px;
+  }
+}

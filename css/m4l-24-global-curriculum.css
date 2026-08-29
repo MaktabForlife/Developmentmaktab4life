@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Responsive Global Curriculum, subscriptions and protected Drive resources. */
+/* M4L V102.12.8 - Responsive Global Curriculum, subscriptions and protected Drive resources. */
 
 body:has(#global-curriculum-screen.active) .app-shell {
   width: min(100%, 1440px);
@@ -574,7 +574,7 @@ body:has(#global-curriculum-screen.active) .app-shell {
 .global-access-unique-column code { font-family:inherit; font-size:.86rem; white-space:nowrap; }
 .global-access-account-column small { display:block; margin-top:2px; font-weight:500; opacity:.7; }
 
-/* V102.12.7 responsive Global Curriculum shell and mobile navigation. */
+/* V102.12.8 responsive Global Curriculum shell and mobile navigation. */
 body:has(#global-curriculum-screen.active) .app-shell {
   width:100%;
   max-width:1440px;

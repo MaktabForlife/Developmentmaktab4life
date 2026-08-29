@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Academic Calendar batch editing and simplified Islamic-date delivery. */
+/* M4L V102.12.8 - Academic Calendar batch editing and simplified Islamic-date delivery. */
 
 import { isActivePlatformValue, normalizePlatformIdentifier } from "./platform-schema.js";
 
@@ -58,7 +58,7 @@ export function mapAcademyCalendarRow(row) {
     derived: false,
     rowNumber: Number(row?._rowNumber) || 0
   };
-  // V102.12.7: Islamic dates are informational reference dates. Legacy Sheet
+  // V102.12.8: Islamic dates are informational reference dates. Legacy Sheet
   // columns remain untouched, but AlternateDate and TeachingImpact are no longer
   // part of Islamic-date UI/API delivery.
   if (eventType !== "ISLAMIC_DAY") {

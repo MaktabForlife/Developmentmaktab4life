@@ -13,8 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /m4l-account\.js\?v=102\.12\.4/);
-assert.match(html, /m4l-23-account\.css\?v=102\.12\.4/);
+assert.match(html, /m4l-account\.js\?v=102\.12\.8/);
+assert.match(html, /m4l-23-account\.css\?v=102\.12\.8/);
 
 for (const endpoint of [
   "/api/account/check",
@@ -44,9 +44,14 @@ assert.match(css, /scroll-snap-type:\s*x mandatory/);
 assert.match(css, /overflow-x:\s*auto/);
 assert.match(css, /max-height:\s*620px/);
 assert.match(script, /createProgramRollupPill/);
+assert.match(script, /labelOnly && relevantProgramNames\.has\(programName\)/);
+assert.doesNotMatch(script, /session\.globalCourseName/);
+assert.match(script, /\[session\.moduleName, teacherName\]\.filter\(Boolean\)\.join\(" · "\)/);
 assert.match(script, /const label = programName;/);
 assert.doesNotMatch(script, /other\" : \"\"} sessions/);
 assert.match(css, /flex:\s*0 1 118px/);
+assert.match(css, /academy-session-pill:not\(\.is-label-only\)[\s\S]*flex:\s*1 1 190px/);
+assert.match(css, /academy-session-pill\.is-label-only,[\s\S]*flex:\s*0 1 118px/);
 assert.match(css, /flex-basis:\s*100%/);
 assert.match(css, /overflow-y:\s*auto/);
 assert.match(script, /academy-session-pill/);
@@ -69,4 +74,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.12.4 swipeable Academy Home and unified account UI tests passed.");
+console.log("V102.12.8 Academy Home pill hierarchy, deduplication and unified account UI tests passed.");

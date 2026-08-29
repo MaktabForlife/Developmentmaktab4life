@@ -164,7 +164,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "102.12.7");
+  assert.equal(body.version, "102.12.8");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -181,6 +181,10 @@ try {
   assert.equal(program.zoomLink, "");
   assert.equal(global.visibilityLevel, "DETAIL");
   assert.equal(global.title, "Steps to My Rabb");
+  assert.equal(global.subjectName, "Steps to My Rabb");
+  assert.equal(global.moduleName, "Hearts Connected");
+  assert.equal(global.teacherName, "Global Admin");
+  assert.equal("globalCourseName" in global, false, "Global Course internal/run name must not be delivered to Academy Home");
   assert.equal(global.date, "2026-08-27");
   assert.equal(global.canOpenZoom, false, "non-current Global sessions must not expose Zoom on Academy Home");
   assert.equal(global.zoomLink, "");
@@ -238,7 +242,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.7 two-day Academy timetable endpoint integration test passed.");
+console.log("V102.12.8 two-day Academy timetable endpoint integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {

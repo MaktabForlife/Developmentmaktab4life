@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "102.12.7",
+      version: "102.12.8",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,
@@ -463,7 +463,6 @@ export function buildGlobalCourseEvents(platform, account, options) {
       }
       output.push({
         ...base,
-        globalCourseName: session.runname,
         subjectName: session.subjectname,
         moduleName: session.modulename,
         teacherName: session.teachername,

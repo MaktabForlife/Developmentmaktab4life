@@ -1,25 +1,53 @@
-# V102.12.7 Release Notes
+# V102.12.8 Release Notes
 
-V102.12.7 is a focused correction to V102.12.6. It preserves the V102.12.6 batch-editing and responsive Global/Academic Calendar work while correcting teacher publication semantics and polishing the Calendar controls on desktop/mobile.
+V102.12.8 is a changed-files update to V102.12.7. It contains the Academy Home timetable presentation refinements collected during review and an interim ongoing-course capability for Global Courses.
 
-## Publishable TBA sessions
+## Academy Home timetable pills
 
-A Global Course session no longer requires a confirmed teacher before publication. `TBA` means the teacher is not yet confirmed, but the session is valid and publishable.
+Detailed session pills now receive more width than rolled-up/generic pills, making their subject/module/teacher information easier to read.
 
-For TBA sessions, `TeacherAccountID` remains blank. No synthetic TBA account is created. Publication snapshots retain the immutable display value `TeacherName = TBA`, so published delivery can show TBA consistently. If a real teacher is selected later, the session can be revised and republished normally.
+For participants/students, when an applicable detailed Program pill is already shown at a start time, a second label-only roll-up for the same Program is suppressed. Staff views retain Program roll-ups where they expose genuinely additional detail.
 
-A nonblank TeacherAccountID is still validated and must resolve to an active account.
+For Global Courses, Academy Home no longer exposes the Global Course/run name. That name is treated as an internal/admin identifier. User-facing detail is limited to:
 
-## Academic Calendar toolbar
+- Global Subject name;
+- Module name, when present;
+- actual Teacher name, when assigned.
 
-The Month navigator, Today button and Year control remain on one compact responsive row. The Today button now explicitly opts out of the application's global full-width button rule, preventing it from stretching across the Calendar toolbar or pushing the Year control off screen.
+`TBA` remains a valid publishable teacher state but is not shown as an extra teacher-detail label in the participant-facing pill.
 
-## Mobile Holidays
+## Ongoing Global Courses
 
-Holiday rows on phones now remain a neat one-line list:
+Global Course setup now includes an explicit **Ongoing** option. When Ongoing is enabled:
 
-`Description | Date | ×`
+- course StartDate is blank;
+- course EndDate is blank;
+- the active course is treated as `CURRENT`;
+- it remains active until an Admin changes its status;
+- exact session dates continue to drive timetable delivery.
 
-The description flexes, the date stays compact, and the remove action remains at the right. The existing batch-save behaviour is unchanged: `×` marks a pending removal and the Holidays section Save commits all changes together.
+No artificial far-future date is stored.
 
-There is **no Sheet migration**. `PlatformSchemaVersion` remains `102.0.8` with 19 required tabs.
+### Generating recurring sessions
+
+An ongoing course has no natural finite range over which to expand a weekly pattern. Therefore the scheduler provides temporary **Generate sessions from** and **Generate through** dates when a weekly schedule is being generated.
+
+Those dates are generation controls only. They do **not** become the course StartDate/EndDate. Once generated, an ongoing session may subsequently be moved to another valid date outside the generation window.
+
+A course can also be saved as Ongoing without generating a weekly batch immediately.
+
+## Fixed-duration courses
+
+Existing fixed courses are unchanged: StartDate and EndDate remain required and must be valid, ordered dates. Existing timetable-boundary safeguards remain in place for fixed courses.
+
+## Schema
+
+There is **no Sheet migration**. `PlatformSchemaVersion` remains `102.0.8` with **19 required Platform tabs**. Ongoing is represented by both existing GlobalSubjectRuns date fields being blank, so no new Sheet column is introduced.
+
+## Architecture boundary
+
+This is an interim V102 capability, not the generic Program architecture. The major roadmap remains:
+
+- V103 — Central Identity
+- V104 — Program Builder
+- V105 — Reboot migration

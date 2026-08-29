@@ -1,4 +1,4 @@
-/* M4L V102.11.1 - Global-course setup, policy and timetable-boundary safeguards. */
+/* M4L V102.12.8 - Global-course setup with fixed or ongoing course dates and timetable-boundary safeguards. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -133,18 +133,26 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const runId = clean(body.runId || body.runid);
     const subjectId = clean(body.subjectId || body.subjectid);
     const runName = clean(body.runName || body.runname);
-    const startDate = clean(body.startDate || body.startdate);
-    const endDate = clean(body.endDate || body.enddate);
+    let startDate = clean(body.startDate || body.startdate);
+    let endDate = clean(body.endDate || body.enddate);
     const requestedTimezone = clean(body.timezone);
     const requestedActive = readBoolean(body.active, runId ? null : true);
+    const requestedOngoing = body.ongoing === undefined
+      ? (!startDate && !endDate)
+      : readBoolean(body.ongoing, false);
 
     if (!subjectId) throw clientError("Global SubjectID is required", 400);
     if (!runName) throw clientError("Run name is required", 400);
     if (runName.length > MAX_RUN_NAME_LENGTH) throw clientError("Run name is too long", 400);
-    if (!validateIsoDate(startDate) || !validateIsoDate(endDate)) {
-      throw clientError("StartDate and EndDate must use YYYY-MM-DD", 400);
+    if (requestedOngoing) {
+      startDate = "";
+      endDate = "";
+    } else {
+      if (!validateIsoDate(startDate) || !validateIsoDate(endDate)) {
+        throw clientError("StartDate and EndDate must use YYYY-MM-DD unless the course is Ongoing", 400);
+      }
+      if (endDate < startDate) throw clientError("EndDate cannot precede StartDate", 400);
     }
-    if (endDate < startDate) throw clientError("EndDate cannot precede StartDate", 400);
 
     const tables = await readDeliveryTables(env);
     const platformTimezone = readPlatformTimezone(tables.PlatformConfig);
@@ -179,7 +187,7 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const timetableSessions = existing ? tables.GlobalTimetableSessions.filter(session => (
       normalizePlatformIdentifier(session.RunID) === normalizePlatformIdentifier(existing.RunID)
     )) : [];
-    const outsideNewBounds = timetableSessions.filter(session => {
+    const outsideNewBounds = requestedOngoing ? [] : timetableSessions.filter(session => {
       const date = clean(session.SessionDate);
       return date && (date < startDate || date > endDate);
     });

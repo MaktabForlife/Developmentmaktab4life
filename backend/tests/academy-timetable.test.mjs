@@ -120,6 +120,10 @@ const subscriberPlatform = makeGlobalPlatform("SUBSCRIPTION", true);
 const subscriberEvents = buildGlobalCourseEvents(subscriberPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
 assert.equal(subscriberEvents[0].visibilityLevel, "DETAIL");
 assert.equal(subscriberEvents[0].canOpenZoom, true);
+assert.equal("globalCourseName" in subscriberEvents[0], false, "Global Course internal/run name must not be exposed in user-facing timetable detail");
+assert.equal(subscriberEvents[0].subjectName, "Steps to My Rabb");
+assert.equal(subscriberEvents[0].moduleName, "Hearts Connected");
+assert.equal(subscriberEvents[0].teacherName, "Muallimah");
 
 const teacherPlatform = makeGlobalPlatform("SUBSCRIPTION", false, "ACCOUNT1");
 const teacherEvents = buildGlobalCourseEvents(teacherPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
@@ -184,7 +188,7 @@ assert.deepEqual(
   { date: "2026-08-24", minutes: 9 * 60 + 30 }
 );
 
-console.log("V102.12.4 Academy timetable personalisation, redaction and current-session Zoom tests passed.");
+console.log("V102.12.8 Academy timetable personalisation, Global Course redaction and current-session Zoom tests passed.");
 
 function makeGlobalPlatform(accessModel, subscribed, teacherAccountId = "TEACHER1", status = "SCHEDULED") {
   return {

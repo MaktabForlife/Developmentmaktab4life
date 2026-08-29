@@ -89,7 +89,7 @@ try {
 
   const initial = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.7");
+  assert.equal(initial.data.version, "102.12.8");
   assert.equal(initial.data.globalTimetableVersion, 1);
   assert.equal(initial.data.runs.length, 1);
   assert.equal(initial.data.teachers.some(item => item.accountid === "TEACHER1"), true);
@@ -190,7 +190,7 @@ try {
   assert.equal(revised.data.state.currentpublicationid, publication1Id);
   assert.equal(tables.GlobalTimetableRunState[1][1], "DEVELOPMENT");
 
-  // V102.12.7 session editing is draft-first: cancellation and date/time edits commit together in one batch.
+  // V102.12.8 session editing is draft-first: cancellation and date/time edits commit together in one batch.
   const cancelSource = generated.data.sessions[1];
   const movedSource = generated.data.sessions[3];
   const beforeInvalidSessionBatch = batchUpdateRequests;
@@ -248,7 +248,7 @@ try {
   assert.equal(batchEdited.data.lifecycles.find(item => item.sessionid === movedSource.sessionid)?.status, "SCHEDULED");
   assert.equal(tables.PlatformAuditLog.some(row => row[6] === "RESCHEDULE_GLOBAL_TIMETABLE_SESSION"), false, "A direct date change is audited as an update, not as legacy rescheduling");
 
-  // Legacy reschedule remains API-compatible, although the V102.12.7 editor no longer exposes a separate Reschedule action.
+  // Legacy reschedule remains API-compatible, although the V102.12.8 editor no longer exposes a separate Reschedule action.
   const rescheduleSource = generated.data.sessions[2];
   const rescheduled = await post("/api/admin/platform/global/timetable/session/reschedule", {
     sessionId: rescheduleSource.sessionid,
@@ -284,7 +284,7 @@ try {
   assert.equal(tables.PlatformAuditLog.some(row => row[6] === "RESCHEDULE_GLOBAL_TIMETABLE_SESSION"), true);
   assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 2);
 
-  // V102.12.7: TBA is a valid publishable teacher state. Keep TeacherAccountID blank and snapshot TeacherName as TBA.
+  // V102.12.8: TBA is a valid publishable teacher state. Keep TeacherAccountID blank and snapshot TeacherName as TBA.
   tables.GlobalSubjectRuns.push([
     "GSRUN-TBA", "GSUBJ1", "October TBA run", "2026-10-01", "2026-10-31", "Africa/Johannesburg", true,
     "", "", "", "", "", ""
@@ -310,11 +310,61 @@ try {
   assert.equal(tbaSnapshots.every(row => !row[teacherIdIndex]), true, "TBA must not create a fake teacher AccountID");
   assert.equal(tbaSnapshots.every(row => row[teacherNameIndex] === "TBA"), true, "Published TBA sessions must keep an immutable TBA display label");
   assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 3);
+
+  // V102.12.8: ongoing Global Courses have no course-level start/end dates. A temporary generation window
+  // creates exact dated sessions, and those sessions may later move beyond that generation window.
+  tables.GlobalSubjectRuns.push([
+    "GSRUN-ONGOING", "GSUBJ1", "Ongoing Hifz-style course", "", "", "Africa/Johannesburg", true,
+    "", "", "", "", "", ""
+  ]);
+  const missingOngoingWindow = await post("/api/admin/platform/global/timetable/generate", {
+    runId: "GSRUN-ONGOING", moduleId: "GMOD1", weekdays: ["MON"], startTime: "08:00", endTime: "09:00"
+  }, token);
+  assert.equal(missingOngoingWindow.response.status, 400);
+  assert.match(missingOngoingWindow.data.error, /Ongoing courses require valid Generate from and Generate through dates/);
+
+  const ongoingGenerated = await post("/api/admin/platform/global/timetable/generate", {
+    runId: "GSRUN-ONGOING",
+    moduleId: "GMOD1",
+    weekdays: ["MON", "WED"],
+    startTime: "08:00",
+    endTime: "09:00",
+    generationStartDate: "2026-11-01",
+    generationEndDate: "2026-11-07"
+  }, token);
+  assert.equal(ongoingGenerated.response.status, 200, JSON.stringify(ongoingGenerated.data));
+  assert.deepEqual(ongoingGenerated.data.sessions.map(item => item.sessiondate), ["2026-11-02", "2026-11-04"]);
+  assert.equal(ongoingGenerated.data.sessions.every(item => !item.teacheraccountid), true);
+
+  const ongoingFirst = ongoingGenerated.data.sessions[0];
+  const ongoingMoved = await post("/api/admin/platform/global/timetable/session/batch-save", {
+    runId: "GSRUN-ONGOING",
+    changes: [{
+      sessionId: ongoingFirst.sessionid,
+      sessionDate: "2027-01-04",
+      startTime: ongoingFirst.starttime,
+      endTime: ongoingFirst.endtime,
+      moduleId: ongoingFirst.moduleid,
+      teacherAccountId: "",
+      zoomLink: ongoingFirst.zoomlink,
+      active: true,
+      status: "SCHEDULED"
+    }]
+  }, token);
+  assert.equal(ongoingMoved.response.status, 200, JSON.stringify(ongoingMoved.data));
+  assert.equal(ongoingMoved.data.sessions.find(item => item.sessionid === ongoingFirst.sessionid)?.sessiondate, "2027-01-04");
+
+  const ongoingPublication = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN-ONGOING" }, token);
+  assert.equal(ongoingPublication.response.status, 200, JSON.stringify(ongoingPublication.data));
+  assert.equal(ongoingPublication.data.publication.versionno, 1);
+  assert.equal(ongoingPublication.data.publication.sessioncount, 2);
+  assert.equal(Number(tables.PlatformConfig[2][1]), 5);
+  assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 4);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.7 Global Course batch editing, immutable publication and publishable TBA tests passed.");
+console.log("V102.12.8 Global Course ongoing scheduling, batch editing, immutable publication and publishable TBA tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

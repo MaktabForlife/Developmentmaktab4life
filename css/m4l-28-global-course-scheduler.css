@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Responsive Global Course Scheduler and shared transparent save treatment. */
+/* M4L V102.12.8 - Responsive Global Course Scheduler, ongoing courses and shared transparent save treatment. */
 .global-course-scheduler-shell {
   width:100%;
   max-width:100%;
@@ -61,7 +61,7 @@
 }
 .global-course-summary-edit-row {
   display:grid;
-  grid-template-columns:minmax(170px,1.05fr) minmax(220px,1.8fr) minmax(140px,.85fr) minmax(140px,.85fr) minmax(76px,.45fr);
+  grid-template-columns:minmax(170px,1.05fr) minmax(220px,1.8fr) minmax(140px,.85fr) minmax(140px,.85fr) minmax(76px,.45fr) minmax(76px,.45fr);
   gap:10px;
   align-items:end;
 }
@@ -70,6 +70,25 @@
 .global-course-active-field { display:grid; gap:6px; justify-items:center; align-items:end; font-weight:700; }
 .global-course-active-field > span { min-height:22px; }
 .global-course-active-field input { width:24px; height:24px; margin:12px 0; accent-color:#7b3e83; }
+.global-course-ongoing-window {
+  display:grid;
+  grid-template-columns:minmax(160px,220px) minmax(160px,220px) minmax(240px,1fr);
+  gap:10px 14px;
+  align-items:end;
+  padding:12px 14px;
+  border:1px solid var(--border,#e4dadd);
+  border-radius:14px;
+  background:#fbfafb;
+}
+.global-course-ongoing-window.hidden { display:none; }
+.global-course-ongoing-window input { min-height:46px; height:46px; }
+.global-course-ongoing-help {
+  align-self:center;
+  margin:0;
+  color:var(--text-muted,#6e6570);
+  font-size:.78rem;
+  line-height:1.35;
+}
 
 .global-course-weekly-heading {
   display:flex;
@@ -212,6 +231,7 @@
   .global-course-setup-header-actions { flex-direction:column; align-items:center; }
   .global-course-compact-action { width:min(100%,320px) !important; max-width:320px; flex-basis:auto; }
   .global-course-summary-edit-row,.global-course-schedule-row { grid-template-columns:1fr; }
+  .global-course-ongoing-window { grid-template-columns:1fr; }
   .global-course-active-field { justify-items:start; grid-template-columns:auto auto; justify-content:start; align-items:center; }
   .global-course-active-field > span { min-height:0; }
   .global-course-active-field input { margin:0; }

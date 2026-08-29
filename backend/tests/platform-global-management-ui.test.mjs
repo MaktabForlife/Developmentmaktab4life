@@ -17,7 +17,7 @@ assert.match(html, /data-gcm-tab="tasks"/);
 assert.match(html, /data-gcm-tab="resources"/);
 assert.match(html, /data-gcm-course-action="show">Course Scheduler<\/button>/);
 assert.match(html, /data-gcm-tab="access">Global Access<\/button>/);
-assert.match(html, /m4l-global-curriculum\.js\?v=102\.12\.7/);
+assert.match(html, /m4l-global-curriculum\.js\?v=102\.12\.8/);
 assert.doesNotMatch(html, />Platform administration</);
 assert.doesNotMatch(html, /Changes apply across the platform and are recorded in PlatformAuditLog/);
 
@@ -38,7 +38,7 @@ assert.match(script, /classList\.remove\("is-active"\)/, "Changing tabs must cle
 assert.match(script, /M4LGlobalCurriculum = Object\.freeze\(\{[\s\S]*invalidate/);
 assert.match(academics, /M4LGlobalCurriculum\.syncAccess/);
 
-assert.match(styles, /m4l-24-global-curriculum\.css\?v=102\.12\.7/);
+assert.match(styles, /m4l-24-global-curriculum\.css\?v=102\.12\.8/);
 assert.match(css, /\.global-access-matrix/);
 assert.match(css, /\.global-access-policy-token/);
 assert.match(css, /\.global-access-free-state/);

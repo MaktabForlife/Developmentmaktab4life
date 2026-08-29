@@ -171,6 +171,23 @@ try {
   assert.equal(Number(tables.PlatformConfig[2][1]), 8);
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "UPDATE_GLOBAL_SUBJECT_RUN");
 
+  const ongoing = await post("/api/admin/platform/global/run/save", {
+    subjectId: "GSUBJ1",
+    runName: "Ongoing Tajweed",
+    startDate: "",
+    endDate: "",
+    ongoing: true,
+    timezone: "Africa/Johannesburg",
+    active: true
+  }, token);
+  assert.equal(ongoing.response.status, 200, JSON.stringify(ongoing.data));
+  assert.equal(ongoing.data.run.startdate, "");
+  assert.equal(ongoing.data.run.enddate, "");
+  assert.equal(ongoing.data.run.ongoing, true);
+  assert.equal(ongoing.data.run.status, "CURRENT");
+  assert.equal(Number(tables.PlatformConfig[2][1]), 9);
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT_RUN");
+
   tables.GlobalSubjectList[1][2] = false;
   const activeOnInactiveSubject = await post("/api/admin/platform/global/run/save", {
     subjectId: "GSUBJ1",
@@ -194,7 +211,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.11.1 Global Course setup policy/run/audit tests passed.");
+console.log("V102.12.8 Global Course fixed/ongoing setup policy, run and audit tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

@@ -243,7 +243,7 @@ try {
   assert.equal(subscriptionResult.publishedGlobalTimetableSessionCount, 1);
   assert.equal(subscriptionResult.globalResourceCount, 1);
 
-  // V102.12.7: a published scheduled session may remain TBA without a fake TeacherAccountID.
+  // V102.12.8: a published scheduled session may remain TBA without a fake TeacherAccountID.
   tables.GlobalTimetableSessions[1][7] = "";
   tables.PublishedGlobalTimetableSessions[1][9] = "";
   tables.PublishedGlobalTimetableSessions[1][17] = "TBA";
@@ -272,6 +272,19 @@ try {
   tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
   tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
   tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Ongoing run", "", "", "Africa/Johannesburg", true]);
+  const validOngoingRun = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(validOngoingRun.status, 200, await validOngoingRun.text());
+
+  tables.GlobalSubjectRuns[1][3] = "2026-08-01";
+  const partialOngoingRun = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(partialOngoingRun.status, 503);
+  assert.match((await partialOngoingRun.json()).detail, /both YYYY-MM-DD StartDate and EndDate, or both blank for Ongoing/);
+
+  tables = structuredClone(baseTables);
+  tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
   tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Broken run", "2026-08-20", "2026-08-10", "Africa/Johannesburg", true]);
   const invalidRun = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(invalidRun.status, 503);
@@ -285,7 +298,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("Live Platform Sheet validation endpoint tests passed.");
+console.log("V102.12.8 Live Platform Sheet validation endpoint tests passed.");
 
 function validationRequest(token) {
   return new Request("https://worker.test/api/admin/platform/validate", {

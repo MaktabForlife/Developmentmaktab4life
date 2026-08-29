@@ -1,4 +1,4 @@
-/* M4L V102.12.7 - Exact-dated Global Course timetable, publishable TBA and immutable publication helpers. */
+/* M4L V102.12.8 - Exact-dated Global Course timetable, ongoing courses, publishable TBA and immutable publication helpers. */
 
 import {
   isActivePlatformValue,
@@ -223,11 +223,12 @@ export function validateTimeRange(startTime, endTime) {
 
 export function sessionWithinRun(session, run) {
   const date = clean(session?.SessionDate || session?.sessiondate);
-  return Boolean(
-    validateIsoDate(date) &&
-    date >= clean(run?.StartDate || run?.startdate) &&
-    date <= clean(run?.EndDate || run?.enddate)
-  );
+  if (!validateIsoDate(date)) return false;
+  const startDate = clean(run?.StartDate || run?.startdate);
+  const endDate = clean(run?.EndDate || run?.enddate);
+  if (!startDate && !endDate) return true;
+  if (!validateIsoDate(startDate) || !validateIsoDate(endDate) || endDate < startDate) return false;
+  return date >= startDate && date <= endDate;
 }
 
 export function activeGlobalTimetableSessionsForRun(sessionRows, runId) {
