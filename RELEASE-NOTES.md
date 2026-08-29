@@ -1,11 +1,25 @@
-# Maktabhelper V102.12.2
+# Maktabhelper V102.12.3
 
-V102.12.2 is an Academy Calendar usability refinement on top of V102.12.1.
+## Academy Home timetable refinement
 
-The Calendar and Terms now occupy the full page width. Islamic Dates and Public Holidays share the next row equally on larger screens and stack on smaller screens. All Calendar management happens inline; the old separate editing area is no longer used.
+V102.12.3 makes Academy Home concise and personalised rather than an exhaustive seven-day operational timetable.
 
-Public Holidays remain automatically generated from the South African rules, but Admin can now edit the effective date, remove a day with `×`, or add another Public Holiday using the `+` action after the list. Only the exceptions are persisted.
+The default Home view is now a two-day pill layout:
 
-Islamic event descriptions remain those from the supplied reference document. The Islamic date is displayed beneath the description. `First Fast` is removed from Calendar display and Ramadaan is derived from First Taraweeh instead.
+- first day: `TODAY`;
+- second day: actual weekday name;
+- time shown in a small `13h00` pill;
+- directly relevant sessions displayed as detailed M4L-styled pills;
+- simultaneous sessions can share the same time row.
 
-There is no Platform Sheet migration. Keep `PlatformConfig!B3 = 102.0.8` and the existing 19 required tabs.
+Program staff do not receive every Program session as a full Home card. Their own assigned teaching sessions are shown individually; the remaining authorised Program activity is collapsed into a Program pill that can be expanded for read-only detail. Unauthorised Program activity remains label-only and cannot be expanded.
+
+Zoom delivery is tightened: only a directly relevant session that is currently running in `PlatformTimezone` can receive a Zoom URL on Academy Home.
+
+## Deployment
+
+This is code-only.
+
+Do not add or modify Platform Sheet tabs/headers for V102.12.3. Keep `PlatformConfig!B3 = 102.0.8`.
+
+Deploy Pages and Worker from the same commit.

@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Academy timetable delivery with Academy Calendar context. */
+/* M4L V102.12.3 - Personalised two-day Academy Home delivery with Program roll-ups. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -57,7 +57,15 @@ export async function getAcademyTimetableEndpoint(request, env) {
     }
 
     const timezone = resolvePlatformTimezone(platform.config);
-    const week = resolveAcademyWeek(body.startDate, timezone, new Date());
+    const now = new Date();
+    const clock = academyClockInTimezone(now, timezone);
+    const week = resolveAcademyWeek(body.startDate, timezone, now);
+    const viewStart = validIsoDate(body.startDate) ? String(body.startDate).trim() : clock.date;
+    const viewEnd = addDays(viewStart, 1);
+    const weeks = [week];
+    if (viewEnd > week.end) {
+      weeks.push(resolveAcademyWeek(viewEnd, timezone, now));
+    }
     const isGlobalAdmin = normalizePlatformIdentifier(account.PlatformRole) === "GLOBAL_ADMIN";
     const memberships = platform.courseAccess.filter(row => (
       normalizePlatformIdentifier(row.AccountID) === normalizePlatformIdentifier(account.AccountID) &&
@@ -67,12 +75,15 @@ export async function getAcademyTimetableEndpoint(request, env) {
     const activePrograms = platform.courses.filter(row => isActivePlatformValue(row.Active));
     const programLoads = await Promise.all(activePrograms.map(async course => {
       try {
+        const programWeeks = await Promise.all(weeks.map(activeWeek => loadProgramEvents(env, course, memberships, {
+          account,
+          isGlobalAdmin,
+          week: activeWeek,
+          currentDate: clock.date,
+          currentMinutes: clock.minutes
+        })));
         return {
-          events: await loadProgramEvents(env, course, memberships, {
-            account,
-            isGlobalAdmin,
-            week
-          }),
+          events: programWeeks.flat(),
           warning: null
         };
       } catch (error) {
@@ -89,22 +100,32 @@ export async function getAcademyTimetableEndpoint(request, env) {
     const programEvents = programLoads.flatMap(result => result.events);
     const warnings = programLoads.map(result => result.warning).filter(Boolean);
 
+    const globalRange = {
+      start: week.start,
+      end: weeks[weeks.length - 1].end,
+      today: clock.date
+    };
     const globalEvents = buildGlobalCourseEvents(platform, account, {
       isGlobalAdmin,
-      week
+      week: globalRange,
+      currentDate: clock.date,
+      currentMinutes: clock.minutes
     });
     const sessions = [...programEvents, ...globalEvents]
+      .filter(event => String(event.date || "") >= viewStart && String(event.date || "") <= viewEnd)
       .sort(compareAcademyEvents)
       .map((event, index) => ({ ...event, eventKey: `AE${String(index + 1).padStart(4, "0")}` }));
-    const calendarEvents = buildAcademyCalendarEvents(platform.academyCalendar, week.start, week.end);
+    const calendarEvents = buildAcademyCalendarEvents(platform.academyCalendar, viewStart, viewEnd);
 
     return json({
       success: true,
-      version: "102.12.2",
+      version: "102.12.3",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,
-      today: week.today,
+      viewStart,
+      viewEnd,
+      today: clock.date,
       sessions,
       calendarEvents,
       warnings,
@@ -218,7 +239,9 @@ async function loadProgramEvents(env, course, memberships, options) {
     courseName,
     access,
     week: options.week,
-    globalZoomLink
+    globalZoomLink,
+    currentDate: options.currentDate,
+    currentMinutes: options.currentMinutes
   })).filter(Boolean);
 }
 
@@ -324,19 +347,12 @@ export function programSessionToAcademyEvent(session, options) {
   const access = options.access;
   let visibilityLevel = "LABEL";
   let relevant = false;
-  let canOpenZoom = false;
 
   if (access.level === "GLOBAL_ADMIN") {
     visibilityLevel = "DETAIL";
-    canOpenZoom = true;
-  } else if (access.roles.has("ADMIN") || access.roles.has("SENIOR")) {
-    visibilityLevel = "DETAIL";
-    relevant = true;
-    canOpenZoom = true;
-  } else if (access.roles.has("TEACHER")) {
+  } else if (access.roles.has("ADMIN") || access.roles.has("SENIOR") || access.roles.has("TEACHER")) {
     visibilityLevel = "DETAIL";
     relevant = access.teacherIds.has(teacherId);
-    canOpenZoom = relevant;
   } else if (access.roles.has("STUDENT")) {
     const groupKey = normalizePlatformIdentifier(group);
     const studentGroup = normalizePlatformIdentifier(access.studentGroup);
@@ -344,17 +360,26 @@ export function programSessionToAcademyEvent(session, options) {
     if (matches) {
       visibilityLevel = "DETAIL";
       relevant = true;
-      canOpenZoom = true;
     }
   }
 
+  const startTime = normalizeStoredTime(session.starttime);
+  const endTime = normalizeStoredTime(session.endtime);
+  const isCurrent = isAcademySessionCurrent({
+    date,
+    startTime,
+    endTime,
+    status: "SCHEDULED"
+  }, options.currentDate, options.currentMinutes);
+  const canOpenZoom = visibilityLevel === "DETAIL" && relevant && isCurrent;
   const base = {
     kind: "PROGRAM",
     date,
-    startTime: normalizeStoredTime(session.starttime),
-    endTime: normalizeStoredTime(session.endtime),
+    startTime,
+    endTime,
     visibilityLevel,
     relevant,
+    isCurrent,
     canOpenZoom,
     status: "SCHEDULED",
     title: visibilityLevel === "DETAIL"
@@ -413,7 +438,13 @@ export function buildGlobalCourseEvents(platform, account, options) {
       const lifecycle = lifecycleBySession.get(normalizePlatformIdentifier(session.sourcesessionid));
       const status = normalizePlatformIdentifier(lifecycle?.status || "SCHEDULED") || "SCHEDULED";
       const relevant = assignedTeacher || policyAccess;
-      const canOpenZoom = detail && status === "SCHEDULED" && (options.isGlobalAdmin || policyAccess || assignedTeacher);
+      const isCurrent = isAcademySessionCurrent({
+        date: session.sessiondate,
+        startTime: session.starttime,
+        endTime: session.endtime,
+        status
+      }, options.currentDate, options.currentMinutes);
+      const canOpenZoom = detail && relevant && status === "SCHEDULED" && isCurrent;
       const base = {
         kind: "GLOBAL",
         date: session.sessiondate,
@@ -421,6 +452,7 @@ export function buildGlobalCourseEvents(platform, account, options) {
         endTime: session.endtime,
         visibilityLevel: detail ? "DETAIL" : "LABEL",
         relevant,
+        isCurrent,
         canOpenZoom,
         status,
         title: session.subjectname || String(subject.SubjectName || "Global Course").trim()
@@ -440,6 +472,38 @@ export function buildGlobalCourseEvents(platform, account, options) {
     }
   }
   return output;
+}
+
+export function academyClockInTimezone(now, timezone) {
+  if (!isValidIanaTimezone(timezone)) throw new Error("PlatformTimezone is invalid");
+  const date = now instanceof Date ? now : new Date(now);
+  if (!Number.isFinite(date.getTime())) throw new Error("Academy timetable requires a valid current time");
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return Object.freeze({
+    date: `${values.year}-${values.month}-${values.day}`,
+    minutes: (Number(values.hour) * 60) + Number(values.minute)
+  });
+}
+
+export function isAcademySessionCurrent(session, currentDate, currentMinutes) {
+  if (normalizePlatformIdentifier(session?.status || "SCHEDULED") !== "SCHEDULED") return false;
+  if (!currentDate || String(session?.date || "") !== String(currentDate)) return false;
+  if (!Number.isFinite(Number(currentMinutes))) return false;
+  const start = timeToMinutes(session?.startTime);
+  const end = timeToMinutes(session?.endTime);
+  if (start === null || end === null || start === end) return false;
+  const nowMinutes = Number(currentMinutes);
+  if (end > start) return nowMinutes >= start && nowMinutes < end;
+  return nowMinutes >= start || nowMinutes < end;
 }
 
 export function resolveAcademyWeek(requestedStart, timezone, now = new Date()) {
@@ -497,6 +561,15 @@ function normalizeStoredTime(value) {
   const text = String(value || "").trim();
   const match = /^(\d{1,2}):(\d{2})/.exec(text);
   return match ? `${String(Number(match[1])).padStart(2, "0")}:${match[2]}` : text;
+}
+
+function timeToMinutes(value) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(value || "").trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+  return (hour * 60) + minute;
 }
 
 function compareAcademyEvents(left, right) {

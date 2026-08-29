@@ -1,18 +1,25 @@
-# Maktabhelper development — V102.12.2
+# Maktabhelper development — V102.12.3
 
-V102.12.2 refines the V102.12.1 Academy Calendar without changing the Platform Sheet schema.
+V102.12.3 is a code-only Academy Home refinement on top of V102.12.2.
 
-Main changes:
+It changes the delivered Academy timetable from a seven-day card grid to a personalised two-day pill view:
 
-- full-width Calendar and Terms sections;
-- 50/50 Islamic Dates and Public Holidays sections on larger screens;
-- inline editing for all Calendar administration rows;
-- editable/deleteable/addable Public Holidays through exceptions to the automatic South African holiday generator;
-- Islamic date shown beneath the Islamic description;
-- `First Fast` removed from Calendar display;
-- Ramadaan derived from First Taraweeh;
-- Academy Home receives the same Islamic-date presentation.
+- `TODAY` plus the next weekday;
+- flexible time rows and session pills;
+- directly relevant Student/Teacher/Admin sessions shown in detail;
+- remaining Program activity rolled up to one Program pill per time;
+- authorised Program staff / GLOBAL_ADMIN can expand roll-ups for read-only detail;
+- label-only users cannot expand protected detail;
+- only the currently running, directly relevant session can expose Zoom;
+- all times remain in M4L `13h00` format.
 
-Platform schema remains `102.0.8` / 19 required tabs.
+Program Timetables, Course Scheduler, Academy Calendar, Attendance, Progress, Library and Weekly Planner are not structurally changed.
 
-For implementation and validation steps see `UPDATE-TODO.md`. Detailed Calendar behavior is in `docs/V102.12.2-ACADEMY-CALENDAR.md`.
+## Platform Sheet
+
+No migration is required.
+
+- `PlatformSchemaVersion`: `102.0.8`
+- Required Platform tabs: `19`
+
+See `UPDATE-TODO.md` for deployment/testing and `docs/V102.12.3-ACADEMY-HOME-PILLS.md` for the delivery rules.

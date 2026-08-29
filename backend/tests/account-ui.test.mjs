@@ -13,8 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /m4l-account\.js\?v=102\.12\.2/);
-assert.match(html, /m4l-23-account\.css\?v=102\.12\.2/);
+assert.match(html, /m4l-account\.js\?v=102\.12\.3/);
+assert.match(html, /m4l-23-account\.css\?v=102\.12\.3/);
 
 for (const endpoint of [
   "/api/account/check",
@@ -36,6 +36,14 @@ assert.match(html, /id="academy-timetable"/);
 assert.match(html, /Academy timetable/);
 assert.match(script, /loadAcademyTimetable/);
 assert.match(script, /formatAcademyTimeRange/);
+assert.match(html, /id="academy-prev-day"/);
+assert.match(html, /id="academy-today"/);
+assert.match(html, /id="academy-next-day"/);
+assert.match(script, /createProgramRollupPill/);
+assert.match(script, /academy-session-pill/);
+assert.match(script, /date === today\s*\? "TODAY"/);
+assert.match(script, /weekday: "long"/);
+assert.match(script, /session\.isCurrent && session\.canOpenZoom && session\.zoomLink/);
 assert.match(script, /\$\{String\(Number\(match\[1\]\)\)\.padStart\(2, "0"\)\}h\$\{match\[2\]\}/);
 assert.match(script, /clearCourseDataCaches/);
 assert.match(script, /localStorage\.removeItem\(TOKEN_KEY\)/);
@@ -52,4 +60,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.12 Academy timetable Home and unified account UI tests passed.");
+console.log("V102.12.3 pill-based two-day Academy Home and unified account UI tests passed.");

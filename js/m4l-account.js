@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Unified account login with Academy timetable and calendar context. */
+/* M4L V102.12.3 - Unified account login with personalised two-day Academy timetable. */
 (function () {
   "use strict";
 
@@ -18,7 +18,7 @@
     contexts: [],
     busy: false,
     workspaceOpening: false,
-    academyWeekStart: "",
+    academyViewStart: "",
     academyTimezone: "",
     academyLoading: false
   };
@@ -46,9 +46,9 @@
     byId("setup-form").addEventListener("submit", submitSetup);
     byId("logout-button").addEventListener("click", logout);
     byId("open-workspace-button").addEventListener("click", () => openCurrentWorkspace());
-    byId("academy-prev-week").addEventListener("click", () => moveAcademyWeek(-7));
-    byId("academy-next-week").addEventListener("click", () => moveAcademyWeek(7));
-    byId("academy-current-week").addEventListener("click", () => loadAcademyTimetable({ resetWeek: true, force: true }));
+    byId("academy-prev-day").addEventListener("click", () => moveAcademyWindow(-1));
+    byId("academy-next-day").addEventListener("click", () => moveAcademyWindow(1));
+    byId("academy-today").addEventListener("click", () => loadAcademyTimetable({ resetView: true, force: true }));
     byId("academy-refresh").addEventListener("click", () => loadAcademyTimetable({ force: true }));
     document.querySelectorAll("[data-toggle-pin]").forEach(button => {
       button.addEventListener("click", () => togglePin(button));
@@ -286,14 +286,14 @@
     state.academyLoading = true;
     const container = byId("academy-timetable");
     const message = byId("academy-timetable-message");
-    if (options.resetWeek === true) state.academyWeekStart = "";
+    if (options.resetView === true) state.academyViewStart = "";
     message.textContent = "Loading timetable…";
     byId("academy-refresh").disabled = true;
     try {
       const result = await api("/api/academy/timetable", {
-        ...(state.academyWeekStart ? { startDate: state.academyWeekStart } : {})
+        ...(state.academyViewStart ? { startDate: state.academyViewStart } : {})
       }, state.token);
-      state.academyWeekStart = String(result.weekStart || "").trim();
+      state.academyViewStart = String(result.viewStart || result.today || "").trim();
       state.academyTimezone = String(result.timezone || "").trim();
       renderAcademyTimetable(result);
       const warnings = Array.isArray(result.warnings) ? result.warnings.length : 0;
@@ -315,15 +315,17 @@
     const container = byId("academy-timetable");
     const sessions = Array.isArray(result.sessions) ? result.sessions : [];
     const calendarEvents = Array.isArray(result.calendarEvents) ? result.calendarEvents : [];
-    const weekStart = String(result.weekStart || state.academyWeekStart || "").trim();
-    const weekEnd = String(result.weekEnd || "").trim();
     const today = String(result.today || "").trim();
-    byId("academy-week-label").textContent = `${formatAcademyDate(weekStart, { month: "short", day: "numeric" })} – ${formatAcademyDate(weekEnd, { month: "short", day: "numeric", year: "numeric" })}`;
-    renderAcademyWeekContext(calendarEvents, weekStart, weekEnd);
+    const viewStart = String(result.viewStart || state.academyViewStart || today).trim();
+    const viewEnd = String(result.viewEnd || addAcademyDays(viewStart, 1)).trim();
+    state.academyViewStart = viewStart;
+
+    byId("academy-view-label").textContent =
+      `${formatAcademyDate(viewStart, { day: "numeric", month: "short" })} – ${formatAcademyDate(viewEnd, { day: "numeric", month: "short", year: "numeric" })}`;
+    renderAcademyViewContext(calendarEvents, viewStart, viewEnd);
     container.replaceChildren();
 
-    for (let offset = 0; offset < 7; offset += 1) {
-      const date = addAcademyDays(weekStart, offset);
+    [viewStart, viewEnd].forEach(date => {
       const day = document.createElement("section");
       day.className = "academy-day";
       if (date === today) day.classList.add("is-today");
@@ -331,11 +333,14 @@
       const heading = document.createElement("header");
       heading.className = "academy-day-heading";
       const dayName = document.createElement("strong");
-      dayName.textContent = formatAcademyDate(date, { weekday: "short" });
+      dayName.textContent = date === today
+        ? "TODAY"
+        : formatAcademyDate(date, { weekday: "long" });
       const dayDate = document.createElement("span");
       dayDate.textContent = formatAcademyDate(date, { day: "2-digit", month: "short" });
       heading.append(dayName, dayDate);
       day.appendChild(heading);
+
       const dayEvents = calendarEvents.filter(event => String(event.startDate || "") <= date && String(event.endDate || "") >= date);
       const daySpecificEvents = dayEvents.filter(event => ["PUBLIC_HOLIDAY", "ISLAMIC_DAY"].includes(String(event.eventType || "").toUpperCase()));
       if (daySpecificEvents.length) {
@@ -346,29 +351,150 @@
       }
 
       const daySessions = sessions.filter(session => String(session.date || "") === date);
-      if (!daySessions.length) {
-        const empty = document.createElement("p");
-        empty.className = "academy-day-empty";
-        empty.textContent = "No classes";
-        day.appendChild(empty);
-      } else {
-        daySessions.forEach(session => day.appendChild(createAcademySessionCard(session)));
-      }
+      renderAcademyDaySessions(day, daySessions);
       container.appendChild(day);
-    }
+    });
   }
 
-
-  function renderAcademyWeekContext(events, weekStart, weekEnd) {
+  function renderAcademyViewContext(events, viewStart, viewEnd) {
     const root = byId("academy-week-context");
     if (!root) return;
     root.replaceChildren();
     const context = (Array.isArray(events) ? events : []).filter(event => {
       const type = String(event.eventType || "").toUpperCase();
-      return ["TERM", "RELIGIOUS_PERIOD"].includes(type) && String(event.startDate || "") <= weekEnd && String(event.endDate || "") >= weekStart;
+      return ["TERM", "RELIGIOUS_PERIOD"].includes(type) &&
+        String(event.startDate || "") <= viewEnd &&
+        String(event.endDate || "") >= viewStart;
     });
     context.forEach(event => root.appendChild(createAcademyCalendarBadge(event)));
     root.classList.toggle("hidden", context.length === 0);
+  }
+
+  function renderAcademyDaySessions(day, sessions) {
+    const ordered = (Array.isArray(sessions) ? sessions.slice() : [])
+      .sort((left, right) => String(left.startTime || "").localeCompare(String(right.startTime || "")) ||
+        String(left.title || "").localeCompare(String(right.title || "")));
+    if (!ordered.length) {
+      const empty = document.createElement("p");
+      empty.className = "academy-day-empty";
+      empty.textContent = "No classes";
+      day.appendChild(empty);
+      return;
+    }
+
+    const byTime = new Map();
+    ordered.forEach(session => {
+      const key = String(session.startTime || "").trim() || "TIME";
+      if (!byTime.has(key)) byTime.set(key, []);
+      byTime.get(key).push(session);
+    });
+
+    for (const [startTime, timeSessions] of byTime) {
+      const row = document.createElement("div");
+      row.className = "academy-time-row";
+
+      const time = document.createElement("span");
+      time.className = "academy-time-pill";
+      time.textContent = formatAcademyTime(startTime);
+
+      const sessionsRoot = document.createElement("div");
+      sessionsRoot.className = "academy-session-pills";
+
+      const relevant = timeSessions.filter(session => Boolean(session.relevant));
+      const otherPrograms = new Map();
+      const otherGlobal = [];
+
+      relevant.forEach(session => sessionsRoot.appendChild(createAcademySessionPill(session)));
+
+      timeSessions.filter(session => !session.relevant).forEach(session => {
+        if (String(session.kind || "").toUpperCase() !== "PROGRAM") {
+          otherGlobal.push(session);
+          return;
+        }
+        const programName = String(session.programName || session.title || "Program").trim() || "Program";
+        if (!otherPrograms.has(programName)) otherPrograms.set(programName, []);
+        otherPrograms.get(programName).push(session);
+      });
+
+      const relevantProgramNames = new Set(relevant
+        .filter(session => String(session.kind || "").toUpperCase() === "PROGRAM")
+        .map(session => String(session.programName || "").trim())
+        .filter(Boolean));
+
+      for (const [programName, programSessions] of otherPrograms) {
+        sessionsRoot.appendChild(createProgramRollupPill(
+          programName,
+          programSessions,
+          relevantProgramNames.has(programName)
+        ));
+      }
+      otherGlobal.forEach(session => sessionsRoot.appendChild(createAcademySessionPill(session)));
+
+      row.append(time, sessionsRoot);
+      day.appendChild(row);
+    }
+  }
+
+  function createProgramRollupPill(programName, sessions, hasRelevantSession) {
+    const detailsAvailable = sessions.some(session => String(session.visibilityLevel || "").toUpperCase() === "DETAIL");
+    const count = sessions.length;
+    const label = detailsAvailable
+      ? `${programName}${count > 1 ? ` · ${count}${hasRelevantSession ? " other" : ""} sessions` : ""}`
+      : programName;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "academy-program-rollup-wrap";
+
+    if (!detailsAvailable) {
+      const pill = document.createElement("span");
+      pill.className = "academy-program-rollup";
+      pill.textContent = label;
+      wrapper.appendChild(pill);
+      return wrapper;
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "academy-program-rollup is-expandable";
+    button.textContent = label;
+    button.setAttribute("aria-expanded", "false");
+    button.setAttribute("title", `Show ${programName} timetable detail`);
+
+    const details = document.createElement("div");
+    details.className = "academy-program-rollup-detail hidden";
+    sessions.forEach(session => {
+      if (String(session.visibilityLevel || "").toUpperCase() === "DETAIL") {
+        details.appendChild(createExpandedProgramSession(session));
+      }
+    });
+
+    button.addEventListener("click", () => {
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!expanded));
+      details.classList.toggle("hidden", expanded);
+    });
+
+    wrapper.append(button, details);
+    return wrapper;
+  }
+
+  function createExpandedProgramSession(session) {
+    const item = document.createElement("div");
+    item.className = "academy-program-expanded-session";
+
+    const title = document.createElement("strong");
+    title.textContent = String(session.subjectName || session.title || "Class");
+
+    const detail = document.createElement("span");
+    detail.textContent = [
+      session.moduleName,
+      session.group ? `Group ${session.group}` : "",
+      session.teacherName
+    ].filter(Boolean).join(" · ");
+
+    item.appendChild(title);
+    if (detail.textContent) item.appendChild(detail);
+    return item;
   }
 
   function createAcademyCalendarBadge(event) {
@@ -387,61 +513,62 @@
     return badge;
   }
 
-  function createAcademySessionCard(session) {
-    const card = document.createElement("article");
-    card.className = `academy-session ${session.relevant ? "is-relevant" : "is-academy"}`;
-    if (String(session.visibilityLevel || "").toUpperCase() === "LABEL") card.classList.add("is-label-only");
-    if (String(session.status || "").toUpperCase() === "CANCELLED") card.classList.add("is-cancelled");
+  function createAcademySessionPill(session) {
+    const isCurrentZoom = Boolean(session.isCurrent && session.canOpenZoom && session.zoomLink);
+    const pill = document.createElement(isCurrentZoom ? "a" : "article");
+    pill.className = `academy-session-pill ${session.relevant ? "is-relevant" : "is-academy"}`;
+    if (String(session.visibilityLevel || "").toUpperCase() === "LABEL") pill.classList.add("is-label-only");
+    if (String(session.status || "").toUpperCase() === "CANCELLED") pill.classList.add("is-cancelled");
+    if (session.relevant && session.isCurrent) pill.classList.add("is-current");
 
-    const meta = document.createElement("div");
-    meta.className = "academy-session-meta";
-    const time = document.createElement("strong");
-    time.textContent = formatAcademyTimeRange(session.startTime, session.endTime);
-    const kind = document.createElement("span");
-    kind.className = "academy-session-kind";
-    kind.textContent = String(session.kind || "").toUpperCase() === "GLOBAL" ? "GLOBAL COURSE" : "PROGRAM";
-    meta.append(time, kind);
+    if (isCurrentZoom) {
+      pill.href = String(session.zoomLink);
+      pill.target = "_blank";
+      pill.rel = "noopener noreferrer";
+      pill.setAttribute("aria-label", `Join Zoom for ${String(session.title || "current class")}`);
+      pill.setAttribute("title", "Join Zoom");
+    }
 
-    const title = document.createElement("h3");
+    const title = document.createElement("strong");
+    title.className = "academy-session-pill-title";
     title.textContent = String(session.title || "Class");
-    card.append(meta, title);
+    pill.appendChild(title);
 
     if (String(session.visibilityLevel || "").toUpperCase() === "DETAIL") {
       const contextName = String(session.programName || session.globalCourseName || "").trim();
-      const detail = [contextName && contextName !== title.textContent ? contextName : "", session.moduleName].filter(Boolean).join(" · ");
-      if (detail) {
-        const line = document.createElement("p");
-        line.className = "academy-session-detail";
-        line.textContent = detail;
-        card.appendChild(line);
+      if (contextName && contextName !== title.textContent) {
+        const context = document.createElement("span");
+        context.className = "academy-session-pill-context";
+        context.textContent = contextName;
+        pill.appendChild(context);
       }
-      const secondary = [session.group ? `Group ${session.group}` : "", session.teacherName].filter(Boolean).join(" · ");
-      if (secondary) {
-        const line = document.createElement("p");
-        line.className = "academy-session-secondary";
-        line.textContent = secondary;
-        card.appendChild(line);
+      const detailText = [
+        session.moduleName,
+        session.group ? `Group ${session.group}` : "",
+        session.teacherName
+      ].filter(Boolean).join(" · ");
+      if (detailText) {
+        const detail = document.createElement("span");
+        detail.className = "academy-session-pill-detail";
+        detail.textContent = detailText;
+        pill.appendChild(detail);
       }
     }
 
     const status = String(session.status || "SCHEDULED").toUpperCase();
     if (status !== "SCHEDULED") {
       const badge = document.createElement("span");
-      badge.className = "academy-session-status";
+      badge.className = "academy-session-pill-status";
       badge.textContent = status;
-      card.appendChild(badge);
+      pill.appendChild(badge);
     }
-
-    if (session.canOpenZoom && session.zoomLink) {
-      const zoom = document.createElement("a");
-      zoom.className = "academy-zoom-link";
-      zoom.href = String(session.zoomLink);
-      zoom.target = "_blank";
-      zoom.rel = "noopener noreferrer";
-      zoom.textContent = "Join Zoom";
-      card.appendChild(zoom);
+    if (isCurrentZoom) {
+      const zoom = document.createElement("span");
+      zoom.className = "academy-session-pill-zoom";
+      zoom.textContent = "Zoom";
+      pill.appendChild(zoom);
     }
-    return card;
+    return pill;
   }
 
   function createAcademyEmptyState(titleText, detailText) {
@@ -455,9 +582,9 @@
     return wrapper;
   }
 
-  function moveAcademyWeek(days) {
-    if (!state.academyWeekStart) return loadAcademyTimetable({ resetWeek: true, force: true });
-    state.academyWeekStart = addAcademyDays(state.academyWeekStart, days);
+  function moveAcademyWindow(days) {
+    if (!state.academyViewStart) return loadAcademyTimetable({ resetView: true, force: true });
+    state.academyViewStart = addAcademyDays(state.academyViewStart, days);
     return loadAcademyTimetable({ force: true });
   }
 

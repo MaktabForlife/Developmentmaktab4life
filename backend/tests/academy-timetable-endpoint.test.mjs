@@ -159,28 +159,31 @@ try {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({ startDate: "2026-08-24" })
+    body: JSON.stringify({ startDate: "2026-08-27" })
   }), env);
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "102.12.2");
+  assert.equal(body.version, "102.12.3");
   assert.equal(body.weekStart, "2026-08-24");
+  assert.equal(body.viewStart, "2026-08-27");
+  assert.equal(body.viewEnd, "2026-08-28");
   assert.equal(body.weekEnd, "2026-08-30");
   assert.equal(body.timezone, "Africa/Johannesburg");
   assert.equal(body.sessions.length, 2);
   const program = body.sessions.find(item => item.kind === "PROGRAM");
   const global = body.sessions.find(item => item.kind === "GLOBAL");
   assert.equal(program.visibilityLevel, "DETAIL");
+  assert.equal(program.relevant, false, "Global Admin receives expandable Program detail but not a directly relevant Home session");
   assert.equal(program.title, "Fiqh");
   assert.equal(program.date, "2026-08-27");
-  assert.equal(program.canOpenZoom, true);
-  assert.equal(program.zoomLink, "https://zoom.test/program-default");
+  assert.equal(program.canOpenZoom, false, "non-current Program sessions must not expose Zoom on Academy Home");
+  assert.equal(program.zoomLink, "");
   assert.equal(global.visibilityLevel, "DETAIL");
   assert.equal(global.title, "Steps to My Rabb");
   assert.equal(global.date, "2026-08-27");
-  assert.equal(global.canOpenZoom, true);
-  assert.equal(global.zoomLink, "https://zoom.test/global");
+  assert.equal(global.canOpenZoom, false, "non-current Global sessions must not expose Zoom on Academy Home");
+  assert.equal(global.zoomLink, "");
   assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002"]);
 
   const studentResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
@@ -189,7 +192,7 @@ try {
       "Content-Type": "application/json",
       Authorization: `Bearer ${studentToken}`
     },
-    body: JSON.stringify({ startDate: "2026-08-24" })
+    body: JSON.stringify({ startDate: "2026-08-27" })
   }), env);
   const studentBody = await studentResult.json();
   assert.equal(studentResult.status, 200);
@@ -203,7 +206,7 @@ try {
       "Content-Type": "application/json",
       Authorization: `Bearer ${studentToken}`
     },
-    body: JSON.stringify({ startDate: "2026-08-24" })
+    body: JSON.stringify({ startDate: "2026-08-27" })
   }), env);
   const staleMembershipBody = await staleMembershipResult.json();
   assert.equal(staleMembershipResult.status, 200);
@@ -212,11 +215,30 @@ try {
   assert.equal("subjectName" in staleProgram, false);
   assert.equal("zoomLink" in staleProgram, false);
   tables.course.StudentRecords[1][3] = "STUDENT-LINK";
+
+  tables.course.PublishedTimetableSessions[1][5] = "Mon";
+  const sundayWindowResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ startDate: "2026-08-30" })
+  }), env);
+  const sundayWindowBody = await sundayWindowResult.json();
+  assert.equal(sundayWindowResult.status, 200);
+  assert.equal(sundayWindowBody.viewStart, "2026-08-30");
+  assert.equal(sundayWindowBody.viewEnd, "2026-08-31");
+  assert.ok(
+    sundayWindowBody.sessions.some(item => item.kind === "PROGRAM" && item.date === "2026-08-31"),
+    "The two-day Academy Home window must carry Monday sessions across a Sunday week boundary"
+  );
+  tables.course.PublishedTimetableSessions[1][5] = "Thu";
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12 Academy timetable endpoint integration test passed.");
+console.log("V102.12.3 two-day Academy timetable endpoint integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {

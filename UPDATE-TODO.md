@@ -1,39 +1,48 @@
-# V102.12.2 UPDATE TODO
+# V102.12.3 UPDATE TODO
 
 ## Before deployment
 
-- [ ] Start from the deployed V102.12.1 development repository.
-- [ ] Apply the V102.12.2 changed-files overlay.
-- [ ] Do **not** add, delete or rename Platform Sheet tabs.
-- [ ] Leave `PlatformConfig!B3` at `102.0.8`.
-- [ ] If Academy Calendar is being prepared fresh rather than upgraded from V102.12.1, use `docs/V102.12.2-AcademyCalendar-template.csv` at `AcademyCalendar!A1` instead of the older V102.12.1 template.
-- [ ] If V102.12.1 was already deployed, do not re-import the template. Existing `First Fast` rows may remain; V102.12.2 ignores them.
+- [ ] Confirm V102.12.2 is the current development baseline.
+- [ ] Apply the V102.12.3 changed-files overlay.
+- [ ] Do **not** change the Platform Sheet schema.
+- [ ] Confirm `PlatformConfig!B3` remains `102.0.8`.
+- [ ] Confirm the Platform still has 19 required tabs.
 
 ## Deploy
 
-- [ ] Commit all V102.12.2 files together.
+- [ ] Commit all V102.12.3 files together.
 - [ ] Deploy Pages and Worker from the same commit.
-- [ ] Confirm Worker `/` reports `102.12.2`.
-- [ ] Run Platform validation; it should remain at `102.0.8` with 19 required tabs.
+- [ ] Confirm Worker `/` reports `102.12.3`.
 
-## Focused checks
+## Focused Academy Home checks
 
-- [ ] Open **Admin → Academy Calendar**.
-- [ ] Confirm Calendar is full width.
-- [ ] Confirm Terms is full width and existing terms edit/save inline.
-- [ ] Confirm Islamic Dates and Public Holidays are side-by-side at 50/50 width on a large screen and stack on a small screen.
-- [ ] Confirm Islamic descriptions show the Islamic date directly underneath.
-- [ ] Confirm `First Fast` is absent.
-- [ ] Edit one Islamic Most Likely/Alternate date inline and save; refresh and confirm it persists.
-- [ ] Edit a generated Public Holiday date and save; refresh and confirm the original date disappears and replacement appears.
-- [ ] Use `×` on one Public Holiday; refresh and confirm only that day is removed.
-- [ ] Use `+` after the Public Holiday list, add a date and save; refresh and confirm it appears.
-- [ ] Confirm the South African Sunday → following Monday rule still appears before any overrides.
-- [ ] Confirm Academy Home shows Islamic dates beneath Islamic descriptions.
-- [ ] Confirm Course Scheduler still warns about effective `NO_TEACHING` dates and does not silently alter published sessions.
+- [ ] Login through `/account/<uniqueid>` and confirm Home opens the Academy timetable.
+- [ ] Confirm the first day heading is `TODAY`.
+- [ ] Confirm the second day heading is the actual full weekday name.
+- [ ] Confirm times display as `13h00`, not AM/PM or `13:00`.
+- [ ] Confirm multiple simultaneous sessions can display as separate pills on one time row.
+- [ ] Confirm a Student sees detailed sessions only for their authorised Program group / ALL rules.
+- [ ] Confirm other Program activity is rolled into one Program pill per time.
+- [ ] Confirm label-only Program pills cannot reveal protected detail.
+- [ ] Confirm a Program Teacher/Admin/Senior sees only directly assigned teaching sessions as detailed Home pills.
+- [ ] Confirm remaining sessions in an authorised Program are rolled up and expandable read-only.
+- [ ] Confirm unrelated Program staff without membership cannot expand another Program's label-only roll-up.
+- [ ] Confirm GLOBAL_ADMIN sees Program roll-ups and can expand their detail.
+- [ ] Confirm a current directly relevant session with Zoom is clickable.
+- [ ] Confirm the same session is not clickable before it starts or after it ends.
+- [ ] Confirm cancelled sessions never expose Zoom.
+- [ ] Confirm previous/next moves one day and `Today` restores the current pair.
+- [ ] Check the Sunday → Monday two-day boundary.
+
+## Regression smoke checks
+
+- [ ] Program Timetables still open normally.
+- [ ] Course Scheduler still opens normally.
+- [ ] Academy Calendar still renders.
+- [ ] Global Access / Library authorization remains correct.
+- [ ] Attendance saved-register reset remains intact.
+- [ ] Weekly Planner and Progress open normally.
 
 ## Rollback
 
-- [ ] If no Public Holiday override has yet been saved, rollback is code-only to V102.12.1.
-- [ ] If Public Holiday overrides have been saved, do not revert to the V102.12.1 Worker until those `PUBLIC_HOLIDAY` override rows are removed from `AcademyCalendar`; V102.12.1 validation predates that EventType.
-- [ ] `PlatformConfig!B3` remains `102.0.8` throughout.
+V102.12.3 has no Sheet migration. Roll back Pages + Worker together to the prior V102.12.2 commit. Leave `PlatformConfig!B3` at `102.0.8`.

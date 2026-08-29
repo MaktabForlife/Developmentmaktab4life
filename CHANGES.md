@@ -1,20 +1,42 @@
-# V102.12.2 Changes
+# V102.12.3 Changes
 
-## Academy Calendar
+V102.12.3 refines Academy Home into a personalised two-day pill timetable.
 
-- Makes Terms, Islamic dates and Public Holidays editable inline.
-- Reworks the page layout to Calendar full width, Terms full width, then Islamic Dates and Public Holidays at 50% each on larger screens.
-- Adds inline save-icon actions.
-- Adds `×` removal for Public Holidays and `+` after the list to add a Public Holiday.
-- Allows generated South African Public Holidays to be moved or suppressed through persisted override rows while retaining automatic holiday generation.
-- Keeps all Public Holiday descriptions as `Public Holiday`.
-- Removes `First Fast` from Academy Calendar display and delivery.
-- Derives Ramadaan from the day after First Taraweeh instead of the removed First Fast row.
-- Displays the Islamic date below each Islamic description.
-- Adds the Islamic-date subline to Academy Home calendar badges.
+## Academy Home
 
-## Platform
+- Default timetable shows two days only:
+  - first column is `TODAY` when the first date is the current Academy date;
+  - second column uses the full weekday name, for example `Tuesday`.
+- Replaces the rigid seven-day timetable cards with flexible time rows and session pills.
+- All displayed times remain 24-hour M4L format such as `13h00`.
+- Multiple simultaneous sessions can sit beside each other within the same time row.
+- Previous/next controls move the two-day window by one day; `Today` returns to the current two-day view.
 
-- No new Platform tab or header.
-- `PlatformSchemaVersion` remains `102.0.8` with 19 required tabs.
-- Program Timetables, Global Course publication, Global Access, resources and Attendance behavior remain unchanged.
+## Personalised Program delivery
+
+- Students continue to receive detailed pills only for sessions authorised for their group / ALL-group rules.
+- Program Teachers, Admins and Seniors see their own directly assigned teaching sessions as detailed Home pills.
+- Other sessions in an authorised Program are rolled into one muted Program pill for that time.
+- Clicking an authorised staff roll-up reveals read-only subject/module/group/teacher detail.
+- Staff without membership in that Program still receive only the Program label and cannot expand it.
+- GLOBAL_ADMIN receives Program roll-ups with expandable detail, but no Program session is treated as personally relevant unless directly assigned through Program identity.
+- The full operational Program Timetable remains available in the Program workspace; Academy Home is intentionally concise.
+
+## Current-session Zoom
+
+- Zoom is now issued by the Worker only when the session is:
+  - directly relevant to the account;
+  - `SCHEDULED`;
+  - on the Academy current date; and
+  - currently between its start and end time in `PlatformTimezone`.
+- Past and future sessions do not receive a Zoom URL on Academy Home.
+- Cancelled sessions never receive Zoom.
+- A current authorised session pill itself is the Zoom action.
+
+## Security
+
+- Existing backend `DETAIL` / `LABEL` redaction remains in force.
+- Program roll-up expansion is available only when the backend has already authorised Program detail.
+- Label-only users do not receive hidden subject, module, group, teacher, Zoom or operational details.
+
+No Platform Sheet schema change is required. `PlatformSchemaVersion` remains `102.0.8` with 19 required tabs.
