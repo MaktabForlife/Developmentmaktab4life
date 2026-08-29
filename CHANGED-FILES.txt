@@ -1,21 +1,12 @@
-V102.12.3 changed/new files from V102.12.2
-
+app.js
+index.html
+admin/index.html
+student/index.html
+backend/tests/app-loader-integrity.test.mjs
+backend/tests/unified-workspace-ui.test.mjs
 CHANGED-FILES.txt
 CHANGES.md
 DELETE-FILES.txt
 README.md
 RELEASE-NOTES.md
 UPDATE-TODO.md
-account/index.html
-backend/package.json
-backend/src/routes/academy-timetable.js
-backend/src/worker.js
-backend/tests/academy-timetable-endpoint.test.mjs
-backend/tests/academy-timetable.test.mjs
-backend/tests/account-ui.test.mjs
-backend/tests/router.test.mjs
-css/m4l-23-account.css
-docs/V102.12.3-ACADEMY-HOME-PILLS.md
-js/m4l-account.js
-js/version.json
-version.json

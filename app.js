@@ -1,0 +1,725 @@
+/* M4L v94.1 - worker api.rebootyourmaktab.maktabhelper.app
+
+v93.1 bootstrap correction
+M4L v86 - config
+ - Core bootstrap guards and Home Class Duas carousel.
+   Load before m4l-auth, m4l-shell, and any optional feature modules.
+   Optional modules can now be omitted later, provided their screens/actions are not used by that role. */
+const M4L_CONFIG = window.M4L_CONFIG || {};
+const API_BASE = String(M4L_CONFIG.API_BASE || "https://api.rebootyourmaktab.maktabhelper.app").replace(/\/$/, "");
+const DEFAULT_STUDENT_GROUP = 1;
+const APP_VERSION_STORAGE_KEY = "maktab_app_version";
+const CLASS_DUAS_ITEMS = [
+  {
+    arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَّعَلَى آلِ مُحَمَّدٍ وَّبَارِكْ وَسَلِّم",
+    transliteration: "Alla - humma salli ala muhammadew wa ala aali muhammadew wa baarik wassallim.",
+    translation: "Oh Allah send peace and blessings upon Muhammad and the family of Muhammad"
+  },
+  {
+    arabic: "رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي",
+    transliteration: "Rabbish sharh lee sadree. Wa yassir lee amree. Wahlul ‘uqdatan mil lisa nee. Yafqahoo qawlee",
+    translation: "O my Sustainer! Open up my heart and make my task easy for me, and loosen the knot from my tongue so that they might fully understand my speech"
+  },
+  {
+    arabic: "رَبِّ يَسِّرْ وَلاَ تُعَسِّرْ وَتَمِّمْ بِالْخَیْر وَبِكَ نَسْتَعِينُ يَا فَتَّاحُ يَا عَلِيْمُ",
+    transliteration: "Rabbi, yassir wa la tu’assir wa tammim bil khair wa bika nasta’een. yaa fattaah Ya A’LeemU",
+    translation: "O Lord, make it easy and do not make it difficult, and make it end well. We seek your help. Oh the Opener, Oh the All Knowing"
+  },
+  {
+    arabic: "رَبِّ زِدْنِا عِلْمًا",
+    transliteration: "Rabbi Zidnaa IlMan",
+    translation: "Oh lord increase us in knowledge"
+  },
+  {
+    arabic: "اللّهُمَّ أعِنَّا على ذِكْرِكَ، وَشُكْرِكَ، وَحُسْنِ عِبَادَتِكَ",
+    transliteration: "Allahumma A inna Ala Zikrika, Wa Shukrika, Wa Husni Ibadatika",
+    translation: "O Allah, help me remember You, to be grateful to You and to worship You in an excellent manner"
+  },
+  {
+    arabic: "سُبْحَانَكَ لَا عِلْمَ لَنَا إِلَّا مَا عَلَّمْتَنَا ۖ إِنَّكَ أَنتَ الْعَلِيمُ الْحَكِيمُ",
+    transliteration: "subḥānaka lā ‘ilma lanā illā mā ‘allamtana, innaka antal-‘Alīmul-Ḥakīm.",
+    translation: "Glory be to You; we have no knowledge except what You have taught us. Indeed, it is You who is the All-Knowing, the All-Wise"
+  }
+];
+
+
+const state = {
+  portalType: null,
+  uniqueid: null,
+  token: localStorage.getItem("maktab_token") || "",
+  userType: localStorage.getItem("maktab_user_type") || "",
+  user: null,
+  authMode: "",
+  accountContext: null,
+  loginSubmitting: false
+};
+
+const bootstrapWarningKeys = new Set();
+
+function getGlobalFunction(functionName) {
+  const name = String(functionName || "").trim();
+
+  if (!name) return null;
+
+  const candidate = window[name];
+  return typeof candidate === "function" ? candidate : null;
+}
+
+function warnMissingBootstrapFunction(functionName, label, required) {
+  const key = `missing:${functionName}`;
+
+  if (bootstrapWarningKeys.has(key)) return;
+  bootstrapWarningKeys.add(key);
+
+  const message = required
+    ? `Required startup function is missing: ${label || functionName}`
+    : `Optional startup function is not loaded: ${label || functionName}`;
+
+  console.warn(message);
+}
+
+function callBootstrapFunction(functionName, args = [], options = {}) {
+  const label = options.label || functionName;
+  const required = options.required === true;
+  const fn = getGlobalFunction(functionName);
+
+  if (!fn) {
+    warnMissingBootstrapFunction(functionName, label, required);
+
+    if (required) {
+      throw new Error(`Missing required startup function: ${functionName}`);
+    }
+
+    return { called: false, value: options.defaultValue };
+  }
+
+  try {
+    return { called: true, value: fn(...args) };
+  } catch (error) {
+    console.error(`Startup function failed: ${label}`, error);
+
+    if (required) {
+      throw error;
+    }
+
+    return { called: false, value: options.defaultValue };
+  }
+}
+
+function bindBootstrapUiHandlers(portalType = "") {
+  const role = String(portalType || state.portalType || "").trim().toLowerCase();
+
+  callBootstrapFunction("setupPinDigitBoxes", [], {
+    label: "PIN input handlers",
+    required: true
+  });
+
+  callBootstrapFunction("bindHeaderIconActionHandlers", [], {
+    label: "header icon action handlers",
+    required: true
+  });
+
+  callBootstrapFunction("bindTimetableUiHandlers", [], {
+    label: "timetable UI handlers"
+  });
+
+  // Admin curriculum code is intentionally not loaded by the Student app.
+  // Only request its handlers when the active route is the Admin portal.
+  if (role === "admin") {
+    callBootstrapFunction("bindAdminSubjectUiHandlers", [], {
+      label: "admin curriculum UI handlers"
+    });
+  }
+
+  callBootstrapFunction("bindMediaViewerHandlers", [], {
+    label: "media viewer handlers"
+  });
+}
+
+function safeSetError(message) {
+  const result = callBootstrapFunction("setError", [message], {
+    label: "auth error renderer",
+    defaultValue: false
+  });
+
+  if (result.called) return result.value;
+
+  return setDomText("auth-error", message || "");
+}
+
+function safeShowScreen(screenId) {
+  const result = callBootstrapFunction("showScreen", [screenId], {
+    label: "screen navigation",
+    defaultValue: false
+  });
+
+  if (result.called) return result.value;
+
+  if (window.M4LDom && typeof window.M4LDom.safeShowScreen === "function") {
+    return window.M4LDom.safeShowScreen(screenId);
+  }
+
+  const target = document.getElementById(screenId);
+  if (!target) return false;
+
+  document.querySelectorAll(".screen").forEach(screen => {
+    screen.classList.remove("active");
+  });
+
+  target.classList.add("active");
+  return true;
+}
+async function checkForAppUpdate() {
+  try {
+    const response = await fetch(`/version.json?t=${Date.now()}`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const latestVersion = String(data.version || "").trim();
+
+    if (!latestVersion) return;
+
+    const currentVersion = localStorage.getItem(APP_VERSION_STORAGE_KEY);
+
+    if (currentVersion && currentVersion !== latestVersion) {
+      localStorage.setItem(APP_VERSION_STORAGE_KEY, latestVersion);
+
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
+      }
+
+      window.location.reload();
+      return;
+    }
+
+    if (!currentVersion) {
+      localStorage.setItem(APP_VERSION_STORAGE_KEY, latestVersion);
+    }
+  } catch (error) {
+    console.warn("App update check failed", error);
+  }
+}
+
+
+/* =========================
+   APP INIT
+========================= */
+
+window.addEventListener("load", initApp);
+window.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    callBootstrapFunction("closeStudentResourceModulePicker", [], {
+      label: "resource module picker close"
+    });
+  }
+});
+
+async function initApp() {
+  try {
+    checkForAppUpdate();
+
+    const route = getPortalRouteFromLocation();
+    bindBootstrapUiHandlers(route.portalType);
+
+    if (route.portalType === "admin") {
+      state.portalType = "admin";
+      state.uniqueid = route.uniqueid;
+      setAuthTheme("admin");
+      if (await restoreUnifiedWorkspaceIfPresent(route)) return;
+      callBootstrapFunction("checkAdmin", [], {
+        label: "admin link check",
+        required: true
+      });
+      return;
+    }
+
+    if (route.portalType === "student") {
+      state.portalType = "student";
+      state.uniqueid = route.uniqueid;
+      setAuthTheme("student");
+      if (await restoreUnifiedWorkspaceIfPresent(route)) return;
+      callBootstrapFunction("checkStudent", [], {
+        label: "student link check",
+        required: true
+      });
+      return;
+    }
+
+    showInvalidLoginLinkMessage();
+  } catch (error) {
+    console.error("App startup failed:", error);
+    showStartupErrorMessage();
+  }
+}
+
+async function restoreUnifiedWorkspaceIfPresent(route) {
+  const hasSession = getGlobalFunction("hasUnifiedAccountWorkspaceSession");
+  if (!hasSession || hasSession() !== true) return false;
+
+  const restore = getGlobalFunction("restoreUnifiedAccountWorkspace");
+  if (!restore) {
+    throw new Error("Unified account workspace bootstrap is missing");
+  }
+
+  // A detected central account session owns this page load. Even when restore
+  // fails, the account handler displays the error or returns to /account/;
+  // the app must never fall through to a second legacy PIN prompt.
+  await restore(route);
+  return true;
+}
+
+function getM4LAccountContext() {
+  try {
+    const context = JSON.parse(localStorage.getItem("m4l_account_context") || "null");
+    return context && typeof context === "object" ? context : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getM4LCourseCacheScope() {
+  const context = getM4LAccountContext();
+  const courseId = String(context?.courseId || "").trim().toUpperCase();
+  return courseId || "LEGACY";
+}
+
+function getSafePathSegment(segment) {
+  const value = String(segment || "").trim();
+
+  if (!value) return "";
+
+  try {
+    return decodeURIComponent(value).trim();
+  } catch (error) {
+    console.warn("Could not decode route segment:", value, error);
+    return value;
+  }
+}
+
+function getPortalRouteFromLocation() {
+  const pathname = String(window.location && window.location.pathname ? window.location.pathname : "");
+  const parts = pathname.split("/").filter(Boolean);
+  const portalType = getSafePathSegment(parts[0]).toLowerCase();
+  const uniqueid = getSafePathSegment(parts[1]);
+
+  if ((portalType === "admin" || portalType === "student") && uniqueid) {
+    return { portalType, uniqueid };
+  }
+
+  return { portalType: "", uniqueid: "" };
+}
+
+function showInvalidLoginLinkMessage() {
+  state.portalType = null;
+  state.uniqueid = null;
+
+  setAuthTheme("");
+  safeSetError("");
+  setDomText("portal-title", "Invalid Login Link");
+  setDomText(
+    "portal-subtitle",
+    "Please use your personal Maktab4Life student or admin link."
+  );
+  hideDomElement("auth-welcome-banner");
+  hideDomElement("login-pin-box");
+  hideDomElement("setup-pin-box");
+  safeShowScreen("auth-screen");
+}
+
+function showStartupErrorMessage() {
+  setAuthTheme("");
+  setDomText("portal-title", "Unable to Start App");
+  setDomText(
+    "portal-subtitle",
+    "Please refresh the page. If the problem continues, contact the Maktab4Life administrator."
+  );
+  safeSetError("Unable to start the app. Please refresh and try again.");
+  hideDomElement("auth-welcome-banner");
+  hideDomElement("login-pin-box");
+  hideDomElement("setup-pin-box");
+  safeShowScreen("auth-screen");
+}
+
+/* M4L v38: showScreen moved to /js/m4l-shell.js */
+function setDomText(id, value) {
+  const dom = window.M4LDom;
+
+  if (dom && typeof dom.setText === "function") {
+    return dom.setText(id, value);
+  }
+
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  el.innerText = value == null ? "" : String(value);
+  return true;
+}
+
+function getDomElement(target) {
+  if (!target) return null;
+
+  if (typeof target === "string") {
+    return document.getElementById(target);
+  }
+
+  return target;
+}
+
+function setDomHtml(target, value) {
+  const dom = window.M4LDom;
+
+  if (typeof target === "string" && dom && typeof dom.setHtml === "function") {
+    return dom.setHtml(target, value);
+  }
+
+  const el = getDomElement(target);
+  if (!el) return false;
+
+  el.innerHTML = value == null ? "" : String(value);
+  return true;
+}
+
+function showDomElement(id) {
+  const dom = window.M4LDom;
+
+  if (dom && typeof dom.show === "function") {
+    return dom.show(id);
+  }
+
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  el.classList.remove("hidden");
+  return true;
+}
+
+function hideDomElement(id) {
+  const dom = window.M4LDom;
+
+  if (dom && typeof dom.hide === "function") {
+    return dom.hide(id);
+  }
+
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  el.classList.add("hidden");
+  return true;
+}
+
+function setAuthTheme(type) {
+  const authScreen = document.getElementById("auth-screen");
+  const body = document.body;
+
+  if (authScreen) {
+    authScreen.classList.remove("student-theme", "admin-theme");
+
+    if (type === "student") {
+      authScreen.classList.add("student-theme");
+    }
+
+    if (type === "admin") {
+      authScreen.classList.add("admin-theme");
+    }
+  }
+
+  if (body) {
+    body.classList.remove("student-body", "admin-body");
+
+    if (type === "student") {
+      body.classList.add("student-body");
+    }
+
+    if (type === "admin") {
+      body.classList.add("admin-body");
+    }
+  }
+}
+
+/* =========================
+   FEATURE MODULES
+   Auth, shell/navigation, attendance, admin academics, timetable, resources, progress, and manage-students load from /js/.
+   app.js keeps shared constants, state, startup, safe DOM wrappers, and home-only content.
+========================= */
+
+/* =========================
+   HOME CLASS DUAS CAROUSEL - V84
+========================= */
+
+/* M4L v40: Class duas is a home-page card, not part of the timetable module.
+   It remains in app.js for this split and is only positioned after the home timetable render. */
+
+function createClassDuasCard(cardId) {
+  const card = document.createElement("section");
+  card.id = cardId;
+  card.className = "class-duas-card";
+  card.setAttribute("aria-label", "Class duas");
+
+  const title = document.createElement("h3");
+  title.className = "class-duas-card__title";
+  title.textContent = "Class Duas";
+
+  const viewport = document.createElement("div");
+  viewport.className = "class-duas-card__viewport";
+
+  const track = document.createElement("div");
+  track.className = "class-duas-card__track";
+  track.dataset.classDuasTrack = "";
+  track.setAttribute("aria-label", "Class duas swipe panels");
+
+  const dots = document.createElement("div");
+  dots.className = "class-duas-card__dots";
+  dots.dataset.classDuasDots = "";
+  dots.setAttribute("aria-label", "Class dua panels");
+
+  CLASS_DUAS_ITEMS.forEach((dua, index) => {
+    const item = document.createElement("article");
+    item.className = "class-duas-card__panel";
+    item.dataset.classDuaPanelIndex = String(index);
+    item.setAttribute("aria-label", `Dua ${index + 1}`);
+
+    const arabic = document.createElement("p");
+    arabic.className = "class-duas-card__arabic";
+    arabic.lang = "ar";
+    arabic.dir = "rtl";
+    arabic.textContent = dua.arabic;
+
+    const transliteration = document.createElement("p");
+    transliteration.className = "class-duas-card__transliteration";
+    transliteration.lang = "en";
+    transliteration.dir = "ltr";
+    transliteration.textContent = dua.transliteration;
+
+    const translation = document.createElement("p");
+    translation.className = "class-duas-card__translation";
+    translation.lang = "en";
+    translation.dir = "ltr";
+    translation.textContent = dua.translation;
+
+    item.appendChild(arabic);
+    item.appendChild(transliteration);
+    item.appendChild(translation);
+    track.appendChild(item);
+
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = index === 0 ? "class-duas-card__dot is-active" : "class-duas-card__dot";
+    dot.dataset.classDuaPanelIndex = String(index);
+    dot.setAttribute("aria-label", `Show dua ${index + 1}`);
+    dot.setAttribute("aria-current", index === 0 ? "true" : "false");
+    dots.appendChild(dot);
+  });
+
+  viewport.appendChild(track);
+  card.appendChild(title);
+  card.appendChild(viewport);
+  card.appendChild(dots);
+  bindClassDuasCarousel(card);
+  return card;
+}
+
+function getClassDuasCarouselActiveIndex(card) {
+  const track = card ? card.querySelector("[data-class-duas-track]") : null;
+  if (!track) return 0;
+
+  const panels = Array.from(track.querySelectorAll("[data-class-dua-panel-index]"));
+  if (panels.length <= 1) return 0;
+
+  const panelWidth = panels[0].getBoundingClientRect().width || track.clientWidth || 1;
+  const index = Math.round((track.scrollLeft || 0) / panelWidth);
+  return Math.max(0, Math.min(panels.length - 1, index));
+}
+
+function updateClassDuasCarouselDots(card) {
+  if (!card) return false;
+
+  const activeIndex = getClassDuasCarouselActiveIndex(card);
+  const dots = Array.from(card.querySelectorAll("[data-class-duas-dots] [data-class-dua-panel-index]"));
+
+  dots.forEach((dot, fallbackIndex) => {
+    const dotIndex = Number(dot.dataset.classDuaPanelIndex || fallbackIndex || 0);
+    const isActive = dotIndex === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+
+  return true;
+}
+
+function scrollClassDuasCarouselToPanel(card, index) {
+  const track = card ? card.querySelector("[data-class-duas-track]") : null;
+  const target = track ? track.querySelector(`[data-class-dua-panel-index="${Number(index || 0)}"]`) : null;
+
+  if (!track || !target) return false;
+
+  target.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest",
+    inline: "start"
+  });
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => updateClassDuasCarouselDots(card));
+  } else {
+    window.setTimeout(() => updateClassDuasCarouselDots(card), 0);
+  }
+
+  return true;
+}
+
+function bindClassDuasCarousel(card) {
+  if (!card || card.dataset.classDuasCarouselBound === "true") return false;
+
+  const track = card.querySelector("[data-class-duas-track]");
+  const dots = Array.from(card.querySelectorAll("[data-class-duas-dots] [data-class-dua-panel-index]"));
+
+  if (!track || !dots.length) return false;
+
+  card.dataset.classDuasCarouselBound = "true";
+
+  let pendingFrame = 0;
+  track.addEventListener("scroll", () => {
+    if (pendingFrame) return;
+
+    const schedule = typeof window.requestAnimationFrame === "function"
+      ? window.requestAnimationFrame
+      : callback => window.setTimeout(callback, 0);
+
+    pendingFrame = schedule(() => {
+      pendingFrame = 0;
+      updateClassDuasCarouselDots(card);
+    });
+  }, { passive: true });
+
+  dots.forEach(dot => {
+    dot.addEventListener("click", event => {
+      event.preventDefault();
+      scrollClassDuasCarouselToPanel(card, dot.dataset.classDuaPanelIndex || 0);
+    });
+  });
+
+  const update = () => updateClassDuasCarouselDots(card);
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(update);
+  } else {
+    window.setTimeout(update, 0);
+  }
+
+  return true;
+}
+
+function getHomeDuasPanelForTimetableContent(contentId) {
+  const homeDuasPanelByContentId = {
+    "student-timetable-content": "student-home-duas-panel",
+    "admin-home-timetable-content": "admin-home-duas-panel"
+  };
+
+  const panelId = homeDuasPanelByContentId[contentId];
+  return panelId ? document.getElementById(panelId) : null;
+}
+
+function ensureClassDuasCardAfterTimetable(contentId, cardId, imageCardIds = []) {
+  const content = document.getElementById(contentId);
+
+  if (!content) {
+    return;
+  }
+
+  imageCardIds.forEach(id => {
+    const imageCard = document.getElementById(id);
+    if (imageCard) {
+      imageCard.remove();
+    }
+  });
+
+  let card = document.getElementById(cardId);
+
+  if (!card) {
+    card = createClassDuasCard(cardId);
+  }
+
+  const homeDuasPanel = getHomeDuasPanelForTimetableContent(contentId);
+
+  if (homeDuasPanel) {
+    homeDuasPanel.innerHTML = "";
+    homeDuasPanel.appendChild(card);
+    bindClassDuasCarousel(card);
+    updateClassDuasCarouselDots(card);
+    return;
+  }
+
+  const timetableCard = content.closest(".timetable-card");
+
+  if (timetableCard && timetableCard.parentNode) {
+    timetableCard.insertAdjacentElement("afterend", card);
+    bindClassDuasCarousel(card);
+    updateClassDuasCarouselDots(card);
+    return;
+  }
+
+  if (content.parentNode) {
+    content.insertAdjacentElement("afterend", card);
+    bindClassDuasCarousel(card);
+    updateClassDuasCarouselDots(card);
+  }
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
+}
+
+function escapeJsString(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "");
+}
+
+function cssEscapeValue(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(String(value || ""));
+  }
+
+  return String(value || "").replace(/"/g, "\\\"");
+}
+
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function escapeJs(value) {
+  return String(value ?? "")
+    .replaceAll("\\", "\\\\")
+    .replaceAll("'", "\\'");
+}
+
+function hideSplashScreen() {
+  const splash = document.getElementById("splashScreen");
+  if (!splash) return;
+
+  splash.classList.add("splash-hidden");
+
+  setTimeout(() => {
+    splash.remove();
+  }, 400);
+}
+
+
+window.M4LBootstrap = {
+  getGlobalFunction,
+  callBootstrapFunction,
+  bindBootstrapUiHandlers,
+  safeSetError,
+  safeShowScreen
+};
