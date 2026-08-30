@@ -1,4 +1,4 @@
-/* M4L V103.1.0.2 - Academy Home chronological multi-session delivery and day scrolling support. */
+/* M4L V103.1.0.4 - Rolling Academy timetable ranges for fast week-ahead swiping. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -28,6 +28,8 @@ import {
 } from "../lib/system-config.js";
 
 const FULL_RANGE = "A:ZZ";
+const DEFAULT_VIEW_DAYS = 2;
+const MAX_VIEW_DAYS = 14;
 const COURSE_ROLE_ORDER = Object.freeze({ ADMIN: 1, SENIOR: 2, TEACHER: 3, STUDENT: 4 });
 const DAY_INDEX = Object.freeze({ SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 });
 const DAY_ALIASES = Object.freeze({
@@ -59,13 +61,11 @@ export async function getAcademyTimetableEndpoint(request, env) {
     const timezone = resolvePlatformTimezone(platform.config);
     const now = new Date();
     const clock = academyClockInTimezone(now, timezone);
-    const week = resolveAcademyWeek(body.startDate, timezone, now);
     const viewStart = validIsoDate(body.startDate) ? String(body.startDate).trim() : clock.date;
-    const viewEnd = addDays(viewStart, 1);
-    const weeks = [week];
-    if (viewEnd > week.end) {
-      weeks.push(resolveAcademyWeek(viewEnd, timezone, now));
-    }
+    const viewDays = resolveAcademyViewDays(body.days);
+    const viewEnd = addDays(viewStart, viewDays - 1);
+    const weeks = academyWeeksForRange(viewStart, viewEnd, timezone, now);
+    const week = weeks[0];
     const isGlobalAdmin = normalizePlatformIdentifier(account.PlatformRole) === "GLOBAL_ADMIN";
     const memberships = platform.courseAccess.filter(row => (
       normalizePlatformIdentifier(row.AccountID) === normalizePlatformIdentifier(account.AccountID) &&
@@ -75,15 +75,15 @@ export async function getAcademyTimetableEndpoint(request, env) {
     const activePrograms = platform.courses.filter(row => isActivePlatformValue(row.Active));
     const programLoads = await Promise.all(activePrograms.map(async course => {
       try {
-        const programWeeks = await Promise.all(weeks.map(activeWeek => loadProgramEvents(env, course, memberships, {
+        const events = await loadProgramEvents(env, course, memberships, {
           account,
           isGlobalAdmin,
-          week: activeWeek,
+          weeks,
           currentDate: clock.date,
           currentMinutes: clock.minutes
-        })));
+        });
         return {
-          events: programWeeks.flat(),
+          events,
           warning: null
         };
       } catch (error) {
@@ -119,12 +119,13 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "103.1.0.2",
+      version: "103.1.0.4",
       timezone,
       weekStart: week.start,
-      weekEnd: week.end,
+      weekEnd: weeks[weeks.length - 1].end,
       viewStart,
       viewEnd,
+      viewDays,
       today: clock.date,
       sessions,
       calendarEvents,
@@ -234,15 +235,16 @@ async function loadProgramEvents(env, course, memberships, options) {
     sessions = transformed.sessions;
   }
 
-  return sessions.map(session => programSessionToAcademyEvent(session, {
+  const weeks = Array.isArray(options.weeks) && options.weeks.length ? options.weeks : [];
+  return weeks.flatMap(week => sessions.map(session => programSessionToAcademyEvent(session, {
     courseId,
     courseName,
     access,
-    week: options.week,
+    week,
     globalZoomLink,
     currentDate: options.currentDate,
     currentMinutes: options.currentMinutes
-  })).filter(Boolean);
+  })).filter(Boolean));
 }
 
 async function resolveProgramAccess(env, spreadsheetId, memberships, options) {
@@ -471,6 +473,27 @@ export function buildGlobalCourseEvents(platform, account, options) {
     }
   }
   return output;
+}
+
+export function resolveAcademyViewDays(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return DEFAULT_VIEW_DAYS;
+  return Math.min(parsed, MAX_VIEW_DAYS);
+}
+
+export function academyWeeksForRange(startDate, endDate, timezone, now = new Date()) {
+  if (!validIsoDate(startDate) || !validIsoDate(endDate) || endDate < startDate) {
+    throw new Error("Academy timetable range is invalid");
+  }
+  const weeks = [];
+  let cursor = resolveAcademyWeek(startDate, timezone, now);
+  while (cursor.start <= endDate) {
+    weeks.push(cursor);
+    const nextStart = addDays(cursor.end, 1);
+    if (nextStart > endDate) break;
+    cursor = resolveAcademyWeek(nextStart, timezone, now);
+  }
+  return weeks;
 }
 
 export function academyClockInTimezone(now, timezone) {

@@ -1,37 +1,39 @@
-# Maktab4Life V103.1.0.3
+# Maktab4Life V103.1.0.4
 
-V103.1.0.3 is a focused **Global Resources management UI** refinement applied on top of V103.1.0.2.
+V103.1.0.4 is a focused **Academy Home timetable-loading** refinement applied on top of V103.1.0.3.
 
 It does not advance the V103 Central Identity authority model and does not require the controlled V103.1 Identity Links migration to have been run.
 
-## Global Resources inline editor
+## Rolling seven-day startup load
 
-The Resources tab now uses a compact searchable list. Existing Resources expand inline beneath their summary row for editing, and multiple Resources can be changed before one screen-level Save.
+Academy Home now requests a rolling **7-day timetable beginning today** in one Worker request. All seven day cards are rendered into the existing horizontal swipe track, so moving through the coming week does not require a network request for every day.
 
-The editor includes Drive file selection, display name, description, type, Global Subject, Module, Task, status, and derived format. New Resources are added with `+ Add a Global Resource`.
+Desktop continues to show two day cards at a time and mobile one day card at a time. The V103.1.0.2 internal vertical scrolling for busy day cards remains intact.
 
-## One batch Save
+## Cache and background refresh
 
-Only dirty/new Resources are submitted. The Worker validates the complete set first and then writes all valid Resource changes in one Google Sheets batch update, increments `GlobalCurriculumVersion` once, and records one audit row per changed Resource.
+The latest valid rolling timetable is cached per central AccountID for up to 12 hours. On a reload, a valid cache can render immediately while the Worker refreshes the seven-day range. If that background refresh fails, the saved timetable remains visible with a clear saved-data message.
 
-A stale screen version is rejected rather than overwriting newer Global Curriculum changes.
+Manual Refresh always returns to today and reloads a fresh rolling seven-day range.
 
-The Save icon is intentionally larger on this screen. It remains neutral when there is nothing to save and turns purple / more prominent whenever unsaved edits exist.
+## Prefetch
 
-## Global Resources folder
+When the user swipes near the end of the loaded range, Academy Home requests the following seven days in advance and merges them into the existing swipe track. The user can therefore continue into the following week without stopping on a loading screen.
 
-Changing the protected Google Drive root remains a separate GLOBAL_ADMIN operation. It does not move files. The existing guard still refuses a new root unless every saved Drive-backed Global Resource is already inside that folder tree.
+Day arrows now move to already-loaded adjacent day cards locally. If an arrow crosses the loaded boundary, the required adjacent seven-day range is fetched and then displayed.
 
-Pending Resource edits must be saved or discarded before changing the root.
+## Worker efficiency
+
+The Academy timetable endpoint accepts an optional `days` value (default remains 2 for compatibility; maximum 14 per request). A seven-day range may span two timetable weeks, but each Program timetable snapshot is read once per request and then materialised across the required weeks, avoiding duplicate Program Sheet reads.
 
 ## Schema
 
-No new Sheet migration is introduced:
+No Sheet migration is introduced:
 
 - keep `PlatformConfig!B3 = 102.0.8`;
 - keep **19 required Platform tabs**.
 
-See `docs/V103.1.0.3-GLOBAL-RESOURCES-INLINE-BATCH-EDITOR.md` for details.
+See `docs/V103.1.0.4-ACADEMY-TIMETABLE-WEEK-LOADING.md` for details.
 
 ## Roadmap
 

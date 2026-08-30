@@ -1,46 +1,52 @@
-# V103.1.0.3 Release Notes
+# V103.1.0.4 Release Notes
 
-V103.1.0.3 modernises the **Global Resources** administration screen without changing student resource delivery or the V103 Central Identity migration state.
+V103.1.0.4 makes Academy Home timetable navigation substantially faster by loading the coming week up front and prefetching the next range before it is needed.
 
-## Resource workflow
+## Startup timetable
 
-The Resources tab now behaves like the refreshed Subjects/Modules editor:
+On Academy Home startup:
 
-- filter the Resource list by name, Subject, type, or status;
-- expand an existing Resource inline;
-- edit Drive file, display name, description, type, Subject, Module, Task, status, and derived format;
-- add one or more new Resources inline;
-- make several changes before saving;
-- press one Save icon to commit the complete dirty set.
+- one Worker request loads **today + the next 6 days**;
+- all seven day cards are rendered into the swipe track;
+- desktop keeps two cards visible at a time;
+- mobile keeps one card visible at a time;
+- swiping between those loaded days is local and immediate.
 
-Closing an existing inline editor only collapses it; pending edits remain in the browser and stay highlighted. Closing an unsaved new Resource discards that draft.
+The existing internal vertical scroll inside each busy day card remains unchanged.
 
-Existing Resources are not hard-deleted from this screen. Set Status to `INACTIVE` to preserve history/references.
+## Day arrows
 
-## Save visibility
+Previous/next arrows now move between loaded day cards rather than forcing a timetable API call for every single day. Crossing outside the loaded range fetches the adjacent seven-day block and then moves to the requested date.
 
-The screen-level Save action is larger than the normal passive icon treatment. With no pending changes it is neutral and disabled. As soon as any Resource becomes dirty/new, it turns purple and becomes more prominent until the batch save succeeds.
+## Prefetch
 
-## Batch integrity
+As the horizontal swipe track approaches its loaded end, the next seven days are fetched in the background and merged into the current timetable. Existing scroll position is preserved while the extra days are added.
 
-`/api/admin/platform/global/resources/save-batch`:
+## Cache
 
-- rejects stale `GlobalCurriculumVersion` values;
-- validates every submitted Resource before any Sheet mutation;
-- checks curriculum relationships and active dependencies;
-- validates protected Drive files against the configured Global Resources root;
-- prevents duplicate Resource names within a curriculum branch;
-- prevents duplicate Drive file registration;
-- performs one Google Sheets batch update;
-- increments Global Curriculum version once;
-- writes audit rows for each changed Resource.
+A per-AccountID Academy timetable cache is retained for up to 12 hours. A valid cache must begin on the current Platform-timezone date and contain at least seven days. It can render immediately while the Worker refresh runs.
 
-## Changing the global folder
+Logout/context cache clearing also removes the Academy timetable cache.
 
-The Global Resources root remains a separate GLOBAL_ADMIN operation. Changing it does not move files. The new folder is accepted only when every persisted Drive-backed Resource is already within the new tree. The UI also refuses a root change while there are unsaved Resource edits.
+## API compatibility
+
+`POST /api/academy/timetable` now accepts:
+
+```json
+{
+  "startDate": "YYYY-MM-DD",
+  "days": 7
+}
+```
+
+`days` defaults to 2 when omitted, preserving existing callers, and is capped at 14 per request.
+
+## Program-load efficiency
+
+For multi-week ranges, each Program timetable snapshot is loaded once and then expanded across the required timetable weeks. This avoids rereading the same Program timetable for each week of the requested range.
 
 ## Sheet migration
 
-There is **no new Sheet migration**.
+There is **no Sheet migration**.
 
 Keep `PlatformConfig!B3 = 102.0.8` and **19 required Platform tabs**. The V103.1 Identity Links controlled migration may still be pending.

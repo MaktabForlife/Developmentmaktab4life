@@ -1,4 +1,4 @@
-/* M4L V103.1.0.2 - Academy timetable day-body scrolling and chronological multi-session rendering. */
+/* M4L V103.1.0.4 - Rolling seven-day Academy timetable loading, cache and prefetch. */
 (function () {
   "use strict";
 
@@ -9,6 +9,10 @@
   const WORKSPACE_KEY = "m4l_account_workspace";
   const APP_TOKEN_KEY = "maktab_token";
   const APP_USER_TYPE_KEY = "maktab_user_type";
+  const ACADEMY_CACHE_PREFIX = "m4l_academy_timetable_v103_1_0_4_";
+  const ACADEMY_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+  const ACADEMY_INITIAL_DAYS = 7;
+  const ACADEMY_PREFETCH_DAYS = 7;
   const uniqueId = getUniqueIdFromPath();
   const switcherMode = new URLSearchParams(window.location.search).get("switch") === "1";
   const state = {
@@ -20,7 +24,9 @@
     workspaceOpening: false,
     academyViewStart: "",
     academyTimezone: "",
-    academyLoading: false
+    academyLoading: false,
+    academyPrefetching: false,
+    academyData: null
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -46,13 +52,14 @@
     byId("setup-form").addEventListener("submit", submitSetup);
     byId("logout-button").addEventListener("click", logout);
     byId("open-workspace-button").addEventListener("click", () => openCurrentWorkspace());
-    byId("academy-refresh").addEventListener("click", () => loadAcademyTimetable({ force: true }));
+    byId("academy-refresh").addEventListener("click", () => loadAcademyTimetable({ force: true, resetWeek: true }));
     byId("academy-timetable").addEventListener("click", event => {
       const button = event.target.closest("[data-academy-move]");
       if (!button) return;
       const amount = Number(button.dataset.academyMove || 0);
-      if (amount) moveAcademyWindow(amount);
+      if (amount) moveAcademyWindow(amount, button);
     });
+    byId("academy-timetable").addEventListener("scroll", handleAcademyTimetableScroll, { passive: true });
     document.querySelectorAll("[data-toggle-pin]").forEach(button => {
       button.addEventListener("click", () => togglePin(button));
     });
@@ -286,18 +293,40 @@
 
   async function loadAcademyTimetable(options = {}) {
     if (!state.token || state.academyLoading) return false;
-    state.academyLoading = true;
     const container = byId("academy-timetable");
     const message = byId("academy-timetable-message");
-    if (options.resetView === true) state.academyViewStart = "";
-    message.textContent = "Loading timetable…";
+    if (options.resetWeek === true || options.resetView === true) {
+      state.academyViewStart = "";
+      state.academyData = null;
+    }
+
+    let renderedCache = false;
+    if (!options.force && !state.academyData) {
+      const cached = readAcademyTimetableCache();
+      if (cached) {
+        state.academyData = cached;
+        state.academyViewStart = String(cached.viewStart || cached.today || "").trim();
+        state.academyTimezone = String(cached.timezone || "").trim();
+        renderAcademyTimetable(cached);
+        renderedCache = true;
+      }
+    }
+
+    state.academyLoading = true;
+    if (!renderedCache) message.textContent = "Loading timetable…";
     byId("academy-refresh").disabled = true;
     try {
+      const requestedStart = options.resetWeek === true
+        ? ""
+        : String(state.academyViewStart || "").trim();
       const result = await api("/api/academy/timetable", {
-        ...(state.academyViewStart ? { startDate: state.academyViewStart } : {})
+        ...(requestedStart ? { startDate: requestedStart } : {}),
+        days: ACADEMY_INITIAL_DAYS
       }, state.token);
+      state.academyData = result;
       state.academyViewStart = String(result.viewStart || result.today || "").trim();
       state.academyTimezone = String(result.timezone || "").trim();
+      writeAcademyTimetableCache(result);
       renderAcademyTimetable(result);
       const warnings = Array.isArray(result.warnings) ? result.warnings.length : 0;
       message.textContent = warnings
@@ -305,6 +334,10 @@
         : "";
       return true;
     } catch (error) {
+      if (renderedCache && state.academyData) {
+        message.textContent = "Showing saved timetable. Refresh when the connection is available.";
+        return true;
+      }
       container.replaceChildren(createAcademyEmptyState("Timetable unavailable", error.message || "Please refresh and try again."));
       message.textContent = "";
       return false;
@@ -314,70 +347,88 @@
     }
   }
 
-  function renderAcademyTimetable(result) {
+  function renderAcademyTimetable(result, options = {}) {
     const container = byId("academy-timetable");
     const sessions = Array.isArray(result.sessions) ? result.sessions : [];
     const calendarEvents = Array.isArray(result.calendarEvents) ? result.calendarEvents : [];
     const today = String(result.today || "").trim();
     const viewStart = String(result.viewStart || state.academyViewStart || today).trim();
-    const viewEnd = String(result.viewEnd || addAcademyDays(viewStart, 1)).trim();
+    const viewEnd = String(result.viewEnd || addAcademyDays(viewStart, ACADEMY_INITIAL_DAYS - 1)).trim();
+    const dates = academyDatesBetween(viewStart, viewEnd);
+    const previousScroll = Number.isFinite(options.preserveScrollLeft) ? options.preserveScrollLeft : 0;
     state.academyViewStart = viewStart;
 
-    renderAcademyViewContext(calendarEvents, viewStart, viewEnd);
     container.replaceChildren();
-
-    [viewStart, viewEnd].forEach(date => {
-      const day = document.createElement("section");
-      day.className = "academy-day";
-      if (date === today) day.classList.add("is-today");
-
-      const heading = document.createElement("header");
-      heading.className = "academy-day-heading";
-
-      const previous = document.createElement("button");
-      previous.type = "button";
-      previous.className = "academy-day-chevron";
-      previous.dataset.academyMove = "-1";
-      previous.setAttribute("aria-label", "Previous day");
-      previous.setAttribute("title", "Previous day");
-      previous.textContent = "‹";
-
-      const dayLabel = document.createElement("strong");
-      dayLabel.textContent = `${date === today ? "TODAY" : formatAcademyDate(date, { weekday: "long" })} - ${formatAcademyCompactDate(date)}`;
-
-      const next = document.createElement("button");
-      next.type = "button";
-      next.className = "academy-day-chevron";
-      next.dataset.academyMove = "1";
-      next.setAttribute("aria-label", "Next day");
-      next.setAttribute("title", "Next day");
-      next.textContent = "›";
-
-      heading.append(previous, dayLabel, next);
-      day.appendChild(heading);
-
-      const dayEvents = calendarEvents.filter(event => String(event.startDate || "") <= date && String(event.endDate || "") >= date);
-      const daySpecificEvents = dayEvents.filter(event => ["PUBLIC_HOLIDAY", "ISLAMIC_DAY"].includes(String(event.eventType || "").toUpperCase()));
-      if (daySpecificEvents.length) {
-        const badges = document.createElement("div");
-        badges.className = "academy-calendar-day-badges";
-        daySpecificEvents.forEach(event => badges.appendChild(createAcademyCalendarBadge(event)));
-        day.appendChild(badges);
-      }
-
-      const daySessionsBody = document.createElement("div");
-      daySessionsBody.className = "academy-day-session-list";
-
-      const daySessions = sessions.filter(session => String(session.date || "") === date);
-      renderAcademyDaySessions(daySessionsBody, daySessions);
-      day.appendChild(daySessionsBody);
-      container.appendChild(day);
+    dates.forEach(date => {
+      container.appendChild(createAcademyDayCard({ date, today, sessions, calendarEvents }));
     });
+
+    if (!dates.length) {
+      container.appendChild(createAcademyEmptyState("No timetable days", "Refresh to load the Academy timetable."));
+    }
+
+    if (previousScroll > 0) {
+      requestAnimationFrame(() => {
+        container.scrollLeft = previousScroll;
+        updateAcademyVisibleContext();
+      });
+    } else {
+      requestAnimationFrame(updateAcademyVisibleContext);
+    }
+  }
+
+  function createAcademyDayCard({ date, today, sessions, calendarEvents }) {
+    const day = document.createElement("section");
+    day.className = "academy-day";
+    day.dataset.academyDate = date;
+    if (date === today) day.classList.add("is-today");
+
+    const heading = document.createElement("header");
+    heading.className = "academy-day-heading";
+
+    const previous = document.createElement("button");
+    previous.type = "button";
+    previous.className = "academy-day-chevron";
+    previous.dataset.academyMove = "-1";
+    previous.setAttribute("aria-label", "Previous day");
+    previous.setAttribute("title", "Previous day");
+    previous.textContent = "‹";
+
+    const dayLabel = document.createElement("strong");
+    dayLabel.textContent = `${date === today ? "TODAY" : formatAcademyDate(date, { weekday: "long" })} - ${formatAcademyCompactDate(date)}`;
+
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "academy-day-chevron";
+    next.dataset.academyMove = "1";
+    next.setAttribute("aria-label", "Next day");
+    next.setAttribute("title", "Next day");
+    next.textContent = "›";
+
+    heading.append(previous, dayLabel, next);
+    day.appendChild(heading);
+
+    const dayEvents = calendarEvents.filter(event => String(event.startDate || "") <= date && String(event.endDate || "") >= date);
+    const daySpecificEvents = dayEvents.filter(event => ["PUBLIC_HOLIDAY", "ISLAMIC_DAY"].includes(String(event.eventType || "").toUpperCase()));
+    if (daySpecificEvents.length) {
+      const badges = document.createElement("div");
+      badges.className = "academy-calendar-day-badges";
+      daySpecificEvents.forEach(event => badges.appendChild(createAcademyCalendarBadge(event)));
+      day.appendChild(badges);
+    }
+
+    const daySessionsBody = document.createElement("div");
+    daySessionsBody.className = "academy-day-session-list";
+    const daySessions = sessions.filter(session => String(session.date || "") === date);
+    renderAcademyDaySessions(daySessionsBody, daySessions);
+    day.appendChild(daySessionsBody);
+    return day;
   }
 
   function renderAcademyViewContext(events, viewStart, viewEnd) {
     const root = byId("academy-week-context");
     if (!root) return;
+
     root.replaceChildren();
     const context = (Array.isArray(events) ? events : []).filter(event => {
       const type = String(event.eventType || "").toUpperCase();
@@ -387,6 +438,20 @@
     });
     context.forEach(event => root.appendChild(createAcademyCalendarBadge(event)));
     root.classList.toggle("hidden", context.length === 0);
+  }
+
+  function updateAcademyVisibleContext() {
+    if (!state.academyData) return;
+    const container = byId("academy-timetable");
+    const cards = [...container.querySelectorAll(".academy-day")];
+    if (!cards.length) return;
+    const nearest = cards.reduce((best, card) => (
+      Math.abs(card.offsetLeft - container.scrollLeft) < Math.abs(best.offsetLeft - container.scrollLeft) ? card : best
+    ), cards[0]);
+    const startDate = String(nearest.dataset.academyDate || state.academyData.viewStart || "").trim();
+    const visibleCount = Math.max(1, Math.min(2, Math.round(container.clientWidth / Math.max(nearest.offsetWidth, 1))));
+    const endDate = addAcademyDays(startDate, visibleCount - 1);
+    renderAcademyViewContext(state.academyData.calendarEvents || [], startDate, endDate);
   }
 
   function renderAcademyDaySessions(day, sessions) {
@@ -605,10 +670,186 @@
     return wrapper;
   }
 
-  function moveAcademyWindow(days) {
-    if (!state.academyViewStart) return loadAcademyTimetable({ resetView: true, force: true });
-    state.academyViewStart = addAcademyDays(state.academyViewStart, days);
-    return loadAcademyTimetable({ force: true });
+  async function moveAcademyWindow(days, button) {
+    const current = button?.closest?.(".academy-day");
+    const currentDate = String(current?.dataset?.academyDate || state.academyViewStart || "").trim();
+    if (!currentDate) return loadAcademyTimetable({ resetWeek: true, force: true });
+    const targetDate = addAcademyDays(currentDate, days);
+    if (scrollAcademyToDate(targetDate, "smooth")) return true;
+
+    const direction = days < 0 ? -1 : 1;
+    const loaded = await prefetchAcademyTimetable(direction, { targetDate });
+    if (loaded) scrollAcademyToDate(targetDate, "smooth");
+    return loaded;
+  }
+
+  function scrollAcademyToDate(date, behavior = "smooth") {
+    const card = [...byId("academy-timetable").querySelectorAll(".academy-day")]
+      .find(item => String(item.dataset.academyDate || "") === String(date || ""));
+    if (!card) return false;
+    card.scrollIntoView({ behavior, block: "nearest", inline: "start" });
+    return true;
+  }
+
+  let academyScrollFrame = 0;
+  function handleAcademyTimetableScroll() {
+    if (academyScrollFrame) cancelAnimationFrame(academyScrollFrame);
+    academyScrollFrame = requestAnimationFrame(() => {
+      academyScrollFrame = 0;
+      updateAcademyVisibleContext();
+      const container = byId("academy-timetable");
+      const remaining = container.scrollWidth - container.clientWidth - container.scrollLeft;
+      if (remaining <= container.clientWidth * 1.25) {
+        prefetchAcademyTimetable(1).catch(() => {});
+      }
+    });
+  }
+
+  async function prefetchAcademyTimetable(direction, options = {}) {
+    if (!state.token || state.academyPrefetching || !state.academyData) return false;
+    const rangeStart = String(state.academyData.viewStart || "").trim();
+    const rangeEnd = String(state.academyData.viewEnd || "").trim();
+    if (!rangeStart || !rangeEnd) return false;
+
+    const startDate = direction < 0
+      ? addAcademyDays(rangeStart, -ACADEMY_PREFETCH_DAYS)
+      : addAcademyDays(rangeEnd, 1);
+    state.academyPrefetching = true;
+    try {
+      const result = await api("/api/academy/timetable", {
+        startDate,
+        days: ACADEMY_PREFETCH_DAYS
+      }, state.token);
+      const container = byId("academy-timetable");
+      const scrollLeft = container.scrollLeft;
+      state.academyData = mergeAcademyTimetableResults(state.academyData, result);
+      state.academyViewStart = String(state.academyData.viewStart || "").trim();
+      state.academyTimezone = String(state.academyData.timezone || "").trim();
+      writeAcademyTimetableCache(state.academyData);
+      renderAcademyTimetable(state.academyData, {
+        preserveScrollLeft: direction > 0 ? scrollLeft : 0
+      });
+      if (direction < 0 && options.targetDate) {
+        requestAnimationFrame(() => scrollAcademyToDate(options.targetDate, "auto"));
+      }
+      return true;
+    } catch (error) {
+      return false;
+    } finally {
+      state.academyPrefetching = false;
+    }
+  }
+
+  function mergeAcademyTimetableResults(left, right) {
+    const first = left && typeof left === "object" ? left : {};
+    const second = right && typeof right === "object" ? right : {};
+    const viewStart = [first.viewStart, second.viewStart].filter(Boolean).sort()[0] || "";
+    const viewEnd = [first.viewEnd, second.viewEnd].filter(Boolean).sort().slice(-1)[0] || "";
+    const sessions = dedupeAcademyItems(
+      [...(Array.isArray(first.sessions) ? first.sessions : []), ...(Array.isArray(second.sessions) ? second.sessions : [])],
+      academySessionCacheKey
+    ).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) ||
+      academyTimeSortValue(a.startTime) - academyTimeSortValue(b.startTime) ||
+      String(a.title || "").localeCompare(String(b.title || "")));
+    const calendarEvents = dedupeAcademyItems(
+      [...(Array.isArray(first.calendarEvents) ? first.calendarEvents : []), ...(Array.isArray(second.calendarEvents) ? second.calendarEvents : [])],
+      academyCalendarCacheKey
+    );
+    const warnings = dedupeAcademyItems(
+      [...(Array.isArray(first.warnings) ? first.warnings : []), ...(Array.isArray(second.warnings) ? second.warnings : [])],
+      item => `${item?.code || ""}|${item?.program || ""}|${item?.message || ""}`
+    );
+    return {
+      ...first,
+      ...second,
+      viewStart,
+      viewEnd,
+      viewDays: academyDatesBetween(viewStart, viewEnd).length,
+      sessions,
+      calendarEvents,
+      warnings,
+      count: sessions.length
+    };
+  }
+
+  function dedupeAcademyItems(items, keyFactory) {
+    const byKey = new Map();
+    (Array.isArray(items) ? items : []).forEach(item => byKey.set(keyFactory(item), item));
+    return [...byKey.values()];
+  }
+
+  function academySessionCacheKey(session) {
+    return [
+      session?.kind, session?.date, session?.startTime, session?.endTime, session?.title,
+      session?.programName, session?.subjectName, session?.moduleName, session?.group, session?.teacherName,
+      session?.visibilityLevel, session?.status
+    ].map(value => String(value || "")).join("|");
+  }
+
+  function academyCalendarCacheKey(event) {
+    return [event?.id, event?.eventType, event?.description, event?.startDate, event?.endDate]
+      .map(value => String(value || "")).join("|");
+  }
+
+  function academyDatesBetween(startDate, endDate) {
+    if (!parseAcademyDate(startDate) || !parseAcademyDate(endDate) || endDate < startDate) return [];
+    const dates = [];
+    for (let date = startDate; date <= endDate; date = addAcademyDays(date, 1)) {
+      dates.push(date);
+      if (dates.length >= 42) break;
+    }
+    return dates;
+  }
+
+  function academyTimetableCacheKey() {
+    const accountId = String(state.account?.accountId || state.account?.accountid || state.account?.AccountID || "").trim();
+    return accountId ? `${ACADEMY_CACHE_PREFIX}${accountId}` : "";
+  }
+
+  function readAcademyTimetableCache() {
+    const key = academyTimetableCacheKey();
+    if (!key) return null;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || "null");
+      if (!cached || cached.schema !== 1 || !cached.savedAt || !cached.data) return null;
+      if (Date.now() - Number(cached.savedAt) > ACADEMY_CACHE_TTL_MS) return null;
+      const data = cached.data;
+      const timezone = String(data.timezone || "").trim();
+      const today = academyTodayInTimezone(timezone);
+      if (!today || String(data.viewStart || "") !== today || String(data.viewEnd || "") < addAcademyDays(today, ACADEMY_INITIAL_DAYS - 1)) {
+        return null;
+      }
+      return data;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeAcademyTimetableCache(data) {
+    const key = academyTimetableCacheKey();
+    if (!key || !data) return false;
+    try {
+      localStorage.setItem(key, JSON.stringify({ schema: 1, savedAt: Date.now(), data }));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function academyTodayInTimezone(timezone) {
+    if (!timezone) return "";
+    try {
+      const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
+    } catch (error) {
+      return "";
+    }
   }
 
   function academyTimeSortValue(value) {
@@ -714,7 +955,7 @@
   }
 
   function clearCourseDataCaches() {
-    const prefixes = ["m4l_app_cache_", "maktab_timetable_cache_"];
+    const prefixes = ["m4l_app_cache_", "maktab_timetable_cache_", ACADEMY_CACHE_PREFIX];
     try {
       for (let index = localStorage.length - 1; index >= 0; index -= 1) {
         const key = localStorage.key(index);

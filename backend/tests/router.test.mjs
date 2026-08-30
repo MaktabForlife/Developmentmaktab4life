@@ -123,7 +123,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "103.1.0.3"
+  version: "103.1.0.4"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

@@ -1,17 +1,39 @@
-# V103.1.0.3 Changes
+# V103.1.0.4 Changes
 
-- Replaces the separate Global Resource edit form/list arrangement with a compact searchable Resource list and inline editors.
-- Adds Resource Name, Global Subject, Type, and Status filters.
-- Existing Resource rows expand directly beneath themselves for editing.
-- Supports multiple simultaneous Resource edits and multiple unsaved new Resources.
-- Adds `+ Add a Global Resource`.
-- Uses one screen-level Save for all dirty/new Global Resources.
-- Makes the Resources Save icon larger and changes it to a prominent purple dirty state whenever unsaved edits exist.
-- Highlights edited/new Resource rows and editors until saved.
-- Adds `/api/admin/platform/global/resources/save-batch` with stale-version protection and validate-before-write behaviour.
-- Commits all valid Resource changes through one Google Sheets batch update and increments Global Curriculum version once.
-- Keeps existing single-Resource endpoint for compatibility.
-- Keeps Global Drive root changes separate and blocks a root change while Resource drafts are pending.
-- Retains the existing root containment guard: changing the root does not move files and is rejected if saved Drive-backed Resources are outside the proposed new tree.
-- Uses the refreshed Global/Academy white-card, soft-border, rounded-control responsive styling.
-- Adds no Sheet migration and does not depend on the V103.1 controlled Identity Links migration.
+## Academy Home timetable loading
+
+- Load a rolling seven-day timetable beginning today on startup.
+- Render all loaded days in the existing horizontal swipe track.
+- Keep desktop at two visible day cards and mobile at one.
+- Keep V103.1.0.2 busy-day internal vertical scrolling.
+- Change day arrows to local navigation when the target day is already loaded.
+- Fetch an adjacent seven-day block only when navigation crosses a loaded boundary.
+- Prefetch the following seven days when the user approaches the end of the swipe track.
+- Preserve horizontal scroll position when next-week data is appended.
+
+## Cache
+
+- Add per-central-AccountID Academy timetable cache.
+- Cache TTL: 12 hours.
+- Cached data is accepted only when it starts on the current Platform-timezone date and contains at least seven days.
+- Render valid cache before the background refresh completes.
+- Keep cached timetable visible if that refresh temporarily fails.
+- Clear Academy timetable cache through existing logout/context cache cleanup.
+
+## Worker/API
+
+- `/api/academy/timetable` accepts optional `days`.
+- Default remains 2 days for compatibility.
+- Maximum is 14 days per request.
+- Multi-week Program recurrence is generated across every timetable week intersecting the requested date range.
+- Program timetable Sheet reads are performed once per Program request and reused across those weeks.
+- Response now includes `viewDays`.
+- Worker/API version advanced to `103.1.0.4`.
+
+## Unchanged
+
+- No Sheet migration.
+- `PlatformConfig!B3 = 102.0.8`.
+- 19 required Platform tabs.
+- V103.1 Identity Links migration remains separate and may remain pending.
+- No change to Attendance, Progress, Planner, Resources, Global Curriculum access, or Reboot operational identity authority.

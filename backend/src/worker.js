@@ -1,4 +1,4 @@
-/* M4L V103.1.0.3 - Global Resources inline batch editor on the V103.1 Central Identity Link foundation; operational behaviour remains intact.
+/* M4L V103.1.0.4 - Rolling seven-day Academy timetable loading on the V103.1 Central Identity Link foundation; operational behaviour remains intact.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "103.1.0.3"
+          version: "103.1.0.4"
         });
       }
 

@@ -171,7 +171,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "103.1.0.2");
+  assert.equal(body.version, "103.1.0.4");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -205,6 +205,22 @@ try {
     "busy days must retain every Program/Global session in chronological order"
   );
   assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002", "AE0003"]);
+
+  const sevenDayResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ startDate: "2026-08-27", days: 7 })
+  }), env);
+  const sevenDayBody = await sevenDayResult.json();
+  assert.equal(sevenDayResult.status, 200);
+  assert.equal(sevenDayBody.viewStart, "2026-08-27");
+  assert.equal(sevenDayBody.viewEnd, "2026-09-02");
+  assert.equal(sevenDayBody.viewDays, 7);
+  assert.equal(sevenDayBody.weekStart, "2026-08-24");
+  assert.equal(sevenDayBody.weekEnd, "2026-09-06", "rolling seven-day loads may span two timetable weeks");
 
   const studentResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
@@ -258,7 +274,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V103.1.0.2 two-day Academy timetable endpoint integration test passed.");
+console.log("V103.1.0.4 rolling-range Academy timetable endpoint integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {
