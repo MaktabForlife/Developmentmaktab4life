@@ -99,6 +99,7 @@ import {
 import { backendRoutingDiagnosticsEndpoint } from "./routes/backend-routing.js";
 import { platformValidationEndpoint } from "./routes/platform-validation.js";
 import { platformAccountMigrationEndpoint } from "./routes/platform-account-migration.js";
+import { platformIdentityLinkEndpoint } from "./routes/platform-identity-link.js";
 import {
   browsePlatformGlobalDriveFolderEndpoint,
   createPlatformGlobalDriveAccessEndpoint,
@@ -202,6 +203,7 @@ const ROUTES = new Map([
   ["/api/admin/backend-routing", workerRoute("routing", backendRoutingDiagnosticsEndpoint, { courseScoped: true })],
   ["/api/admin/platform/validate", workerRoute("platform-validation", platformValidationEndpoint, { courseScoped: true })],
   ["/api/admin/platform/accounts/migrate", workerRoute("platform-account-migration", platformAccountMigrationEndpoint, { courseScoped: true })],
+  ["/api/admin/platform/identity-links", workerRoute("platform-identity-link", platformIdentityLinkEndpoint, { courseScoped: true })],
   ["/api/admin/platform/global/get", workerRoute("platform-global-management", getPlatformGlobalManagementEndpoint)],
   ["/api/admin/platform/global/drive-root/save", workerRoute("platform-global-management", savePlatformGlobalDriveRootEndpoint)],
   ["/api/admin/platform/global/drive/browse", workerRoute("platform-global-management", browsePlatformGlobalDriveFolderEndpoint)],

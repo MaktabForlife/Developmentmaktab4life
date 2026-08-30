@@ -505,6 +505,50 @@
               aria-live="polite"
             ></p>
           </div>
+
+          <div class="system-settings-migration" aria-labelledby="system-settings-identity-link-heading">
+            <h4 id="system-settings-identity-link-heading">V103.1 Identity links</h4>
+            <p class="system-settings-help">
+              Link each Reboot AdminRecords and StudentRecords row permanently to its central UserAccounts AccountID.
+              This adds an AccountID column when required, but does not change login, attendance, progress, planner, timetable or resource behaviour.
+            </p>
+            <button
+              type="button"
+              class="system-settings-validate"
+              data-system-settings-action="preview-identity-links"
+            >
+              <span class="app-icon" aria-hidden="true"></span>
+              <span>Preview Identity Links</span>
+            </button>
+            <div id="system-settings-identity-link-summary" class="system-settings-migration-summary hidden"></div>
+            <label
+              id="system-settings-identity-link-confirm-label"
+              class="system-settings-field hidden"
+              for="system-settings-identity-link-confirm"
+            >
+              <span id="system-settings-identity-link-confirm-prompt">Confirmation</span>
+              <input
+                id="system-settings-identity-link-confirm"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+            <button
+              type="button"
+              class="system-settings-migrate hidden"
+              data-system-settings-action="commit-identity-links"
+            >
+              <span class="app-icon" aria-hidden="true"></span>
+              <span>Link Reboot Identities</span>
+            </button>
+            <p
+              id="system-settings-identity-link-status"
+              class="system-settings-platform-status"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </div>
         </section>
 
         <button type="submit" class="system-settings-save" data-system-settings-action="save">
@@ -1758,7 +1802,7 @@
 <script src="/js/m4l-attendance.js?v=97.1.5.5"></script>
 <script src="/js/m4l-admin-academics.js?v=102.12.2"></script>
 <script src="/js/m4l-academy-calendar.js?v=102.12.8"></script>
-<script src="/js/m4l-system-settings.js?v=102.10"></script>
+<script src="/js/m4l-system-settings.js?v=103.1"></script>
 <script src="/js/m4l-timetable-builder.js?v=102.11.2"></script>
 <script src="/js/m4l-global-curriculum.js?v=102.12.8"></script>
 <script src="/js/m4l-global-course-scheduler.js?v=102.12.8"></script>

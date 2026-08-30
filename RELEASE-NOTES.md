@@ -1,53 +1,69 @@
-# V102.12.8 Release Notes
+# V103.1 Release Notes
 
-V102.12.8 is a changed-files update to V102.12.7. It contains the Academy Home timetable presentation refinements collected during review and an interim ongoing-course capability for Global Courses.
+V103.1 begins the Central Identity architecture while deliberately preserving all existing Reboot operational behaviour.
 
-## Academy Home timetable pills
+## Permanent Reboot ↔ central identity link
 
-Detailed session pills now receive more width than rolled-up/generic pills, making their subject/module/teacher information easier to read.
+Every normal Reboot `AdminRecords` and `StudentRecords` row can now be linked to its central `UserAccounts.AccountID`.
 
-For participants/students, when an applicable detailed Program pill is already shown at a start time, a second label-only roll-up for the same Program is suppressed. Staff views retain Program roll-ups where they expose genuinely additional detail.
+The migration uses the existing central relationship rather than guessing:
 
-For Global Courses, Academy Home no longer exposes the Global Course/run name. That name is treated as an internal/admin identifier. User-facing detail is limited to:
+`Reboot record ID → UserCourseAccess.CourseRecordID + Role → AccountID → UserAccounts`
 
-- Global Subject name;
-- Module name, when present;
-- actual Teacher name, when assigned.
+The source Reboot `UniqueID` must also match `UserAccounts.UniqueID` before a link is eligible to be written.
 
-`TBA` remains a valid publishable teacher state but is not shown as an extra teacher-detail label in the participant-facing pill.
+## System Settings migration UI
 
-## Ongoing Global Courses
+A new **V103.1 Identity links** section is available under Admin → System Settings → Platform Sheet.
 
-Global Course setup now includes an explicit **Ongoing** option. When Ongoing is enabled:
+It provides:
 
-- course StartDate is blank;
-- course EndDate is blank;
-- the active course is treated as `CURRENT`;
-- it remains active until an Admin changes its status;
-- exact session dates continue to drive timetable delivery.
+- preview before any write;
+- counts of already-linked and planned records;
+- blocking diagnostics and warnings;
+- signed preview state;
+- explicit `LINK <COURSEID>` confirmation;
+- one batch write to the Reboot course Sheet;
+- central audit logging after a successful commit.
 
-No artificial far-future date is stored.
+## Safeguards
 
-### Generating recurring sessions
+The V103.1 preview blocks instead of guessing when it finds identity ambiguity or unsafe Sheet state, including missing memberships, role mismatches, UniqueID mismatches, duplicate/ambiguous central mappings, conflicting existing AccountID values, duplicate operational identity links, orphan course memberships, duplicate AccountID headers, or unnamed data where the new header would be appended.
 
-An ongoing course has no natural finite range over which to expand a weekly pattern. Therefore the scheduler provides temporary **Generate sessions from** and **Generate through** dates when a weekly schedule is being generated.
+`StudentRecords` system rows remain excluded.
 
-Those dates are generation controls only. They do **not** become the course StartDate/EndDate. Once generated, an ongoing session may subsequently be moved to another valid date outside the generation window.
+Existing nonblank conflicting AccountID values are never overwritten automatically.
 
-A course can also be saved as Ongoing without generating a weekly batch immediately.
+## Reboot behaviour remains unchanged
 
-## Fixed-duration courses
+V103.1 does not switch authority yet. The existing operational paths remain in place for:
 
-Existing fixed courses are unchanged: StartDate and EndDate remain required and must be valid, ordered dates. Existing timetable-boundary safeguards remain in place for fixed courses.
+- student/admin login;
+- attendance;
+- progress;
+- Weekly Planner;
+- Reboot timetable;
+- resources/library;
+- student/admin management;
+- task assignment.
 
-## Schema
+This makes V103.1 a safe identity-link foundation for the later V103 cut-over components.
 
-There is **no Sheet migration**. `PlatformSchemaVersion` remains `102.0.8` with **19 required Platform tabs**. Ongoing is represented by both existing GlobalSubjectRuns date fields being blank, so no new Sheet column is introduced.
+## Sheet migration
 
-## Architecture boundary
+The Platform workbook remains at `PlatformSchemaVersion 102.0.8` with 19 required tabs.
 
-This is an interim V102 capability, not the generic Program architecture. The major roadmap remains:
+V103.1 changes only the Reboot operational workbook by appending:
 
-- V103 — Central Identity
-- V104 — Program Builder
-- V105 — Reboot migration
+- `AdminRecords.AccountID`
+- `StudentRecords.AccountID`
+
+The migration is performed by the V103.1 Identity Links UI; manual Sheet editing is not required.
+
+## Audit
+
+Successful commits write `LINK_OPERATIONAL_IDENTITIES` / `COURSE_IDENTITY_LINK` to `PlatformAuditLog`.
+
+## Next V103 components
+
+V103.2 will address the unified Access data model. The Academy Access Matrix, contextual teacher/staff resolution, authority cut-over and final compatibility verification remain separate later V103 components.

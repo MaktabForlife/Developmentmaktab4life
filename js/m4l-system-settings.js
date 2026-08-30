@@ -1,4 +1,4 @@
-/* M4L V102.10 - ADMIN settings, Platform validation and account migration. */
+/* M4L V103.1 - ADMIN settings, Platform validation, account migration and Reboot identity linking. */
 (function () {
   "use strict";
 
@@ -6,6 +6,7 @@
   let handlersBound = false;
   let loading = false;
   let accountMigrationPreview = null;
+  let identityLinkPreview = null;
 
   function getActiveAdminRole() {
     if (typeof state === "undefined" || !state || !state.user) return "";
@@ -257,6 +258,8 @@
       }
 
       clearAccountMigrationPreview();
+      clearIdentityLinkPreview();
+      setIdentityLinkMessage("Central membership data changed. Run Preview Identity Links before linking Reboot records.", "warning");
       setAccountMigrationMessage(
         `Migration completed: ${Number(result.accountsCreated || 0)} accounts and ` +
         `${Number(result.courseAccessCreated || 0)} course memberships created. Existing logins remain active.`,
@@ -274,6 +277,143 @@
       loading = false;
       setSystemSettingsBusy(false);
     }
+  }
+
+  async function previewIdentityLinks() {
+    if (loading || !isSystemSettingsAdmin()) return false;
+
+    clearIdentityLinkPreview();
+    loading = true;
+    setSystemSettingsBusy(true);
+    setIdentityLinkMessage("Checking Reboot identity links...", "loading");
+
+    try {
+      const result = await postSystemSettings("/api/admin/platform/identity-links", {
+        action: "PREVIEW"
+      });
+      if (!result.success) {
+        throw new Error(result.detail || result.error || "Unable to preview identity links");
+      }
+
+      renderIdentityLinkPreview(result);
+      setIdentityLinkMessage(
+        result.linkCurrent
+          ? "Identity links are current. Every Reboot operational record resolves to its central AccountID."
+          : result.canCommit
+          ? `Preview ready. Enter ${result.confirmationText} to add the AccountID links.`
+          : `${Number(result.blockerCount || 0)} blocking issue${Number(result.blockerCount || 0) === 1 ? "" : "s"} must be corrected before identity linking.`,
+        result.linkCurrent || result.canCommit ? "success" : "error"
+      );
+      return true;
+    } catch (error) {
+      console.error("Could not preview Reboot identity links", error);
+      setIdentityLinkMessage(
+        error && error.message ? error.message : "Unable to preview identity links.",
+        "error"
+      );
+      return false;
+    } finally {
+      loading = false;
+      setSystemSettingsBusy(false);
+    }
+  }
+
+  async function commitIdentityLinks() {
+    if (loading || !isSystemSettingsAdmin() || !identityLinkPreview) return false;
+
+    const confirmationText = getInputValue("system-settings-identity-link-confirm").toUpperCase();
+    if (confirmationText !== identityLinkPreview.confirmationText) {
+      setIdentityLinkMessage(
+        `Enter ${identityLinkPreview.confirmationText} exactly before linking identities.`,
+        "error"
+      );
+      return false;
+    }
+
+    const confirmed = typeof window.confirm !== "function" || window.confirm(
+      "Write the previewed AccountID links into Reboot AdminRecords and StudentRecords? Existing operational behaviour will remain unchanged."
+    );
+    if (!confirmed) return false;
+
+    loading = true;
+    setSystemSettingsBusy(true);
+    setIdentityLinkMessage("Linking Reboot records to central identity...", "loading");
+
+    try {
+      const result = await postSystemSettings("/api/admin/platform/identity-links", {
+        action: "COMMIT",
+        previewToken: identityLinkPreview.previewToken,
+        confirmationText
+      });
+      if (!result.success) {
+        throw new Error(result.detail || result.error || "Identity linking failed");
+      }
+
+      clearIdentityLinkPreview();
+      setIdentityLinkMessage(
+        `Identity linking completed: ${Number(result.staffLinksWritten || 0)} staff and ` +
+        `${Number(result.studentLinksWritten || 0)} student records linked. Existing operational behaviour remains unchanged.`,
+        "success"
+      );
+      return true;
+    } catch (error) {
+      console.error("Could not link Reboot identities", error);
+      setIdentityLinkMessage(
+        error && error.message ? error.message : "Identity linking failed.",
+        "error"
+      );
+      return false;
+    } finally {
+      loading = false;
+      setSystemSettingsBusy(false);
+    }
+  }
+
+  function renderIdentityLinkPreview(result) {
+    const summary = document.getElementById("system-settings-identity-link-summary");
+    if (!summary) return;
+
+    summary.replaceChildren();
+    summary.classList.remove("hidden");
+    const counts = document.createElement("p");
+    counts.className = "system-settings-migration-counts";
+    counts.textContent =
+      `${Number(result.sourceCounts?.staff || 0)} staff, ` +
+      `${Number(result.sourceCounts?.students || 0)} students; ` +
+      `${Number(result.linkedCounts?.staff || 0) + Number(result.linkedCounts?.students || 0)} already linked; ` +
+      `${Number(result.plannedWrites?.staffLinks || 0) + Number(result.plannedWrites?.studentLinks || 0)} AccountID links and ` +
+      `${Number(result.plannedWrites?.accountIdHeaders || 0)} header${Number(result.plannedWrites?.accountIdHeaders || 0) === 1 ? "" : "s"} planned.`;
+    summary.appendChild(counts);
+
+    appendMigrationIssues(summary, "Blocking issues", result.blockers, "error");
+    appendMigrationIssues(summary, "Warnings", result.warnings, "warning");
+
+    const canCommit = result.canCommit === true && Boolean(result.previewToken);
+    identityLinkPreview = canCommit ? {
+      previewToken: String(result.previewToken),
+      confirmationText: String(result.confirmationText || "").toUpperCase()
+    } : null;
+    const label = document.getElementById("system-settings-identity-link-confirm-label");
+    const button = document.querySelector('[data-system-settings-action="commit-identity-links"]');
+    const prompt = document.getElementById("system-settings-identity-link-confirm-prompt");
+    if (label) label.classList.toggle("hidden", !canCommit);
+    if (button) button.classList.toggle("hidden", !canCommit);
+    if (prompt && canCommit) prompt.textContent = `Type ${identityLinkPreview.confirmationText} to confirm`;
+  }
+
+  function clearIdentityLinkPreview() {
+    identityLinkPreview = null;
+    const summary = document.getElementById("system-settings-identity-link-summary");
+    const label = document.getElementById("system-settings-identity-link-confirm-label");
+    const button = document.querySelector('[data-system-settings-action="commit-identity-links"]');
+    const input = document.getElementById("system-settings-identity-link-confirm");
+    if (summary) {
+      summary.replaceChildren();
+      summary.classList.add("hidden");
+    }
+    if (label) label.classList.add("hidden");
+    if (button) button.classList.add("hidden");
+    if (input) input.value = "";
   }
 
   function renderAccountMigrationPreview(result) {
@@ -398,6 +538,14 @@
     element.dataset.kind = String(kind || "");
   }
 
+  function setIdentityLinkMessage(message, kind) {
+    const element = document.getElementById("system-settings-identity-link-status");
+    if (!element) return;
+
+    element.textContent = String(message || "");
+    element.dataset.kind = String(kind || "");
+  }
+
   function getInputValue(id) {
     const input = document.getElementById(id);
     return input ? String(input.value || "").trim() : "";
@@ -441,6 +589,10 @@
       previewAccountMigration();
     } else if (action === "commit-account-migration") {
       commitAccountMigration();
+    } else if (action === "preview-identity-links") {
+      previewIdentityLinks();
+    } else if (action === "commit-identity-links") {
+      commitIdentityLinks();
     }
   }
 
@@ -478,7 +630,9 @@
     save: saveSystemSettings,
     validatePlatform: validatePlatformSheet,
     previewAccountMigration,
-    commitAccountMigration
+    commitAccountMigration,
+    previewIdentityLinks,
+    commitIdentityLinks
   });
   window.showSystemSettings = showSystemSettings;
 

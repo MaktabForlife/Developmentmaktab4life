@@ -12,7 +12,9 @@ assert.match(adminHtml, /data-system-settings-action="preview-account-migration"
 assert.match(adminHtml, /data-system-settings-action="commit-account-migration"/);
 assert.match(adminHtml, /id="system-settings-grant-global-admin"[^>]*checked/);
 assert.match(adminHtml, /id="system-settings-migration-confirm"/);
-assert.match(adminHtml, /m4l-system-settings\.js\?v=102\.10/);
+assert.match(adminHtml, /data-system-settings-action="preview-identity-links"/);
+assert.match(adminHtml, /data-system-settings-action="commit-identity-links"/);
+assert.match(adminHtml, /m4l-system-settings\.js\?v=103\.1/);
 
 assert.match(settingsJs, /async function validatePlatformSheet\(\)/);
 assert.match(settingsJs, /"\/api\/admin\/platform\/validate"/);
@@ -28,6 +30,9 @@ assert.match(settingsJs, /"\/api\/admin\/platform\/accounts\/migrate"/);
 assert.match(settingsJs, /action: "PREVIEW"/);
 assert.match(settingsJs, /action: "COMMIT"/);
 assert.match(settingsJs, /previewToken: accountMigrationPreview\.previewToken/);
+assert.match(settingsJs, /async function previewIdentityLinks\(\)/);
+assert.match(settingsJs, /async function commitIdentityLinks\(\)/);
+assert.match(settingsJs, /"\/api\/admin\/platform\/identity-links"/);
 assert.equal(settingsJs.includes("SpreadsheetID"), false);
 assert.equal(settingsJs.includes("PLATFORM_SPREADSHEET_ID"), false);
 

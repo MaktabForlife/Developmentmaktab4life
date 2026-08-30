@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "102.12.8",
+  "version": "103.1.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -14,6 +14,7 @@
     "test:platform-sheet": "node tests/platform-sheet.test.mjs",
     "test:platform-validation": "node tests/platform-validation.test.mjs",
     "test:platform-account-migration": "node tests/platform-account-migration.test.mjs",
+    "test:platform-identity-link": "node tests/platform-identity-link.test.mjs",
     "test:account-auth": "node tests/account-auth.test.mjs",
     "test:account-ui": "node tests/account-ui.test.mjs",
     "test:course-routing": "node tests/course-routing.test.mjs",
