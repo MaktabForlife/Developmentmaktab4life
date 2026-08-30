@@ -1,4 +1,4 @@
-/* M4L V102.12.4 - Swipeable two-day Academy Home delivery with Program roll-ups. */
+/* M4L V103.1.0.2 - Academy Home chronological multi-session delivery and day scrolling support. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "102.12.8",
+      version: "103.1.0.2",
       timezone,
       weekStart: week.start,
       weekEnd: week.end,
@@ -573,8 +573,20 @@ function timeToMinutes(value) {
 
 function compareAcademyEvents(left, right) {
   return String(left.date || "").localeCompare(String(right.date || "")) ||
+    academyEventTimeSortValue(left.startTime) - academyEventTimeSortValue(right.startTime) ||
     String(left.startTime || "").localeCompare(String(right.startTime || "")) ||
     String(left.title || "").localeCompare(String(right.title || ""));
+}
+
+function academyEventTimeSortValue(value) {
+  const match = /^(\d{1,2})(?::|h)(\d{2})/.exec(String(value || "").trim());
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return (hour * 60) + minute;
 }
 
 async function readJsonBody(request) {

@@ -13,8 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /m4l-account\.js\?v=102\.12\.8/);
-assert.match(html, /m4l-23-account\.css\?v=102\.12\.8/);
+assert.match(html, /m4l-account\.js\?v=103\.1\.0\.2/);
+assert.match(html, /m4l-23-account\.css\?v=103\.1\.0\.2/);
 
 for (const endpoint of [
   "/api/account/check",
@@ -43,6 +43,10 @@ assert.match(script, /formatAcademyCompactDate/);
 assert.match(css, /scroll-snap-type:\s*x mandatory/);
 assert.match(css, /overflow-x:\s*auto/);
 assert.match(css, /max-height:\s*620px/);
+assert.match(css, /academy-day-session-list[\s\S]*overflow-y:\s*auto/);
+assert.match(css, /scrollbar-gutter:\s*stable/);
+assert.match(script, /academy-day-session-list/);
+assert.match(script, /academyTimeSortValue\(left\.startTime\)/);
 assert.match(script, /createProgramRollupPill/);
 assert.match(script, /labelOnly && relevantProgramNames\.has\(programName\)/);
 assert.doesNotMatch(script, /session\.globalCourseName/);
@@ -74,4 +78,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V102.12.8 Academy Home pill hierarchy, deduplication and unified account UI tests passed.");
+console.log("V103.1.0.2 Academy Home busy-day scrolling, chronological ordering and existing UI tests passed.");

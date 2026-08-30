@@ -1,4 +1,4 @@
-V103.1.0.1 changed/new files only
+V103.1.0.2 changed/new files only
 
 CHANGED-FILES.txt
 CHANGES.md
@@ -7,25 +7,14 @@ README.md
 RELEASE-NOTES.md
 UPDATE-TODO.md
 account/index.html
-admin/index.html
 backend/package.json
-backend/src/router.js
-backend/src/routes/platform-global-management.js
+backend/src/routes/academy-timetable.js
 backend/src/worker.js
-backend/tests/admin-management-ui.test.mjs
-backend/tests/library-catalogue-ui.test.mjs
-backend/tests/platform-global-delivery-ui.test.mjs
-backend/tests/platform-global-management-ui.test.mjs
-backend/tests/platform-global-management.test.mjs
-backend/tests/platform-global-timetable-ui.test.mjs
+backend/tests/academy-timetable-endpoint.test.mjs
+backend/tests/account-ui.test.mjs
 backend/tests/router.test.mjs
-backend/tests/student-task-assignment-ui.test.mjs
-backend/tests/timetable-teacher-ui.test.mjs
-css/m4l-24-global-curriculum.css
-css/m4l-28-global-course-scheduler.css
-docs/V103.1.0.1-GLOBAL-CURRICULUM-INLINE-EDITOR.md
-js/m4l-global-course-scheduler.js
-js/m4l-global-curriculum.js
+css/m4l-23-account.css
+docs/V103.1.0.2-ACADEMY-HOME-BUSY-DAY-SCROLLING.md
+js/m4l-account.js
 js/version.json
-styles.css
 version.json

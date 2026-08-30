@@ -52,36 +52,43 @@ const tables = {
     ],
     GlobalSubjectList: [
       PLATFORM_SHEET_HEADERS.GlobalSubjectList,
-      ["GSUBJ1", "Steps to My Rabb", true, "", "", "", "", "", "", ""]
+      ["GSUBJ1", "Steps to My Rabb", true, "", "", "", "", "", "", ""],
+      ["GSUBJ2", "Mothers of the Ummah", true, "", "", "", "", "", "", ""]
     ],
     GlobalSubjectAccessPolicy: [
       PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy,
-      ["GSPOL1", "GSUBJ1", "FREE", true, "", "", "", "", "", ""]
+      ["GSPOL1", "GSUBJ1", "FREE", true, "", "", "", "", "", ""],
+      ["GSPOL2", "GSUBJ2", "PAID", true, "", "", "", "", "", ""]
     ],
     GlobalSubjectAccessMatrix: [
-      ["AccountID", "GSUBJ1"],
-      ["ACCOUNT1", false]
+      ["AccountID", "GSUBJ1", "GSUBJ2"],
+      ["ACCOUNT1", false, false]
     ],
     GlobalSubjectRuns: [
       PLATFORM_SHEET_HEADERS.GlobalSubjectRuns,
-      ["GSRUN1", "GSUBJ1", "Steps to My Rabb Term 3", "2026-08-01", "2026-11-30", "Africa/Johannesburg", true, "", "", "", "", "", ""]
+      ["GSRUN1", "GSUBJ1", "Steps to My Rabb Term 3", "2026-08-01", "2026-11-30", "Africa/Johannesburg", true, "", "", "", "", "", ""],
+      ["GSRUN2", "GSUBJ2", "Mothers of the Ummah 2026", "2026-08-01", "2026-11-30", "Africa/Johannesburg", true, "", "", "", "", "", ""]
     ],
     GlobalTimetableRunState: [
       PLATFORM_SHEET_HEADERS.GlobalTimetableRunState,
-      ["GSRUN1", "PUBLISHED", "GTPUB1", "", "", "", "", "", ""]
+      ["GSRUN1", "PUBLISHED", "GTPUB1", "", "", "", "", "", ""],
+      ["GSRUN2", "PUBLISHED", "GTPUB2", "", "", "", "", "", ""]
     ],
     GlobalTimetablePublications: [
       PLATFORM_SHEET_HEADERS.GlobalTimetablePublications,
-      ["GTPUB1", "GSRUN1", "GSUBJ1", 1, "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", 1]
+      ["GTPUB1", "GSRUN1", "GSUBJ1", 1, "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", 1],
+      ["GTPUB2", "GSRUN2", "GSUBJ2", 1, "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", 1]
     ],
     GlobalTimetableSessionLifecycle: [
       PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle,
-      ["GSLIFE1", "GTSES1", "GTPUB1", "SCHEDULED", "", "", "", "", "", "", "", ""]
+      ["GSLIFE1", "GTSES1", "GTPUB1", "SCHEDULED", "", "", "", "", "", "", "", ""],
+      ["GSLIFE2", "GTSES2", "GTPUB2", "SCHEDULED", "", "", "", "", "", "", "", ""]
     ],
     AcademyCalendar: [PLATFORM_SHEET_HEADERS.AcademyCalendar],
     PublishedGlobalTimetableSessions: [
       PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions,
-      ["GTPS1", "GTPUB1", "GTSES1", "GSRUN1", "GSUBJ1", "GMOD1", "2026-08-27", "20:00", "21:00", "ACCOUNT1", "https://zoom.test/global", "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", "Steps to My Rabb Term 3", "Steps to My Rabb", "Hearts Connected", "Global Admin", "Africa/Johannesburg"]
+      ["GTPS1", "GTPUB1", "GTSES1", "GSRUN1", "GSUBJ1", "GMOD1", "2026-08-27", "20:00", "21:00", "ACCOUNT1", "https://zoom.test/global", "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", "Steps to My Rabb Term 3", "Steps to My Rabb", "Hearts Connected", "Global Admin", "Africa/Johannesburg"],
+      ["GTPS2", "GTPUB2", "GTSES2", "GSRUN2", "GSUBJ2", "", "2026-08-27", "9:30", "10:30", "ACCOUNT1", "", "2026-08-01T00:00:00Z", "ACCOUNT1", "Global Admin", "Mothers of the Ummah 2026", "Mothers of the Ummah", "", "Global Admin", "Africa/Johannesburg"]
     ]
   },
   course: {
@@ -164,21 +171,25 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "102.12.8");
+  assert.equal(body.version, "103.1.0.2");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
   assert.equal(body.weekEnd, "2026-08-30");
   assert.equal(body.timezone, "Africa/Johannesburg");
-  assert.equal(body.sessions.length, 2);
+  assert.equal(body.sessions.length, 3);
   const program = body.sessions.find(item => item.kind === "PROGRAM");
-  const global = body.sessions.find(item => item.kind === "GLOBAL");
+  const global = body.sessions.find(item => item.kind === "GLOBAL" && item.title === "Steps to My Rabb");
+  const mothers = body.sessions.find(item => item.kind === "GLOBAL" && item.title === "Mothers of the Ummah");
   assert.equal(program.visibilityLevel, "DETAIL");
   assert.equal(program.relevant, false, "Global Admin receives expandable Program detail but not a directly relevant Home session");
   assert.equal(program.title, "Fiqh");
   assert.equal(program.date, "2026-08-27");
   assert.equal(program.canOpenZoom, false, "non-current Program sessions must not expose Zoom on Academy Home");
   assert.equal(program.zoomLink, "");
+  assert.equal(mothers.visibilityLevel, "DETAIL");
+  assert.equal(mothers.startTime, "09:30", "unpadded Global times must normalize and remain before later evening activity");
+  assert.equal(mothers.date, "2026-08-27");
   assert.equal(global.visibilityLevel, "DETAIL");
   assert.equal(global.title, "Steps to My Rabb");
   assert.equal(global.subjectName, "Steps to My Rabb");
@@ -188,7 +199,12 @@ try {
   assert.equal(global.date, "2026-08-27");
   assert.equal(global.canOpenZoom, false, "non-current Global sessions must not expose Zoom on Academy Home");
   assert.equal(global.zoomLink, "");
-  assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002"]);
+  assert.deepEqual(
+    body.sessions.map(item => [item.startTime, item.title]),
+    [["09:00", "Fiqh"], ["09:30", "Mothers of the Ummah"], ["20:00", "Steps to My Rabb"]],
+    "busy days must retain every Program/Global session in chronological order"
+  );
+  assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002", "AE0003"]);
 
   const studentResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
@@ -242,7 +258,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.8 two-day Academy timetable endpoint integration test passed.");
+console.log("V103.1.0.2 two-day Academy timetable endpoint integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {

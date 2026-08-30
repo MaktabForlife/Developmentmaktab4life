@@ -1,43 +1,24 @@
-# Maktab4Life V103.1.0.1
+# Maktab4Life V103.1.0.2
 
-V103.1.0.1 is a focused Global Curriculum refinement applied on top of **V103.1 — Identity Link**.
+V103.1.0.2 is a focused Academy Home timetable display fix applied on top of **V103.1.0.1**.
 
-It deliberately separates curriculum definition from course scheduling:
+It does not advance the V103 Central Identity authority model and does not require the controlled V103.1 Identity Links migration to have been run.
 
-- **Subjects** defines Global Subjects and their Modules;
-- **Course Scheduler** schedules delivery of that existing curriculum.
+## Busy-day timetable cards
 
-## Subjects screen
+Each Academy Home day card now keeps its day header fixed while its session list scrolls vertically inside the card. A day with more sessions than the available card height therefore remains complete instead of relying on the outer Academy Home layout.
 
-The standalone Modules tab is removed. Each Global Subject can now be edited inline and expanded to reveal its Module editor.
+The session list uses its own touch-friendly scrolling and stable scrollbar space.
 
-The screen supports:
+## Chronological ordering
 
-- Subject name;
-- FREE / PAID access;
-- Subject status;
-- Module count/dropdown;
-- Module order, name and status;
-- adding Subjects and Modules;
-- one screen-level Save.
+Academy timetable ordering now compares actual time values rather than relying only on text sorting. This protects busy days from an unpadded time such as `9:30` being placed after `20:00`.
 
-Edited sections are highlighted until the batch save succeeds.
-
-## Batch persistence
-
-`/api/admin/platform/global/subjects/save-batch` accepts all changed Subjects and Modules in one Worker request. The Worker validates the complete change set and performs one Google Sheets batch update only after validation succeeds.
-
-The request includes `GlobalCurriculumVersion`; stale screens are rejected and must reload before saving.
-
-## Styling
-
-The editor follows the newer Global/Academy visual language: white cards, soft borders, rounded controls, compact spacing, transparent Save action and responsive mobile reflow.
+Both Worker delivery and the browser renderer apply the chronological safeguard.
 
 ## V103.1 Identity Links
 
-V103.1.0.1 does not require the controlled V103.1 Identity Links migration to have been run. That migration remains available under System Settings and can be performed later using the existing preview-first flow.
-
-No existing login, attendance, progress, planner, timetable, resources or management behaviour is changed by this patch.
+The V103.1 controlled Identity Links migration remains separate and may still be pending. V103.1.0.2 does not read or require the new Reboot `AccountID` links for timetable delivery.
 
 ## Schema
 
@@ -46,7 +27,7 @@ No new Sheet migration is introduced:
 - keep `PlatformConfig!B3 = 102.0.8`;
 - keep **19 required Platform tabs**.
 
-See `docs/V103.1.0.1-GLOBAL-CURRICULUM-INLINE-EDITOR.md` for implementation details and `docs/V103.1-CENTRAL-IDENTITY-LINK.md` for the separate V103.1 identity-link migration.
+See `docs/V103.1.0.2-ACADEMY-HOME-BUSY-DAY-SCROLLING.md` for implementation details.
 
 ## Roadmap
 

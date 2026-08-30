@@ -1,4 +1,4 @@
-/* M4L V102.12.4 - Swipeable one/two-card personalised Academy timetable. */
+/* M4L V103.1.0.2 - Academy timetable day-body scrolling and chronological multi-session rendering. */
 (function () {
   "use strict";
 
@@ -365,8 +365,12 @@
         day.appendChild(badges);
       }
 
+      const daySessionsBody = document.createElement("div");
+      daySessionsBody.className = "academy-day-session-list";
+
       const daySessions = sessions.filter(session => String(session.date || "") === date);
-      renderAcademyDaySessions(day, daySessions);
+      renderAcademyDaySessions(daySessionsBody, daySessions);
+      day.appendChild(daySessionsBody);
       container.appendChild(day);
     });
   }
@@ -387,7 +391,8 @@
 
   function renderAcademyDaySessions(day, sessions) {
     const ordered = (Array.isArray(sessions) ? sessions.slice() : [])
-      .sort((left, right) => String(left.startTime || "").localeCompare(String(right.startTime || "")) ||
+      .sort((left, right) => academyTimeSortValue(left.startTime) - academyTimeSortValue(right.startTime) ||
+        String(left.startTime || "").localeCompare(String(right.startTime || "")) ||
         String(left.title || "").localeCompare(String(right.title || "")));
     if (!ordered.length) {
       const empty = document.createElement("p");
@@ -604,6 +609,18 @@
     if (!state.academyViewStart) return loadAcademyTimetable({ resetView: true, force: true });
     state.academyViewStart = addAcademyDays(state.academyViewStart, days);
     return loadAcademyTimetable({ force: true });
+  }
+
+  function academyTimeSortValue(value) {
+    const text = String(value || "").trim();
+    const match = /^(\d{1,2})(?::|h)(\d{2})/.exec(text);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    return (hour * 60) + minute;
   }
 
   function formatAcademyTime(value) {
