@@ -1,8 +1,8 @@
-/* M4L V103.1.0.4 - Rolling Academy timetable ranges for fast week-ahead swiping. */
+/* M4L V103.1.0.5 - Rolling Academy timetable plus per-Course FREE/PAID entitlement. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
-import { canAccountAccessGlobalSubject, dateInTimezone, isValidIanaTimezone } from "../lib/global-subject-delivery.js";
+import { canAccountAccessGlobalSubject, dateInTimezone, hasActiveGlobalSubjectSubscription, isValidIanaTimezone } from "../lib/global-subject-delivery.js";
 import { resolveCurrentPublishedGlobalTimetable } from "../lib/global-timetable.js";
 import { readGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "103.1.0.4",
+      version: "103.1.0.5",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,
@@ -401,6 +401,20 @@ export function programSessionToAcademyEvent(session, options) {
   };
 }
 
+function canAccountAccessGlobalCourse({ account, run, subject, policyRows, accessRows }) {
+  const accessModel = normalizePlatformIdentifier(run?.AccessModel);
+  if (accessModel === "FREE") return Boolean(account && isActivePlatformValue(account.Active));
+  if (accessModel === "PAID") {
+    // V103.1.0.5 transition: the unified per-Course role matrix lands in V103.2.
+    // Until then, PAID must never inherit a FREE Global Subject policy. Require
+    // an explicit existing matrix entitlement for the linked Global Subject.
+    if (!account || !subject || !isActivePlatformValue(account.Active) || !isActivePlatformValue(subject.Active)) return false;
+    return hasActiveGlobalSubjectSubscription(accessRows, account.AccountID, subject.SubjectID);
+  }
+  // Pre-migration 102.0.8 rows keep the established Global Subject policy behaviour.
+  return canAccountAccessGlobalSubject({ account, subject, policyRows, accessRows });
+}
+
 export function buildGlobalCourseEvents(platform, account, options) {
   const subjectMap = new Map(platform.subjects.map(subject => [normalizePlatformIdentifier(subject.SubjectID), subject]));
   const runMap = new Map(platform.runs.map(run => [normalizePlatformIdentifier(run.RunID), run]));
@@ -426,8 +440,9 @@ export function buildGlobalCourseEvents(platform, account, options) {
     if (!run || !subject || !isActivePlatformValue(run.Active) || !isActivePlatformValue(subject.Active)) continue;
     const resolved = resolveCurrentPublishedGlobalTimetable(platform, runId);
     if (!resolved.ok) continue;
-    const policyAccess = canAccountAccessGlobalSubject({
+    const policyAccess = canAccountAccessGlobalCourse({
       account,
+      run,
       subject,
       policyRows: platform.policies,
       accessRows: platform.matrix

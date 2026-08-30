@@ -58,7 +58,21 @@ assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy, [
   "SubjectPolicyID", "SubjectID", "AccessModel", "Active", "CreatedDate",
   "CreatedByAccountID", "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
 ]);
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.length, 13);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.length, 14);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.at(-1), "AccessModel");
+const legacyRunHeaders = PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, -1);
+const legacyRunRecords = validatePlatformSheetRows("GlobalSubjectRuns", [
+  legacyRunHeaders,
+  ["GSRUN-LEGACY", "GSUBJ1", "Legacy Course", "2026-09-01", "2026-09-30", "Africa/Johannesburg", true, "", "", "", "", "", ""]
+]);
+assert.equal(legacyRunRecords._courseAccessSchemaReady, false);
+assert.equal(legacyRunRecords[0].AccessModel, "");
+const currentRunRecords = validatePlatformSheetRows("GlobalSubjectRuns", [
+  PLATFORM_SHEET_HEADERS.GlobalSubjectRuns,
+  ["GSRUN-CURRENT", "GSUBJ1", "Current Course", "", "", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID"]
+]);
+assert.equal(currentRunRecords._courseAccessSchemaReady, true);
+assert.equal(currentRunRecords[0].AccessModel, "PAID");
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.length, 16);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.length, 9);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.length, 8);

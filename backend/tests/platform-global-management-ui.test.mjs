@@ -15,7 +15,7 @@ assert.match(html, /data-gcm-tab="subjects"/);
 assert.doesNotMatch(html, /data-gcm-tab="modules"/);
 assert.match(html, /data-gcm-tab="tasks"/);
 assert.match(html, /data-gcm-tab="resources"/);
-assert.match(html, /data-gcm-course-action="show">Course Scheduler<\/button>/);
+assert.match(html, /data-gcm-course-action="show">Courses<\/button>/);
 assert.match(html, /data-gcm-tab="access">Global Access<\/button>/);
 assert.match(html, /m4l-global-curriculum\.js\?v=103\.1\.0\.3/);
 assert.doesNotMatch(html, />Platform administration</);

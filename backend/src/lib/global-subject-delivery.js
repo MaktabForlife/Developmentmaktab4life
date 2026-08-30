@@ -1,4 +1,4 @@
-/* M4L V102.12.8 - Global-subject access-policy, fixed-run and ongoing-course helpers. */
+/* M4L V103.1.0.5 - Global subject delivery plus per-Course FREE/PAID access metadata. */
 
 import {
   isActivePlatformValue,
@@ -224,6 +224,7 @@ export function mapGlobalSubjectRun(run, now = new Date()) {
     startdate: String(run?.StartDate || "").trim(),
     enddate: String(run?.EndDate || "").trim(),
     timezone: String(run?.Timezone || "").trim(),
+    accessmodel: normalizePlatformIdentifier(run?.AccessModel),
     active: isActivePlatformValue(run?.Active),
     ongoing: isOngoingGlobalSubjectRun(run),
     status: deriveGlobalSubjectRunStatus(run, now)

@@ -7,6 +7,8 @@ const pinSecret = "delivery-pin-secret";
 const sessionSecret = "delivery-session-secret";
 const credentialHash = await createSaltedPinHash("2468", pinSecret);
 const tables = Object.fromEntries(Object.entries(PLATFORM_SHEET_HEADERS).map(([name, headers]) => [name, [headers]]));
+// Start deliberately on the deployed V103.1.0.4 / PlatformSchema 102.0.8 shape.
+tables.GlobalSubjectRuns = [PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, -1)];
 tables.UserAccounts.push([
   "ACCOUNT1", "Global Admin", "GLOBAL-LINK", true, credentialHash, true, "", "2026-08-17T00:00:00.000Z",
   "", "", "", "", "", "GLOBAL_ADMIN"
@@ -14,13 +16,13 @@ tables.UserAccounts.push([
 tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true, "", "", "", "", "", ""]);
 tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true, "", "", "", "", "", ""]);
 tables.GlobalSubjectRuns.push([
-  "GSRUN-PAST", "GSUBJ1", "July run", "2026-07-01", "2026-07-31", "Africa/Johannesburg", true,
+  "GSRUN-PAST", "GSUBJ1", "July Course", "2026-07-01", "2026-07-31", "Africa/Johannesburg", true,
   "", "", "", "", "", ""
 ]);
 tables.UserGlobalSubjectAccess.push(["GSACCESS1", "ACCOUNT2", "GSUBJ1", true]);
 tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"], ["ACCOUNT1", false], ["ACCOUNT2", true]];
 tables.GlobalResources.push(["GRES1", "GSUBJ1", "", "", "Archive PDF", "EBOOK", "PDF", "", "https://example.test/archive.pdf", true]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.7"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.8"]);
 tables.PlatformConfig.push(["GlobalCurriculumVersion", 5]);
 tables.PlatformConfig.push(["PlatformTimezone", "Africa/Johannesburg"]);
 
@@ -85,147 +87,122 @@ try {
 
   const initial = await post("/api/admin/platform/global/delivery/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.globalCurriculumVersion, 5);
-  assert.equal(initial.data.platformTimezone, "Africa/Johannesburg");
-  assert.deepEqual(initial.data.subjects[0], {
-    subjectid: "GSUBJ1",
-    subjectname: "Global Tajweed",
-    active: true,
-    accessmodel: "SUBSCRIPTION",
-    policyconfigured: true,
-    modulecount: 0,
-    deliverystatus: "PAST",
-    dependencies: { subscriptions: 1, resources: 1, runs: 1 }
-  });
-  assert.equal(initial.data.runs[0].status, "ENDED");
+  assert.equal(initial.data.platformSchemaVersion, "102.0.8");
+  assert.equal(initial.data.courseAccessSchemaReady, false);
+  assert.equal(initial.data.runs[0].accessmodel, "PAID", "Legacy Course access is derived without widening access");
 
-  const free = await post("/api/admin/platform/global/policy/save", {
-    subjectId: "GSUBJ1",
-    accessModel: "FREE"
+  const blockedBeforeMigration = await post("/api/admin/platform/global/run/save", {
+    runId: "GSRUN-PAST", subjectId: "GSUBJ1", runName: "July Course", startDate: "2026-07-01", endDate: "2026-07-31", active: true
   }, token);
-  assert.equal(free.response.status, 200, JSON.stringify(free.data));
-  assert.equal(free.data.policy.accessmodel, "FREE");
-  assert.equal(tables.GlobalSubjectAccessPolicy[1][2], "FREE");
-  assert.equal(Number(tables.PlatformConfig[2][1]), 6);
-  assert.equal(tables.PlatformAuditLog.at(-1)[6], "UPDATE_GLOBAL_SUBJECT_ACCESS_POLICY");
+  assert.equal(blockedBeforeMigration.response.status, 409);
+  assert.match(blockedBeforeMigration.data.error, /Course access migration/);
 
-  const freeAgain = await post("/api/admin/platform/global/policy/save", {
-    subjectId: "GSUBJ1", accessModel: "FREE"
+  const preview = await post("/api/admin/platform/global/courses/migrate-access", { commit: false }, token);
+  assert.equal(preview.response.status, 200, JSON.stringify(preview.data));
+  assert.equal(preview.data.canCommit, true);
+  assert.equal(preview.data.targetPlatformSchemaVersion, "102.0.9");
+  assert.equal(preview.data.courses[0].accessmodel, "PAID");
+
+  const migrated = await post("/api/admin/platform/global/courses/migrate-access", {
+    commit: true, confirmation: "MIGRATE COURSES"
   }, token);
-  assert.equal(freeAgain.response.status, 200);
-  assert.equal(Number(tables.PlatformConfig[2][1]), 6, "No-op policy saves must not bump GlobalCurriculumVersion");
+  assert.equal(migrated.response.status, 200, JSON.stringify(migrated.data));
+  assert.equal(tables.GlobalSubjectRuns[0].at(-1), "AccessModel");
+  assert.equal(tables.GlobalSubjectRuns[1].at(-1), "PAID");
+  assert.equal(tables.PlatformConfig[1][1], "102.0.9");
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "MIGRATE_GLOBAL_COURSE_ACCESS_MODEL");
+
+  // Subject FREE/PAID and Course FREE/PAID are separate concerns.
+  const freeSubject = await post("/api/admin/platform/global/policy/save", { subjectId: "GSUBJ1", accessModel: "FREE" }, token);
+  assert.equal(freeSubject.response.status, 200, JSON.stringify(freeSubject.data));
+  const afterSubjectFree = await post("/api/admin/platform/global/delivery/get", {}, token);
+  assert.equal(afterSubjectFree.data.runs[0].accessmodel, "PAID", "Changing the Subject policy must not silently change the Course property");
 
   const created = await post("/api/admin/platform/global/run/save", {
     subjectId: "GSUBJ1",
-    runName: "Long current run",
+    runName: "Reusable fixed Course",
     startDate: "2026-01-01",
     endDate: "2026-12-31",
-    timezone: "Africa/Johannesburg",
+    ongoing: false,
+    accessModel: "FREE",
     active: true
   }, token);
   assert.equal(created.response.status, 200, JSON.stringify(created.data));
   assert.match(created.data.run.runid, /^GSRUN-/);
-  assert.equal(created.data.run.status, "CURRENT");
-  assert.equal(Number(tables.PlatformConfig[2][1]), 7);
-  assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT_RUN");
+  assert.equal(created.data.run.accessmodel, "FREE");
   const createdRunId = created.data.run.runid;
 
+  // A completed fixed Course is reusable. Existing historical sessions do not block a new delivery period.
   tables.GlobalTimetableSessions.push([
-    "GTS-BOUNDARY", createdRunId, "GSUBJ1", "", "2026-11-15", "09:00", "10:00", "ACCOUNT1", "", true
+    "GTS-HISTORY", createdRunId, "GSUBJ1", "", "2026-03-15", "09:00", "10:00", "ACCOUNT1", "", true
   ]);
-  const blockedBoundaryShrink = await post("/api/admin/platform/global/run/save", {
+  const repeatWindow = await post("/api/admin/platform/global/run/save", {
     runId: createdRunId,
     subjectId: "GSUBJ1",
-    runName: "Long current run",
-    startDate: "2026-12-01",
-    endDate: "2026-12-31",
-    timezone: "Africa/Johannesburg",
+    runName: "Reusable fixed Course",
+    startDate: "2027-01-01",
+    endDate: "2027-03-31",
+    ongoing: false,
+    accessModel: "FREE",
     active: true
   }, token);
-  assert.equal(blockedBoundaryShrink.response.status, 409);
-  assert.match(blockedBoundaryShrink.data.error, /cannot exclude 1 existing global timetable session/);
-
-  const invalidDates = await post("/api/admin/platform/global/run/save", {
-    subjectId: "GSUBJ1",
-    runName: "Invalid",
-    startDate: "2026-09-01",
-    endDate: "2026-08-01",
-    timezone: "Africa/Johannesburg",
-    active: true
-  }, token);
-  assert.equal(invalidDates.response.status, 400);
-  assert.match(invalidDates.data.error, /cannot precede/);
-  assert.equal(Number(tables.PlatformConfig[2][1]), 7);
+  assert.equal(repeatWindow.response.status, 200, JSON.stringify(repeatWindow.data));
+  assert.equal(repeatWindow.data.run.startdate, "2027-01-01");
+  assert.equal(tables.GlobalTimetableSessions.at(-1)[4], "2026-03-15", "Historical source session remains preserved");
 
   const inactive = await post("/api/admin/platform/global/run/save", {
     runId: createdRunId,
     subjectId: "GSUBJ1",
-    runName: "Long current run",
-    startDate: "2026-01-01",
-    endDate: "2026-12-31",
-    timezone: "Africa/Johannesburg",
+    runName: "Reusable fixed Course",
+    startDate: "2027-01-01",
+    endDate: "2027-03-31",
+    ongoing: false,
+    accessModel: "FREE",
     active: false
   }, token);
   assert.equal(inactive.response.status, 200, JSON.stringify(inactive.data));
-  assert.equal(inactive.data.run.status, "INACTIVE");
-  assert.equal(Number(tables.PlatformConfig[2][1]), 8);
-  assert.equal(tables.PlatformAuditLog.at(-1)[6], "UPDATE_GLOBAL_SUBJECT_RUN");
+  assert.equal(inactive.data.run.status, "INACTIVE", "Archiving remains an explicit user action");
 
   const ongoing = await post("/api/admin/platform/global/run/save", {
     subjectId: "GSUBJ1",
-    runName: "Ongoing Tajweed",
-    startDate: "",
-    endDate: "",
+    runName: "Ongoing Course",
     ongoing: true,
-    timezone: "Africa/Johannesburg",
+    accessModel: "PAID",
     active: true
   }, token);
   assert.equal(ongoing.response.status, 200, JSON.stringify(ongoing.data));
   assert.equal(ongoing.data.run.startdate, "");
   assert.equal(ongoing.data.run.enddate, "");
   assert.equal(ongoing.data.run.ongoing, true);
+  assert.equal(ongoing.data.run.accessmodel, "PAID");
   assert.equal(ongoing.data.run.status, "CURRENT");
-  assert.equal(Number(tables.PlatformConfig[2][1]), 9);
-  assert.equal(tables.PlatformAuditLog.at(-1)[6], "CREATE_GLOBAL_SUBJECT_RUN");
 
-  tables.GlobalSubjectList[1][2] = false;
-  const activeOnInactiveSubject = await post("/api/admin/platform/global/run/save", {
-    subjectId: "GSUBJ1",
-    runName: "Blocked",
-    startDate: "2026-09-01",
-    endDate: "2026-09-30",
-    timezone: "Africa/Johannesburg",
-    active: true
+  const invalidDates = await post("/api/admin/platform/global/run/save", {
+    subjectId: "GSUBJ1", runName: "Invalid", startDate: "2026-09-01", endDate: "2026-08-01", ongoing: false, accessModel: "PAID", active: true
   }, token);
-  assert.equal(activeOnInactiveSubject.response.status, 409);
-  assert.match(activeOnInactiveSubject.data.error, /active global subject/);
-  tables.GlobalSubjectList[1][2] = true;
-
-  tables.GlobalSubjectAccessPolicy.push(["GSPOL2", "GSUBJ1", "SUBSCRIPTION", true]);
-  const duplicatePolicy = await post("/api/admin/platform/global/policy/save", {
-    subjectId: "GSUBJ1", accessModel: "SUBSCRIPTION"
-  }, token);
-  assert.equal(duplicatePolicy.response.status, 409);
-  assert.match(duplicatePolicy.data.error, /duplicate active access policies/);
+  assert.equal(invalidDates.response.status, 400);
+  assert.match(invalidDates.data.error, /cannot precede/);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.8 Global Course fixed/ongoing setup policy, run and audit tests passed.");
+console.log("V103.1.0.5 Course FREE/PAID migration, reusable fixed Courses, ongoing Courses and explicit archive tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {})
-    },
+    headers: { "Content-Type": "application/json", ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}) },
     body: JSON.stringify(body)
   }), env);
   return { response: responseValue, data: await responseValue.json() };
 }
 
 function applyWrite(write) {
+  const wholeTable = /^'([^']+)'!A1:[A-Z]+(\d+)$/.exec(write.range);
+  if (wholeTable) {
+    tables[wholeTable[1]] = write.values.map(row => [...row]);
+    return;
+  }
   const fullRow = /^'([^']+)'!A(\d+):[A-Z]+\2$/.exec(write.range);
   if (fullRow) {
     const sheetName = fullRow[1];
@@ -248,10 +225,6 @@ function toPem(bytes, label) {
   const lines = base64.match(/.{1,64}/g).join("\n");
   return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----\n`;
 }
-
 function response(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
+  return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 }

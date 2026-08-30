@@ -11,8 +11,8 @@ for (const html of [admin, student]) {
   assert.match(html, /id="library-source-selector"/);
   assert.match(html, /m4l-resources\.js\?v=102\.10/);
 }
-assert.match(admin, /styles\.css\?v=103\.1\.0\.1/);
-assert.match(student, /styles\.css\?v=102\.10/);
+assert.match(admin, /styles\.css\?v=103\.1\.0\.5/);
+assert.match(student, /styles\.css\?v=103\.1\.0\.5/);
 
 assert.match(resources, /\/api\/library\/catalogue/);
 assert.match(resources, /\/api\/library\/course-resource\/access/);

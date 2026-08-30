@@ -1,4 +1,4 @@
-/* M4L V102.12.2 - Authoritative central identity, access, delivery, timetable and Academy Calendar schema. */
+/* M4L V103.1.0.5 - Central schema with optional V102.0.9 Global Course AccessModel extension. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -94,7 +94,8 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "CreatedByAccountName",
     "ModifiedByAccountID",
     "ModifiedByAccountName",
-    "ModifiedDate"
+    "ModifiedDate",
+    "AccessModel"
   ]),
   GlobalTimetableSessions: Object.freeze([
     "SessionID", "RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime",
@@ -234,6 +235,9 @@ export function validatePlatformSheetRows(sheetName, rows) {
   if (sheetName === "GlobalSubjectAccessMatrix") {
     return validateGlobalSubjectAccessMatrixRows(rows);
   }
+  if (sheetName === "GlobalSubjectRuns") {
+    return validateGlobalSubjectRunRows(rows, expectedHeaders);
+  }
 
   const actualHeaders = expectedHeaders.map((unused, index) => String(rows[0]?.[index] || "").trim());
   const mismatch = expectedHeaders.findIndex((header, index) => actualHeaders[index] !== header);
@@ -258,6 +262,39 @@ export function validatePlatformSheetRows(sheetName, rows) {
     });
     return record;
   });
+}
+
+function validateGlobalSubjectRunRows(rows, expectedHeaders) {
+  const requiredHeaders = expectedHeaders.slice(0, -1);
+  const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
+  const actualRequired = requiredHeaders.map((unused, index) => String(headerRow[index] || "").trim());
+  const mismatch = requiredHeaders.findIndex((header, index) => actualRequired[index] !== header);
+  if (mismatch !== -1) {
+    const actual = actualRequired[mismatch] || "(blank)";
+    throw new Error(`GlobalSubjectRuns header ${columnName(mismatch + 1)}1 must be ${requiredHeaders[mismatch]}; found ${actual}`);
+  }
+  const accessHeader = String(headerRow[requiredHeaders.length] || "").trim();
+  if (accessHeader && accessHeader !== "AccessModel") {
+    throw new Error(`GlobalSubjectRuns header ${columnName(requiredHeaders.length + 1)}1 must be AccessModel when present; found ${accessHeader}`);
+  }
+  const extraHeaderIndex = headerRow.findIndex((value, index) => (
+    index >= expectedHeaders.length && String(value ?? "").trim() !== ""
+  ));
+  if (extraHeaderIndex !== -1) {
+    throw new Error(`GlobalSubjectRuns has an unexpected header in ${columnName(extraHeaderIndex + 1)}1`);
+  }
+  const records = rows.slice(1).filter(row => rowHasValue(row)).map((row, rowIndex) => {
+    const record = { _rowNumber: rowIndex + 2 };
+    expectedHeaders.forEach((header, columnIndex) => {
+      record[header] = row?.[columnIndex] ?? "";
+    });
+    return record;
+  });
+  Object.defineProperty(records, "_courseAccessSchemaReady", {
+    value: accessHeader === "AccessModel",
+    enumerable: false
+  });
+  return records;
 }
 
 function validateGlobalSubjectAccessMatrixRows(rows) {

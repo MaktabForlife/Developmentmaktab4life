@@ -1,4 +1,4 @@
-/* M4L V102.12.8 - Platform validation including ongoing Global Courses, publishable TBA, Academy Calendar and immutable publication. */
+/* M4L V103.1.0.5 - Platform validation with staged Global Course FREE/PAID AccessModel support. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { isHiddenIslamicEvent, validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
@@ -27,7 +27,8 @@ import {
   normalizeGlobalSessionStatus
 } from "../lib/global-timetable-lifecycle.js";
 
-const EXPECTED_PLATFORM_SCHEMA_VERSION = "102.0.8";
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9"]);
+const COURSE_ACCESS_SCHEMA_VERSION = "102.0.9";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
@@ -108,8 +109,15 @@ export function validatePlatformTables(tables) {
   if (!isAccountLoginBaseUrl(accountLoginBaseUrl)) {
     throw new Error("PlatformConfig AccountLoginBaseUrl must be an HTTPS /account/ URL");
   }
-  if (schemaVersion !== EXPECTED_PLATFORM_SCHEMA_VERSION) {
-    throw new Error(`PlatformConfig PlatformSchemaVersion must be ${EXPECTED_PLATFORM_SCHEMA_VERSION}`);
+  if (!SUPPORTED_PLATFORM_SCHEMA_VERSIONS.has(schemaVersion)) {
+    throw new Error("PlatformConfig PlatformSchemaVersion must be 102.0.8 or 102.0.9");
+  }
+  const courseAccessSchemaReady = tables.GlobalSubjectRuns._courseAccessSchemaReady === true;
+  if (schemaVersion === COURSE_ACCESS_SCHEMA_VERSION && !courseAccessSchemaReady) {
+    throw new Error("PlatformSchemaVersion 102.0.9 requires GlobalSubjectRuns.AccessModel");
+  }
+  if (schemaVersion === "102.0.8" && courseAccessSchemaReady) {
+    throw new Error("GlobalSubjectRuns.AccessModel requires PlatformSchemaVersion 102.0.9");
   }
   if (!Number.isInteger(curriculumVersion) || curriculumVersion < 1) {
     throw new Error("PlatformConfig GlobalCurriculumVersion must be a positive integer");
@@ -179,7 +187,7 @@ export function validatePlatformTables(tables) {
   }
 
   const globalCurriculum = validateGlobalCurriculum(tables);
-  const globalDelivery = validateGlobalSubjectDelivery(tables, globalCurriculum.subjectIds, globalCurriculum.activeSubjectIds);
+  const globalDelivery = validateGlobalSubjectDelivery(tables, globalCurriculum.subjectIds, globalCurriculum.activeSubjectIds, { courseAccessRequired: courseAccessSchemaReady });
   const subjectAccessIds = new Set();
   const subjectAccessKeys = new Set();
   let legacyActiveGlobalSubjectAccessCount = 0;
@@ -222,6 +230,7 @@ export function validatePlatformTables(tables) {
 
   return Object.freeze({
     platformSchemaVersion: schemaVersion,
+    courseAccessSchemaReady,
     globalCurriculumVersion: curriculumVersion,
     globalTimetableVersion,
     tabCount: Object.keys(PLATFORM_SHEET_HEADERS).length,
@@ -427,7 +436,7 @@ function validateGlobalCurriculum(tables) {
   return Object.freeze({ subjectIds, activeSubjectIds, moduleIds, moduleSubjects, taskIds, resourceIds });
 }
 
-function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
+function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds, options = {}) {
   const accessModels = new Set(GLOBAL_SUBJECT_ACCESS_MODELS);
   const policyIds = new Set();
   const activePoliciesBySubject = new Map();
@@ -472,6 +481,10 @@ function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds) {
     const startDate = String(run.StartDate || "").trim();
     const endDate = String(run.EndDate || "").trim();
     const timezone = String(run.Timezone || "").trim();
+    const courseAccessModel = normalizePlatformIdentifier(run.AccessModel);
+    if (options.courseAccessRequired && !["FREE", "PAID"].includes(courseAccessModel)) {
+      throw new Error(`GlobalSubjectRuns row ${run._rowNumber} AccessModel must be FREE or PAID`);
+    }
     if (!runId || runIds.has(runId)) {
       throw new Error(`GlobalSubjectRuns row ${run._rowNumber} has a blank or duplicate RunID`);
     }
@@ -564,8 +577,8 @@ function validateGlobalTimetable(tables, context) {
     if (moduleId && moduleSubjects.get(moduleId) !== subjectId) {
       throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid module relationship`);
     }
-    if (!sessionWithinRun(session, runById.get(runId))) {
-      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} falls outside its run dates`);
+    if (!validateIsoDate(String(session.SessionDate || "").trim())) {
+      throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid SessionDate`);
     }
     if (!validateTimeRange(session.StartTime, session.EndTime)) {
       throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid time range`);
@@ -680,7 +693,7 @@ function validateGlobalTimetable(tables, context) {
     if (moduleId && moduleSubjects.get(moduleId) !== subjectId) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has an invalid module relationship`);
     }
-    if (!sessionWithinRun(snapshot, runById.get(runId)) || !validateTimeRange(snapshot.StartTime, snapshot.EndTime)) {
+    if (!validateIsoDate(String(snapshot.SessionDate || "").trim()) || !validateTimeRange(snapshot.StartTime, snapshot.EndTime)) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has invalid date/time values`);
     }
     if (teacherAccountId && !accountIds.has(teacherAccountId)) {

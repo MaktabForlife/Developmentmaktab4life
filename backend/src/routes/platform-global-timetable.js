@@ -1,7 +1,7 @@
-/* M4L V102.12.8 - Global Course ongoing scheduling, batch session editing, publishable TBA and Calendar conflict warnings. */
+/* M4L V103.1.0.5 - Courses: reusable fixed delivery windows, ongoing publication ranges and direct per-Course publishing. */
 
 import { getAuthUser } from "../lib/auth.js";
-import { noTeachingEventsOnDates } from "../lib/academy-calendar.js";
+import { buildAcademyCalendarEvents, noTeachingEventsOnDates } from "../lib/academy-calendar.js";
 import {
   activeGlobalTimetableSessionsForRun,
   generateSessionDates,
@@ -37,7 +37,7 @@ import {
 
 const MAX_ZOOM_LINK_LENGTH = 1000;
 const HTTPS_URL_PATTERN = /^https:\/\//i;
-const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8"]);
+const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9"]);
 
 export async function getPlatformGlobalTimetableEndpoint(request, env) {
   const permission = await requireGlobalTimetableAdmin(request, env);
@@ -49,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "102.12.8",
+      version: "103.1.0.5",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -66,7 +66,8 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
       publishedLifecycles: tables.GlobalTimetableSessionLifecycle
         .filter(row => clean(row.PublicationID))
         .map(mapGlobalTimetableSessionLifecycle),
-      publishedSessions: tables.PublishedGlobalTimetableSessions.map(mapPublishedGlobalTimetableSession)
+      publishedSessions: tables.PublishedGlobalTimetableSessions.map(mapPublishedGlobalTimetableSession),
+      calendarEvents: timetableCalendarEvents(tables)
     });
   } catch (error) {
     return globalTimetableError(error, env);
@@ -88,6 +89,7 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
     const weekdays = Array.isArray(body.weekdays) ? body.weekdays : [];
     const requestedGenerationStart = clean(body.generationStartDate || body.generationstartdate || body.scheduleStartDate || body.schedulestartdate);
     const requestedGenerationEnd = clean(body.generationEndDate || body.generationenddate || body.scheduleEndDate || body.scheduleenddate);
+    const skipExistingEquivalent = body.skipExistingEquivalent === true;
 
     if (!runId) throw clientError("RunID is required", 400);
     if (!validateTimeRange(startTime, endTime)) throw clientError("StartTime and EndTime require a valid increasing HH:MM range", 400);
@@ -114,19 +116,30 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
     const dates = generateSessionDates(generationStartDate, generationEndDate, weekdays);
     if (!dates.length) throw clientError("The selected weekdays do not occur inside this schedule window", 400);
 
+    const datesToCreate = [];
     for (const sessionDate of dates) {
-      if (hasActiveSlotConflict(tables.GlobalTimetableSessions, {
+      const candidate = {
         runId: run.RunID,
         sessionDate,
         startTime,
-        endTime
-      }, tables.GlobalTimetableSessionLifecycle)) {
+        endTime,
+        moduleId: module ? clean(module.ModuleID) : "",
+        teacherAccountId: clean(teacher?.AccountID),
+        zoomLink
+      };
+      if (skipExistingEquivalent && hasEquivalentScheduledSession(
+        tables.GlobalTimetableSessions, candidate, tables.GlobalTimetableSessionLifecycle
+      )) {
+        continue;
+      }
+      if (hasActiveSlotConflict(tables.GlobalTimetableSessions, candidate, tables.GlobalTimetableSessionLifecycle)) {
         throw clientError(`An active session already overlaps ${sessionDate} ${startTime}-${endTime}`, 409);
       }
+      datesToCreate.push(sessionDate);
     }
 
     const timestamp = new Date().toISOString();
-    const records = dates.map(sessionDate => ({
+    const records = datesToCreate.map(sessionDate => ({
       SessionID: createPlatformId("GTS"),
       RunID: clean(run.RunID),
       SubjectID: clean(subject.SubjectID),
@@ -145,12 +158,14 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
       ModifiedDate: ""
     }));
 
-    const calendarWarnings = noTeachingEventsOnDates(tables.AcademyCalendar, dates);
-    await writeGeneratedSessions(env, permission.user, tables, run, records, timestamp);
+    const calendarWarnings = noTeachingEventsOnDates(tables.AcademyCalendar, datesToCreate);
+    if (records.length) await writeGeneratedSessions(env, permission.user, tables, run, records, timestamp);
     const publishedSourceIds = publishedSourceIdSet(tables.PublishedGlobalTimetableSessions);
     return json({
       success: true,
-      message: `${records.length} exact-dated global timetable session${records.length === 1 ? "" : "s"} generated`,
+      message: records.length
+        ? `${records.length} exact-dated global timetable session${records.length === 1 ? "" : "s"} generated`
+        : "The selected recurring schedule is already prepared for this window",
       sessions: records.map(row => enrichSession(mapGlobalTimetableSession(row, publishedSourceIds), tables)),
       calendarWarnings,
       state: developmentStateForResponse(tables, run.RunID)
@@ -520,13 +535,27 @@ export async function publishPlatformGlobalTimetableEndpoint(request, env) {
   try {
     const body = await request.json();
     const runId = clean(body.runId || body.runid);
+    const publishStartDate = clean(body.publishStartDate || body.publishstartdate);
+    const publishEndDate = clean(body.publishEndDate || body.publishenddate);
     if (!runId) throw clientError("RunID is required", 400);
 
     const tables = await readGlobalTimetableTables(env);
     const run = activeRun(tables, runId);
     const subject = activeSubject(tables, run.SubjectID);
-    const sessions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID);
-    if (!sessions.length) throw clientError("Publish requires at least one active global timetable session", 409);
+    const allActiveSessions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID);
+    const ongoing = !clean(run.StartDate) && !clean(run.EndDate);
+    let sessions;
+    if (ongoing) {
+      if (!validateIsoDate(publishStartDate) || !validateIsoDate(publishEndDate) || publishEndDate < publishStartDate) {
+        throw clientError("Ongoing Course publication requires valid Publish From and Publish Through dates", 400);
+      }
+      sessions = allActiveSessions.filter(session => (
+        clean(session.SessionDate) >= publishStartDate && clean(session.SessionDate) <= publishEndDate
+      ));
+    } else {
+      sessions = allActiveSessions.filter(session => sessionWithinRun(session, run));
+    }
+    if (!sessions.length) throw clientError("Publish requires at least one active session in the selected Course publication window", 409);
     const sessionLifecycles = validateSessionsForPublication(tables, run, subject, sessions);
 
     const timestamp = new Date().toISOString();
@@ -609,7 +638,7 @@ function requireGlobalTimetableSchema(configRows) {
   ));
   const version = clean(matches[0]?.ConfigValue);
   if (matches.length !== 1 || !TIMETABLE_SCHEMA_VERSIONS.has(version)) {
-    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7 or 102.0.8");
+    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8 or 102.0.9");
   }
 }
 
@@ -858,6 +887,12 @@ function validateSessionsForPublication(tables, run, subject, sessions) {
   return lifecycles;
 }
 
+function timetableCalendarEvents(tables) {
+  const dates = (tables.GlobalTimetableSessions || []).map(row => clean(row.SessionDate)).filter(validateIsoDate).sort();
+  if (!dates.length) return [];
+  return buildAcademyCalendarEvents(tables.AcademyCalendar || [], dates[0], dates[dates.length - 1]);
+}
+
 function activeRun(tables, runId) {
   const run = uniqueRecord(tables.GlobalSubjectRuns, "RunID", runId, "Global subject run");
   if (!isActivePlatformValue(run.Active)) throw clientError("Global timetable requires an active global-subject run", 409);
@@ -889,6 +924,27 @@ function activeTeacher(tables, accountId) {
 function optionalActiveTeacher(tables, accountId) {
   if (!clean(accountId)) return null;
   return activeTeacher(tables, accountId);
+}
+
+function hasEquivalentScheduledSession(rows, {
+  runId, sessionDate, startTime, endTime, moduleId = "", teacherAccountId = "", zoomLink = ""
+}, lifecycleRows = []) {
+  const runKey = normalizePlatformIdentifier(runId);
+  const moduleKey = normalizePlatformIdentifier(moduleId);
+  const teacherKey = normalizePlatformIdentifier(teacherAccountId);
+  const zoom = clean(zoomLink);
+  return (rows || []).some(row => {
+    if (!isActivePlatformValue(row.Active)) return false;
+    if (normalizePlatformIdentifier(row.RunID) !== runKey) return false;
+    if (clean(row.SessionDate) !== clean(sessionDate)) return false;
+    const lifecycle = resolveCurrentSessionLifecycle(lifecycleRows, row.SessionID);
+    if (lifecycle.status !== GLOBAL_SESSION_STATUS_SCHEDULED) return false;
+    return normalizeSubmittedTime(row.StartTime) === startTime
+      && normalizeSubmittedTime(row.EndTime) === endTime
+      && normalizePlatformIdentifier(row.ModuleID) === moduleKey
+      && normalizePlatformIdentifier(row.TeacherAccountID) === teacherKey
+      && clean(row.ZoomLink) === zoom;
+  });
 }
 
 function hasActiveSlotConflict(rows, { runId, sessionDate, startTime, endTime, excludeSessionId = "" }, lifecycleRows = []) {

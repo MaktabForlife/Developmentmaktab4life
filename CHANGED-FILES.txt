@@ -1,19 +1,50 @@
-V103.1.0.4 changed/new files only
+Maktab4Life V103.1.0.5 — changed/new files from V103.1.0.4
+Count (including this manifest and DELETE-FILES.txt): 47
 
 CHANGED-FILES.txt
-CHANGES.md
 DELETE-FILES.txt
+CHANGES.md
+PRODUCTION-MIGRATION-V101.1.md
 README.md
 RELEASE-NOTES.md
 UPDATE-TODO.md
 account/index.html
+admin/index.html
 backend/package.json
+backend/src/lib/global-subject-delivery.js
+backend/src/lib/platform-schema.js
+backend/src/router.js
 backend/src/routes/academy-timetable.js
+backend/src/routes/account-auth.js
+backend/src/routes/platform-academy-calendar.js
+backend/src/routes/platform-account-migration.js
+backend/src/routes/platform-global-delivery.js
+backend/src/routes/platform-global-timetable.js
+backend/src/routes/platform-validation.js
 backend/src/worker.js
 backend/tests/academy-timetable-endpoint.test.mjs
+backend/tests/academy-timetable.test.mjs
 backend/tests/account-ui.test.mjs
+backend/tests/admin-management-ui.test.mjs
+backend/tests/global-subject-delivery.test.mjs
+backend/tests/library-catalogue-ui.test.mjs
+backend/tests/platform-global-delivery-ui.test.mjs
+backend/tests/platform-global-delivery.test.mjs
+backend/tests/platform-global-management-ui.test.mjs
+backend/tests/platform-global-timetable-ui.test.mjs
+backend/tests/platform-global-timetable.test.mjs
+backend/tests/platform-sheet.test.mjs
+backend/tests/platform-validation.test.mjs
 backend/tests/router.test.mjs
-docs/V103.1.0.4-ACADEMY-TIMETABLE-WEEK-LOADING.md
+backend/tests/student-task-assignment-ui.test.mjs
+backend/tests/timetable-teacher-ui.test.mjs
+css/m4l-28-global-course-scheduler.css
+docs/V103.1.0.5-COURSES.md
+docs/V103.1.0.5-GlobalSubjectRuns-template.csv
+index.html
 js/m4l-account.js
+js/m4l-global-course-scheduler.js
 js/version.json
+student/index.html
+styles.css
 version.json

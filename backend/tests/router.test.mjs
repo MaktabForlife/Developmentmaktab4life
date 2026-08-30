@@ -65,6 +65,7 @@ const expectedPaths = [
   "/api/admin/platform/global/delivery/get",
   "/api/admin/platform/global/policy/save",
   "/api/admin/platform/global/run/save",
+  "/api/admin/platform/global/courses/migrate-access",
   "/api/admin/platform/global/timetable/get",
   "/api/admin/platform/global/timetable/generate",
   "/api/admin/platform/global/timetable/session/save",
@@ -116,14 +117,14 @@ const expectedPaths = [
   "/api/progress/task-detail"
 ];
 
-assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include the V103.1 identity-link route");
+assert.deepEqual(ROUTE_PATHS, expectedPaths, "The modular router must retain existing routes and include the V103.1 identity-link and V103.1.0.5 Course migration routes");
 
 const root = await worker.fetch(new Request("https://worker.test/"), {});
 assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "103.1.0.4"
+  version: "103.1.0.5"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

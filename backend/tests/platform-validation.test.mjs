@@ -36,7 +36,7 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.8"],
+  ["PlatformSchemaVersion", "102.0.9"],
   ["GlobalCurriculumVersion", 1],
   ["GlobalTimetableVersion", 1],
   ["PlatformTimezone", "Africa/Johannesburg"]
@@ -92,7 +92,8 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.8",
+    platformSchemaVersion: "102.0.9",
+    courseAccessSchemaReady: true,
     globalCurriculumVersion: 1,
     globalTimetableVersion: 1,
     tabCount: 19,
@@ -148,6 +149,17 @@ try {
   assert.equal(serialized.includes("central-platform-sheet"), false);
   assert.equal(serialized.includes("reboot-course-sheet"), false);
 
+  // V103.1.0.5 migration compatibility: 102.0.8 remains valid only while
+  // GlobalSubjectRuns still has the legacy 13-column header.
+  tables = structuredClone(baseTables);
+  tables.PlatformConfig[2][1] = "102.0.8";
+  tables.GlobalSubjectRuns = [PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, -1)];
+  const legacyReady = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(legacyReady.status, 200);
+  const legacyResult = await legacyReady.json();
+  assert.equal(legacyResult.platformSchemaVersion, "102.0.8");
+  assert.equal(legacyResult.courseAccessSchemaReady, false);
+
   tables = structuredClone(baseTables);
   tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", "GLOBAL_ROOT_FOLDER_123"]);
   const configuredDrive = await worker.fetch(validationRequest(adminToken), env);
@@ -201,7 +213,7 @@ try {
   tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
   tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
   tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
-  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Term 1", "2026-08-01", "2026-08-31", "Africa/Johannesburg", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Term 1", "2026-08-01", "2026-08-31", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID"]);
   tables.GlobalModuleList.push(["GMOD1", "GSUBJ1", "Module 1", 1, true]);
   tables.GlobalTaskList.push(["GTASK1", "GSUBJ1", "GMOD1", "Task 1", true]);
   tables.GlobalResources.push([
@@ -272,7 +284,7 @@ try {
   tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
   tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
   tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
-  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Ongoing run", "", "", "Africa/Johannesburg", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Ongoing run", "", "", "Africa/Johannesburg", true, "", "", "", "", "", "", "FREE"]);
   const validOngoingRun = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(validOngoingRun.status, 200, await validOngoingRun.text());
 
@@ -285,7 +297,7 @@ try {
   tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
   tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
   tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
-  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Broken run", "2026-08-20", "2026-08-10", "Africa/Johannesburg", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Broken run", "2026-08-20", "2026-08-10", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID"]);
   const invalidRun = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(invalidRun.status, 503);
   assert.match((await invalidRun.json()).detail, /EndDate cannot precede StartDate/);
@@ -298,7 +310,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.8 Live Platform Sheet validation endpoint tests passed.");
+console.log("V103.1.0.5 Platform validation accepts the staged Course access migration and validates FREE/PAID Courses.");
 
 function validationRequest(token) {
   return new Request("https://worker.test/api/admin/platform/validate", {

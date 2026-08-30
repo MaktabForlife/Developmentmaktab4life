@@ -125,6 +125,18 @@ assert.equal(subscriberEvents[0].subjectName, "Steps to My Rabb");
 assert.equal(subscriberEvents[0].moduleName, "Hearts Connected");
 assert.equal(subscriberEvents[0].teacherName, "Muallimah");
 
+const freeCoursePlatform = makeGlobalPlatform("SUBSCRIPTION", false, "TEACHER1", "SCHEDULED", "FREE");
+const freeCourseEvents = buildGlobalCourseEvents(freeCoursePlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
+assert.equal(freeCourseEvents[0].visibilityLevel, "DETAIL", "A FREE Course is automatically accessible even when its linked Global Subject policy is not free");
+
+const paidCoursePlatform = makeGlobalPlatform("FREE", false, "TEACHER1", "SCHEDULED", "PAID");
+const paidCourseEvents = buildGlobalCourseEvents(paidCoursePlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
+assert.equal(paidCourseEvents[0].visibilityLevel, "LABEL", "A PAID Course must not inherit automatic access from a FREE Global Subject");
+
+const paidCourseSubscriberPlatform = makeGlobalPlatform("FREE", true, "TEACHER1", "SCHEDULED", "PAID");
+const paidCourseSubscriberEvents = buildGlobalCourseEvents(paidCourseSubscriberPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
+assert.equal(paidCourseSubscriberEvents[0].visibilityLevel, "DETAIL", "A PAID Course remains available to explicitly entitled accounts during the V103.1.0.5 transition");
+
 const teacherPlatform = makeGlobalPlatform("SUBSCRIPTION", false, "ACCOUNT1");
 const teacherEvents = buildGlobalCourseEvents(teacherPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
 assert.equal(teacherEvents[0].visibilityLevel, "DETAIL", "Assigned Global Course teachers receive teaching detail without a learner subscription");
@@ -188,14 +200,14 @@ assert.deepEqual(
   { date: "2026-08-24", minutes: 9 * 60 + 30 }
 );
 
-console.log("V102.12.8 Academy timetable personalisation, Global Course redaction and current-session Zoom tests passed.");
+console.log("V103.1.0.5 Academy timetable Course FREE/PAID access, personalisation and current-session Zoom tests passed.");
 
-function makeGlobalPlatform(accessModel, subscribed, teacherAccountId = "TEACHER1", status = "SCHEDULED") {
+function makeGlobalPlatform(accessModel, subscribed, teacherAccountId = "TEACHER1", status = "SCHEDULED", courseAccessModel = "") {
   return {
     subjects: [{ SubjectID: "GSUBJ1", SubjectName: "Steps to My Rabb", Active: true }],
     policies: [{ SubjectPolicyID: "GSPOL1", SubjectID: "GSUBJ1", AccessModel: accessModel, Active: true }],
     matrix: [{ AccountID: "ACCOUNT1", _subjectAccess: { GSUBJ1: subscribed } }],
-    runs: [{ RunID: "GSRUN1", SubjectID: "GSUBJ1", RunName: "Steps to My Rabb Term 3", StartDate: "2026-08-01", EndDate: "2026-11-30", Timezone: "Africa/Johannesburg", Active: true }],
+    runs: [{ RunID: "GSRUN1", SubjectID: "GSUBJ1", RunName: "Steps to My Rabb Term 3", StartDate: "2026-08-01", EndDate: "2026-11-30", Timezone: "Africa/Johannesburg", Active: true, AccessModel: courseAccessModel }],
     GlobalTimetableRunState: [{ RunID: "GSRUN1", Stage: "PUBLISHED", CurrentPublicationID: "GTPUB1" }],
     GlobalTimetablePublications: [{
       PublicationID: "GTPUB1", RunID: "GSRUN1", SubjectID: "GSUBJ1", VersionNo: 1,

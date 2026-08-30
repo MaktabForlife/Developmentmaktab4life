@@ -1,4 +1,4 @@
-/* M4L V103.1.0.4 - Rolling seven-day Academy timetable loading, cache and prefetch. */
+/* M4L V103.1.0.5 - V103.1.0.4 rolling seven-day Academy timetable loading retained on the Courses release. */
 (function () {
   "use strict";
 

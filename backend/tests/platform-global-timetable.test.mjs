@@ -89,7 +89,7 @@ try {
 
   const initial = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "102.12.8");
+  assert.equal(initial.data.version, "103.1.0.5");
   assert.equal(initial.data.globalTimetableVersion, 1);
   assert.equal(initial.data.runs.length, 1);
   assert.equal(initial.data.teachers.some(item => item.accountid === "TEACHER1"), true);
@@ -336,6 +336,22 @@ try {
   assert.deepEqual(ongoingGenerated.data.sessions.map(item => item.sessiondate), ["2026-11-02", "2026-11-04"]);
   assert.equal(ongoingGenerated.data.sessions.every(item => !item.teacheraccountid), true);
 
+  // Courses Save may re-ensure an already prepared recurring window. Exact equivalent
+  // sessions are skipped rather than duplicated or treated as conflicts.
+  const ensuredAgain = await post("/api/admin/platform/global/timetable/generate", {
+    runId: "GSRUN-ONGOING",
+    moduleId: "GMOD1",
+    weekdays: ["MON", "WED"],
+    startTime: "08:00",
+    endTime: "09:00",
+    generationStartDate: "2026-11-01",
+    generationEndDate: "2026-11-07",
+    skipExistingEquivalent: true
+  }, token);
+  assert.equal(ensuredAgain.response.status, 200, JSON.stringify(ensuredAgain.data));
+  assert.equal(ensuredAgain.data.sessions.length, 0);
+  assert.match(ensuredAgain.data.message, /already prepared/);
+
   const ongoingFirst = ongoingGenerated.data.sessions[0];
   const ongoingMoved = await post("/api/admin/platform/global/timetable/session/batch-save", {
     runId: "GSRUN-ONGOING",
@@ -354,17 +370,23 @@ try {
   assert.equal(ongoingMoved.response.status, 200, JSON.stringify(ongoingMoved.data));
   assert.equal(ongoingMoved.data.sessions.find(item => item.sessionid === ongoingFirst.sessionid)?.sessiondate, "2027-01-04");
 
-  const ongoingPublication = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN-ONGOING" }, token);
+  const missingOngoingPublishWindow = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN-ONGOING" }, token);
+  assert.equal(missingOngoingPublishWindow.response.status, 400);
+  assert.match(missingOngoingPublishWindow.data.error, /Publish From and Publish Through/);
+
+  const ongoingPublication = await post("/api/admin/platform/global/timetable/publish", {
+    runId: "GSRUN-ONGOING", publishStartDate: "2026-11-01", publishEndDate: "2026-11-07"
+  }, token);
   assert.equal(ongoingPublication.response.status, 200, JSON.stringify(ongoingPublication.data));
   assert.equal(ongoingPublication.data.publication.versionno, 1);
-  assert.equal(ongoingPublication.data.publication.sessioncount, 2);
+  assert.equal(ongoingPublication.data.publication.sessioncount, 1, "Only sessions inside the selected ongoing publication range are published");
   assert.equal(Number(tables.PlatformConfig[2][1]), 5);
   assert.equal(tables.PlatformAuditLog.filter(row => row[6] === "PUBLISH_GLOBAL_TIMETABLE").length, 4);
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V102.12.8 Global Course ongoing scheduling, batch editing, immutable publication and publishable TBA tests passed.");
+console.log("V103.1.0.5 Global Course publication windows, ensure-generation, batch editing and immutable TBA publication tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {

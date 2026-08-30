@@ -115,6 +115,7 @@ import {
 } from "./routes/platform-global-management.js";
 import {
   getPlatformGlobalDeliveryEndpoint,
+  migratePlatformGlobalCourseAccessEndpoint,
   savePlatformGlobalSubjectPolicyEndpoint,
   savePlatformGlobalSubjectRunEndpoint
 } from "./routes/platform-global-delivery.js";
@@ -219,6 +220,7 @@ const ROUTES = new Map([
   ["/api/admin/platform/global/delivery/get", workerRoute("platform-global-management", getPlatformGlobalDeliveryEndpoint)],
   ["/api/admin/platform/global/policy/save", workerRoute("platform-global-management", savePlatformGlobalSubjectPolicyEndpoint)],
   ["/api/admin/platform/global/run/save", workerRoute("platform-global-management", savePlatformGlobalSubjectRunEndpoint)],
+  ["/api/admin/platform/global/courses/migrate-access", workerRoute("platform-global-management", migratePlatformGlobalCourseAccessEndpoint)],
   ["/api/admin/platform/global/timetable/get", workerRoute("platform-global-timetable", getPlatformGlobalTimetableEndpoint)],
   ["/api/admin/platform/global/timetable/generate", workerRoute("platform-global-timetable", generatePlatformGlobalTimetableSessionsEndpoint)],
   ["/api/admin/platform/global/timetable/session/save", workerRoute("platform-global-timetable", savePlatformGlobalTimetableSessionEndpoint)],

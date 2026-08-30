@@ -13,8 +13,8 @@ assert.match(html, /id="context-view"/);
 assert.match(html, /id="context-list"/);
 assert.match(html, /id="open-workspace-button"/);
 assert.match(html, /Switch program or role/);
-assert.match(html, /m4l-account\.js\?v=103\.1\.0\.4/);
-assert.match(html, /m4l-23-account\.css\?v=103\.1\.0\.4/);
+assert.match(html, /m4l-account\.js\?v=103\.1\.0\.5/);
+assert.match(html, /m4l-23-account\.css\?v=103\.1\.0\.5/);
 
 for (const endpoint of [
   "/api/account/check",
@@ -85,4 +85,4 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(redirects, /^\/account\/\*\s+\/account\/\s+200$/m);
 assert.match(headers, /^\/account\/\*\n\s+Cache-Control: no-cache$/m);
 
-console.log("V103.1.0.4 Academy Home rolling seven-day loading, cache, prefetch and existing UI tests passed.");
+console.log("V103.1.0.5 Academy Home rolling seven-day loading, cache, prefetch and existing UI tests passed.");

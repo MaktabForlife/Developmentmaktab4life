@@ -105,6 +105,7 @@ assert.deepEqual(mapGlobalSubjectRun(baseRun, now), {
   timezone: "Africa/Johannesburg",
   active: true,
   ongoing: false,
+  accessmodel: "",
   status: "CURRENT"
 });
 assert.deepEqual(mapGlobalSubjectRun(ongoingRun, now), {
@@ -116,7 +117,8 @@ assert.deepEqual(mapGlobalSubjectRun(ongoingRun, now), {
   timezone: "Africa/Johannesburg",
   active: true,
   ongoing: true,
+  accessmodel: "",
   status: "CURRENT"
 });
 
-console.log("V102.12.8 global-subject policy, fixed-run and ongoing-course helper tests passed.");
+console.log("V103.1.0.5 global-subject policy, fixed/ongoing Course and Course-access mapping helper tests passed.");
