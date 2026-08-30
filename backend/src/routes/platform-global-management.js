@@ -42,6 +42,7 @@ import {
 } from "./drive-library.js";
 
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
+const GLOBAL_SUBJECT_ACCESS_MODELS = new Set(["FREE", "SUBSCRIPTION"]);
 const MAX_NAME_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const GLOBAL_RESOURCE_DRIVE_ROOT_KEY = "GlobalResourceDriveRootFolderID";
@@ -388,6 +389,314 @@ export async function savePlatformGlobalSubjectEndpoint(request, env) {
       message: existing ? "Global subject updated" : "Global subject created",
       subject: mapSubject(record),
       dependencies: requestedActive ? undefined : dependencies
+    });
+  } catch (error) {
+    return mutationError(error, env);
+  }
+}
+
+export async function savePlatformGlobalSubjectsBatchEndpoint(request, env) {
+  const permission = await requireGlobalCurriculumAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const subjectChanges = Array.isArray(body.subjects) ? body.subjects : [];
+    const moduleChanges = Array.isArray(body.modules) ? body.modules : [];
+    if (subjectChanges.length > 250 || moduleChanges.length > 1500) {
+      throw clientError("Too many Global Subject or Module changes in one save", 400);
+    }
+
+    const tables = await readManagementTables(env);
+    const version = readGlobalCurriculumVersion(tables.PlatformConfig);
+    const requestedVersion = Number(body.globalCurriculumVersion);
+    if (Number.isFinite(requestedVersion) && requestedVersion !== version.value) {
+      throw clientError("Global Curriculum changed since this screen was loaded. Reload before saving.", 409);
+    }
+    if (!subjectChanges.length && !moduleChanges.length) {
+      return json({
+        success: true,
+        message: "No Global Subject or Module changes requested",
+        globalCurriculumVersion: version.value,
+        subjects: [],
+        modules: []
+      });
+    }
+
+    const timestamp = new Date().toISOString();
+    const workingSubjects = tables.GlobalSubjectList.map(record => ({ ...record }));
+    const workingModules = tables.GlobalModuleList.map(record => ({ ...record }));
+    const workingPolicies = tables.GlobalSubjectAccessPolicy.map(record => ({ ...record }));
+    const subjectClientIds = new Map();
+    const writes = [];
+    const audits = [];
+    const savedSubjects = [];
+    const savedModules = [];
+    let nextSubjectRow = nextRowNumber(tables.GlobalSubjectList);
+    let nextModuleRow = nextRowNumber(tables.GlobalModuleList);
+    let nextPolicyRow = nextRowNumber(tables.GlobalSubjectAccessPolicy);
+    let nextMatrixColumnNumber = globalSubjectAccessMatrixColumns(tables.GlobalSubjectAccessMatrix).length + 2;
+
+    for (let index = 0; index < subjectChanges.length; index += 1) {
+      const change = subjectChanges[index] || {};
+      const subjectId = clean(change.subjectId || change.subjectid);
+      const clientKey = clean(change.clientKey || change.clientkey || subjectId || `subject-${index + 1}`);
+      const subjectName = requireText(change.subjectName || change.subjectname, "Subject name", MAX_NAME_LENGTH);
+      const requestedActive = readBoolean(change.active, subjectId ? null : true);
+      const accessModel = normalizePlatformIdentifier(change.accessModel || change.accessmodel || "SUBSCRIPTION");
+      if (!GLOBAL_SUBJECT_ACCESS_MODELS.has(accessModel)) {
+        throw clientError("Global Subject access must be FREE or SUBSCRIPTION", 400);
+      }
+
+      const existing = subjectId
+        ? uniqueRecord(workingSubjects, "SubjectID", subjectId, "Global subject")
+        : null;
+      assertNoDuplicateName(
+        workingSubjects,
+        "SubjectName",
+        subjectName,
+        existing?.SubjectID,
+        "Global subject"
+      );
+
+      const record = existing ? {
+        ...existing,
+        SubjectName: subjectName,
+        Active: requestedActive,
+        ModifiedByAccountID: permission.user.accountid,
+        ModifiedByAccountName: permission.user.username,
+        ModifiedDate: timestamp
+      } : {
+        SubjectID: createPlatformId("GSUBJ"),
+        SubjectName: subjectName,
+        Active: requestedActive,
+        CreatedDate: timestamp,
+        CreatedByAccountID: permission.user.accountid,
+        CreatedByAccountName: permission.user.username,
+        ModifiedByAccountID: "",
+        ModifiedByAccountName: "",
+        ModifiedDate: ""
+      };
+      const changedFields = existing
+        ? changedRecordFields(existing, record, ["SubjectName", "Active"])
+        : ["SubjectName", "Active"];
+      const subjectRowNumber = existing?._rowNumber || nextSubjectRow++;
+      record._rowNumber = subjectRowNumber;
+
+      if (changedFields.length) {
+        writes.push(valueWrite(
+          "GlobalSubjectList",
+          subjectRowNumber,
+          recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalSubjectList)
+        ));
+        audits.push({
+          action: existing ? "UPDATE_GLOBAL_SUBJECT" : "CREATE_GLOBAL_SUBJECT",
+          recordType: "GLOBAL_SUBJECT",
+          recordId: record.SubjectID,
+          changedFields,
+          timestamp
+        });
+      }
+
+      if (existing) {
+        const workingIndex = workingSubjects.findIndex(item => (
+          normalizePlatformIdentifier(item.SubjectID) === normalizePlatformIdentifier(existing.SubjectID)
+        ));
+        workingSubjects[workingIndex] = record;
+      } else {
+        workingSubjects.push(record);
+        const matrixColumn = columnName(nextMatrixColumnNumber++);
+        writes.push({
+          range: `'GlobalSubjectAccessMatrix'!${matrixColumn}1`,
+          majorDimension: "ROWS",
+          values: [[record.SubjectID]]
+        });
+        for (const matrixRow of tables.GlobalSubjectAccessMatrix || []) {
+          writes.push({
+            range: `'GlobalSubjectAccessMatrix'!${matrixColumn}${matrixRow._rowNumber}`,
+            majorDimension: "ROWS",
+            values: [[false]]
+          });
+        }
+      }
+
+      subjectClientIds.set(clientKey, record.SubjectID);
+      subjectClientIds.set(record.SubjectID, record.SubjectID);
+
+      const subjectKey = normalizePlatformIdentifier(record.SubjectID);
+      const activePolicies = workingPolicies.filter(policy => (
+        normalizePlatformIdentifier(policy.SubjectID) === subjectKey && isActivePlatformValue(policy.Active)
+      ));
+      if (activePolicies.length > 1) {
+        throw clientError("Global subject has duplicate active access policies; run Platform validation", 409);
+      }
+      const existingPolicy = activePolicies[0] || null;
+      const currentAccess = existingPolicy
+        ? normalizePlatformIdentifier(existingPolicy.AccessModel) || "SUBSCRIPTION"
+        : "SUBSCRIPTION";
+      if (!existingPolicy || currentAccess !== accessModel) {
+        const policyRecord = existingPolicy ? {
+          ...existingPolicy,
+          AccessModel: accessModel,
+          Active: true,
+          ModifiedByAccountID: permission.user.accountid,
+          ModifiedByAccountName: permission.user.username,
+          ModifiedDate: timestamp
+        } : {
+          SubjectPolicyID: createPlatformId("GSPOL"),
+          SubjectID: record.SubjectID,
+          AccessModel: accessModel,
+          Active: true,
+          CreatedDate: timestamp,
+          CreatedByAccountID: permission.user.accountid,
+          CreatedByAccountName: permission.user.username,
+          ModifiedByAccountID: "",
+          ModifiedByAccountName: "",
+          ModifiedDate: ""
+        };
+        const policyRowNumber = existingPolicy?._rowNumber || nextPolicyRow++;
+        policyRecord._rowNumber = policyRowNumber;
+        writes.push(valueWrite(
+          "GlobalSubjectAccessPolicy",
+          policyRowNumber,
+          recordToRow(policyRecord, PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy)
+        ));
+        audits.push({
+          action: existingPolicy ? "UPDATE_GLOBAL_SUBJECT_ACCESS_POLICY" : "CREATE_GLOBAL_SUBJECT_ACCESS_POLICY",
+          recordType: "GLOBAL_SUBJECT_ACCESS_POLICY",
+          recordId: policyRecord.SubjectPolicyID,
+          changedFields: existingPolicy ? ["AccessModel"] : ["SubjectID", "AccessModel", "Active"],
+          timestamp
+        });
+        if (existingPolicy) {
+          const policyIndex = workingPolicies.findIndex(item => (
+            normalizePlatformIdentifier(item.SubjectPolicyID) === normalizePlatformIdentifier(existingPolicy.SubjectPolicyID)
+          ));
+          workingPolicies[policyIndex] = policyRecord;
+        } else {
+          workingPolicies.push(policyRecord);
+        }
+      }
+
+      savedSubjects.push({
+        clientkey: clientKey,
+        ...mapSubject(record),
+        accessmodel: accessModel
+      });
+    }
+
+    for (let index = 0; index < moduleChanges.length; index += 1) {
+      const change = moduleChanges[index] || {};
+      const moduleId = clean(change.moduleId || change.moduleid);
+      const clientKey = clean(change.clientKey || change.clientkey || moduleId || `module-${index + 1}`);
+      const subjectClientKey = clean(change.subjectClientKey || change.subjectclientkey);
+      const requestedSubjectId = clean(change.subjectId || change.subjectid);
+      const subjectId = requestedSubjectId || subjectClientIds.get(subjectClientKey) || subjectClientKey;
+      const moduleName = requireText(change.moduleName || change.modulename, "Module name", MAX_NAME_LENGTH);
+      const requestedActive = readBoolean(change.active, moduleId ? null : true);
+      const sortOrder = readPositiveInteger(change.sortOrder ?? change.sortorder, "Sort order");
+      const subject = uniqueRecord(workingSubjects, "SubjectID", subjectId, "Global subject");
+      if (requestedActive && !isActivePlatformValue(subject.Active)) {
+        throw clientError("An active module requires an active global subject", 409);
+      }
+
+      const existing = moduleId
+        ? uniqueRecord(workingModules, "ModuleID", moduleId, "Global module")
+        : null;
+      if (existing && normalizePlatformIdentifier(existing.SubjectID) !== normalizePlatformIdentifier(subjectId)) {
+        throw clientError("Move Global Modules between subjects is not supported from the inline Subject editor", 409);
+      }
+      assertNoDuplicateChildName(
+        workingModules,
+        "SubjectID",
+        subjectId,
+        "ModuleName",
+        moduleName,
+        existing?.ModuleID,
+        "Global module"
+      );
+
+      const record = existing ? {
+        ...existing,
+        SubjectID: subjectId,
+        ModuleName: moduleName,
+        SortOrder: sortOrder,
+        Active: requestedActive,
+        ModifiedByAccountID: permission.user.accountid,
+        ModifiedByAccountName: permission.user.username,
+        ModifiedDate: timestamp
+      } : {
+        ModuleID: createPlatformId("GMOD"),
+        SubjectID: subjectId,
+        ModuleName: moduleName,
+        SortOrder: sortOrder,
+        Active: requestedActive,
+        CreatedDate: timestamp,
+        CreatedByAccountID: permission.user.accountid,
+        CreatedByAccountName: permission.user.username,
+        ModifiedByAccountID: "",
+        ModifiedByAccountName: "",
+        ModifiedDate: ""
+      };
+      const changedFields = existing
+        ? changedRecordFields(existing, record, ["ModuleName", "SortOrder", "Active"])
+        : ["SubjectID", "ModuleName", "SortOrder", "Active"];
+      const moduleRowNumber = existing?._rowNumber || nextModuleRow++;
+      record._rowNumber = moduleRowNumber;
+      if (changedFields.length) {
+        writes.push(valueWrite(
+          "GlobalModuleList",
+          moduleRowNumber,
+          recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalModuleList)
+        ));
+        audits.push({
+          action: existing ? "UPDATE_GLOBAL_MODULE" : "CREATE_GLOBAL_MODULE",
+          recordType: "GLOBAL_MODULE",
+          recordId: record.ModuleID,
+          changedFields,
+          timestamp
+        });
+      }
+
+      if (existing) {
+        const workingIndex = workingModules.findIndex(item => (
+          normalizePlatformIdentifier(item.ModuleID) === normalizePlatformIdentifier(existing.ModuleID)
+        ));
+        workingModules[workingIndex] = record;
+      } else {
+        workingModules.push(record);
+      }
+      savedModules.push({ clientkey: clientKey, ...mapModule(record) });
+    }
+
+    if (!writes.length) {
+      return json({
+        success: true,
+        message: "No Global Subject or Module changes requested",
+        globalCurriculumVersion: version.value,
+        subjects: savedSubjects,
+        modules: savedModules
+      });
+    }
+
+    const nextVersion = version.value + 1;
+    const auditStartRow = nextRowNumber(tables.PlatformAuditLog);
+    writes.push({
+      range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
+      majorDimension: "ROWS",
+      values: [[nextVersion, timestamp, permission.user.accountid, permission.user.username]]
+    });
+    audits.forEach((audit, index) => {
+      writes.push(valueWrite("PlatformAuditLog", auditStartRow + index, buildAuditRow(permission.user, audit)));
+    });
+
+    await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+    return json({
+      success: true,
+      message: `Saved ${audits.length} Global Subject/Module change${audits.length === 1 ? "" : "s"}`,
+      globalCurriculumVersion: nextVersion,
+      subjects: savedSubjects,
+      modules: savedModules
     });
   } catch (error) {
     return mutationError(error, env);

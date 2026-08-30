@@ -1,4 +1,4 @@
-/* M4L V102.11.2 - Global curriculum, Global Access and protected Drive resources. */
+/* M4L V103.1.0.1 - Inline Global Subject + Module editor with one batch save; Global Access and protected Drive resources retained. */
 (function () {
   "use strict";
 
@@ -15,6 +15,11 @@
       access: ""
     },
     resourceDraft: null,
+    subjectDrafts: [],
+    moduleDrafts: [],
+    subjectModulesOpen: new Set(),
+    subjectDraftSequence: 0,
+    moduleDraftSequence: 0,
     drive: {
       open: false,
       loading: false,
@@ -82,6 +87,7 @@
     handlersBound = true;
     document.addEventListener("click", handleClick);
     document.addEventListener("change", handleChange);
+    document.addEventListener("input", handleInput);
   }
 
   function getAction(event) {
@@ -102,6 +108,10 @@
     if (action === "show-tab") return selectTab(target.dataset.gcmTab);
     if (action === "new") return beginEdit("");
     if (action === "edit") return beginEdit(target.dataset.recordId || "");
+    if (action === "toggle-subject-modules") return toggleSubjectModules(target.dataset.subjectKey || "");
+    if (action === "add-subject-inline") return addSubjectInline();
+    if (action === "add-module-inline") return addModuleInline(target.dataset.subjectKey || "");
+    if (action === "save-subject-screen") return saveSubjectScreen(target);
     if (action === "save-subject") return saveSubject(target);
     if (action === "save-module") return saveModule(target);
     if (action === "save-task") return saveTask(target);
@@ -118,6 +128,10 @@
   function handleChange(event) {
     const target = event?.target;
     if (!target || !target.closest("#global-curriculum-screen")) return;
+    if (target.matches("[data-gcm-subject-field], [data-gcm-module-field]")) {
+      syncSubjectEditorControl(target);
+      return;
+    }
     if (target.matches("[data-gcm-access-toggle]")) {
       saveAccessToggle(target);
       return;
@@ -125,6 +139,14 @@
     if (target.id === "gcm-task-subject") updateTaskModuleOptions();
     if (target.id === "gcm-resource-subject" || target.id === "gcm-resource-module") {
       updateResourceBranchOptions();
+    }
+  }
+
+  function handleInput(event) {
+    const target = event?.target;
+    if (!target || !target.closest("#global-curriculum-screen")) return;
+    if (target.matches("[data-gcm-subject-field], [data-gcm-module-field]")) {
+      syncSubjectEditorControl(target);
     }
   }
 
@@ -150,6 +172,7 @@
         subjectAccessMatrix: result.subjectAccessMatrix || emptyData().subjectAccessMatrix,
         globalResourceDriveRoot: result.globalResourceDriveRoot || emptyData().globalResourceDriveRoot
       };
+      resetSubjectEditor();
       model.loaded = true;
       setMessage("", "");
       render();
@@ -164,7 +187,8 @@
   }
 
   function selectTab(tab) {
-    if (!["subjects", "modules", "tasks", "resources", "access"].includes(tab)) return;
+    if (tab === "modules") tab = "subjects";
+    if (!["subjects", "tasks", "resources", "access"].includes(tab)) return;
     model.tab = tab;
     model.drive.open = false;
     model.drive.data = null;
@@ -193,31 +217,91 @@
     document.querySelector(`#global-curriculum-screen [data-gcm-tab="${model.tab}"]`)?.classList.add("is-active");
 
     if (model.tab === "subjects") return renderSubjects();
-    if (model.tab === "modules") return renderModules();
     if (model.tab === "tasks") return renderTasks();
     if (model.tab === "resources") return renderResources();
     return renderAccess();
   }
 
   function renderSubjects() {
-    const current = findById(model.data.subjects, "subjectid", model.editing.subjects);
+    const dirty = hasSubjectScreenChanges();
     setContent(`
-      <div class="global-curriculum-management-grid">
-        ${panelForm(current ? "Modify Global Subject" : "Add Global Subject", `
-          <input id="gcm-subject-id" type="hidden" value="${attr(current?.subjectid || "")}" />
-          ${field("Subject name", `<input id="gcm-subject-name" type="text" maxlength="160" value="${attr(current?.subjectname || "")}" autocomplete="off" />`)}
-          ${activeField("gcm-subject-active", current?.active !== false)}
-          ${saveButtons("save-subject", Boolean(current))}
-        `)}
-        ${listPanel("Global Subjects", model.data.subjects.length, recordList(
-          model.data.subjects,
-          item => item.subjectid,
-          item => item.subjectname,
-          item => item.subjectid,
-          item => item.active
-        ))}
-      </div>
+      <section class="global-curriculum-panel global-subject-editor-panel">
+        <div class="global-curriculum-panel-heading global-subject-editor-heading">
+          <div>
+            <h3>Add or Modify Global Subjects</h3>
+            <p>Edit Subjects and their Modules inline, then save the screen once.</p>
+          </div>
+          <button type="button" class="global-save-icon-button global-subject-screen-save" data-gcm-action="save-subject-screen" ${dirty ? "" : "disabled"} aria-label="Save all Subject and Module changes" title="Save all Subject and Module changes"><span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span><span class="global-save-icon-label">SAVE</span></button>
+        </div>
+        <div class="global-subject-editor-head" aria-hidden="true">
+          <span>Subject</span><span>Access</span><span>Status</span><span>Modules</span>
+        </div>
+        <div class="global-subject-editor-list">
+          ${model.subjectDrafts.length ? model.subjectDrafts.map(renderSubjectDraft).join("") : '<p class="global-curriculum-empty-list">No Global Subjects found.</p>'}
+        </div>
+        <button type="button" class="global-inline-add-action" data-gcm-action="add-subject-inline">+ Add a Global Subject</button>
+      </section>
     `);
+  }
+
+  function renderSubjectDraft(subject) {
+    const subjectDirty = isSubjectDraftDirty(subject);
+    const modulesDirty = subjectHasDirtyModules(subject.key);
+    const open = model.subjectModulesOpen.has(subject.key);
+    const modules = modulesForSubjectDraft(subject.key);
+    return `
+      <article class="global-subject-editor-item ${subjectDirty || modulesDirty ? "is-dirty" : ""} ${subject.isNew ? "is-new" : ""}" data-subject-draft-key="${attr(subject.key)}">
+        <div class="global-subject-editor-row">
+          <label class="global-subject-editor-name">
+            <span class="global-subject-mobile-label">Subject</span>
+            <input type="text" maxlength="160" value="${attr(subject.subjectname)}" data-gcm-subject-field="subjectname" data-subject-key="${attr(subject.key)}" autocomplete="off" />
+            <small>${html(subject.subjectid || "New Global Subject")}</small>
+          </label>
+          <label>
+            <span class="global-subject-mobile-label">Access</span>
+            <select data-gcm-subject-field="accessmodel" data-subject-key="${attr(subject.key)}">
+              <option value="SUBSCRIPTION" ${subject.accessmodel === "SUBSCRIPTION" ? "selected" : ""}>PAID</option>
+              <option value="FREE" ${subject.accessmodel === "FREE" ? "selected" : ""}>FREE</option>
+            </select>
+          </label>
+          <label>
+            <span class="global-subject-mobile-label">Status</span>
+            <select data-gcm-subject-field="active" data-subject-key="${attr(subject.key)}">
+              <option value="ACTIVE" ${subject.active ? "selected" : ""}>ACTIVE</option>
+              <option value="INACTIVE" ${subject.active ? "" : "selected"}>INACTIVE</option>
+            </select>
+          </label>
+          <button type="button" class="global-subject-modules-toggle ${modulesDirty ? "is-dirty" : ""}" data-gcm-action="toggle-subject-modules" data-subject-key="${attr(subject.key)}" aria-expanded="${open ? "true" : "false"}">
+            <span>Modules ${open ? "▲" : "▼"}</span>
+            <small>${modules.length} module${modules.length === 1 ? "" : "s"}</small>
+          </button>
+        </div>
+        ${open ? renderInlineModules(subject, modules) : ""}
+      </article>
+    `;
+  }
+
+  function renderInlineModules(subject, modules) {
+    return `
+      <section class="global-inline-module-editor" aria-label="Modules for ${attr(subject.subjectname || "Global Subject")}">
+        <div class="global-inline-module-heading"><h4>Modules</h4><span>${html(subject.subjectname || "New Global Subject")}</span></div>
+        <div class="global-inline-module-head" aria-hidden="true"><span>Order</span><span>Module name</span><span>Status</span></div>
+        <div class="global-inline-module-list">
+          ${modules.length ? modules.map(renderModuleDraft).join("") : '<p class="global-curriculum-empty-list">No Modules yet.</p>'}
+        </div>
+        <button type="button" class="global-inline-add-action global-inline-add-module" data-gcm-action="add-module-inline" data-subject-key="${attr(subject.key)}">+ Add a module</button>
+      </section>
+    `;
+  }
+
+  function renderModuleDraft(module) {
+    return `
+      <div class="global-inline-module-row ${isModuleDraftDirty(module) ? "is-dirty" : ""} ${module.isNew ? "is-new" : ""}" data-module-draft-key="${attr(module.key)}">
+        <label><span class="global-subject-mobile-label">Order</span><input type="number" min="1" step="1" value="${attr(module.sortorder)}" data-gcm-module-field="sortorder" data-module-key="${attr(module.key)}" /></label>
+        <label class="global-inline-module-name"><span class="global-subject-mobile-label">Module name</span><input type="text" maxlength="160" value="${attr(module.modulename)}" data-gcm-module-field="modulename" data-module-key="${attr(module.key)}" autocomplete="off" /><small>${html(module.moduleid || "New Module")}</small></label>
+        <label><span class="global-subject-mobile-label">Status</span><select data-gcm-module-field="active" data-module-key="${attr(module.key)}"><option value="ACTIVE" ${module.active ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${module.active ? "" : "selected"}>INACTIVE</option></select></label>
+      </div>
+    `;
   }
 
   function renderModules() {
@@ -373,6 +457,229 @@
         </div>
       </section>
     `);
+  }
+
+  function resetSubjectEditor() {
+    const policies = model.data.subjectAccessMatrix?.policies || {};
+    const openKeys = new Set(model.subjectModulesOpen || []);
+    model.subjectDrafts = model.data.subjects.map(subject => {
+      const accessmodel = String(policies[subject.subjectid] || "SUBSCRIPTION").toUpperCase() === "FREE" ? "FREE" : "SUBSCRIPTION";
+      const draft = {
+        key: String(subject.subjectid || ""),
+        subjectid: String(subject.subjectid || ""),
+        subjectname: String(subject.subjectname || ""),
+        accessmodel,
+        active: subject.active !== false,
+        isNew: false
+      };
+      draft.original = subjectDraftSnapshot(draft);
+      return draft;
+    });
+    model.moduleDrafts = model.data.modules.map(module => {
+      const draft = {
+        key: String(module.moduleid || ""),
+        moduleid: String(module.moduleid || ""),
+        subjectkey: String(module.subjectid || ""),
+        modulename: String(module.modulename || ""),
+        sortorder: Math.max(1, Number(module.sortorder) || 1),
+        active: module.active !== false,
+        isNew: false
+      };
+      draft.original = moduleDraftSnapshot(draft);
+      return draft;
+    });
+    model.subjectModulesOpen = new Set(model.subjectDrafts.filter(subject => openKeys.has(subject.key)).map(subject => subject.key));
+  }
+
+  function subjectDraftSnapshot(subject) {
+    return {
+      subjectname: String(subject?.subjectname || "").trim(),
+      accessmodel: String(subject?.accessmodel || "SUBSCRIPTION").toUpperCase(),
+      active: subject?.active !== false
+    };
+  }
+
+  function moduleDraftSnapshot(module) {
+    return {
+      subjectkey: String(module?.subjectkey || ""),
+      modulename: String(module?.modulename || "").trim(),
+      sortorder: Math.max(1, Number(module?.sortorder) || 1),
+      active: module?.active !== false
+    };
+  }
+
+  function isSubjectDraftDirty(subject) {
+    if (!subject) return false;
+    if (subject.isNew) return true;
+    return JSON.stringify(subjectDraftSnapshot(subject)) !== JSON.stringify(subject.original || {});
+  }
+
+  function isModuleDraftDirty(module) {
+    if (!module) return false;
+    if (module.isNew) return true;
+    return JSON.stringify(moduleDraftSnapshot(module)) !== JSON.stringify(module.original || {});
+  }
+
+  function subjectHasDirtyModules(subjectKey) {
+    return model.moduleDrafts.some(module => module.subjectkey === subjectKey && isModuleDraftDirty(module));
+  }
+
+  function hasSubjectScreenChanges() {
+    return model.subjectDrafts.some(isSubjectDraftDirty) || model.moduleDrafts.some(isModuleDraftDirty);
+  }
+
+  function modulesForSubjectDraft(subjectKey) {
+    return model.moduleDrafts
+      .filter(module => module.subjectkey === subjectKey)
+      .sort((left, right) => Number(left.sortorder || 0) - Number(right.sortorder || 0) || String(left.modulename || "").localeCompare(String(right.modulename || "")));
+  }
+
+  function syncSubjectEditorControl(control) {
+    const subjectKey = String(control?.dataset?.subjectKey || "");
+    const moduleKey = String(control?.dataset?.moduleKey || "");
+    if (control.matches("[data-gcm-subject-field]")) {
+      const subject = model.subjectDrafts.find(item => item.key === subjectKey);
+      if (!subject) return;
+      const fieldName = String(control.dataset.gcmSubjectField || "");
+      if (fieldName === "subjectname") subject.subjectname = String(control.value || "");
+      if (fieldName === "accessmodel") subject.accessmodel = String(control.value || "SUBSCRIPTION").toUpperCase() === "FREE" ? "FREE" : "SUBSCRIPTION";
+      if (fieldName === "active") subject.active = String(control.value || "ACTIVE").toUpperCase() === "ACTIVE";
+    } else if (control.matches("[data-gcm-module-field]")) {
+      const module = model.moduleDrafts.find(item => item.key === moduleKey);
+      if (!module) return;
+      const fieldName = String(control.dataset.gcmModuleField || "");
+      if (fieldName === "modulename") module.modulename = String(control.value || "");
+      if (fieldName === "sortorder") module.sortorder = Math.max(1, Number(control.value) || 1);
+      if (fieldName === "active") module.active = String(control.value || "ACTIVE").toUpperCase() === "ACTIVE";
+    }
+    refreshSubjectDirtyIndicators();
+  }
+
+  function refreshSubjectDirtyIndicators() {
+    model.subjectDrafts.forEach(subject => {
+      const row = document.querySelector(`[data-subject-draft-key="${cssEscapeValue(subject.key)}"]`);
+      if (!row) return;
+      const dirty = isSubjectDraftDirty(subject) || subjectHasDirtyModules(subject.key);
+      row.classList.toggle("is-dirty", dirty);
+      row.querySelector(".global-subject-modules-toggle")?.classList.toggle("is-dirty", subjectHasDirtyModules(subject.key));
+    });
+    model.moduleDrafts.forEach(module => {
+      document.querySelector(`[data-module-draft-key="${cssEscapeValue(module.key)}"]`)?.classList.toggle("is-dirty", isModuleDraftDirty(module));
+    });
+    const save = document.querySelector('[data-gcm-action="save-subject-screen"]');
+    if (save) save.disabled = !hasSubjectScreenChanges();
+  }
+
+  function toggleSubjectModules(subjectKey) {
+    const key = String(subjectKey || "");
+    if (!key) return;
+    if (model.subjectModulesOpen.has(key)) model.subjectModulesOpen.delete(key);
+    else model.subjectModulesOpen.add(key);
+    renderSubjects();
+  }
+
+  function addSubjectInline() {
+    const key = `new-subject-${++model.subjectDraftSequence}`;
+    const draft = {
+      key,
+      subjectid: "",
+      subjectname: "",
+      accessmodel: "SUBSCRIPTION",
+      active: true,
+      isNew: true,
+      original: null
+    };
+    model.subjectDrafts.push(draft);
+    model.subjectModulesOpen.add(key);
+    renderSubjects();
+    document.querySelector(`[data-subject-draft-key="${cssEscapeValue(key)}"] input[data-gcm-subject-field="subjectname"]`)?.focus();
+  }
+
+  function addModuleInline(subjectKey) {
+    const subject = model.subjectDrafts.find(item => item.key === String(subjectKey || ""));
+    if (!subject) return;
+    const key = `new-module-${++model.moduleDraftSequence}`;
+    model.moduleDrafts.push({
+      key,
+      moduleid: "",
+      subjectkey: subject.key,
+      modulename: "",
+      sortorder: Math.max(0, ...modulesForSubjectDraft(subject.key).map(item => Number(item.sortorder) || 0)) + 1,
+      active: true,
+      isNew: true,
+      original: null
+    });
+    model.subjectModulesOpen.add(subject.key);
+    renderSubjects();
+    document.querySelector(`[data-module-draft-key="${cssEscapeValue(key)}"] input[data-gcm-module-field="modulename"]`)?.focus();
+  }
+
+  async function saveSubjectScreen(button) {
+    const dirtySubjects = model.subjectDrafts.filter(isSubjectDraftDirty);
+    const dirtyModules = model.moduleDrafts.filter(isModuleDraftDirty);
+    if (!dirtySubjects.length && !dirtyModules.length) {
+      setMessage("No Subject or Module changes to save.", "");
+      return false;
+    }
+
+    const blankSubject = dirtySubjects.find(subject => !String(subject.subjectname || "").trim());
+    if (blankSubject) {
+      model.subjectModulesOpen.add(blankSubject.key);
+      renderSubjects();
+      document.querySelector(`[data-subject-draft-key="${cssEscapeValue(blankSubject.key)}"] input[data-gcm-subject-field="subjectname"]`)?.focus();
+      setMessage("Enter a Subject name before saving.", "error");
+      return false;
+    }
+    const blankModule = dirtyModules.find(module => !String(module.modulename || "").trim());
+    if (blankModule) {
+      model.subjectModulesOpen.add(blankModule.subjectkey);
+      renderSubjects();
+      document.querySelector(`[data-module-draft-key="${cssEscapeValue(blankModule.key)}"] input[data-gcm-module-field="modulename"]`)?.focus();
+      setMessage("Enter a Module name before saving.", "error");
+      return false;
+    }
+
+    if (model.loading) return false;
+    model.loading = true;
+    button.disabled = true;
+    setMessage("Saving Subjects and Modules…", "");
+    try {
+      const subjectByKey = new Map(model.subjectDrafts.map(subject => [subject.key, subject]));
+      const result = await apiPost("/api/admin/platform/global/subjects/save-batch", {
+        globalCurriculumVersion: model.data.globalCurriculumVersion,
+        subjects: dirtySubjects.map(subject => ({
+          clientKey: subject.key,
+          subjectId: subject.subjectid,
+          subjectName: String(subject.subjectname || "").trim(),
+          accessModel: subject.accessmodel,
+          active: subject.active
+        })),
+        modules: dirtyModules.map(module => {
+          const subject = subjectByKey.get(module.subjectkey);
+          return {
+            clientKey: module.key,
+            moduleId: module.moduleid,
+            subjectId: subject?.subjectid || "",
+            subjectClientKey: module.subjectkey,
+            moduleName: String(module.modulename || "").trim(),
+            sortOrder: Math.max(1, Number(module.sortorder) || 1),
+            active: module.active
+          };
+        })
+      }, appState()?.token || "");
+      if (!result.success) throw new Error(result.error || "Unable to save Subjects and Modules");
+      model.loaded = false;
+      model.loading = false;
+      await load(true);
+      setMessage(result.message || "Subjects and Modules saved.", "success");
+      return true;
+    } catch (error) {
+      setMessage(error.message || "Unable to save Subjects and Modules.", "error");
+      return false;
+    } finally {
+      model.loading = false;
+      button.disabled = !hasSubjectScreenChanges();
+    }
   }
 
   async function saveSubject(button) {
@@ -837,6 +1144,12 @@
 
   function appState() {
     return typeof state !== "undefined" && state ? state : null;
+  }
+
+  function cssEscapeValue(value) {
+    const text = String(value || "");
+    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(text);
+    return text.replace(/[^a-zA-Z0-9_-]/g, character => `\${character}`);
   }
 
   function html(value) {

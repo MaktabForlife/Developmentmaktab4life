@@ -1,69 +1,78 @@
-# V103.1 Release Notes
+# V103.1.0.1 Release Notes
 
-V103.1 begins the Central Identity architecture while deliberately preserving all existing Reboot operational behaviour.
+V103.1.0.1 is a focused **pre-existing Global Curriculum UI refinement carried on the V103.1 baseline**. It does not advance the Central Identity authority model and does not depend on the V103.1 controlled Identity Links migration having been run.
 
-## Permanent Reboot ↔ central identity link
+## Global Subjects now own Module editing
 
-Every normal Reboot `AdminRecords` and `StudentRecords` row can now be linked to its central `UserAccounts.AccountID`.
+The standalone **Modules** tab has been removed.
 
-The migration uses the existing central relationship rather than guessing:
+The **Subjects** tab is now the single curriculum-definition screen for:
 
-`Reboot record ID → UserCourseAccess.CourseRecordID + Role → AccountID → UserAccounts`
+- Global Subject name;
+- access policy (`FREE` / `PAID`);
+- Subject status;
+- Module count;
+- inline expandable Module editing;
+- Module order;
+- Module name;
+- Module status;
+- adding a new Global Subject;
+- adding a new Module directly under its Subject.
 
-The source Reboot `UniqueID` must also match `UserAccounts.UniqueID` before a link is eligible to be written.
+The Module editor expands beneath the relevant Subject, so the Subject does not need to be selected again.
 
-## System Settings migration UI
+## One Save for the Subjects screen
 
-A new **V103.1 Identity links** section is available under Admin → System Settings → Platform Sheet.
+Per-row Subject/Module Save controls are removed from this workflow.
 
-It provides:
+Admins can make several Subject and Module edits and then use the single transparent Attendance-style **Save** action at the top of the screen.
 
-- preview before any write;
-- counts of already-linked and planned records;
-- blocking diagnostics and warnings;
-- signed preview state;
-- explicit `LINK <COURSEID>` confirmation;
-- one batch write to the Reboot course Sheet;
-- central audit logging after a successful commit.
+Changed Subject rows, changed Module rows, and Subject rows containing changed Modules receive a subtle unsaved-change highlight. The highlight clears after a successful save.
 
-## Safeguards
+The browser sends all changed Subjects and Modules to the Worker in **one batch request**. The Worker validates the complete batch before performing its one Google Sheets batch update. An invalid item prevents the batch from being committed.
 
-The V103.1 preview blocks instead of guessing when it finds identity ambiguity or unsafe Sheet state, including missing memberships, role mismatches, UniqueID mismatches, duplicate/ambiguous central mappings, conflicting existing AccountID values, duplicate operational identity links, orphan course memberships, duplicate AccountID headers, or unnamed data where the new header would be appended.
+A stale `GlobalCurriculumVersion` is rejected so an old browser view cannot silently overwrite newer curriculum edits.
 
-`StudentRecords` system rows remain excluded.
+## Course Scheduler separation
 
-Existing nonblank conflicting AccountID values are never overwritten automatically.
+The Subject-management table has been removed from **Course Scheduler**.
 
-## Reboot behaviour remains unchanged
+Course Scheduler now consumes Subjects and Modules that were already defined in the Subjects tab. It remains responsible for course/run setup, weekly schedule generation, exact sessions, revisions and publication.
 
-V103.1 does not switch authority yet. The existing operational paths remain in place for:
+This makes the UI boundary explicit:
 
-- student/admin login;
-- attendance;
-- progress;
-- Weekly Planner;
-- Reboot timetable;
-- resources/library;
-- student/admin management;
-- task assignment.
+- **Subjects** = define curriculum;
+- **Course Scheduler** = schedule delivery.
 
-This makes V103.1 a safe identity-link foundation for the later V103 cut-over components.
+## Styling
+
+The inline Subject/Module editor uses the newer refreshed Global/Academy styling:
+
+- white cards;
+- softer borders;
+- rounded controls;
+- compact spacing;
+- transparent save treatment;
+- responsive desktop/tablet/mobile reflow;
+- subtle dirty-state highlighting.
+
+## V103.1 Central Identity boundary
+
+All V103.1 Identity Link functionality remains unchanged. Existing login, attendance, progress, planner, timetable, resources and management behaviour remain unchanged.
+
+If the controlled V103.1 Identity Links migration has not yet been run, V103.1.0.1 can still be deployed first and the migration can be run later through the existing preview/commit flow.
 
 ## Sheet migration
 
-The Platform workbook remains at `PlatformSchemaVersion 102.0.8` with 19 required tabs.
+There is **no new Sheet migration** in V103.1.0.1.
 
-V103.1 changes only the Reboot operational workbook by appending:
+Keep the Platform workbook at:
 
-- `AdminRecords.AccountID`
-- `StudentRecords.AccountID`
+- `PlatformConfig!B3 = 102.0.8`;
+- **19 required Platform tabs**.
 
-The migration is performed by the V103.1 Identity Links UI; manual Sheet editing is not required.
+The optional/pending V103.1 Reboot `AccountID` Identity Links migration remains exactly as documented in `docs/V103.1-CENTRAL-IDENTITY-LINK.md`.
 
-## Audit
+## Deferred timetable batch
 
-Successful commits write `LINK_OPERATIONAL_IDENTITIES` / `COURSE_IDENTITY_LINK` to `PlatformAuditLog`.
-
-## Next V103 components
-
-V103.2 will address the unified Access data model. The Academy Access Matrix, contextual teacher/staff resolution, authority cut-over and final compatibility verification remain separate later V103 components.
+The separately reported Academy Home Thursday/multi-session display and internal day-card scrolling refinements are intentionally **not included** in V103.1.0.1. They remain for the next timetable batch.

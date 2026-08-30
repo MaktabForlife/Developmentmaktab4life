@@ -1,47 +1,52 @@
-# Maktab4Life V103.1
+# Maktab4Life V103.1.0.1
 
-V103.1 is the first component of **V103 — Central Identity**. It starts from the verified V102.12.8 repository and establishes the permanent identity bridge between central `UserAccounts` and Reboot's existing operational records.
+V103.1.0.1 is a focused Global Curriculum refinement applied on top of **V103.1 — Identity Link**.
 
-## V103.1 objective
+It deliberately separates curriculum definition from course scheduling:
 
-**One central person, permanently linked to the existing Reboot operational record, without changing Reboot behaviour yet.**
+- **Subjects** defines Global Subjects and their Modules;
+- **Course Scheduler** schedules delivery of that existing curriculum.
 
-V103.1 adds an `AccountID` link to normal rows in:
+## Subjects screen
 
-- `AdminRecords`
-- `StudentRecords`
+The standalone Modules tab is removed. Each Global Subject can now be edited inline and expanded to reveal its Module editor.
 
-The link is resolved from existing `UserCourseAccess.CourseRecordID` + contextual role and then verified against `UserAccounts.UniqueID`. It is never guessed from a name.
+The screen supports:
 
-## Preview-first Identity Links
+- Subject name;
+- FREE / PAID access;
+- Subject status;
+- Module count/dropdown;
+- Module order, name and status;
+- adding Subjects and Modules;
+- one screen-level Save.
 
-Admin → System Settings → Platform Sheet now contains **V103.1 Identity links**.
+Edited sections are highlighted until the batch save succeeds.
 
-The flow is:
+## Batch persistence
 
-1. Preview Identity Links.
-2. Review planned header/link writes and any blockers/warnings.
-3. Type `LINK <COURSEID>` when the preview is clean.
-4. Link Reboot Identities.
+`/api/admin/platform/global/subjects/save-batch` accepts all changed Subjects and Modules in one Worker request. The Worker validates the complete change set and performs one Google Sheets batch update only after validation succeeds.
 
-The commit appends the `AccountID` header if required and writes the resolved AccountID values in one course-Sheet batch. Conflicting nonblank links are never overwritten.
+The request includes `GlobalCurriculumVersion`; stale screens are rejected and must reload before saving.
 
-## Operational boundary
+## Styling
 
-V103.1 does **not** make central identity authoritative for Reboot operational behaviour yet. Existing login, attendance, progress, planner, timetable, resources and management paths remain unchanged.
+The editor follows the newer Global/Academy visual language: white cards, soft borders, rounded controls, compact spacing, transparent Save action and responsive mobile reflow.
 
-`AdminID` / `StudentID` remain Reboot operational IDs. `AccountID` is the Academy-wide identity link.
+## V103.1 Identity Links
+
+V103.1.0.1 does not require the controlled V103.1 Identity Links migration to have been run. That migration remains available under System Settings and can be performed later using the existing preview-first flow.
+
+No existing login, attendance, progress, planner, timetable, resources or management behaviour is changed by this patch.
 
 ## Schema
 
-The Platform workbook is unchanged:
+No new Sheet migration is introduced:
 
 - keep `PlatformConfig!B3 = 102.0.8`;
 - keep **19 required Platform tabs**.
 
-There **is** a Reboot operational Sheet migration: V103.1 appends `AccountID` to `AdminRecords` and `StudentRecords` through the Identity Links commit. No manual column creation is required when using the UI migration.
-
-See `docs/V103.1-CENTRAL-IDENTITY-LINK.md` for the full migration and safeguard design.
+See `docs/V103.1.0.1-GLOBAL-CURRICULUM-INLINE-EDITOR.md` for implementation details and `docs/V103.1-CENTRAL-IDENTITY-LINK.md` for the separate V103.1 identity-link migration.
 
 ## Roadmap
 

@@ -1,4 +1,4 @@
-V103.1 changed/new files only
+V103.1.0.1 changed/new files only
 
 CHANGED-FILES.txt
 CHANGES.md
@@ -9,16 +9,23 @@ UPDATE-TODO.md
 account/index.html
 admin/index.html
 backend/package.json
-backend/src/lib/backend-routing.js
 backend/src/router.js
-backend/src/routes/platform-identity-link.js
+backend/src/routes/platform-global-management.js
 backend/src/worker.js
-backend/tests/backend-routing.test.mjs
-backend/tests/platform-identity-link.test.mjs
-backend/tests/platform-validation-ui.test.mjs
+backend/tests/admin-management-ui.test.mjs
+backend/tests/library-catalogue-ui.test.mjs
+backend/tests/platform-global-delivery-ui.test.mjs
+backend/tests/platform-global-management-ui.test.mjs
+backend/tests/platform-global-management.test.mjs
+backend/tests/platform-global-timetable-ui.test.mjs
 backend/tests/router.test.mjs
-docs/V103.1-CENTRAL-IDENTITY-LINK.md
-docs/V103.1-REBOOT-IDENTITY-LINK-COLUMNS.csv
-js/m4l-system-settings.js
+backend/tests/student-task-assignment-ui.test.mjs
+backend/tests/timetable-teacher-ui.test.mjs
+css/m4l-24-global-curriculum.css
+css/m4l-28-global-course-scheduler.css
+docs/V103.1.0.1-GLOBAL-CURRICULUM-INLINE-EDITOR.md
+js/m4l-global-course-scheduler.js
+js/m4l-global-curriculum.js
 js/version.json
+styles.css
 version.json

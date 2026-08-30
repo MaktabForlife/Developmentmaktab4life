@@ -1,4 +1,6 @@
-/* V102.11.2 Course Scheduler, Global Access and timetable revision workflow.
+/* V103.1.0.1 inline Global Subject/Module editor and Course Scheduler curriculum separation.
+
+   V102.11.2 Course Scheduler, Global Access and timetable revision workflow.
 
    V102.10 global-subject access-policy and scheduled-run foundation.
 
@@ -103,7 +105,7 @@ v91.7.4 - CSS split phase 1 loader
 @import url("/css/m4l-20-manage-admins.css?v=100.3.0");
 @import url("/css/m4l-21-manage-resources.css?v=100.4.2");
 @import url("/css/m4l-22-timetable-builder.css?v=102.9.1");
-@import url("/css/m4l-24-global-curriculum.css?v=102.12.8");
+@import url("/css/m4l-24-global-curriculum.css?v=103.1.0.1");
 @import url("/css/m4l-26-global-delivery.css?v=102.10");
 @import url("/css/m4l-27-global-timetable.css?v=102.11");
-@import url("/css/m4l-28-global-course-scheduler.css?v=102.12.8");
+@import url("/css/m4l-28-global-course-scheduler.css?v=103.1.0.1");

@@ -1,29 +1,25 @@
-# V103.1 UPDATE TODO
+# V103.1.0.1 UPDATE TODO
 
-1. Apply all files in this changed-files overlay to the complete deployed **V102.12.8** development repository.
+1. Apply this changed-files overlay to the complete deployed **V103.1** development repository.
 2. Deploy **Pages and Worker from the same commit**.
-3. Confirm Worker health reports `103.1`.
-4. Hard-refresh/reload the development PWA so the new System Settings script is loaded.
+3. Confirm Worker health reports `103.1.0.1`.
+4. Hard-refresh/reload the development PWA so the V103.1.0.1 Global Curriculum JS/CSS is loaded.
 5. Keep the Platform workbook unchanged:
    - `PlatformConfig!B3 = 102.0.8`;
    - 19 required Platform tabs.
-6. Before linking, confirm the existing **Central account migration** for Reboot is current. V103.1 relies on existing `UserAccounts` and `UserCourseAccess` mappings.
-7. Open **Admin → System Settings → Platform Sheet → V103.1 Identity links**.
-8. Choose **Preview Identity Links**.
-9. Review all blockers/warnings. Do **not** commit if the preview reports ambiguity or a conflicting existing AccountID.
-10. A clean first preview should show the planned `AccountID` header additions (if they do not already exist) plus the number of staff/student identity links to write.
-11. Type the displayed `LINK <COURSEID>` confirmation and choose **Link Reboot Identities**.
-12. Run **Preview Identity Links** again. It should report that identity links are current with zero planned writes.
-13. Confirm `AdminRecords` and `StudentRecords` now each contain one `AccountID` header and normal user rows have the expected central link. `StudentRecords` system rows remain blank/excluded.
-14. Regression smoke-check existing behaviour before starting V103.2:
-    - student login;
-    - Admin/Senior/Teacher login;
-    - Attendance;
-    - Progress;
-    - Weekly Planner;
-    - Reboot timetable;
-    - Library/resources;
-    - student/admin management;
-    - task assignment.
-15. Do not start consuming `AccountID` as Reboot operational authority in V103.1. That cut-over belongs to later V103 components.
-16. Keep the major roadmap boundary: **V103 Central Identity → V104 Program Builder → V105 Reboot migration**.
+6. No V103.1.0.1 Sheet migration is required.
+7. The controlled **V103.1 Identity Links** migration may remain pending. V103.1.0.1 neither requires nor performs it.
+8. Open **Admin → Global Curriculum → Subjects** and verify:
+   - there is no standalone Modules tab;
+   - Subject name, FREE/PAID access and status edit inline;
+   - Modules expand directly below their Subject;
+   - Module order, name and status edit inline;
+   - `+ Add a Global Subject` works;
+   - `+ Add a module` works;
+   - edited Subject/Module sections receive a subtle highlight;
+   - only one screen-level Save action is shown.
+9. Make several Subject and Module edits before saving and verify one Save commits the complete batch and clears the dirty highlighting.
+10. Open **Course Scheduler** and verify the old Subject-management table is absent and the scheduler still consumes the Subjects/Modules created in the Subjects tab.
+11. Smoke-check existing Global Course setup, ongoing courses, weekly generation, session batch editing, revision and publication.
+12. Do not include the reported Academy Home Thursday/multi-session display or day-card scrolling changes in this patch; those are intentionally deferred to the next timetable batch.
+13. Before V103.2, continue the normal V103.1 regression checks for login, Attendance, Progress, Weekly Planner, Reboot timetable, Library/resources and management.

@@ -400,10 +400,98 @@ try {
   assert.equal(accessDeactivate.response.status, 200, JSON.stringify(accessDeactivate.data));
   assert.equal(Number(tables.PlatformConfig[3][1]), 9);
 
+  const subjectBatchSave = await post("/api/admin/platform/global/subjects/save-batch", {
+    globalCurriculumVersion: 9,
+    subjects: [{
+      clientKey: subjectId,
+      subjectId,
+      subjectName: "Global Tajweed Revised",
+      accessModel: "FREE",
+      active: true
+    }],
+    modules: [{
+      clientKey: moduleId,
+      moduleId,
+      subjectId,
+      subjectClientKey: subjectId,
+      moduleName: "Foundations Revised",
+      sortOrder: 2,
+      active: true
+    }, {
+      clientKey: "new-module-two",
+      subjectId,
+      subjectClientKey: subjectId,
+      moduleName: "Applied Tajweed",
+      sortOrder: 1,
+      active: true
+    }]
+  }, globalToken);
+  assert.equal(subjectBatchSave.response.status, 200, JSON.stringify(subjectBatchSave.data));
+  assert.equal(subjectBatchSave.data.globalCurriculumVersion, 10);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 10, "The screen-level batch must increment curriculum version only once");
+  assert.equal(tables.GlobalSubjectList[1][1], "Global Tajweed Revised");
+  assert.equal(tables.GlobalSubjectList[1][2], true);
+  assert.equal(tables.GlobalModuleList.length, 3);
+  assert.equal(tables.GlobalModuleList[1][2], "Foundations Revised");
+  assert.equal(tables.GlobalModuleList[1][3], 2);
+  assert.equal(tables.GlobalModuleList[2][2], "Applied Tajweed");
+  assert.equal(tables.GlobalSubjectAccessPolicy[1][2], "FREE");
+
+  const moduleRowsBeforeInvalidBatch = JSON.stringify(tables.GlobalModuleList);
+  const invalidBatch = await post("/api/admin/platform/global/subjects/save-batch", {
+    globalCurriculumVersion: 10,
+    subjects: [],
+    modules: [{
+      clientKey: "collision-one", subjectId, subjectClientKey: subjectId,
+      moduleName: "Collision", sortOrder: 3, active: true
+    }, {
+      clientKey: "collision-two", subjectId, subjectClientKey: subjectId,
+      moduleName: "Collision", sortOrder: 4, active: true
+    }]
+  }, globalToken);
+  assert.equal(invalidBatch.response.status, 409);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 10, "Invalid batch must not increment curriculum version");
+  assert.equal(JSON.stringify(tables.GlobalModuleList), moduleRowsBeforeInvalidBatch, "Invalid batch must not partially write modules");
+
+  const staleBatch = await post("/api/admin/platform/global/subjects/save-batch", {
+    globalCurriculumVersion: 9,
+    subjects: [{ clientKey: subjectId, subjectId, subjectName: "Stale Name", accessModel: "FREE", active: true }],
+    modules: []
+  }, globalToken);
+  assert.equal(staleBatch.response.status, 409);
+  assert.match(staleBatch.data.error, /changed since this screen was loaded/i);
+
+  const newSubjectBatch = await post("/api/admin/platform/global/subjects/save-batch", {
+    globalCurriculumVersion: 10,
+    subjects: [{
+      clientKey: "new-subject-arabic",
+      subjectId: "",
+      subjectName: "Global Arabic",
+      accessModel: "SUBSCRIPTION",
+      active: true
+    }],
+    modules: [{
+      clientKey: "new-module-arabic",
+      moduleId: "",
+      subjectClientKey: "new-subject-arabic",
+      moduleName: "Arabic Foundations",
+      sortOrder: 1,
+      active: true
+    }]
+  }, globalToken);
+  assert.equal(newSubjectBatch.response.status, 200, JSON.stringify(newSubjectBatch.data));
+  assert.equal(newSubjectBatch.data.globalCurriculumVersion, 11);
+  assert.equal(newSubjectBatch.data.subjects.length, 1);
+  assert.match(newSubjectBatch.data.subjects[0].subjectid, /^GSUBJ-/);
+  assert.equal(newSubjectBatch.data.modules[0].subjectid, newSubjectBatch.data.subjects[0].subjectid);
+  assert.equal(tables.GlobalSubjectAccessMatrix[0][2], newSubjectBatch.data.subjects[0].subjectid, "A new batch-created Subject must receive its own Access Matrix column");
+  assert.equal(tables.GlobalSubjectAccessMatrix[1][2], false);
+
   const finalList = await post("/api/admin/platform/global/get", {}, globalToken);
   assert.equal(finalList.response.status, 200);
-  assert.equal(finalList.data.subjects.length, 1);
-  assert.equal(finalList.data.modules.length, 1);
+  assert.equal(finalList.data.subjects.length, 2);
+  assert.equal(finalList.data.subjects[0].subjectname, "Global Tajweed Revised");
+  assert.equal(finalList.data.modules.length, 3);
   assert.equal(finalList.data.tasks.length, 1);
   assert.equal(finalList.data.resources.length, 1);
   assert.equal(finalList.data.subjectAccessMatrix.rows.length, 3);

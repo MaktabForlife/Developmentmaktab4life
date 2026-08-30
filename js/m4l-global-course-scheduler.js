@@ -1,4 +1,4 @@
-/* M4L V102.12.8 - Responsive Global Course Scheduler with ongoing courses and draft/batch session editing. */
+/* M4L V103.1.0.1 - Global Course Scheduler consumes Subjects/Modules managed in the Subjects tab; ongoing courses and batch session editing retained. */
 (function () {
   "use strict";
 
@@ -74,7 +74,6 @@
     const action = target.dataset.gcmCourseAction || "";
     if (action === "show") return show();
     if (!model.active) return;
-    if (action === "save-subject-row") return saveSubjectRow(target);
     if (action === "select-course") return selectCourse(target.dataset.runId || "");
     if (action === "new-course") return newCourse(target.dataset.subjectId || model.selectedSubjectId, true);
     if (action === "modify-course") return modifyCourse(target);
@@ -177,29 +176,12 @@
 
     setContent(`
       <div class="global-course-scheduler-shell">
-        ${subjectTable()}
         ${courseTable()}
         ${courseSetup(selectedRun, selectedSubject, state, locked)}
         ${selectedRun ? sessionSection(selectedRun, sessions, state) : ""}
       </div>
     `);
     updateOngoingCourseControls();
-  }
-
-  function subjectTable() {
-    return `<section class="global-curriculum-panel global-course-subjects-panel">
-      <div class="global-table-scroll"><table class="global-course-table global-course-subject-table">
-        <thead><tr><th>Subject</th><th>Access</th><th>Modules</th><th>Status</th><th></th></tr></thead>
-        <tbody>${model.delivery.subjects.map(subject => `
-          <tr class="${subject.subjectid === model.selectedSubjectId ? "is-selected" : ""}">
-            <td data-label="Subject"><input data-course-subject-name="${attr(subject.subjectid)}" type="text" value="${attr(subject.subjectname)}" maxlength="160" /></td>
-            <td data-label="Access"><select data-course-subject-access="${attr(subject.subjectid)}"><option value="SUBSCRIPTION" ${subject.accessmodel === "SUBSCRIPTION" ? "selected" : ""}>PAID</option><option value="FREE" ${subject.accessmodel === "FREE" ? "selected" : ""}>FREE</option></select></td>
-            <td data-label="Modules">${Number(subject.modulecount) || moduleCount(subject.subjectid)}</td>
-            <td data-label="Status"><select data-course-subject-status="${attr(subject.subjectid)}"><option value="ACTIVE" ${subject.active ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${subject.active ? "" : "selected"}>INACTIVE</option></select></td>
-            <td data-label="Save" class="global-course-table-action">${saveIconButton("Save subject", "save-subject-row", `data-subject-id="${attr(subject.subjectid)}"`)}</td>
-          </tr>`).join("")}</tbody>
-      </table></div>
-    </section>`;
   }
 
   function courseTable() {
@@ -396,27 +378,6 @@
     if (!window.confirm("Discard unsaved session changes?")) return false;
     model.sessionDrafts.clear();
     return true;
-  }
-
-  async function saveSubjectRow(button) {
-    const subjectId = String(button.dataset.subjectId || "");
-    const subject = subjectById(subjectId);
-    if (!subject) return;
-    const name = document.querySelector(`[data-course-subject-name="${cssEscape(subjectId)}"]`)?.value?.trim() || "";
-    const access = document.querySelector(`[data-course-subject-access="${cssEscape(subjectId)}"]`)?.value || "SUBSCRIPTION";
-    const status = document.querySelector(`[data-course-subject-status="${cssEscape(subjectId)}"]`)?.value || "ACTIVE";
-    await withBusy(button, "…", async () => {
-      const token = appState()?.token || "";
-      const subjectResult = await apiPost("/api/admin/platform/global/subject/save", { subjectId, subjectName: name, active: status === "ACTIVE" }, token);
-      if (!subjectResult.success) throw new Error(subjectResult.error || "Unable to save subject");
-      if (access !== String(subject.accessmodel || "SUBSCRIPTION")) {
-        const policy = await apiPost("/api/admin/platform/global/policy/save", { subjectId, accessModel: access }, token);
-        if (!policy.success) throw new Error(policy.error || "Unable to save access");
-      }
-      invalidateAll();
-      await load(true);
-      setMessage("Subject saved.", "success");
-    });
   }
 
   async function saveCourse(button) {

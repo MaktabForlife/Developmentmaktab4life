@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "103.1.0",
+  "version": "103.1.0-1",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

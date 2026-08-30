@@ -12,12 +12,12 @@ assert.match(html, /id="open-global-curriculum-btn"/);
 assert.match(html, /data-global-curriculum-admin/);
 assert.match(html, /id="global-curriculum-screen"/);
 assert.match(html, /data-gcm-tab="subjects"/);
-assert.match(html, /data-gcm-tab="modules"/);
+assert.doesNotMatch(html, /data-gcm-tab="modules"/);
 assert.match(html, /data-gcm-tab="tasks"/);
 assert.match(html, /data-gcm-tab="resources"/);
 assert.match(html, /data-gcm-course-action="show">Course Scheduler<\/button>/);
 assert.match(html, /data-gcm-tab="access">Global Access<\/button>/);
-assert.match(html, /m4l-global-curriculum\.js\?v=102\.12\.8/);
+assert.match(html, /m4l-global-curriculum\.js\?v=103\.1\.0\.1/);
 assert.doesNotMatch(html, />Platform administration</);
 assert.doesNotMatch(html, /Changes apply across the platform and are recorded in PlatformAuditLog/);
 
@@ -25,6 +25,12 @@ assert.match(script, /platformrole/);
 assert.match(script, /ADMIN and GLOBAL_ADMIN/);
 assert.match(script, /\/api\/admin\/platform\/global\/get/);
 assert.match(script, /\/api\/admin\/platform\/global\/access\/save/);
+assert.match(script, /\/api\/admin\/platform\/global\/subjects\/save-batch/);
+assert.match(script, /Add or Modify Global Subjects/);
+assert.match(script, /toggle-subject-modules/);
+assert.match(script, /add-module-inline/);
+assert.match(script, /global-subject-editor-item/);
+assert.match(script, /is-dirty/);
 assert.match(script, /subjectAccessMatrix/);
 assert.match(script, /data-gcm-access-toggle/);
 assert.match(script, /global-access-policy-token/);
@@ -38,10 +44,13 @@ assert.match(script, /classList\.remove\("is-active"\)/, "Changing tabs must cle
 assert.match(script, /M4LGlobalCurriculum = Object\.freeze\(\{[\s\S]*invalidate/);
 assert.match(academics, /M4LGlobalCurriculum\.syncAccess/);
 
-assert.match(styles, /m4l-24-global-curriculum\.css\?v=102\.12\.8/);
+assert.match(styles, /m4l-24-global-curriculum\.css\?v=103\.1\.0\.1/);
 assert.match(css, /\.global-access-matrix/);
 assert.match(css, /\.global-access-policy-token/);
 assert.match(css, /\.global-access-free-state/);
 assert.match(css, /\.global-access-unique-column/);
+assert.match(css, /\.global-subject-editor-item\.is-dirty/);
+assert.match(css, /\.global-inline-module-editor/);
+assert.match(css, /\.global-subject-screen-save/);
 
-console.log("V102.11.2 Global Access and Global Curriculum UI tests passed.");
+console.log("V103.1.0.1 inline Global Subject/Module editor and Global Access UI tests passed.");

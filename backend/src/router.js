@@ -109,6 +109,7 @@ import {
   savePlatformGlobalResourceEndpoint,
   savePlatformGlobalSubjectAccessEndpoint,
   savePlatformGlobalSubjectEndpoint,
+  savePlatformGlobalSubjectsBatchEndpoint,
   savePlatformGlobalTaskEndpoint
 } from "./routes/platform-global-management.js";
 import {
@@ -208,6 +209,7 @@ const ROUTES = new Map([
   ["/api/admin/platform/global/drive-root/save", workerRoute("platform-global-management", savePlatformGlobalDriveRootEndpoint)],
   ["/api/admin/platform/global/drive/browse", workerRoute("platform-global-management", browsePlatformGlobalDriveFolderEndpoint)],
   ["/api/admin/platform/global/subject/save", workerRoute("platform-global-management", savePlatformGlobalSubjectEndpoint)],
+  ["/api/admin/platform/global/subjects/save-batch", workerRoute("platform-global-management", savePlatformGlobalSubjectsBatchEndpoint)],
   ["/api/admin/platform/global/module/save", workerRoute("platform-global-management", savePlatformGlobalModuleEndpoint)],
   ["/api/admin/platform/global/task/save", workerRoute("platform-global-management", savePlatformGlobalTaskEndpoint)],
   ["/api/admin/platform/global/resource/save", workerRoute("platform-global-management", savePlatformGlobalResourceEndpoint)],

@@ -1,4 +1,4 @@
-/* M4L V102.12.8 - Responsive Global Curriculum, subscriptions and protected Drive resources. */
+/* M4L V103.1.0.1 - Refreshed responsive Global Curriculum with inline Subject/Module editing, subscriptions and protected Drive resources. */
 
 body:has(#global-curriculum-screen.active) .app-shell {
   width: min(100%, 1440px);
@@ -638,4 +638,189 @@ body:has(#global-curriculum-screen.active) .app-shell {
   .global-curriculum-record-row small { overflow-wrap:anywhere; }
   .global-access-account-column { min-width:130px; width:130px; }
   .global-access-unique-column { left:130px; min-width:110px; width:110px; }
+}
+
+/* V103.1.0.1 - Refreshed inline Global Subject + Module editor. */
+.global-subject-editor-panel {
+  padding:clamp(14px,1.6vw,22px);
+  border-color:var(--border-soft,#e8e1e6);
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 6px 20px rgba(44,49,45,.045);
+}
+.global-subject-editor-heading {
+  align-items:flex-start;
+  margin-bottom:18px;
+  padding:0 2px;
+}
+.global-subject-editor-heading > div { min-width:0; }
+.global-subject-editor-heading h3 { font-size:clamp(1.15rem,1.7vw,1.55rem); }
+.global-subject-editor-heading p { margin-top:5px; }
+.global-subject-screen-save { flex:0 0 44px; margin-left:auto; }
+.global-subject-editor-head,
+.global-subject-editor-row {
+  display:grid;
+  grid-template-columns:minmax(260px,2.25fr) minmax(150px,.9fr) minmax(150px,.9fr) minmax(150px,.85fr);
+  gap:12px;
+  align-items:center;
+}
+.global-subject-editor-head {
+  padding:0 14px 8px;
+  color:var(--text-strong,#142019);
+  font-size:.82rem;
+  font-weight:800;
+}
+.global-subject-editor-list { display:grid; gap:10px; }
+.global-subject-editor-item {
+  overflow:hidden;
+  border:1px solid var(--border,#e4dadd);
+  border-radius:16px;
+  background:#fff;
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.global-subject-editor-item.is-dirty {
+  border-color:rgba(123,62,131,.48);
+  background:rgba(123,62,131,.025);
+  box-shadow:0 0 0 2px rgba(123,62,131,.055);
+}
+.global-subject-editor-item.is-new { border-style:dashed; }
+.global-subject-editor-row { padding:12px 14px; }
+.global-subject-editor-row label,
+.global-inline-module-row label {
+  display:grid;
+  gap:4px;
+  min-width:0;
+  margin:0;
+}
+.global-subject-editor-row input,
+.global-subject-editor-row select,
+.global-inline-module-row input,
+.global-inline-module-row select {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  min-height:44px;
+  height:44px;
+  padding:8px 11px;
+  border:1px solid var(--border,#dfe3dc);
+  border-radius:12px;
+  background:#fff;
+  color:var(--text,#2f312e);
+  font:inherit;
+}
+.global-subject-editor-name input { font-weight:680; }
+.global-subject-editor-name small,
+.global-inline-module-name small {
+  padding-left:2px;
+  color:var(--text-muted,#777078);
+  font-size:.66rem;
+  line-height:1.15;
+}
+.global-subject-editor-row input:focus,
+.global-subject-editor-row select:focus,
+.global-inline-module-row input:focus,
+.global-inline-module-row select:focus {
+  border-color:#9a719e;
+  outline:2px solid rgba(123,62,131,.10);
+}
+.global-subject-modules-toggle {
+  width:100%;
+  min-width:0;
+  min-height:52px;
+  padding:8px 12px;
+  display:grid;
+  justify-items:start;
+  align-content:center;
+  gap:2px;
+  border:1px solid var(--border,#dfe3dc);
+  border-radius:12px;
+  background:#fbfafb;
+  color:var(--text-strong,#142019);
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.global-subject-modules-toggle span { font-weight:780; }
+.global-subject-modules-toggle small { color:var(--text-muted,#777078); font-size:.7rem; }
+.global-subject-modules-toggle.is-dirty {
+  border-color:rgba(123,62,131,.5);
+  background:rgba(123,62,131,.07);
+}
+.global-inline-module-editor {
+  padding:14px;
+  border-top:1px solid var(--border-soft,#ece5ea);
+  background:#fbfafb;
+}
+.global-inline-module-heading {
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.global-inline-module-heading h4 { margin:0; font-size:1rem; }
+.global-inline-module-heading span { color:var(--text-muted,#777078); font-size:.76rem; font-weight:650; }
+.global-inline-module-head,
+.global-inline-module-row {
+  display:grid;
+  grid-template-columns:minmax(72px,.45fr) minmax(220px,2fr) minmax(130px,.8fr);
+  gap:10px;
+  align-items:center;
+}
+.global-inline-module-head {
+  padding:0 8px 6px;
+  color:var(--text-muted,#777078);
+  font-size:.72rem;
+  font-weight:800;
+}
+.global-inline-module-list { display:grid; gap:8px; }
+.global-inline-module-row {
+  padding:9px;
+  border:1px solid var(--border,#e4dadd);
+  border-radius:13px;
+  background:#fff;
+  transition:border-color .16s ease,background .16s ease;
+}
+.global-inline-module-row.is-dirty {
+  border-color:rgba(123,62,131,.42);
+  background:rgba(123,62,131,.035);
+}
+.global-inline-module-row.is-new { border-style:dashed; }
+.global-inline-add-action {
+  width:auto !important;
+  max-width:100%;
+  margin-top:14px;
+  padding:8px 4px;
+  border:0;
+  background:transparent;
+  color:#7b3e83;
+  font:inherit;
+  font-weight:780;
+  text-align:left;
+  cursor:pointer;
+}
+.global-inline-add-module { margin-top:10px; }
+.global-subject-mobile-label { display:none; }
+
+@media (max-width:860px) {
+  .global-subject-editor-head { display:none; }
+  .global-subject-editor-row {
+    grid-template-columns:minmax(0,1.55fr) minmax(120px,.75fr) minmax(120px,.75fr);
+  }
+  .global-subject-modules-toggle { grid-column:1 / -1; }
+  .global-subject-mobile-label { display:block; color:var(--text-muted,#777078); font-size:.68rem; font-weight:800; }
+}
+
+@media (max-width:560px) {
+  .global-subject-editor-panel { padding:10px; border-radius:15px; }
+  .global-subject-editor-heading { gap:8px; }
+  .global-subject-editor-heading p { font-size:.74rem; }
+  .global-subject-editor-row { grid-template-columns:1fr 1fr; gap:9px; padding:10px; }
+  .global-subject-editor-name { grid-column:1 / -1; }
+  .global-subject-modules-toggle { grid-column:1 / -1; min-height:46px; }
+  .global-inline-module-editor { padding:10px; }
+  .global-inline-module-head { display:none; }
+  .global-inline-module-row { grid-template-columns:76px minmax(0,1fr); gap:8px; }
+  .global-inline-module-row label:last-child { grid-column:1 / -1; }
+  .global-inline-module-heading { align-items:flex-start; flex-direction:column; gap:2px; }
 }

@@ -1,17 +1,20 @@
-# V103.1 Changes
+# V103.1.0.1 Changes
 
-- Adds the first V103 Central Identity component: permanent `AccountID` links from Reboot operational records to central `UserAccounts`.
-- Adds `/api/admin/platform/identity-links` with preview/commit actions.
-- Adds a signed preview token so source or central-identity changes invalidate a stale commit.
-- Resolves identity through `UserCourseAccess.CourseRecordID` + contextual role and verifies Reboot `UniqueID` against `UserAccounts.UniqueID`.
-- Adds preview diagnostics for missing/ambiguous memberships, role mismatches, central-account conflicts, UniqueID mismatches, conflicting existing AccountID values, duplicate operational links, orphan memberships, duplicate AccountID headers and unnamed trailing Sheet data.
-- Excludes `StudentRecords` system rows from identity linking.
-- Appends `AccountID` to `AdminRecords` and `StudentRecords` only when the preview is safe.
-- Writes all Reboot header/link changes in one course-Sheet batch.
-- Never overwrites an existing conflicting nonblank AccountID.
-- Adds central `PlatformAuditLog` action `LINK_OPERATIONAL_IDENTITIES` / record type `COURSE_IDENTITY_LINK`.
-- Adds the V103.1 Identity Links preview/commit UI to Admin System Settings.
-- Leaves all existing Reboot login, attendance, progress, planner, timetable, resource and management behaviour unchanged.
-- Keeps the Platform workbook at `PlatformConfig!B3 = 102.0.8` with 19 required tabs; the new columns are a Reboot operational workbook migration only.
-- Adds V103.1 migration documentation and a migration reference CSV.
-- Updates Worker health and app version markers to `103.1`.
+- Treats this release as a pre-existing Global Curriculum refinement on the V103.1 Central Identity baseline; no Central Identity authority cut-over is introduced.
+- Removes the standalone **Modules** tab from Global Curriculum.
+- Moves Global Module management into expandable inline editors beneath each Global Subject in the **Subjects** tab.
+- Moves the Subject management previously shown at the top of **Course Scheduler** into the Subjects tab.
+- Removes Course Scheduler's per-Subject Save actions.
+- Adds inline editing for Global Subject name, FREE/PAID access policy and ACTIVE/INACTIVE status.
+- Adds inline Module editing for order, Module name and ACTIVE/INACTIVE status.
+- Adds `+ Add a Global Subject` and per-Subject `+ Add a module` actions.
+- Adds one transparent Attendance-style Save action for the complete Subjects screen.
+- Adds subtle unsaved-change highlighting for edited Subject rows, edited Module rows and Subjects containing edited Modules.
+- Adds `/api/admin/platform/global/subjects/save-batch` for one-request, validate-first Subject + Module persistence.
+- Rejects stale Subject-screen saves when `GlobalCurriculumVersion` changed after the screen was loaded.
+- Creates new Subject access-policy rows and Access Matrix columns safely inside the same batch transaction.
+- Keeps Course Scheduler responsible only for course/run and session scheduling using already-defined Subjects/Modules.
+- Applies the newer white-card / soft-border / rounded-control responsive Global styling to the inline editor.
+- Leaves the reported Academy timetable Thursday/scrolling refinements for a later timetable batch.
+- Adds no Sheet migration; `PlatformConfig!B3 = 102.0.8` and 19 required Platform tabs remain unchanged.
+- Leaves the V103.1 controlled Reboot Identity Links migration and all existing Reboot operational behaviour unchanged.
