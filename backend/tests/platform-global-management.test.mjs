@@ -43,6 +43,7 @@ const rootFolderId = "GLOBAL_ROOT_FOLDER_123";
 const secondRootFolderId = "GLOBAL_ROOT_FOLDER_456";
 const childFolderId = "GLOBAL_CHILD_FOLDER_123";
 const lessonFileId = "GLOBAL_LESSON_FILE_123";
+const secondLessonFileId = "GLOBAL_LESSON_FILE_456";
 const outsideFolderId = "OUTSIDE_FOLDER_123";
 const outsideFileId = "OUTSIDE_FILE_123";
 const driveItems = new Map([
@@ -50,6 +51,7 @@ const driveItems = new Map([
   [secondRootFolderId, driveFolder(secondRootFolderId, "Replacement Global Resources")],
   [childFolderId, driveFolder(childFolderId, "Tajweed", [rootFolderId])],
   [lessonFileId, driveFile(lessonFileId, "lesson-one.pdf", "application/pdf", [childFolderId], 4096)],
+  [secondLessonFileId, driveFile(secondLessonFileId, "lesson-two.pdf", "application/pdf", [childFolderId], 3072)],
   [outsideFolderId, driveFolder(outsideFolderId, "Outside")],
   [outsideFileId, driveFile(outsideFileId, "outside.pdf", "application/pdf", [outsideFolderId], 2048)]
 ]);
@@ -487,13 +489,76 @@ try {
   assert.equal(tables.GlobalSubjectAccessMatrix[0][2], newSubjectBatch.data.subjects[0].subjectid, "A new batch-created Subject must receive its own Access Matrix column");
   assert.equal(tables.GlobalSubjectAccessMatrix[1][2], false);
 
+  const newSubjectId = newSubjectBatch.data.subjects[0].subjectid;
+  const resourceBatchSave = await post("/api/admin/platform/global/resources/save-batch", {
+    globalCurriculumVersion: 11,
+    resources: [{
+      clientKey: resourceId,
+      resourceId,
+      subjectId,
+      moduleId,
+      taskId,
+      resourceName: "Lesson One PDF Revised",
+      resourceType: "EBOOK",
+      resourceDescription: "Updated in the screen-level batch",
+      fileId: lessonFileId,
+      active: true
+    }, {
+      clientKey: "new-resource-arabic",
+      resourceId: "",
+      subjectId: newSubjectId,
+      moduleId: "",
+      taskId: "",
+      resourceName: "Arabic Handout",
+      resourceType: "EBOOK",
+      resourceDescription: "Created in the same save",
+      fileId: secondLessonFileId,
+      active: true
+    }]
+  }, globalToken);
+  assert.equal(resourceBatchSave.response.status, 200, JSON.stringify(resourceBatchSave.data));
+  assert.equal(resourceBatchSave.data.globalCurriculumVersion, 12);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 12, "Resource screen batch must increment curriculum version only once");
+  assert.equal(resourceBatchSave.data.resources.length, 2);
+  assert.equal(tables.GlobalResources.length, 3);
+  assert.equal(tables.GlobalResources[1][4], "Lesson One PDF Revised");
+  assert.equal(tables.GlobalResources[2][4], "Arabic Handout");
+
+  const resourcesBeforeInvalidBatch = JSON.stringify(tables.GlobalResources);
+  const invalidResourceBatch = await post("/api/admin/platform/global/resources/save-batch", {
+    globalCurriculumVersion: 12,
+    resources: [{
+      clientKey: resourceId, resourceId, subjectId, moduleId, taskId,
+      resourceName: "Should Not Persist", resourceType: "EBOOK",
+      resourceDescription: "This update must roll back", fileId: lessonFileId, active: true
+    }, {
+      clientKey: "duplicate-drive-resource", resourceId: "", subjectId: newSubjectId,
+      resourceName: "Duplicate Drive File", resourceType: "EBOOK",
+      resourceDescription: "Invalid duplicate", fileId: secondLessonFileId, active: true
+    }]
+  }, globalToken);
+  assert.equal(invalidResourceBatch.response.status, 409);
+  assert.equal(Number(tables.PlatformConfig[3][1]), 12, "Invalid Resource batch must not increment curriculum version");
+  assert.equal(JSON.stringify(tables.GlobalResources), resourcesBeforeInvalidBatch, "Invalid Resource batch must not partially write Resources");
+
+  const staleResourceBatch = await post("/api/admin/platform/global/resources/save-batch", {
+    globalCurriculumVersion: 11,
+    resources: [{
+      clientKey: resourceId, resourceId, subjectId, moduleId, taskId,
+      resourceName: "Stale Resource Edit", resourceType: "EBOOK",
+      resourceDescription: "Stale", fileId: lessonFileId, active: true
+    }]
+  }, globalToken);
+  assert.equal(staleResourceBatch.response.status, 409);
+  assert.match(staleResourceBatch.data.error, /changed since this screen was loaded/i);
+
   const finalList = await post("/api/admin/platform/global/get", {}, globalToken);
   assert.equal(finalList.response.status, 200);
   assert.equal(finalList.data.subjects.length, 2);
   assert.equal(finalList.data.subjects[0].subjectname, "Global Tajweed Revised");
   assert.equal(finalList.data.modules.length, 3);
   assert.equal(finalList.data.tasks.length, 1);
-  assert.equal(finalList.data.resources.length, 1);
+  assert.equal(finalList.data.resources.length, 2);
   assert.equal(finalList.data.subjectAccessMatrix.rows.length, 3);
   const subscriberMatrix = finalList.data.subjectAccessMatrix.rows.find(row => row.accountid === "ACCOUNT2");
   assert.equal(subscriberMatrix.values[subjectId], false);

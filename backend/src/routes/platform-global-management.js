@@ -1040,6 +1040,208 @@ export async function savePlatformGlobalResourceEndpoint(request, env) {
   }
 }
 
+
+export async function savePlatformGlobalResourcesBatchEndpoint(request, env) {
+  const permission = await requireGlobalCurriculumAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const resourceChanges = Array.isArray(body.resources) ? body.resources : [];
+    if (resourceChanges.length > 500) {
+      throw clientError("Too many Global Resource changes in one save", 400);
+    }
+
+    const tables = await readManagementTables(env);
+    const version = readGlobalCurriculumVersion(tables.PlatformConfig);
+    const requestedVersion = Number(body.globalCurriculumVersion);
+    if (Number.isFinite(requestedVersion) && requestedVersion !== version.value) {
+      throw clientError("Global Curriculum changed since this screen was loaded. Reload before saving.", 409);
+    }
+    if (!resourceChanges.length) {
+      return json({
+        success: true,
+        message: "No Global Resource changes requested",
+        globalCurriculumVersion: version.value,
+        resources: []
+      });
+    }
+
+    const timestamp = new Date().toISOString();
+    const root = readGlobalResourceDriveRoot(tables.PlatformConfig);
+    const workingResources = tables.GlobalResources.map(record => ({ ...record }));
+    const proposed = [];
+    const seenClientKeys = new Set();
+    let nextResourceRow = nextRowNumber(tables.GlobalResources);
+
+    for (let index = 0; index < resourceChanges.length; index += 1) {
+      const change = resourceChanges[index] || {};
+      const resourceId = clean(change.resourceId || change.resourceid);
+      const clientKey = clean(change.clientKey || change.clientkey || resourceId || `resource-${index + 1}`);
+      if (seenClientKeys.has(clientKey)) throw clientError("Duplicate Resource change in this save", 400);
+      seenClientKeys.add(clientKey);
+
+      const subjectId = clean(change.subjectId || change.subjectid);
+      const moduleId = clean(change.moduleId || change.moduleid);
+      const taskId = clean(change.taskId || change.taskid);
+      const fileId = clean(change.fileId || change.fileid);
+      const resourceName = requireText(change.resourceName || change.resourcename, "Resource name", MAX_NAME_LENGTH);
+      const resourceType = normalizePlatformIdentifier(change.resourceType || change.resourcetype);
+      const resourceDescription = optionalText(
+        change.resourceDescription || change.resourcedescription,
+        "Resource description",
+        MAX_DESCRIPTION_LENGTH
+      );
+      const requestedActive = readBoolean(change.active, resourceId ? null : true);
+      if (!GLOBAL_RESOURCE_TYPES.has(resourceType)) {
+        throw clientError("Resource type must be EBOOK, PRINTABLE, AUDIO, VIDEO, or OTHER", 400);
+      }
+
+      const existing = resourceId
+        ? uniqueRecord(workingResources, "ResourceID", resourceId, "Global resource")
+        : null;
+      if (!existing && !fileId) {
+        throw clientError("Select a file from the Global Resources Google Drive folder", 400);
+      }
+      if (existing && normalizePlatformIdentifier(existing.ResourceType) !== resourceType && !fileId) {
+        throw clientError("Select the Google Drive file again when changing resource type", 400);
+      }
+
+      const subject = uniqueRecord(tables.GlobalSubjectList, "SubjectID", subjectId, "Global subject");
+      if (requestedActive && !isActivePlatformValue(subject.Active)) {
+        throw clientError("An active resource requires an active global subject", 409);
+      }
+      if (moduleId) {
+        const module = uniqueRecord(tables.GlobalModuleList, "ModuleID", moduleId, "Global module");
+        if (normalizePlatformIdentifier(module.SubjectID) !== normalizePlatformIdentifier(subjectId)) {
+          throw clientError("The selected global module does not belong to the selected subject", 409);
+        }
+        if (requestedActive && !isActivePlatformValue(module.Active)) {
+          throw clientError("An active resource requires an active global module", 409);
+        }
+      }
+      if (taskId) {
+        const task = uniqueRecord(tables.GlobalTaskList, "TaskID", taskId, "Global task");
+        if (normalizePlatformIdentifier(task.SubjectID) !== normalizePlatformIdentifier(subjectId)) {
+          throw clientError("The selected global task does not belong to the selected subject", 409);
+        }
+        if (moduleId && normalizePlatformIdentifier(task.ModuleID) !== normalizePlatformIdentifier(moduleId)) {
+          throw clientError("The selected global task does not belong to the selected module", 409);
+        }
+        if (requestedActive && !isActivePlatformValue(task.Active)) {
+          throw clientError("An active resource requires an active global task", 409);
+        }
+      }
+
+      let resourceFormat = clean(existing?.ResourceFormat);
+      let resourceLink = clean(existing?.ResourceLink);
+      if (fileId) {
+        if (!root.configured) throw clientError("Configure the Global Resources Google Drive folder first", 409);
+        const file = await requireGlobalDriveItem(env, fileId, root.folderId, { requireFile: true }, 400);
+        const fileValidation = validateFileForResourceType(file, getResourceConfig(resourceType));
+        if (!fileValidation.ok) throw clientError(fileValidation.error, 400);
+        resourceFormat = deriveFileFormat(file.name, file.mimeType);
+        resourceLink = buildGlobalDriveResourceLink(request, file.id);
+      }
+      if (!resourceLink) throw clientError("Select a file from the Global Resources Google Drive folder", 400);
+
+      const record = existing ? {
+        ...existing,
+        SubjectID: subjectId,
+        ModuleID: moduleId,
+        TaskID: taskId,
+        ResourceName: resourceName,
+        ResourceType: resourceType,
+        ResourceFormat: resourceFormat,
+        ResourceDescription: resourceDescription,
+        ResourceLink: resourceLink,
+        Active: requestedActive,
+        ModifiedByAccountID: permission.user.accountid,
+        ModifiedByAccountName: permission.user.username,
+        ModifiedDate: timestamp
+      } : {
+        ResourceID: createPlatformId("GRES"),
+        SubjectID: subjectId,
+        ModuleID: moduleId,
+        TaskID: taskId,
+        ResourceName: resourceName,
+        ResourceType: resourceType,
+        ResourceFormat: resourceFormat,
+        ResourceDescription: resourceDescription,
+        ResourceLink: resourceLink,
+        Active: requestedActive,
+        CreatedDate: timestamp,
+        CreatedByAccountID: permission.user.accountid,
+        CreatedByAccountName: permission.user.username,
+        ModifiedByAccountID: "",
+        ModifiedByAccountName: "",
+        ModifiedDate: ""
+      };
+      record._rowNumber = existing?._rowNumber || nextResourceRow++;
+
+      const mutableFields = [
+        "SubjectID", "ModuleID", "TaskID", "ResourceName", "ResourceType",
+        "ResourceFormat", "ResourceDescription", "ResourceLink", "Active"
+      ];
+      const changedFields = existing
+        ? changedRecordFields(existing, record, mutableFields)
+        : mutableFields;
+
+      const workingIndex = existing ? workingResources.findIndex(item => (
+        normalizePlatformIdentifier(item.ResourceID) === normalizePlatformIdentifier(existing.ResourceID)
+      )) : -1;
+      if (workingIndex >= 0) workingResources[workingIndex] = record;
+      else workingResources.push(record);
+
+      proposed.push({ clientKey, existing, record, changedFields });
+    }
+
+    assertUniqueResourceCollection(workingResources);
+
+    const changed = proposed.filter(item => item.changedFields.length > 0);
+    if (!changed.length) {
+      return json({
+        success: true,
+        message: "No Global Resource changes requested",
+        globalCurriculumVersion: version.value,
+        resources: proposed.map(item => ({ clientkey: item.clientKey, ...mapResource(item.record) }))
+      });
+    }
+
+    const nextVersion = version.value + 1;
+    const writes = changed.map(item => valueWrite(
+      "GlobalResources",
+      item.record._rowNumber,
+      recordToRow(item.record, PLATFORM_SHEET_HEADERS.GlobalResources)
+    ));
+    writes.push({
+      range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
+      majorDimension: "ROWS",
+      values: [[nextVersion, timestamp, permission.user.accountid, permission.user.username]]
+    });
+    const auditStartRow = nextRowNumber(tables.PlatformAuditLog);
+    changed.forEach((item, index) => {
+      writes.push(valueWrite("PlatformAuditLog", auditStartRow + index, buildAuditRow(permission.user, {
+        action: item.existing ? "UPDATE_GLOBAL_RESOURCE" : "CREATE_GLOBAL_RESOURCE",
+        recordType: "GLOBAL_RESOURCE",
+        recordId: item.record.ResourceID,
+        changedFields: item.changedFields,
+        timestamp
+      })));
+    });
+
+    await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+    return json({
+      success: true,
+      message: `Saved ${changed.length} Global Resource change${changed.length === 1 ? "" : "s"}`,
+      globalCurriculumVersion: nextVersion,
+      resources: proposed.map(item => ({ clientkey: item.clientKey, ...mapResource(item.record) }))
+    });
+  } catch (error) {
+    return mutationError(error, env);
+  }
+}
+
 export async function savePlatformGlobalSubjectAccessEndpoint(request, env) {
   const permission = await requireGlobalCurriculumAdmin(request, env);
   if (!permission.ok) return permission.response;
@@ -1357,6 +1559,36 @@ function assertNoDuplicateDriveResource(records, fileId, excludedId) {
       `This Google Drive file is already a global resource${clean(duplicate.ResourceName) ? ` as “${clean(duplicate.ResourceName)}”` : ""}`,
       409
     );
+  }
+}
+
+
+function assertUniqueResourceCollection(records) {
+  const branchNames = new Map();
+  const driveFiles = new Map();
+  for (const record of records || []) {
+    const resourceId = clean(record.ResourceID);
+    const branchKey = [
+      normalizePlatformIdentifier(record.SubjectID),
+      normalizePlatformIdentifier(record.ModuleID),
+      normalizePlatformIdentifier(record.TaskID),
+      normalizeName(record.ResourceName)
+    ].join("|");
+    if (branchNames.has(branchKey) && branchNames.get(branchKey) !== resourceId) {
+      throw clientError("Global resource already exists in this curriculum branch", 409);
+    }
+    branchNames.set(branchKey, resourceId);
+
+    const fileId = extractDriveFileId(record.ResourceLink);
+    if (!fileId) continue;
+    if (driveFiles.has(fileId) && driveFiles.get(fileId).id !== resourceId) {
+      const duplicate = driveFiles.get(fileId);
+      throw clientError(
+        `This Google Drive file is already a global resource${duplicate.name ? ` as “${duplicate.name}”` : ""}`,
+        409
+      );
+    }
+    driveFiles.set(fileId, { id: resourceId, name: clean(record.ResourceName) });
   }
 }
 

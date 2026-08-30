@@ -60,6 +60,7 @@ const expectedPaths = [
   "/api/admin/platform/global/module/save",
   "/api/admin/platform/global/task/save",
   "/api/admin/platform/global/resource/save",
+  "/api/admin/platform/global/resources/save-batch",
   "/api/admin/platform/global/access/save",
   "/api/admin/platform/global/delivery/get",
   "/api/admin/platform/global/policy/save",
@@ -122,7 +123,7 @@ assert.equal(root.status, 200);
 assert.deepEqual(await root.json(), {
   success: true,
   service: "rebootworker",
-  version: "103.1.0.2"
+  version: "103.1.0.3"
 });
 
 const preflight = await worker.fetch(new Request("https://worker.test/api/login", {

@@ -1,42 +1,46 @@
-# V103.1.0.2 Release Notes
+# V103.1.0.3 Release Notes
 
-V103.1.0.2 is the focused Academy Home timetable patch requested after V103.1.0.1. It addresses the pre-existing case where a busy day such as Thursday could appear to lose an intermediate session when later activity was also present.
+V103.1.0.3 modernises the **Global Resources** administration screen without changing student resource delivery or the V103 Central Identity migration state.
 
-## Internal day scrolling
+## Resource workflow
 
-The Academy Home day card is now structured as a fixed card with:
+The Resources tab now behaves like the refreshed Subjects/Modules editor:
 
-- a fixed/stable day heading; and
-- an independently vertically scrollable session body.
+- filter the Resource list by name, Subject, type, or status;
+- expand an existing Resource inline;
+- edit Drive file, display name, description, type, Subject, Module, Task, status, and derived format;
+- add one or more new Resources inline;
+- make several changes before saving;
+- press one Save icon to commit the complete dirty set.
 
-When a day contains more rows than the available card height, the user scrolls **inside that day card** to reach the remaining sessions. The two-day horizontal swipe/scroll behaviour remains unchanged.
+Closing an existing inline editor only collapses it; pending edits remain in the browser and stay highlighted. Closing an unsaved new Resource discards that draft.
 
-## Chronological protection
+Existing Resources are not hard-deleted from this screen. Set Status to `INACTIVE` to preserve history/references.
 
-Session ordering no longer relies solely on raw time strings. Both Worker delivery and the browser renderer calculate a clock-minute sort value first, accepting both colon and `h` separators.
+## Save visibility
 
-This means values such as:
+The screen-level Save action is larger than the normal passive icon treatment. With no pending changes it is neutral and disabled. As soon as any Resource becomes dirty/new, it turns purple and becomes more prominent until the batch save succeeds.
 
-- `04:00`
-- `05:45`
-- `06:15`
-- `06:30`
-- `9:30`
-- `20:00`
+## Batch integrity
 
-remain in their correct chronological order even if one stored/display time is not zero-padded.
+`/api/admin/platform/global/resources/save-batch`:
 
-## Scope
+- rejects stale `GlobalCurriculumVersion` values;
+- validates every submitted Resource before any Sheet mutation;
+- checks curriculum relationships and active dependencies;
+- validates protected Drive files against the configured Global Resources root;
+- prevents duplicate Resource names within a curriculum branch;
+- prevents duplicate Drive file registration;
+- performs one Google Sheets batch update;
+- increments Global Curriculum version once;
+- writes audit rows for each changed Resource.
 
-This release intentionally changes only the Academy Home timetable display/delivery ordering needed for the reported busy-day issue. The V103.1.0.1 Global Curriculum restructuring remains intact.
+## Changing the global folder
 
-The V103.1 controlled Identity Links migration remains separate and may still be pending.
+The Global Resources root remains a separate GLOBAL_ADMIN operation. Changing it does not move files. The new folder is accepted only when every persisted Drive-backed Resource is already within the new tree. The UI also refuses a root change while there are unsaved Resource edits.
 
 ## Sheet migration
 
 There is **no new Sheet migration**.
 
-Keep:
-
-- `PlatformConfig!B3 = 102.0.8`;
-- **19 required Platform tabs**.
+Keep `PlatformConfig!B3 = 102.0.8` and **19 required Platform tabs**. The V103.1 Identity Links controlled migration may still be pending.

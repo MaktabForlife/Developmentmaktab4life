@@ -17,7 +17,7 @@ assert.match(html, /data-gcm-tab="tasks"/);
 assert.match(html, /data-gcm-tab="resources"/);
 assert.match(html, /data-gcm-course-action="show">Course Scheduler<\/button>/);
 assert.match(html, /data-gcm-tab="access">Global Access<\/button>/);
-assert.match(html, /m4l-global-curriculum\.js\?v=103\.1\.0\.1/);
+assert.match(html, /m4l-global-curriculum\.js\?v=103\.1\.0\.3/);
 assert.doesNotMatch(html, />Platform administration</);
 assert.doesNotMatch(html, /Changes apply across the platform and are recorded in PlatformAuditLog/);
 
@@ -26,6 +26,14 @@ assert.match(script, /ADMIN and GLOBAL_ADMIN/);
 assert.match(script, /\/api\/admin\/platform\/global\/get/);
 assert.match(script, /\/api\/admin\/platform\/global\/access\/save/);
 assert.match(script, /\/api\/admin\/platform\/global\/subjects\/save-batch/);
+assert.match(script, /\/api\/admin\/platform\/global\/resources\/save-batch/);
+assert.match(script, /Add\/Modify Global Resources/);
+assert.match(script, /toggle-resource-editor/);
+assert.match(script, /add-resource-inline/);
+assert.match(script, /save-resource-screen/);
+assert.match(script, /global-resource-screen-save/);
+assert.match(script, /is-dirty/);
+assert.match(script, /Change global folder/);
 assert.match(script, /Add or Modify Global Subjects/);
 assert.match(script, /toggle-subject-modules/);
 assert.match(script, /add-module-inline/);
@@ -44,7 +52,7 @@ assert.match(script, /classList\.remove\("is-active"\)/, "Changing tabs must cle
 assert.match(script, /M4LGlobalCurriculum = Object\.freeze\(\{[\s\S]*invalidate/);
 assert.match(academics, /M4LGlobalCurriculum\.syncAccess/);
 
-assert.match(styles, /m4l-24-global-curriculum\.css\?v=103\.1\.0\.1/);
+assert.match(styles, /m4l-24-global-curriculum\.css\?v=103\.1\.0\.3/);
 assert.match(css, /\.global-access-matrix/);
 assert.match(css, /\.global-access-policy-token/);
 assert.match(css, /\.global-access-free-state/);
@@ -52,5 +60,8 @@ assert.match(css, /\.global-access-unique-column/);
 assert.match(css, /\.global-subject-editor-item\.is-dirty/);
 assert.match(css, /\.global-inline-module-editor/);
 assert.match(css, /\.global-subject-screen-save/);
+assert.match(css, /\.global-resource-list-entry\.is-dirty/);
+assert.match(css, /\.global-resource-inline-editor/);
+assert.match(css, /\.global-resource-screen-save\.is-dirty/);
 
-console.log("V103.1.0.1 inline Global Subject/Module editor and Global Access UI tests passed.");
+console.log("V103.1.0.3 inline Global Subject/Module/Resource editors and Global Access UI tests passed.");

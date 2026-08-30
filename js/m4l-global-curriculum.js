@@ -1,4 +1,4 @@
-/* M4L V103.1.0.1 - Inline Global Subject + Module editor with one batch save; Global Access and protected Drive resources retained. */
+/* M4L V103.1.0.3 - Inline Global Subject/Module and Global Resource batch editors; protected Drive resources retained. */
 (function () {
   "use strict";
 
@@ -14,7 +14,10 @@
       resources: "",
       access: ""
     },
-    resourceDraft: null,
+    resourceDrafts: [],
+    resourceOpen: new Set(),
+    resourceDraftSequence: 0,
+    resourceFilters: { name: "", subject: "", type: "", status: "" },
     subjectDrafts: [],
     moduleDrafts: [],
     subjectModulesOpen: new Set(),
@@ -23,7 +26,8 @@
     drive: {
       open: false,
       loading: false,
-      data: null
+      data: null,
+      resourceKey: ""
     },
     data: emptyData()
   };
@@ -115,9 +119,12 @@
     if (action === "save-subject") return saveSubject(target);
     if (action === "save-module") return saveModule(target);
     if (action === "save-task") return saveTask(target);
-    if (action === "save-resource") return saveResource(target);
+    if (action === "toggle-resource-editor") return toggleResourceEditor(target.dataset.resourceKey || "");
+    if (action === "add-resource-inline") return addResourceInline();
+    if (action === "close-resource-editor") return closeResourceEditor(target.dataset.resourceKey || "");
+    if (action === "save-resource-screen") return saveResourceScreen(target);
     if (action === "save-drive-root") return saveDriveRoot(target);
-    if (action === "browse-resource") return openDriveBrowser();
+    if (action === "browse-resource") return openDriveBrowser(target.dataset.resourceKey || "");
     if (action === "browse-folder" || action === "drive-breadcrumb") {
       return loadDriveFolder(target.dataset.folderId || "");
     }
@@ -132,14 +139,19 @@
       syncSubjectEditorControl(target);
       return;
     }
+    if (target.matches("[data-gcm-resource-field]")) {
+      syncResourceEditorControl(target);
+      return;
+    }
+    if (target.matches("[data-gcm-resource-filter]")) {
+      syncResourceFilter(target);
+      return;
+    }
     if (target.matches("[data-gcm-access-toggle]")) {
       saveAccessToggle(target);
       return;
     }
     if (target.id === "gcm-task-subject") updateTaskModuleOptions();
-    if (target.id === "gcm-resource-subject" || target.id === "gcm-resource-module") {
-      updateResourceBranchOptions();
-    }
   }
 
   function handleInput(event) {
@@ -147,6 +159,14 @@
     if (!target || !target.closest("#global-curriculum-screen")) return;
     if (target.matches("[data-gcm-subject-field], [data-gcm-module-field]")) {
       syncSubjectEditorControl(target);
+      return;
+    }
+    if (target.matches("[data-gcm-resource-field]")) {
+      syncResourceEditorControl(target);
+      return;
+    }
+    if (target.matches("[data-gcm-resource-filter]")) {
+      syncResourceFilter(target);
     }
   }
 
@@ -173,6 +193,7 @@
         globalResourceDriveRoot: result.globalResourceDriveRoot || emptyData().globalResourceDriveRoot
       };
       resetSubjectEditor();
+      resetResourceEditor();
       model.loaded = true;
       setMessage("", "");
       render();
@@ -192,7 +213,6 @@
     model.tab = tab;
     model.drive.open = false;
     model.drive.data = null;
-    if (tab !== "resources") model.resourceDraft = null;
     setMessage("", "");
     if (!model.loaded) { void load(true); return; }
     render();
@@ -200,12 +220,6 @@
 
   function beginEdit(recordId) {
     model.editing[model.tab] = String(recordId || "");
-    if (model.tab === "resources") {
-      const current = findById(model.data.resources, "resourceid", recordId);
-      model.resourceDraft = createResourceDraft(current);
-      model.drive.open = false;
-      model.drive.data = null;
-    }
     setMessage("", "");
     render();
   }
@@ -355,55 +369,92 @@
   function renderResources() {
     if (model.drive.open) return renderDriveBrowser();
 
-    const draft = ensureResourceDraft();
-    const current = findById(model.data.resources, "resourceid", draft.resourceid);
-    const selectedFile = draft.file;
-    const root = model.data.globalResourceDriveRoot || {};
-    const fileMarkup = selectedFile ? `
-      <div class="manage-resource-selected-file">
-        <div>
-          <strong>${html(selectedFile.name || draft.resourcename || "Google Drive file")}</strong>
-          <small>${html(selectedFile.format || draft.resourceformat || "FILE")} · Protected Google Drive</small>
-        </div>
-        <button type="button" data-gcm-action="browse-resource">Change</button>
-      </div>
-    ` : draft.legacyExternal ? `
-      <div class="global-curriculum-legacy-file">
-        <strong>Existing external link</strong>
-        <span>This legacy resource remains usable until you replace it with a file from the protected folder.</span>
-        <button type="button" data-gcm-action="browse-resource" ${root.configured ? "" : "disabled"}>Replace with Drive file</button>
-      </div>
-    ` : `
-      <button type="button" class="manage-resource-drive-button" data-gcm-action="browse-resource" ${root.configured ? "" : "disabled"}>
-        ${root.configured ? "Browse Global Resources Google Folder" : "Configure the Global Resources folder first"}
-      </button>
-    `;
-
+    const dirty = hasResourceScreenChanges();
+    const existingDrafts = model.resourceDrafts.filter(draft => !draft.isNew);
+    const newDrafts = model.resourceDrafts.filter(draft => draft.isNew);
     setContent(`
+      <section class="global-curriculum-panel global-resource-editor-panel">
+        <div class="global-curriculum-panel-heading global-resource-editor-heading">
+          <div>
+            <h3>Add/Modify Global Resources</h3>
+            <p>Filter the list, expand any Resource to edit it inline, then save all changed Resources once.</p>
+          </div>
+          <button type="button" class="global-save-icon-button global-resource-screen-save ${dirty ? "is-dirty" : ""}" data-gcm-action="save-resource-screen" ${dirty ? "" : "disabled"} aria-label="Save all Global Resource changes" title="Save all Global Resource changes"><span class="app-icon save-mode-icon" aria-hidden="true"></span><span class="global-save-icon-label">SAVE</span></button>
+        </div>
+
+        <div class="global-resource-list-head">
+          <label><span>Resource Name</span><input type="search" value="${attr(model.resourceFilters.name)}" placeholder="Search" data-gcm-resource-filter="name" /></label>
+          <label><span>Global Subject</span><select data-gcm-resource-filter="subject"><option value="">All Subjects</option>${model.data.subjects.map(subject => `<option value="${attr(subject.subjectid)}" ${model.resourceFilters.subject === subject.subjectid ? "selected" : ""}>${html(subject.subjectname)}</option>`).join("")}</select></label>
+          <label><span>Type</span><select data-gcm-resource-filter="type"><option value="">All Types</option>${RESOURCE_TYPES.map(type => `<option value="${type}" ${model.resourceFilters.type === type ? "selected" : ""}>${html(resourceTypeLabel(type))}</option>`).join("")}</select></label>
+          <label><span>Status</span><select data-gcm-resource-filter="status"><option value="">All Statuses</option><option value="ACTIVE" ${model.resourceFilters.status === "ACTIVE" ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${model.resourceFilters.status === "INACTIVE" ? "selected" : ""}>INACTIVE</option></select></label>
+        </div>
+
+        <div class="global-resource-inline-list">
+          ${existingDrafts.length ? existingDrafts.map(renderResourceListEntry).join("") : '<p class="global-curriculum-empty-list">No Global Resources found.</p>'}
+        </div>
+
+        ${newDrafts.length ? `<div class="global-resource-new-drafts">${newDrafts.map(draft => renderResourceEditor(draft, true)).join("")}</div>` : ""}
+        <button type="button" class="global-inline-add-action global-inline-add-resource" data-gcm-action="add-resource-inline">+ Add a Global Resource</button>
+      </section>
       ${renderGlobalDriveRootPanel()}
-      <div class="global-curriculum-management-grid">
-        ${panelForm(current ? "Modify Global Resource" : "Add Global Resource", `
-          <input id="gcm-resource-id" type="hidden" value="${attr(draft.resourceid)}" />
-          ${field("Global subject", `<select id="gcm-resource-subject">${subjectOptions(draft.subjectid, current?.subjectid)}</select>`)}
-          ${field("Module (optional)", `<select id="gcm-resource-module">${moduleOptions(draft.subjectid, draft.moduleid, true)}</select>`)}
-          ${field("Task (optional)", `<select id="gcm-resource-task">${taskOptions(draft.subjectid, draft.moduleid, draft.taskid)}</select>`)}
-          ${field("Resource name", `<input id="gcm-resource-name" type="text" maxlength="160" value="${attr(draft.resourcename)}" autocomplete="off" />`)}
-          ${field("Resource type", `<select id="gcm-resource-type">${RESOURCE_TYPES.map(type => `<option value="${type}" ${type === draft.resourcetype ? "selected" : ""}>${type}</option>`).join("")}</select>`)}
-          ${field("Google Drive file", fileMarkup)}
-          ${field("Format", `<div class="manage-resource-readonly-value">${html(selectedFile?.format || draft.resourceformat || "Selected automatically from the file")}</div>`)}
-          ${field("Description (optional)", `<textarea id="gcm-resource-description" maxlength="2000">${html(draft.resourcedescription)}</textarea>`)}
-          ${activeField("gcm-resource-active", draft.active)}
-          ${saveButtons("save-resource", Boolean(current))}
-        `)}
-        ${listPanel("Global Resources", model.data.resources.length, recordList(
-          model.data.resources,
-          item => item.resourceid,
-          item => item.resourcename,
-          item => `${item.resourcetype} · ${subjectName(item.subjectid)}${item.moduleid ? ` · ${moduleName(item.moduleid)}` : ""}`,
-          item => item.active
-        ))}
-      </div>
     `);
+    applyResourceFiltersToDom();
+  }
+
+  function renderResourceListEntry(draft) {
+    const open = model.resourceOpen.has(draft.key);
+    const dirty = isResourceDraftDirty(draft);
+    const status = draft.active ? "ACTIVE" : "INACTIVE";
+    return `
+      <article class="global-resource-list-entry ${dirty ? "is-dirty" : ""} ${draft.active ? "" : "is-inactive"}"
+        data-resource-list-entry data-resource-key="${attr(draft.key)}"
+        data-resource-filter-name="${attr(String(draft.resourcename || "").toLowerCase())}"
+        data-resource-filter-subject="${attr(draft.subjectid)}"
+        data-resource-filter-type="${attr(draft.resourcetype)}"
+        data-resource-filter-status="${status}">
+        <button type="button" class="global-resource-summary-row" data-gcm-action="toggle-resource-editor" data-resource-key="${attr(draft.key)}" aria-expanded="${open ? "true" : "false"}">
+          <span class="global-resource-summary-name"><strong>${html(draft.resourcename || "Untitled Resource")}</strong><small>${html(draft.resourceid || "")}</small></span>
+          <span>${html(subjectName(draft.subjectid))}</span>
+          <span>${html(resourceTypeLabel(draft.resourcetype))}</span>
+          <span class="global-resource-status-token ${draft.active ? "is-active" : "is-inactive"}">${status}</span>
+        </button>
+        ${open ? renderResourceEditor(draft, false) : ""}
+      </article>
+    `;
+  }
+
+  function renderResourceEditor(draft, isNew) {
+    const selectedFile = draft.file;
+    const fileName = selectedFile?.name || (draft.legacyExternal ? "Existing external link" : "No Drive file selected");
+    const format = selectedFile?.format || draft.resourceformat || "—";
+    return `
+      <div class="global-resource-inline-editor ${isResourceDraftDirty(draft) ? "is-dirty" : ""} ${isNew ? "is-new" : ""}" data-resource-editor-key="${attr(draft.key)}">
+        <div class="global-resource-editor-primary-row">
+          <label class="global-resource-file-control">
+            <span>Drive file</span>
+            <button type="button" class="global-resource-file-picker" data-gcm-action="browse-resource" data-resource-key="${attr(draft.key)}">Browse Folder</button>
+            <small>${html(fileName)}</small>
+          </label>
+          <label>
+            <span>Display Name</span>
+            <input type="text" maxlength="160" value="${attr(draft.resourcename)}" autocomplete="off" data-gcm-resource-field="resourcename" data-resource-key="${attr(draft.key)}" />
+          </label>
+          <label class="global-resource-description-field">
+            <span>Description</span>
+            <textarea maxlength="2000" rows="1" data-gcm-resource-field="resourcedescription" data-resource-key="${attr(draft.key)}">${html(draft.resourcedescription)}</textarea>
+          </label>
+          <button type="button" class="global-resource-editor-close" data-gcm-action="close-resource-editor" data-resource-key="${attr(draft.key)}" aria-label="${isNew ? "Discard new Resource" : "Close Resource editor"}" title="${isNew ? "Discard new Resource" : "Close Resource editor"}">×</button>
+        </div>
+        <div class="global-resource-editor-secondary-row">
+          <label><span>Type</span><select data-gcm-resource-field="resourcetype" data-resource-key="${attr(draft.key)}">${RESOURCE_TYPES.map(type => `<option value="${type}" ${type === draft.resourcetype ? "selected" : ""}>${html(resourceTypeLabel(type))}</option>`).join("")}</select></label>
+          <label><span>Subject</span><select data-gcm-resource-field="subjectid" data-resource-key="${attr(draft.key)}">${resourceSubjectOptions(draft.subjectid)}</select></label>
+          <label><span>Module</span><select data-gcm-resource-field="moduleid" data-resource-key="${attr(draft.key)}">${resourceModuleOptions(draft.subjectid, draft.moduleid)}</select></label>
+          <label><span>Task</span><select data-gcm-resource-field="taskid" data-resource-key="${attr(draft.key)}">${resourceTaskOptions(draft.subjectid, draft.moduleid, draft.taskid)}</select></label>
+          <label><span>Status</span><select data-gcm-resource-field="active" data-resource-key="${attr(draft.key)}"><option value="ACTIVE" ${draft.active ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${draft.active ? "" : "selected"}>INACTIVE</option></select></label>
+          <label><span>Format</span><span class="global-resource-format-value">${html(format)}</span></label>
+        </div>
+      </div>
+    `;
   }
 
   function renderAccess() {
@@ -710,23 +761,65 @@
     });
   }
 
-  async function saveResource(button) {
-    syncResourceDraftFromForm();
-    const draft = ensureResourceDraft();
-    return submit(button, "/api/admin/platform/global/resource/save", {
-      resourceId: draft.resourceid,
-      subjectId: draft.subjectid,
-      moduleId: draft.moduleid,
-      taskId: draft.taskid,
-      resourceName: draft.resourcename,
-      resourceType: draft.resourcetype,
-      resourceDescription: draft.resourcedescription,
-      fileId: draft.file?.id || "",
-      active: draft.active
-    });
+  async function saveResourceScreen(button) {
+    const dirtyResources = model.resourceDrafts.filter(isResourceDraftDirty);
+    if (!dirtyResources.length) {
+      setMessage("No Global Resource changes to save.", "");
+      return false;
+    }
+    const invalid = dirtyResources.find(draft => !String(draft.resourcename || "").trim() || !draft.subjectid || (!draft.resourceid && !draft.file?.id));
+    if (invalid) {
+      model.resourceOpen.add(invalid.key);
+      renderResources();
+      document.querySelector(`[data-resource-editor-key="${cssEscapeValue(invalid.key)}"] input[data-gcm-resource-field="resourcename"]`)?.focus();
+      setMessage(!String(invalid.resourcename || "").trim()
+        ? "Enter a Resource display name before saving."
+        : !invalid.subjectid
+          ? "Select a Global Subject before saving."
+          : "Select a file from the Global Resources folder before saving a new Resource.", "error");
+      return false;
+    }
+
+    if (model.loading) return false;
+    model.loading = true;
+    button.disabled = true;
+    setMessage("Saving Global Resources…", "");
+    try {
+      const result = await apiPost("/api/admin/platform/global/resources/save-batch", {
+        globalCurriculumVersion: model.data.globalCurriculumVersion,
+        resources: dirtyResources.map(draft => ({
+          clientKey: draft.key,
+          resourceId: draft.resourceid,
+          subjectId: draft.subjectid,
+          moduleId: draft.moduleid,
+          taskId: draft.taskid,
+          resourceName: String(draft.resourcename || "").trim(),
+          resourceType: draft.resourcetype,
+          resourceDescription: String(draft.resourcedescription || "").trim(),
+          fileId: draft.file?.id || "",
+          active: draft.active
+        }))
+      }, appState()?.token || "");
+      if (!result.success) throw new Error(result.error || "Unable to save Global Resources");
+      model.loaded = false;
+      model.loading = false;
+      await load(true);
+      setMessage(result.message || "Global Resources saved.", "success");
+      return true;
+    } catch (error) {
+      setMessage(error.message || "Unable to save Global Resources.", "error");
+      return false;
+    } finally {
+      model.loading = false;
+      refreshResourceDirtyIndicators();
+    }
   }
 
   async function saveDriveRoot(button) {
+    if (hasResourceScreenChanges()) {
+      setMessage("Save or discard the pending Global Resource edits before changing the global folder.", "error");
+      return false;
+    }
     if (!isGlobalAdmin()) {
       setMessage("Only a GLOBAL_ADMIN can configure the Global Resources folder.", "error");
       return false;
@@ -779,9 +872,9 @@
       const dependencyText = result.dependencies ? formatDependencies(result.dependencies) : "";
       model.editing[model.tab] = "";
       if (model.tab === "resources") {
-        model.resourceDraft = null;
         model.drive.open = false;
         model.drive.data = null;
+        model.drive.resourceKey = "";
       }
       model.loaded = false;
       model.loading = false;
@@ -797,10 +890,11 @@
     }
   }
 
-  function createResourceDraft(record) {
+  function createResourceDraft(record, key = "") {
     const selectedSubject = record?.subjectid || firstActive(model.data.subjects, "subjectid");
     const fileId = String(record?.fileid || "").trim();
-    return {
+    const draft = {
+      key: key || String(record?.resourceid || `new-resource-${++model.resourceDraftSequence}`),
       resourceid: String(record?.resourceid || ""),
       subjectid: selectedSubject,
       moduleid: String(record?.moduleid || ""),
@@ -817,28 +911,174 @@
         format: String(record?.resourceformat || "FILE"),
         supportedTypes: [String(record?.resourcetype || "EBOOK")],
         current: true
-      } : null
+      } : null,
+      isNew: !record?.resourceid
+    };
+    draft.original = draft.isNew ? null : resourceDraftSnapshot(draft);
+    return draft;
+  }
+
+  function resetResourceEditor() {
+    const openKeys = new Set(model.resourceOpen || []);
+    model.resourceDrafts = model.data.resources.map(record => createResourceDraft(record, String(record.resourceid || "")));
+    model.resourceOpen = new Set(model.resourceDrafts.filter(draft => openKeys.has(draft.key)).map(draft => draft.key));
+  }
+
+  function resourceDraftSnapshot(draft) {
+    return {
+      subjectid: String(draft?.subjectid || ""),
+      moduleid: String(draft?.moduleid || ""),
+      taskid: String(draft?.taskid || ""),
+      resourcename: String(draft?.resourcename || "").trim(),
+      resourcetype: String(draft?.resourcetype || "EBOOK").toUpperCase(),
+      resourcedescription: String(draft?.resourcedescription || "").trim(),
+      fileid: String(draft?.file?.id || ""),
+      active: draft?.active !== false
     };
   }
 
-  function ensureResourceDraft() {
-    if (!model.resourceDraft) {
-      const current = findById(model.data.resources, "resourceid", model.editing.resources);
-      model.resourceDraft = createResourceDraft(current);
-    }
-    return model.resourceDraft;
+  function isResourceDraftDirty(draft) {
+    if (!draft) return false;
+    if (draft.isNew) return true;
+    return JSON.stringify(resourceDraftSnapshot(draft)) !== JSON.stringify(draft.original || {});
   }
 
-  function syncResourceDraftFromForm() {
-    const draft = ensureResourceDraft();
-    draft.resourceid = value("gcm-resource-id") || draft.resourceid;
-    draft.subjectid = value("gcm-resource-subject") || draft.subjectid;
-    draft.moduleid = value("gcm-resource-module");
-    draft.taskid = value("gcm-resource-task");
-    draft.resourcename = value("gcm-resource-name");
-    draft.resourcetype = value("gcm-resource-type") || draft.resourcetype;
-    draft.resourcedescription = value("gcm-resource-description");
-    draft.active = checked("gcm-resource-active");
+  function hasResourceScreenChanges() {
+    return model.resourceDrafts.some(isResourceDraftDirty);
+  }
+
+  function resourceDraftByKey(key) {
+    return model.resourceDrafts.find(draft => draft.key === String(key || "")) || null;
+  }
+
+  function toggleResourceEditor(key) {
+    const draft = resourceDraftByKey(key);
+    if (!draft) return false;
+    if (model.resourceOpen.has(draft.key)) model.resourceOpen.delete(draft.key);
+    else model.resourceOpen.add(draft.key);
+    renderResources();
+    return true;
+  }
+
+  function addResourceInline() {
+    const draft = createResourceDraft(null);
+    model.resourceDrafts.push(draft);
+    model.resourceOpen.add(draft.key);
+    renderResources();
+    document.querySelector(`[data-resource-editor-key="${cssEscapeValue(draft.key)}"] input[data-gcm-resource-field="resourcename"]`)?.focus();
+    return true;
+  }
+
+  function closeResourceEditor(key) {
+    const draft = resourceDraftByKey(key);
+    if (!draft) return false;
+    if (draft.isNew) {
+      model.resourceDrafts = model.resourceDrafts.filter(item => item.key !== draft.key);
+      model.resourceOpen.delete(draft.key);
+    } else {
+      model.resourceOpen.delete(draft.key);
+    }
+    renderResources();
+    return true;
+  }
+
+  function syncResourceEditorControl(control) {
+    const draft = resourceDraftByKey(control?.dataset?.resourceKey || "");
+    if (!draft) return;
+    const fieldName = String(control.dataset.gcmResourceField || "");
+    if (fieldName === "resourcename") draft.resourcename = String(control.value || "");
+    if (fieldName === "resourcedescription") draft.resourcedescription = String(control.value || "");
+    if (fieldName === "resourcetype") draft.resourcetype = String(control.value || "EBOOK").toUpperCase();
+    if (fieldName === "subjectid") {
+      draft.subjectid = String(control.value || "");
+      draft.moduleid = "";
+      draft.taskid = "";
+      renderResources();
+      return;
+    }
+    if (fieldName === "moduleid") {
+      draft.moduleid = String(control.value || "");
+      draft.taskid = "";
+      renderResources();
+      return;
+    }
+    if (fieldName === "taskid") draft.taskid = String(control.value || "");
+    if (fieldName === "active") draft.active = String(control.value || "ACTIVE").toUpperCase() === "ACTIVE";
+    refreshResourceDraftSummary(draft);
+    refreshResourceDirtyIndicators();
+  }
+
+  function refreshResourceDraftSummary(draft) {
+    const row = document.querySelector(`[data-resource-list-entry][data-resource-key="${cssEscapeValue(draft.key)}"]`);
+    if (!row) return;
+    row.dataset.resourceFilterName = String(draft.resourcename || "").toLowerCase();
+    row.dataset.resourceFilterSubject = String(draft.subjectid || "");
+    row.dataset.resourceFilterType = String(draft.resourcetype || "");
+    row.dataset.resourceFilterStatus = draft.active ? "ACTIVE" : "INACTIVE";
+    const name = row.querySelector(".global-resource-summary-name strong");
+    if (name) name.textContent = String(draft.resourcename || "Untitled Resource");
+    const cells = row.querySelectorAll(".global-resource-summary-row > span");
+    if (cells[1]) cells[1].textContent = subjectName(draft.subjectid);
+    if (cells[2]) cells[2].textContent = resourceTypeLabel(draft.resourcetype);
+    const status = row.querySelector(".global-resource-status-token");
+    if (status) {
+      status.textContent = draft.active ? "ACTIVE" : "INACTIVE";
+      status.classList.toggle("is-active", draft.active);
+      status.classList.toggle("is-inactive", !draft.active);
+    }
+    applyResourceFiltersToDom();
+  }
+
+  function refreshResourceDirtyIndicators() {
+    model.resourceDrafts.forEach(draft => {
+      const dirty = isResourceDraftDirty(draft);
+      document.querySelector(`[data-resource-list-entry][data-resource-key="${cssEscapeValue(draft.key)}"]`)?.classList.toggle("is-dirty", dirty);
+      document.querySelector(`[data-resource-editor-key="${cssEscapeValue(draft.key)}"]`)?.classList.toggle("is-dirty", dirty);
+    });
+    const save = document.querySelector('[data-gcm-action="save-resource-screen"]');
+    if (save) {
+      const dirty = hasResourceScreenChanges();
+      save.disabled = !dirty;
+      save.classList.toggle("is-dirty", dirty);
+    }
+  }
+
+  function syncResourceFilter(control) {
+    const field = String(control?.dataset?.gcmResourceFilter || "");
+    if (!Object.prototype.hasOwnProperty.call(model.resourceFilters, field)) return;
+    model.resourceFilters[field] = String(control.value || "");
+    applyResourceFiltersToDom();
+  }
+
+  function applyResourceFiltersToDom() {
+    const name = String(model.resourceFilters.name || "").trim().toLowerCase();
+    const subject = String(model.resourceFilters.subject || "");
+    const type = String(model.resourceFilters.type || "");
+    const status = String(model.resourceFilters.status || "");
+    document.querySelectorAll("[data-resource-list-entry]").forEach(row => {
+      const show = (!name || String(row.dataset.resourceFilterName || "").includes(name)) &&
+        (!subject || row.dataset.resourceFilterSubject === subject) &&
+        (!type || row.dataset.resourceFilterType === type) &&
+        (!status || row.dataset.resourceFilterStatus === status);
+      row.hidden = !show;
+    });
+  }
+
+  function resourceSubjectOptions(selectedId) {
+    return model.data.subjects
+      .filter(subject => subject.active || subject.subjectid === selectedId)
+      .map(subject => `<option value="${attr(subject.subjectid)}" ${subject.subjectid === selectedId ? "selected" : ""}>${html(subject.subjectname)}${subject.active ? "" : " — inactive"}</option>`)
+      .join("");
+  }
+
+  function resourceModuleOptions(subjectId, selectedId) {
+    const modules = sortedModules().filter(module => module.subjectid === subjectId && (module.active || module.moduleid === selectedId));
+    return `<option value="">No module</option>${modules.map(module => `<option value="${attr(module.moduleid)}" ${module.moduleid === selectedId ? "selected" : ""}>${html(module.modulename)}${module.active ? "" : " — inactive"}</option>`).join("")}`;
+  }
+
+  function resourceTaskOptions(subjectId, moduleId, selectedId) {
+    const tasks = model.data.tasks.filter(task => task.subjectid === subjectId && String(task.moduleid || "") === String(moduleId || "") && (task.active || task.taskid === selectedId));
+    return `<option value="">No task</option>${tasks.map(task => `<option value="${attr(task.taskid)}" ${task.taskid === selectedId ? "selected" : ""}>${html(task.taskname)}${task.active ? "" : " — inactive"}</option>`).join("")}`;
   }
 
   function renderGlobalDriveRootPanel() {
@@ -848,10 +1088,10 @@
       ? `Configured${root.foldername ? `: ${root.foldername}` : ""}`
       : "Not configured";
     return `
-      <section class="global-curriculum-drive-root ${root.configured ? "is-configured" : "is-missing"}">
+      <section class="global-curriculum-drive-root global-resource-root-panel ${root.configured ? "is-configured" : "is-missing"}">
         <div>
-          <strong>Global Resources Google Drive folder</strong>
-          <span>${html(status)}. The folder must be private and shared with the configured M4L service account.</span>
+          <strong>Change global folder</strong>
+          <span>${html(status)}. Changing this setting does not move files; all existing Drive-backed Resources must already be inside the new folder tree.</span>
         </div>
         ${canConfigure ? `
           <label>
@@ -866,13 +1106,15 @@
     `;
   }
 
-  async function openDriveBrowser() {
+  async function openDriveBrowser(resourceKey) {
     const root = model.data.globalResourceDriveRoot || {};
     if (!root.configured) {
       setMessage("Configure the Global Resources Google Drive folder first.", "error");
       return false;
     }
-    syncResourceDraftFromForm();
+    const draft = resourceDraftByKey(resourceKey);
+    if (!draft) return false;
+    model.drive.resourceKey = draft.key;
     model.drive.open = true;
     model.drive.data = null;
     setMessage("", "");
@@ -907,7 +1149,8 @@
     const items = array(model.drive.data?.items);
     const file = items.find(item => String(item.id || "") === String(fileId || ""));
     if (!file || file.isFolder) return false;
-    const draft = ensureResourceDraft();
+    const draft = resourceDraftByKey(model.drive.resourceKey);
+    if (!draft) return false;
     if (!array(file.supportedTypes).includes(draft.resourcetype)) {
       setMessage(`This file is not supported as ${resourceTypeLabel(draft.resourcetype)}.`, "error");
       return false;
@@ -918,6 +1161,7 @@
     if (!draft.resourcename) draft.resourcename = stripFileExtension(file.name);
     model.drive.open = false;
     model.drive.data = null;
+    model.drive.resourceKey = "";
     setMessage("", "");
     render();
     return true;
@@ -926,12 +1170,14 @@
   function closeDriveBrowser() {
     model.drive.open = false;
     model.drive.data = null;
+    model.drive.resourceKey = "";
     setMessage("", "");
     render();
   }
 
   function renderDriveBrowser() {
-    const draft = ensureResourceDraft();
+    const draft = resourceDraftByKey(model.drive.resourceKey);
+    if (!draft) { model.drive.open = false; return renderResources(); }
     const breadcrumbs = array(model.drive.data?.breadcrumbs);
     const items = array(model.drive.data?.items);
     setContent(`
@@ -983,16 +1229,6 @@
     if (select) select.innerHTML = moduleOptions(value("gcm-task-subject"), "", true);
   }
 
-  function updateResourceBranchOptions() {
-    const subjectId = value("gcm-resource-subject");
-    const moduleSelect = document.getElementById("gcm-resource-module");
-    if (moduleSelect && document.activeElement?.id === "gcm-resource-subject") {
-      moduleSelect.innerHTML = moduleOptions(subjectId, "", true);
-    }
-    const moduleId = value("gcm-resource-module");
-    const taskSelect = document.getElementById("gcm-resource-task");
-    if (taskSelect) taskSelect.innerHTML = taskOptions(subjectId, moduleId, "");
-  }
 
   function panelForm(title, body) {
     return `<section class="global-curriculum-panel"><div class="global-curriculum-panel-heading"><h3>${html(title)}</h3><button type="button" data-gcm-action="new">New</button></div><div class="global-curriculum-form">${body}</div></section>`;

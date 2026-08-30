@@ -1,24 +1,28 @@
-# Maktab4Life V103.1.0.2
+# Maktab4Life V103.1.0.3
 
-V103.1.0.2 is a focused Academy Home timetable display fix applied on top of **V103.1.0.1**.
+V103.1.0.3 is a focused **Global Resources management UI** refinement applied on top of V103.1.0.2.
 
 It does not advance the V103 Central Identity authority model and does not require the controlled V103.1 Identity Links migration to have been run.
 
-## Busy-day timetable cards
+## Global Resources inline editor
 
-Each Academy Home day card now keeps its day header fixed while its session list scrolls vertically inside the card. A day with more sessions than the available card height therefore remains complete instead of relying on the outer Academy Home layout.
+The Resources tab now uses a compact searchable list. Existing Resources expand inline beneath their summary row for editing, and multiple Resources can be changed before one screen-level Save.
 
-The session list uses its own touch-friendly scrolling and stable scrollbar space.
+The editor includes Drive file selection, display name, description, type, Global Subject, Module, Task, status, and derived format. New Resources are added with `+ Add a Global Resource`.
 
-## Chronological ordering
+## One batch Save
 
-Academy timetable ordering now compares actual time values rather than relying only on text sorting. This protects busy days from an unpadded time such as `9:30` being placed after `20:00`.
+Only dirty/new Resources are submitted. The Worker validates the complete set first and then writes all valid Resource changes in one Google Sheets batch update, increments `GlobalCurriculumVersion` once, and records one audit row per changed Resource.
 
-Both Worker delivery and the browser renderer apply the chronological safeguard.
+A stale screen version is rejected rather than overwriting newer Global Curriculum changes.
 
-## V103.1 Identity Links
+The Save icon is intentionally larger on this screen. It remains neutral when there is nothing to save and turns purple / more prominent whenever unsaved edits exist.
 
-The V103.1 controlled Identity Links migration remains separate and may still be pending. V103.1.0.2 does not read or require the new Reboot `AccountID` links for timetable delivery.
+## Global Resources folder
+
+Changing the protected Google Drive root remains a separate GLOBAL_ADMIN operation. It does not move files. The existing guard still refuses a new root unless every saved Drive-backed Global Resource is already inside that folder tree.
+
+Pending Resource edits must be saved or discarded before changing the root.
 
 ## Schema
 
@@ -27,7 +31,7 @@ No new Sheet migration is introduced:
 - keep `PlatformConfig!B3 = 102.0.8`;
 - keep **19 required Platform tabs**.
 
-See `docs/V103.1.0.2-ACADEMY-HOME-BUSY-DAY-SCROLLING.md` for implementation details.
+See `docs/V103.1.0.3-GLOBAL-RESOURCES-INLINE-BATCH-EDITOR.md` for details.
 
 ## Roadmap
 
