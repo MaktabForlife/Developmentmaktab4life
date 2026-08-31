@@ -1,6 +1,10 @@
-# Maktab4Life V104.5.1
+# Maktab4Life V104.5.2
 
 V104.5.1 refines the V104.5 Global Course scheduling workflow without changing the underlying DERIVED/EXPLICIT architecture.
+
+## V104.5.2 hotfix
+
+V104.5.2 fixes post-migration HTTP 503 failures caused by older runtime schema guards rejecting the current `PlatformSchemaVersion 102.0.11`. Central account authentication/revalidation, Academic Calendar and central-account migration verification now accept the current schema. This is code-only; do not rerun the Course scheduling migration.
 
 ## What changed
 
@@ -58,4 +62,7 @@ See:
 - V105 — Program Builder
 - V106 — Reboot Migration
 
-Final V104.5.1 verification: **65/65 backend test files passed** and **157/157 repository JS/MJS files passed Node syntax checking**. V104.4 read budgets remain at 23 direct-read call sites across 17 files with 15 batch-read call sites.
+V104.5.1 UI verification: **65/65 backend test files passed** and **157/157 repository JS/MJS files passed Node syntax checking**. V104.4 read budgets remain at 23 direct-read call sites across 17 files with 15 batch-read call sites.
+
+
+Final V104.5.2 verification: **65/65 backend test files passed** and **157/157 repository JS/MJS files passed Node syntax checking**.

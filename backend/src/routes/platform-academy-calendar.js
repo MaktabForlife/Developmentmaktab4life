@@ -14,7 +14,7 @@ import { json } from "../lib/http.js";
 import { getPlatformSpreadsheetId, readPlatformSheet } from "../lib/platform-sheet.js";
 import { isActivePlatformValue, normalizePlatformIdentifier, PLATFORM_SHEET_HEADERS } from "../lib/platform-schema.js";
 
-const CALENDAR_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9"]);
+const CALENDAR_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9", "102.0.10", "102.0.11"]);
 const GENERATED_PUBLIC_HOLIDAY_PREFIX = "SA-PUBLIC-HOLIDAY-";
 
 export async function getAcademyCalendarAdminEndpoint(request, env) {
@@ -425,7 +425,7 @@ async function readCalendarTables(env) {
 function requireCalendarSchema(configRows) {
   const matches = (configRows || []).filter(row => normalizePlatformIdentifier(row.ConfigKey) === "PLATFORMSCHEMAVERSION");
   const version = clean(matches[0]?.ConfigValue);
-  if (matches.length !== 1 || !CALENDAR_SCHEMA_VERSIONS.has(version)) throw new Error("Academic Calendar requires PlatformSchemaVersion 102.0.8 or 102.0.9");
+  if (matches.length !== 1 || !CALENDAR_SCHEMA_VERSIONS.has(version)) throw new Error("Academic Calendar requires PlatformSchemaVersion 102.0.8, 102.0.9, 102.0.10 or 102.0.11");
 }
 
 function uniqueCalendarEvent(rows, id) {

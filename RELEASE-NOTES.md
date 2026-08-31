@@ -1,3 +1,23 @@
+# V104.5.2 Release Notes — Platform Schema Compatibility Hotfix
+
+V104.5.2 fixes a post-migration compatibility regression in V104.5.1. The Course scheduling migration correctly moves `PlatformSchemaVersion` to `102.0.11`, but older central-auth and Academic Calendar guards still rejected schemas above `102.0.9`.
+
+The browser symptom is typically:
+
+```text
+Failed to load resource: the server responded with a status of 503 (check, line 0)
+```
+
+The `check` resource is `/api/account/check`. V104.5.2 updates the runtime guards so the current `102.0.11` Platform schema remains accepted across central account authentication/revalidation, Academic Calendar administration and central-account migration verification.
+
+This is a **code-only hotfix**. There are no new Sheet columns or tabs and no migration should be rerun. Existing V104.5/V104.5.1 DERIVED/EXPLICIT Course behaviour, inline publishing rules, session descriptions, V104.3 request deduplication and V104.4 read budgets are unchanged.
+
+Verification: **65/65 backend test files passed** and **157/157 JS/MJS syntax checks passed**.
+
+See `docs/V104.5.2-SCHEMA-COMPATIBILITY-HOTFIX.md`.
+
+---
+
 # V104.5.1 Release Notes — Course Publish & Session UI Refinement
 
 V104.5.1 is a focused refinement of the completed V104.5 DERIVED/EXPLICIT Global Course architecture. It does not change the Course scheduling model; it clarifies how Courses are edited, prepared and published.

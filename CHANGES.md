@@ -1,3 +1,19 @@
+# V104.5.2 Changes — Platform Schema Compatibility Hotfix
+
+Built directly on V104.5.1.
+
+- Fixed the HTTP 503 on `/api/account/check` after the Platform workbook is migrated to `102.0.11`.
+- Extended central account authentication/revalidation schema compatibility through `102.0.11`.
+- Extended Academic Calendar schema compatibility through `102.0.11`.
+- Extended the central account migration preview/verification guard through `102.0.11`.
+- Added regression coverage for all three post-migration paths.
+- No Sheet migration, business-rule, access-rule, Course scheduling, publication, cache or Program changes.
+- Worker/app version advanced to `104.5.2`.
+- Full backend regression: **65/65 test files passed**.
+- Repository JS/MJS syntax: **157/157 files passed**.
+
+---
+
 # V104.5.1 Changes — Course Publish & Session UI Refinement
 
 Built on the completed V104.5 DERIVED/EXPLICIT Course scheduling model.

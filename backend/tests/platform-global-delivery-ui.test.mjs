@@ -10,8 +10,8 @@ const [adminHtml, js, css, styles] = await Promise.all([
 
 assert.match(adminHtml, /data-gcm-course-action="show">Courses</);
 assert.doesNotMatch(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.1/);
-assert.match(adminHtml, /styles\.css\?v=104\.5\.1/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.2/);
+assert.match(adminHtml, /styles\.css\?v=104\.5\.2/);
 assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5\.1/);
 
 assert.match(js, /<h3>Courses<\/h3>/);
