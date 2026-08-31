@@ -1,23 +1,34 @@
-# V104.2 Release Notes — Program Batch Reads
+# V104.4 Release Notes — Read Metrics & Full Regression
 
-V104.2 reduces Google Sheets API pressure in Program/Reboot data paths without changing user-visible business behaviour.
+V104.4 turns the V104 Google Sheets reductions into enforced regression budgets without changing application behaviour or data ownership.
 
-## Academy Home
+## Read budgets now enforced
 
-Each active Program now uses a batched profile/config read followed by one batch for the authoritative timetable source. In the integration fixture, the one-Program Academy request falls from **6 total Sheets requests in V104.1 to 4 in V104.2**, versus 18 before the V104 optimisation phase.
+- Academy timetable, one published Program: **4 Sheets requests**.
+- Academy rolling seven-day load: **4 Sheets requests** — seven-day loading must not multiply backend Sheet reads.
+- Attendance report: **1 batch request** for 2 ranges.
+- Progress student/report/detail reads: **1 batch request** per operation for 4 ranges.
+- TeacherAssign timetable with configured Global Zoom: **2 requests**.
+- Compatibility path with the optional legacy Zoom fallback: **3 requests**.
 
-The two-stage Program design is intentional: `SystemConfig.TimetableLiveSource` first determines whether Published Timetable or TeacherAssign is authoritative, so V104.2 does not load both full timetable sources blindly.
+V104.4 also freezes the current source inventory at no more than 23 direct read call sites across 17 source files, while retaining at least 15 batch-read call sites.
 
-## Other Program reductions
+## Full regression gate
 
-- Progress required-table reads: 4 → 1 batch.
-- Attendance report: 2 → 1 batch.
-- Library curriculum options/validation: 3 → 1 batch.
-- TeacherAssign required reference tables: 4 → 1 batch.
-- V103.1 identity-link and legacy account-migration Reboot profile snapshots: 2 → 1 batch.
+A canonical `npm test` runner now executes every backend `*.test.mjs` file in isolation. The V104.4 build passes **62/62 backend test files**.
 
-## Compatibility
+## Google transient-read retries
 
-No schema migration. `PlatformConfig!B3` stays `102.0.9` and the Platform workbook remains at 19 required tabs.
+The Sheets client now follows the originally agreed V104 failure policy: one retry maximum for retryable Google read failures. A persistent transient failure therefore stops after two total attempts rather than allowing a second retry.
 
-Existing optional/missing-Sheet safeguards remain fail-safe; notably the obsolete `TimeTable` Zoom fallback and optional resource-sheet scans are not forced into a batch that could make a missing legacy tab break current functionality.
+## No user-facing metrics
+
+The read counters are test-only instrumentation. No diagnostic fields, Sheet counts or internal read information are added to normal API responses.
+
+## V104.3 boundary
+
+This V104.4 overlay is built on V104.2. V104.3 request-level read deduplication is not included and remains a separate pending optimisation; no cross-request data cache has been introduced.
+
+## Migration
+
+No Google Sheet migration is required. Keep `PlatformConfig!B3 = 102.0.9` and the existing 19 required Platform tabs.

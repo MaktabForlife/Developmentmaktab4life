@@ -1,13 +1,15 @@
-# V104.2 Changes — Program Batch Reads
+# V104.4 Changes — Read Metrics & Full Regression
 
-- Batched Academy Home Program profile/config reads and live timetable-source reads.
-- Academy integration fixture: total Sheets requests for one published Program reduced from 6 in V104.1 to 4 in V104.2 (18 before the V104 optimisation phase).
-- Batched TeacherAssign timetable reference tables; preserved dynamic timetable-source selection and optional legacy Zoom fallback behaviour.
-- Batched timetable global-Zoom update reference/config reads.
-- Batched Progress four-table snapshots.
-- Batched Attendance report StudentRecords + Attendance reads.
-- Batched Library SubjectList + ModuleList + TaskList option/validation reads.
-- Batched Reboot AdminRecords + StudentRecords reads in central migration/identity-link preview tooling.
-- No Sheet schema, permissions, access or publication-rule changes.
-- Added `docs/V104.2-PROGRAM-BATCH-READS.md`.
-- Worker/app version advanced to 104.2.
+- Added test-only Google Sheets HTTP read metrics and reusable read-budget assertions.
+- Locked Academy timetable to 4 Sheets requests for both normal and rolling seven-day one-Program loads.
+- Locked Attendance report to 1 batch request for its 2 required ranges.
+- Locked Student Progress, Progress report and Progress detail to 1 batch request per operation.
+- Added timetable read budgets for configured Global Zoom and tolerant legacy Zoom fallback paths.
+- Added a source-level read audit: maximum 23 direct read call sites across 17 files; minimum 15 batch-read call sites.
+- Added `npm test` full backend regression runner; V104.4 passes 62/62 test files.
+- Reduced retryable Google Sheets GET policy from two retries to the agreed **one retry maximum**.
+- Added persistent-failure regression proving retryable reads stop after two total attempts.
+- Added `docs/V104.4-READ-METRICS-AND-REGRESSION.md`.
+- No Sheet schema, permissions, access, timetable, Attendance, Progress, Planner, resource or publication-rule changes.
+- V104.3 request-level deduplication remains separate and is not included in this overlay.
+- Worker/app version advanced to 104.4.

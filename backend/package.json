@@ -1,8 +1,10 @@
 {
   "name": "rebootworker",
-  "version": "104.2.0",
+  "version": "104.4.0",
   "type": "module",
   "scripts": {
+    "test": "node tests/run-all.mjs",
+    "test:v104.4-read-audit": "node tests/v104-read-audit.test.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env=\"\" --keep-vars",
     "deploy:development": "wrangler deploy --env development --keep-vars",

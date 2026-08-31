@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import worker from "../src/worker.js";
+import { assertSheetsReadBudget, createSheetsReadMetrics } from "./helpers/sheets-read-metrics.mjs";
 
 const studentRows = [
   ["StudentID", "Username", "ClassGroup", "Active"],
@@ -112,6 +113,7 @@ const teacherToken = await makeSessionToken({
 const originalFetch = globalThis.fetch;
 const requestedRanges = [];
 let missingSheetName = "";
+const sheetsReadMetrics = createSheetsReadMetrics();
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -121,6 +123,7 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (url.hostname === "sheets.googleapis.com") {
+    sheetsReadMetrics.record(url, init);
     assert.equal(init.headers.Authorization, "Bearer mock-progress-token");
     if (url.pathname.endsWith("/values:batchGet")) {
       const ranges = url.searchParams.getAll("ranges");
@@ -159,6 +162,7 @@ function progressRowsForRange(range) {
 }
 
 try {
+  const studentTasksMetricMark = sheetsReadMetrics.mark();
   const studentTasks = await post(
     "/api/tasks/student",
     studentToken,
@@ -172,6 +176,13 @@ try {
     studentTasks.response.headers.get("X-M4L-Backend-Source"),
     "fixed"
   );
+  assertSheetsReadBudget(sheetsReadMetrics, studentTasksMetricMark, {
+    totalRequests: 1,
+    batchGets: 1,
+    directReads: 0,
+    rangeCount: 4,
+    spreadsheets: { "test-spreadsheet": 1 }
+  }, "Student Progress task list");
   assert.equal(studentTasks.data.studentid, "ST1", "Students must only receive their own tasks");
   assert.equal(studentTasks.data.count, 2);
   assert.deepEqual(
@@ -186,12 +197,20 @@ try {
   assert.equal(studentTasks.data.tasks[1].displayCompleteStatus, "to be completed");
   assert.equal(studentTasks.data.tasks[0].graphiclink, "graphic-1");
 
+  const teacherReportMetricMark = sheetsReadMetrics.mark();
   const teacherReport = await post(
     "/api/progress/tasks",
     teacherToken,
     { studentid: "ALL", classgroup: "ALL", subjectid: "ALL" },
     directEnv
   );
+  assertSheetsReadBudget(sheetsReadMetrics, teacherReportMetricMark, {
+    totalRequests: 1,
+    batchGets: 1,
+    directReads: 0,
+    rangeCount: 4,
+    spreadsheets: { "test-spreadsheet": 1 }
+  }, "Progress report");
   assert.deepEqual(teacherReport.data.filters, {
     studentid: "ALL",
     classgroup: "2",
@@ -207,12 +226,20 @@ try {
   assert.deepEqual(teacherReport.data.students.map(student => student.studentid), ["ST1"]);
   assert.deepEqual(teacherReport.data.groups.map(group => group.classgroup), ["2"]);
 
+  const adminDetailMetricMark = sheetsReadMetrics.mark();
   const adminDetail = await post(
     "/api/progress/task-detail",
     adminToken,
     { studentid: "ALL", classgroup: "ALL", subjectid: "ALL", taskid: "ALL" },
     directEnv
   );
+  assertSheetsReadBudget(sheetsReadMetrics, adminDetailMetricMark, {
+    totalRequests: 1,
+    batchGets: 1,
+    directReads: 0,
+    rangeCount: 4,
+    spreadsheets: { "test-spreadsheet": 1 }
+  }, "Progress detail");
   assert.equal(adminDetail.data.success, true);
   assert.deepEqual(adminDetail.data.filters, {
     studentid: "ALL",

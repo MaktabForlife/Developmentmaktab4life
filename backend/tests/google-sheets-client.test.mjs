@@ -33,6 +33,7 @@ const env = {
 const calls = [];
 let oauthCalls = 0;
 let retryReadAttempts = 0;
+let retryFailureAttempts = 0;
 const originalFetch = globalThis.fetch;
 
 globalThis.fetch = async (input, init = {}) => {
@@ -62,11 +63,16 @@ globalThis.fetch = async (input, init = {}) => {
     }
 
     if (method === "GET" && url.pathname.includes("/values/")) {
-      if (decodeURIComponent(url.pathname).includes("/values/Retry!A:B")) {
+      const decodedPath = decodeURIComponent(url.pathname);
+      if (decodedPath.includes("/values/Retry!A:B")) {
         retryReadAttempts += 1;
         if (retryReadAttempts === 1) {
           return response({ error: { message: "Temporary quota pressure" } }, 503);
         }
+      }
+      if (decodedPath.includes("/values/RetryFail!A:B")) {
+        retryFailureAttempts += 1;
+        return response({ error: { message: "Persistent quota pressure" } }, 503);
       }
       return response({ values: [["Header"], ["Value"]] });
     }
@@ -138,6 +144,11 @@ try {
   assert.deepEqual(retriedRows, [["Header"], ["Value"]]);
   assert.equal(retryReadAttempts, 2, "A retryable GET should be retried once before succeeding");
   await assert.rejects(
+    () => readGoogleSheetValues(env, "RetryFail!A:B"),
+    error => error?.status === 503 && error?.retryable === true
+  );
+  assert.equal(retryFailureAttempts, 2, "V104.4 must stop after one retry for a persistent transient Google read failure");
+  await assert.rejects(
     () => batchUpdateGoogleSheetValues(env, []),
     /requires at least one range/
   );
@@ -149,7 +160,7 @@ try {
   assert.equal(oauthCalls, 1, "The reusable client should reuse a valid access token");
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 10);
+  assert.equal(sheetsCalls.length, 12);
 
   assert.equal(sheetsCalls[0].method, "GET");
   assert.equal(sheetsCalls[0].url.pathname.endsWith("/values/Data!A%3AB"), true);
@@ -217,6 +228,8 @@ try {
   ]);
   assert.equal(sheetsCalls[8].url.pathname.endsWith("/values/Retry!A%3AB"), true);
   assert.equal(sheetsCalls[9].url.pathname.endsWith("/values/Retry!A%3AB"), true);
+  assert.equal(sheetsCalls[10].url.pathname.endsWith("/values/RetryFail!A%3AB"), true);
+  assert.equal(sheetsCalls[11].url.pathname.endsWith("/values/RetryFail!A%3AB"), true);
 } finally {
   globalThis.fetch = originalFetch;
 }

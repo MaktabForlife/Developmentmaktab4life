@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import worker from "../src/worker.js";
+import { assertSheetsReadBudget, createSheetsReadMetrics } from "./helpers/sheets-read-metrics.mjs";
 import { buildTimetableResponse } from "../src/routes/timetable.js";
 
 const teacherRows = [
@@ -229,6 +230,7 @@ const auditRows = [[
 ]];
 let missingSheetName = "";
 let directLegacyRows = legacyRows.map(row => row.slice());
+const sheetsReadMetrics = createSheetsReadMetrics();
 const systemConfigRows = [
   ["StudentLoginBaseUrl", "https://development.example.test/student/"]
 ];
@@ -241,6 +243,7 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (url.hostname === "sheets.googleapis.com") {
+    sheetsReadMetrics.record(url, init);
     assert.equal(init.headers.Authorization, "Bearer mock-timetable-token");
 
     if (url.pathname.endsWith("/values:batchGet")) {
@@ -318,6 +321,7 @@ try {
   assert.equal(unauthorized.headers.get("X-M4L-Feature"), "timetable-read");
   assert.equal(unauthorized.headers.get("X-M4L-Backend"), "google-sheets");
 
+  const studentReadMetricMark = sheetsReadMetrics.mark();
   const studentResult = await postTimetable(
     "/api/student/timetable/get",
     studentToken,
@@ -325,6 +329,13 @@ try {
     directEnv
   );
   assert.equal(studentResult.response.status, 200);
+  assertSheetsReadBudget(sheetsReadMetrics, studentReadMetricMark, {
+    totalRequests: 3,
+    batchGets: 1,
+    directReads: 2,
+    rangeCount: 6,
+    spreadsheets: { "test-spreadsheet": 3 }
+  }, "TeacherAssign timetable with tolerant legacy Zoom fallback");
   assert.equal(studentResult.data.groupno, "1", "Student reads must use the authenticated group");
   assert.equal(studentResult.data.teacherid, "ALL", "Students must not filter out other teachers");
   assert.deepEqual(
@@ -445,12 +456,20 @@ try {
   )));
 
   requestedRanges.length = 0;
+  const configuredReadMetricMark = sheetsReadMetrics.mark();
   const configuredRead = await postTimetable(
     "/api/admin/timetable/get",
     teachingAdminToken,
     {},
     directEnv
   );
+  assertSheetsReadBudget(sheetsReadMetrics, configuredReadMetricMark, {
+    totalRequests: 2,
+    batchGets: 1,
+    directReads: 1,
+    rangeCount: 5,
+    spreadsheets: { "test-spreadsheet": 2 }
+  }, "TeacherAssign timetable with configured global Zoom");
   assert.equal(configuredRead.data.zoomsource, "SystemConfig");
   assert.equal(configuredRead.data.zoomlink, "https://zoom.test/direct-global");
   assert.equal(requestedRanges.includes("TimeTable!A:ZZ"), false, "Configured reads must not depend on TimeTable");

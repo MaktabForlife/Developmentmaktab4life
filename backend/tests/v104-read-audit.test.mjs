@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const testsDir = path.dirname(fileURLToPath(import.meta.url));
+const srcDir = path.resolve(testsDir, "../src");
+const files = await listJavaScriptFiles(srcDir);
+const directCallSites = [];
+const batchCallSites = [];
+
+for (const file of files) {
+  const text = await readFile(file, "utf8");
+  const relative = path.relative(srcDir, file).replaceAll(path.sep, "/");
+  collectCalls(text, "readGoogleSheetValues", relative, directCallSites);
+  collectCalls(text, "batchReadGoogleSheetValues", relative, batchCallSites);
+}
+
+const directOperational = directCallSites.filter(item => !(
+  item.file === "lib/google-sheets.js" && item.line.includes("function readGoogleSheetValues")
+));
+const batchOperational = batchCallSites.filter(item => !(
+  item.file === "lib/google-sheets.js" && item.line.includes("function batchReadGoogleSheetValues")
+));
+const directFiles = new Set(directOperational.map(item => item.file));
+
+assert.ok(
+  directOperational.length <= 23,
+  `V104.4 guardrail: direct Google Sheets read call sites increased above the V104.2 baseline (found ${directOperational.length}, budget 23)`
+);
+assert.ok(
+  directFiles.size <= 17,
+  `V104.4 guardrail: files containing direct read call sites increased above the V104.2 baseline (found ${directFiles.size}, budget 17)`
+);
+assert.ok(
+  batchOperational.length >= 15,
+  `V104.4 guardrail: batch-read call sites fell below the V104.2 baseline (found ${batchOperational.length}, expected at least 15)`
+);
+
+console.log(
+  `V104.4 read-path audit passed: ${directOperational.length} direct call sites across ${directFiles.size} files; ${batchOperational.length} batch-read call sites.`
+);
+
+async function listJavaScriptFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const result = [];
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) result.push(...await listJavaScriptFiles(fullPath));
+    else if (entry.isFile() && entry.name.endsWith(".js")) result.push(fullPath);
+  }
+  return result;
+}
+
+function collectCalls(text, functionName, file, output) {
+  const lines = text.split(/\r?\n/);
+  const needle = `${functionName}(`;
+  lines.forEach((line, index) => {
+    if (!line.includes(needle)) return;
+    output.push({ file, lineNumber: index + 1, line: line.trim() });
+  });
+}

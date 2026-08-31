@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import worker from "../src/worker.js";
+import { assertSheetsReadBudget, createSheetsReadMetrics } from "./helpers/sheets-read-metrics.mjs";
 
 const studentRows = [
   ["StudentID", "Username", "ClassGroup", "Active"],
@@ -81,6 +82,7 @@ const auditRows = [[
 ]];
 let attendanceRows = attendanceRowsFixture.map(row => row.slice());
 let missingSheetName = "";
+const sheetsReadMetrics = createSheetsReadMetrics();
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
@@ -90,6 +92,7 @@ globalThis.fetch = async (input, init = {}) => {
   }
 
   if (url.hostname === "sheets.googleapis.com") {
+    sheetsReadMetrics.record(url, init);
     assert.equal(init.headers.Authorization, "Bearer mock-attendance-token");
 
     if (url.pathname.endsWith("/values:batchGet")) {
@@ -173,6 +176,7 @@ try {
     ]
   );
 
+  const reportMetricMark = sheetsReadMetrics.mark();
   const reportResult = await postAttendance(
     "/api/attendance/report",
     teacherToken,
@@ -185,6 +189,13 @@ try {
   );
   assert.equal(reportResult.response.status, 200);
   assert.equal(reportResult.response.headers.get("X-M4L-Feature"), "attendance-read");
+  assertSheetsReadBudget(sheetsReadMetrics, reportMetricMark, {
+    totalRequests: 1,
+    batchGets: 1,
+    directReads: 0,
+    rangeCount: 2,
+    spreadsheets: { "test-spreadsheet": 1 }
+  }, "Attendance report");
   assert.equal(reportResult.data.classgroup, "1");
   assert.equal(reportResult.data.totalMaktabDays, 2);
   assert.equal(reportResult.data.registerAverageAttendancePercent, 66.7);

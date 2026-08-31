@@ -1,7 +1,7 @@
-/* M4L V102.8.2 - Reusable direct Google Sheets client.
+/* M4L V104.4 - Reusable direct Google Sheets client.
    Keeps service-account authentication, token caching and generic Sheets value
    operations independent from feature-specific Worker routes. Read requests
-   use bounded retry/backoff, and related ranges can be fetched in one batch.
+   use one bounded retry with backoff, and related ranges can be fetched in one batch.
 */
 
 import { assertGoogleServiceAccountEmailMatches } from "./google-service-account-email.js";
@@ -14,7 +14,7 @@ let accessTokenCache = {
 let accessTokenPromise = null;
 
 const RETRYABLE_GOOGLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const GOOGLE_READ_MAX_ATTEMPTS = 3;
+const GOOGLE_READ_MAX_ATTEMPTS = 2;
 const GOOGLE_READ_RETRY_BASE_MS = 250;
 const GOOGLE_READ_RETRY_MAX_MS = 2000;
 
