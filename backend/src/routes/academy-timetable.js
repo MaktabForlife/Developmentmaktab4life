@@ -1,4 +1,4 @@
-/* M4L V104.3 - Platform + Program batched rolling Academy timetable with request-local read reuse. */
+/* M4L V104.4 - Platform + Program batched rolling Academy timetable with request-local read reuse. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "104.3",
+      version: "104.4",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,

@@ -49,7 +49,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "104.3",
+      version: "104.4",
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),

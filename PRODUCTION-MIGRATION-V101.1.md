@@ -128,9 +128,24 @@ The final architecture release must not be declared Production-ready until a com
 - Rollback requires code rollback only; no data rollback action is required.
 - Keep the V103.1 Identity Links and V103.1.0.5 Courses migrations already completed in Development; V104.3 does not rerun or alter them.
 
-## Roadmap after V104.3
+## V104.4 — Read Metrics & Full Regression
 
-- V104.4 — read metrics/final optimisation regression gate.
+**Data/schema migration:** none.
+
+- Built on the completed V104.3 request-level read-deduplication layer.
+- Adds test-only request metrics/guardrails for the V104.1/V104.2 batching and V104.3 deduplication foundation.
+- Academy one-Program and rolling seven-day fixture: 4 total Sheets requests.
+- Attendance report: 1 batch request.
+- Progress guarded read operations: 1 batch request each.
+- Configured TeacherAssign timetable fixture: 2 requests; tolerant legacy Zoom fallback fixture: 3.
+- Source read-path boundary: 23 direct read call sites across 17 files and at least 15 batch-read call sites.
+- Full backend regression is available through `cd backend && npm test`; final V104.4 tree contains 63 backend test files.
+- Retryable Google Sheets GET failures allow one retry maximum (two total attempts).
+- V104.3 request-local deduplication and write invalidation remain active. No cross-request Sheet-data cache is introduced.
+- No rollback data action is required; code rollback restores the prior read/retry/test behaviour.
+
+## Roadmap after V104.4
+
 - V105 — generic Program Builder.
 - V106 — Reboot migration into the generic Program architecture.
 

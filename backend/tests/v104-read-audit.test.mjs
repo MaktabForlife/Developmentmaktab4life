@@ -26,15 +26,15 @@ const directFiles = new Set(directOperational.map(item => item.file));
 
 assert.ok(
   directOperational.length <= 23,
-  `V104.4 guardrail: direct Google Sheets read call sites increased above the V104.2 baseline (found ${directOperational.length}, budget 23)`
+  `V104.4 guardrail: direct Google Sheets read call sites increased above the V104.3 final optimisation baseline (found ${directOperational.length}, budget 23)`
 );
 assert.ok(
   directFiles.size <= 17,
-  `V104.4 guardrail: files containing direct read call sites increased above the V104.2 baseline (found ${directFiles.size}, budget 17)`
+  `V104.4 guardrail: files containing direct read call sites increased above the V104.3 final optimisation baseline (found ${directFiles.size}, budget 17)`
 );
 assert.ok(
   batchOperational.length >= 15,
-  `V104.4 guardrail: batch-read call sites fell below the V104.2 baseline (found ${batchOperational.length}, expected at least 15)`
+  `V104.4 guardrail: batch-read call sites fell below the V104.3 final optimisation baseline (found ${batchOperational.length}, expected at least 15)`
 );
 
 console.log(

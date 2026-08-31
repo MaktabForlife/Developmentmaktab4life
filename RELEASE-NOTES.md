@@ -1,36 +1,38 @@
-# V104.3 Release Notes — Request-Level Read Deduplication
+# V104.4 Release Notes — Google Sheets Read Metrics & Full Regression
 
-V104.3 prevents the same Google Sheet range from being fetched more than once inside one Worker request, without adding any cross-request or persistent data cache.
+V104.4 is the final verification stage of the V104 Google Sheets read-optimisation phase. It is built on V104.3, so request-level read deduplication remains fully active.
 
-## Request-local read context
+## Measured guardrails
 
-The router creates a new private environment wrapper for every routed request. Its Google Sheets read map is inherited by authenticated Course environment wrappers but is never attached to the shared Cloudflare Worker `env` object.
+The regression suite now asserts real mocked Google Sheets HTTP request budgets rather than relying only on code inspection:
 
-Exact reads are cached by SpreadsheetID and normalized A1 range. Repeated and concurrent calls reuse the same promise/result. This applies across single reads and overlapping `batchGet` calls.
+- Academy timetable, one published Program: **4** Sheets requests.
+- Academy rolling seven-day load: **4** Sheets requests.
+- Attendance report: **1** batch request.
+- Student Progress task list: **1** batch request.
+- Progress report: **1** batch request.
+- Progress detail: **1** batch request.
+- TeacherAssign timetable with configured Global Zoom: **2** Sheets requests.
+- TeacherAssign timetable with tolerant legacy Zoom fallback: **3** Sheets requests.
 
-## Batch interoperability
+The seven-day Academy guardrail proves that expanding the returned timetable window does not multiply underlying Google reads.
 
-If a batch asks for ranges already loaded earlier in the request, only the missing ranges are sent to Google. Likewise, a later single-range read can reuse a range returned by an earlier batch. Duplicate ranges supplied inside one batch are fetched once.
+## V104.3 retained
 
-## Write invalidation
+The final V104.4 tree still deduplicates exact SpreadsheetID + A1-range reads inside one Worker request, including overlapping batches and concurrent requests from helpers. Successful Sheet writes invalidate the affected request-local spreadsheet cache. No Sheet-data cache persists across Worker requests.
 
-Successful value updates, appends, value batch updates, and spreadsheet batch updates invalidate cached reads for the affected spreadsheet. This protects read-after-write behaviour within the same request.
+## Read-path audit
 
-## Isolation and compatibility
+The current source boundary is 23 operational direct-read call sites across 17 source files and 15 operational batch-read call sites. V104.4 fails regression if direct-read usage grows above this boundary or batch-read usage drops below it.
 
-- No cache is shared between Worker requests.
-- No TTL/KV/D1/Redis cache is introduced.
-- Cached arrays are copied before being returned to callers.
-- Different spreadsheets never share cached ranges.
-- Different A1 ranges are not treated as equivalent.
-- No Sheet schema or business/access rules change.
+## Google failure policy
 
-## Regression coverage
+Retryable Google read failures now allow one retry after the original attempt. Persistent 429/5xx failures stop after two total attempts and remain authoritative failures; they are never converted to empty rows.
 
-A dedicated V104.3 test verifies repeated reads, concurrent in-flight reuse, batch/single overlap, spreadsheet separation, Course-environment inheritance, request isolation, defensive copies, and mutation invalidation.
+## Full regression
 
-## Verification
+V104.4 adds a canonical `npm test` runner that executes every backend `*.test.mjs` file in isolation. The final tree contains 63 backend test files, including the V104.3 request-deduplication regression and the V104.4 read-audit regression. Final verification also passed Node syntax checking for all 154 JS/MJS files in the repository tree.
 
-- Full backend regression: **62/62 test files passed**.
-- Node syntax verification: **140/140 backend/src, backend/tests and app JS/MJS files passed**.
-- No files are deleted by the V104.3 overlay.
+## Compatibility
+
+No Google Sheet migration is required. `PlatformConfig!B3` remains `102.0.9` with 19 required Platform tabs. No business, access, identity, publication or data-ownership rule changes are included.
