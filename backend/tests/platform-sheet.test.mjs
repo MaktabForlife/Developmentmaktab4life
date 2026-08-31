@@ -11,6 +11,7 @@ import {
   assertCourseContextAccess,
   getPlatformSpreadsheetId,
   readPlatformSheet,
+  readPlatformSheets,
   resolveActiveCourseRegistration,
   selectAutomaticAccountContext,
   selectAutomaticCourseContext
@@ -107,6 +108,10 @@ const courseRows = [
     "",
     ""
   ]
+];
+const platformConfigRows = [
+  PLATFORM_SHEET_HEADERS.PlatformConfig,
+  ["PlatformSchemaVersion", "102.0.9", "", "", ""]
 ];
 assert.deepEqual(validatePlatformSheetRows("CourseRegistry", courseRows)[0], {
   _rowNumber: 2,
@@ -286,6 +291,15 @@ globalThis.fetch = async (input, init = {}) => {
     return response({ access_token: "platform-token", expires_in: 3600 });
   }
   if (url.hostname === "sheets.googleapis.com") {
+    if (url.pathname.endsWith("/values:batchGet")) {
+      const ranges = url.searchParams.getAll("ranges");
+      return response({
+        valueRanges: ranges.map(range => ({
+          range,
+          values: range.includes("PlatformConfig") ? platformConfigRows : sheetsValues
+        }))
+      });
+    }
     return response({ values: sheetsValues });
   }
   throw new Error(`Unexpected fetch: ${url}`);
@@ -294,6 +308,9 @@ globalThis.fetch = async (input, init = {}) => {
 try {
   const rows = await readPlatformSheet(env, "CourseRegistry");
   assert.equal(rows.length, 1);
+  const batched = await readPlatformSheets(env, ["CourseRegistry", "PlatformConfig"]);
+  assert.equal(batched.CourseRegistry.length, 1);
+  assert.equal(batched.PlatformConfig[0].ConfigKey, "PlatformSchemaVersion");
   const registration = await resolveActiveCourseRegistration(env, "course1");
   assert.deepEqual(registration, {
     courseId: "COURSE1",
@@ -313,14 +330,19 @@ try {
   sheetsValues = courseRows;
 
   const sheetsCalls = calls.filter(call => call.url.hostname === "sheets.googleapis.com");
-  assert.equal(sheetsCalls.length, 3);
+  assert.equal(sheetsCalls.length, 4);
   sheetsCalls.forEach(call => {
     assert.equal(
-      call.url.pathname.startsWith("/v4/spreadsheets/central-platform-sheet/values/"),
+      call.url.pathname.startsWith("/v4/spreadsheets/central-platform-sheet/"),
       true,
       "Platform reads must never fall back to GOOGLE_SPREADSHEET_ID"
     );
   });
+  assert.equal(sheetsCalls[1].url.pathname.endsWith("/values:batchGet"), true);
+  assert.deepEqual(sheetsCalls[1].url.searchParams.getAll("ranges"), [
+    "'CourseRegistry'!A:K",
+    "'PlatformConfig'!A:E"
+  ]);
   assert.equal(sheetsCalls[0].url.pathname.endsWith("/values/'CourseRegistry'!A%3AK"), true);
 } finally {
   globalThis.fetch = originalFetch;

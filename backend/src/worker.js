@@ -1,4 +1,4 @@
-/* M4L V103.1.0.5 - Courses workspace and Course-level FREE/PAID access on the V103.1 Central Identity Link foundation.
+/* M4L V104.1 - Platform batch-read optimisation on the V103.1 Central Identity foundation.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "103.1.0.5"
+          version: "104.1"
         });
       }
 

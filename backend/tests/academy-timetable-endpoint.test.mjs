@@ -146,14 +146,27 @@ const studentToken = await createSessionToken({
 }, env);
 
 const originalFetch = globalThis.fetch;
+const sheetsRequests = [];
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
   if (url.hostname === "oauth2.googleapis.com") {
     return response({ access_token: "academy-oauth", expires_in: 3600 });
   }
   if (url.hostname !== "sheets.googleapis.com") throw new Error(`Unexpected fetch ${url}`);
+  sheetsRequests.push(url);
   assert.equal(init.headers.Authorization, "Bearer academy-oauth");
   const spreadsheet = /spreadsheets\/([^/]+)/.exec(url.pathname)?.[1] || "";
+  if (url.pathname.endsWith("/values:batchGet")) {
+    const ranges = url.searchParams.getAll("ranges");
+    return response({
+      spreadsheetId: spreadsheet,
+      valueRanges: ranges.map(range => ({
+        range,
+        majorDimension: "ROWS",
+        values: lookupRange(spreadsheet, range)
+      }))
+    });
+  }
   const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
   const rows = lookupRange(spreadsheet, range);
   return response({ range, majorDimension: "ROWS", values: rows });
@@ -171,7 +184,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "103.1.0.5");
+  assert.equal(body.version, "104.1");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -205,6 +218,15 @@ try {
     "busy days must retain every Program/Global session in chronological order"
   );
   assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002", "AE0003"]);
+
+  const firstRequestSheetsCalls = sheetsRequests.slice();
+  const firstRequestPlatformCalls = firstRequestSheetsCalls.filter(url => url.pathname.includes("/spreadsheets/platform-sheet/"));
+  const firstRequestCourseCalls = firstRequestSheetsCalls.filter(url => url.pathname.includes("/spreadsheets/course-sheet-one/"));
+  assert.equal(firstRequestPlatformCalls.length, 2, "Platform-scope Academy Home should use one credential-row read plus one Platform batchGet");
+  assert.equal(firstRequestCourseCalls.length, 4, "V104.1 intentionally leaves per-Program batching for V104.2");
+  const platformBatch = firstRequestPlatformCalls.find(url => url.pathname.endsWith("/values:batchGet"));
+  assert.ok(platformBatch, "Academy Home must use Platform batchGet");
+  assert.equal(platformBatch.searchParams.getAll("ranges").length, 13, "Academy Home Platform state should be fetched in one 13-range batch");
 
   const sevenDayResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
@@ -274,7 +296,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V103.1.0.5 rolling-range Academy timetable and Course-access integration test passed.");
+console.log("V104.1 Platform-batched rolling Academy timetable integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {

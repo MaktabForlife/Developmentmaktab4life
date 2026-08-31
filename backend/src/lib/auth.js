@@ -4,6 +4,7 @@ import { accessibleGlobalSubjectIds } from "./global-subject-delivery.js";
 import {
   getPlatformSpreadsheetId,
   readPlatformSheet,
+  readPlatformSheets,
   resolveActiveCourseRegistration
 } from "./platform-sheet.js";
 import {
@@ -535,11 +536,14 @@ async function validateCentralAccountSession(payload, env) {
   if (tokenScope === "GLOBAL") {
     if (tokenRole !== "STUDENT") return null;
 
-    const [accessRecords, policyRows, globalSubjects] = await Promise.all([
-      readPlatformSheet(env, "GlobalSubjectAccessMatrix"),
-      readPlatformSheet(env, "GlobalSubjectAccessPolicy"),
-      readPlatformSheet(env, "GlobalSubjectList")
+    const globalTables = await readPlatformSheets(env, [
+      "GlobalSubjectAccessMatrix",
+      "GlobalSubjectAccessPolicy",
+      "GlobalSubjectList"
     ]);
+    const accessRecords = globalTables.GlobalSubjectAccessMatrix;
+    const policyRows = globalTables.GlobalSubjectAccessPolicy;
+    const globalSubjects = globalTables.GlobalSubjectList;
     const accessibleIds = accessibleGlobalSubjectIds({
       account: {
         AccountID: String(accountRow[0] || "").trim(),

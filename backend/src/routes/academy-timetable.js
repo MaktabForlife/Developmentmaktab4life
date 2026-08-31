@@ -1,4 +1,4 @@
-/* M4L V103.1.0.5 - Rolling Academy timetable plus per-Course FREE/PAID entitlement. */
+/* M4L V104.1 - Platform-batched rolling Academy timetable plus per-Course FREE/PAID entitlement. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -7,7 +7,7 @@ import { resolveCurrentPublishedGlobalTimetable } from "../lib/global-timetable.
 import { readGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import {
-  readPlatformSheet
+  readPlatformSheets
 } from "../lib/platform-sheet.js";
 import {
   isActivePlatformValue,
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "103.1.0.5",
+      version: "104.1",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,
@@ -145,35 +145,35 @@ export async function getAcademyTimetableEndpoint(request, env) {
 }
 
 async function loadPlatformAcademyState(env) {
-  const [config, accounts, courses, courseAccess, subjects, policies, matrix, runs, runState, publications, lifecycle, publishedSessions, academyCalendar] = await Promise.all([
-    readPlatformSheet(env, "PlatformConfig"),
-    readPlatformSheet(env, "UserAccounts"),
-    readPlatformSheet(env, "CourseRegistry"),
-    readPlatformSheet(env, "UserCourseAccess"),
-    readPlatformSheet(env, "GlobalSubjectList"),
-    readPlatformSheet(env, "GlobalSubjectAccessPolicy"),
-    readPlatformSheet(env, "GlobalSubjectAccessMatrix"),
-    readPlatformSheet(env, "GlobalSubjectRuns"),
-    readPlatformSheet(env, "GlobalTimetableRunState"),
-    readPlatformSheet(env, "GlobalTimetablePublications"),
-    readPlatformSheet(env, "GlobalTimetableSessionLifecycle"),
-    readPlatformSheet(env, "PublishedGlobalTimetableSessions"),
-    readPlatformSheet(env, "AcademyCalendar")
+  const tables = await readPlatformSheets(env, [
+    "PlatformConfig",
+    "UserAccounts",
+    "CourseRegistry",
+    "UserCourseAccess",
+    "GlobalSubjectList",
+    "GlobalSubjectAccessPolicy",
+    "GlobalSubjectAccessMatrix",
+    "GlobalSubjectRuns",
+    "GlobalTimetableRunState",
+    "GlobalTimetablePublications",
+    "GlobalTimetableSessionLifecycle",
+    "PublishedGlobalTimetableSessions",
+    "AcademyCalendar"
   ]);
   return {
-    config,
-    accounts,
-    courses,
-    courseAccess,
-    subjects,
-    policies,
-    matrix,
-    runs,
-    academyCalendar,
-    GlobalTimetableRunState: runState,
-    GlobalTimetablePublications: publications,
-    GlobalTimetableSessionLifecycle: lifecycle,
-    PublishedGlobalTimetableSessions: publishedSessions
+    config: tables.PlatformConfig,
+    accounts: tables.UserAccounts,
+    courses: tables.CourseRegistry,
+    courseAccess: tables.UserCourseAccess,
+    subjects: tables.GlobalSubjectList,
+    policies: tables.GlobalSubjectAccessPolicy,
+    matrix: tables.GlobalSubjectAccessMatrix,
+    runs: tables.GlobalSubjectRuns,
+    academyCalendar: tables.AcademyCalendar,
+    GlobalTimetableRunState: tables.GlobalTimetableRunState,
+    GlobalTimetablePublications: tables.GlobalTimetablePublications,
+    GlobalTimetableSessionLifecycle: tables.GlobalTimetableSessionLifecycle,
+    PublishedGlobalTimetableSessions: tables.PublishedGlobalTimetableSessions
   };
 }
 

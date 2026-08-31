@@ -1,4 +1,4 @@
-/* M4L V102.10 - Central account authentication with FREE/SUBSCRIPTION global-subject contexts. */
+/* M4L V104.1 - Central account authentication with batched Platform reads and FREE/PAID contexts. */
 
 import {
   createAuthRateLimitKey,
@@ -15,6 +15,7 @@ import {
   assertCourseContextAccess,
   getPlatformSpreadsheetId,
   readPlatformSheet,
+  readPlatformSheets,
   resolveActiveCourseRegistration,
   selectAutomaticAccountContext
 } from "../lib/platform-sheet.js";
@@ -343,16 +344,26 @@ export async function switchAccountContextEndpoint(request, env) {
 export async function loadCentralAccountState(env, uniqueId, options = {}) {
   const includeContexts = options.includeContexts !== false;
   const includeAudit = options.includeAudit === true;
-  const [accounts, config, accessRecords, courses, globalAccessRecords, globalPolicies, globalSubjects, auditRecords] = await Promise.all([
-    readPlatformSheet(env, "UserAccounts"),
-    readPlatformSheet(env, "PlatformConfig"),
-    includeContexts ? readPlatformSheet(env, "UserCourseAccess") : Promise.resolve([]),
-    includeContexts ? readPlatformSheet(env, "CourseRegistry") : Promise.resolve([]),
-    includeContexts ? readPlatformSheet(env, "GlobalSubjectAccessMatrix") : Promise.resolve([]),
-    includeContexts ? readPlatformSheet(env, "GlobalSubjectAccessPolicy") : Promise.resolve([]),
-    includeContexts ? readPlatformSheet(env, "GlobalSubjectList") : Promise.resolve([]),
-    includeAudit ? readPlatformSheet(env, "PlatformAuditLog") : Promise.resolve([])
-  ]);
+  const sheetNames = ["UserAccounts", "PlatformConfig"];
+  if (includeContexts) {
+    sheetNames.push(
+      "UserCourseAccess",
+      "CourseRegistry",
+      "GlobalSubjectAccessMatrix",
+      "GlobalSubjectAccessPolicy",
+      "GlobalSubjectList"
+    );
+  }
+  if (includeAudit) sheetNames.push("PlatformAuditLog");
+  const tables = await readPlatformSheets(env, sheetNames);
+  const accounts = tables.UserAccounts;
+  const config = tables.PlatformConfig;
+  const accessRecords = tables.UserCourseAccess || [];
+  const courses = tables.CourseRegistry || [];
+  const globalAccessRecords = tables.GlobalSubjectAccessMatrix || [];
+  const globalPolicies = tables.GlobalSubjectAccessPolicy || [];
+  const globalSubjects = tables.GlobalSubjectList || [];
+  const auditRecords = tables.PlatformAuditLog || [];
   assertAccountSchemaVersion(config);
 
   const normalizedUniqueId = normalizePlatformIdentifier(uniqueId);

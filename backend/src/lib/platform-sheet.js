@@ -1,6 +1,6 @@
 /* M4L V102.5 - Fail-closed central course and global-subject access helpers. */
 
-import { readGoogleSheetValues } from "./google-sheets.js";
+import { batchReadGoogleSheetValues, readGoogleSheetValues } from "./google-sheets.js";
 import {
   authorityRank,
   isGlobalAdminAccount,
@@ -18,19 +18,48 @@ export function getPlatformSpreadsheetId(env) {
   return spreadsheetId;
 }
 
-export async function readPlatformSheet(env, sheetName) {
+export function getPlatformSheetReadRange(sheetName) {
   const headers = PLATFORM_SHEET_HEADERS[sheetName];
   if (!headers) {
     throw new Error(`Unknown Platform Sheet tab: ${sheetName}`);
   }
 
   const lastColumn = sheetName === "GlobalSubjectAccessMatrix" ? "ZZ" : columnName(headers.length);
+  return `${quoteSheetName(sheetName)}!A:${lastColumn}`;
+}
+
+export async function readPlatformSheet(env, sheetName) {
   const rows = await readGoogleSheetValues(
     env,
-    `${quoteSheetName(sheetName)}!A:${lastColumn}`,
+    getPlatformSheetReadRange(sheetName),
     { spreadsheetId: getPlatformSpreadsheetId(env) }
   );
   return validatePlatformSheetRows(sheetName, rows);
+}
+
+export async function readPlatformSheets(env, sheetNames) {
+  if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
+    throw new Error("Platform batch read requires at least one Sheet tab");
+  }
+
+  const normalizedNames = sheetNames.map(name => String(name || "").trim());
+  if (normalizedNames.some(name => !name)) {
+    throw new Error("Platform batch read Sheet names cannot be empty");
+  }
+  const uniqueNames = [...new Set(normalizedNames)];
+  if (uniqueNames.length !== normalizedNames.length) {
+    throw new Error("Platform batch read Sheet names must be unique");
+  }
+
+  const ranges = normalizedNames.map(getPlatformSheetReadRange);
+  const rowSets = await batchReadGoogleSheetValues(env, ranges, {
+    spreadsheetId: getPlatformSpreadsheetId(env)
+  });
+  const tables = {};
+  normalizedNames.forEach((sheetName, index) => {
+    tables[sheetName] = validatePlatformSheetRows(sheetName, rowSets[index] || []);
+  });
+  return tables;
 }
 
 export async function resolveActiveCourseRegistration(env, courseId) {

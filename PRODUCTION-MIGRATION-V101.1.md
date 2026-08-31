@@ -88,3 +88,15 @@ Append each future schema/data/config migration here as it is built. In particul
 ## Final migration gate
 
 V105 must not be declared Production-ready until a complete **V101.1 Production clone → final V105 state** migration rehearsal succeeds with no unresolved data, permissions or behaviour regressions.
+
+## V104.1 — Platform Batch Reads
+
+**Data/schema migration:** none.
+
+- Platform schema remains `102.0.9` with 19 required tabs.
+- Changes Google Sheets Platform read transport only: related Platform ranges are fetched through validated `values:batchGet` requests.
+- Academy Home Platform state: 13 reads → 1 batchGet.
+- Central account state: 2–8 Platform reads → 1 batchGet.
+- GLOBAL session access tables: 3 reads → 1 batchGet, plus the existing credential-row revalidation.
+- No Program/Reboot batch-read conversion yet.
+- No rollback data action is required; code rollback restores the previous individual-read transport.

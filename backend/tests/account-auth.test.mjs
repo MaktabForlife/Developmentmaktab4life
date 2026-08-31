@@ -166,16 +166,26 @@ globalThis.fetch = async (input, init = {}) => {
     return response({ totalUpdatedRows: payload.data.length });
   }
 
-  const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
-  if (init.method !== "GET") throw new Error(`Unexpected Sheets operation: ${init.method} ${range}`);
-  reads.push(range);
-  const fullMatch = /^'([^']+)'!A:([A-Z]+)$/.exec(range);
-  if (fullMatch && tables[fullMatch[1]]) return response({ values: tables[fullMatch[1]] });
-  const rowMatch = /^(UserAccounts|UserCourseAccess|UserGlobalSubjectAccess)!A(\d+):[A-Z]+\2$/.exec(range);
-  if (rowMatch) {
-    return response({ values: [tables[rowMatch[1]][Number(rowMatch[2]) - 1] || []] });
+  const lookupRows = range => {
+    const fullMatch = /^'([^']+)'!A:([A-Z]+)$/.exec(range);
+    if (fullMatch && tables[fullMatch[1]]) return tables[fullMatch[1]];
+    const rowMatch = /^(UserAccounts|UserCourseAccess|UserGlobalSubjectAccess)!A(\d+):[A-Z]+\2$/.exec(range);
+    if (rowMatch) return [tables[rowMatch[1]][Number(rowMatch[2]) - 1] || []];
+    throw new Error(`Unexpected account authentication range: ${range}`);
+  };
+
+  if (init.method !== "GET") throw new Error(`Unexpected Sheets operation: ${init.method} ${url.pathname}`);
+  if (url.pathname.endsWith("/values:batchGet")) {
+    const ranges = url.searchParams.getAll("ranges");
+    reads.push(...ranges);
+    return response({
+      valueRanges: ranges.map(range => ({ range, majorDimension: "ROWS", values: lookupRows(range) }))
+    });
   }
-  throw new Error(`Unexpected account authentication range: ${range}`);
+
+  const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
+  reads.push(range);
+  return response({ values: lookupRows(range) });
 };
 
 try {
