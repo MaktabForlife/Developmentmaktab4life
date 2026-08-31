@@ -1,10 +1,12 @@
-/* M4L V104.4 - Reusable direct Google Sheets client.
+/* M4L V104.3 - Reusable direct Google Sheets client with request-local reads.
    Keeps service-account authentication, token caching and generic Sheets value
    operations independent from feature-specific Worker routes. Read requests
-   use one bounded retry with backoff, and related ranges can be fetched in one batch.
+   use bounded retry/backoff, related ranges can be fetched in one batch, and
+   exact spreadsheet/range reads are deduplicated within one Worker request.
 */
 
 import { assertGoogleServiceAccountEmailMatches } from "./google-service-account-email.js";
+import { getRequestSheetsReadContext } from "./request-context.js";
 
 let accessTokenCache = {
   key: "",
@@ -14,7 +16,7 @@ let accessTokenCache = {
 let accessTokenPromise = null;
 
 const RETRYABLE_GOOGLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-const GOOGLE_READ_MAX_ATTEMPTS = 2;
+const GOOGLE_READ_MAX_ATTEMPTS = 3;
 const GOOGLE_READ_RETRY_BASE_MS = 250;
 const GOOGLE_READ_RETRY_MAX_MS = 2000;
 
@@ -39,15 +41,28 @@ export function isRetryableGoogleSheetsError(error) {
 }
 
 export async function readGoogleSheetValues(env, range, target = {}) {
-  const result = await callGoogleSheetsValuesApi(env, range, {
-    method: "GET",
-    query: {
-      majorDimension: "ROWS"
-    },
-    spreadsheetId: getGoogleSpreadsheetId(env, target)
-  });
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
+  const normalizedRange = normalizeReadRangeKey(range);
+  if (!normalizedRange) {
+    throw new Error("Google Sheets read range cannot be empty");
+  }
 
-  return Array.isArray(result.values) ? result.values : [];
+  const readContext = getRequestSheetsReadContext(env);
+
+  if (!readContext) {
+    return readGoogleSheetValuesUncached(env, normalizedRange, spreadsheetId);
+  }
+
+  const cache = getSpreadsheetReadCache(readContext, spreadsheetId);
+  let rowsPromise = cache.get(normalizedRange);
+
+  if (!rowsPromise) {
+    rowsPromise = readGoogleSheetValuesUncached(env, normalizedRange, spreadsheetId)
+      .then(rows => copyGoogleSheetRows(rows));
+    cache.set(normalizedRange, rowsPromise);
+  }
+
+  return copyGoogleSheetRows(await rowsPromise);
 }
 
 export async function batchReadGoogleSheetValues(env, ranges, target = {}) {
@@ -61,6 +76,58 @@ export async function batchReadGoogleSheetValues(env, ranges, target = {}) {
   }
 
   const spreadsheetId = getGoogleSpreadsheetId(env, target);
+  const readContext = getRequestSheetsReadContext(env);
+
+  if (!readContext) {
+    return batchReadGoogleSheetValuesUncached(env, normalizedRanges, spreadsheetId);
+  }
+
+  const cache = getSpreadsheetReadCache(readContext, spreadsheetId);
+  const missingRanges = [];
+  const seenMissingRanges = new Set();
+
+  for (const range of normalizedRanges) {
+    if (!cache.has(range) && !seenMissingRanges.has(range)) {
+      seenMissingRanges.add(range);
+      missingRanges.push(range);
+    }
+  }
+
+  if (missingRanges.length > 0) {
+    // Store one promise per requested range before awaiting the batch. A second
+    // helper that asks for any of these ranges concurrently reuses the same
+    // in-flight Google request instead of issuing another read.
+    const batchPromise = batchReadGoogleSheetValuesUncached(
+      env,
+      missingRanges,
+      spreadsheetId
+    );
+    missingRanges.forEach((range, index) => {
+      cache.set(
+        range,
+        batchPromise.then(rowSets => copyGoogleSheetRows(rowSets[index] || []))
+      );
+    });
+  }
+
+  return Promise.all(normalizedRanges.map(async range => (
+    copyGoogleSheetRows(await cache.get(range))
+  )));
+}
+
+async function readGoogleSheetValuesUncached(env, range, spreadsheetId) {
+  const result = await callGoogleSheetsValuesApi(env, range, {
+    method: "GET",
+    query: {
+      majorDimension: "ROWS"
+    },
+    spreadsheetId
+  });
+
+  return Array.isArray(result.values) ? result.values : [];
+}
+
+async function batchReadGoogleSheetValuesUncached(env, normalizedRanges, spreadsheetId) {
   const accessToken = await getGoogleSheetsAccessToken(env);
   const query = new URLSearchParams({ majorDimension: "ROWS" });
   normalizedRanges.forEach(range => query.append("ranges", range));
@@ -87,7 +154,8 @@ export async function batchReadGoogleSheetValues(env, ranges, target = {}) {
 }
 
 export async function updateGoogleSheetValues(env, range, values, target = {}) {
-  return callGoogleSheetsValuesApi(env, range, {
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
+  const result = await callGoogleSheetsValuesApi(env, range, {
     method: "PUT",
     query: {
       valueInputOption: "RAW"
@@ -97,12 +165,15 @@ export async function updateGoogleSheetValues(env, range, values, target = {}) {
       majorDimension: "ROWS",
       values
     },
-    spreadsheetId: getGoogleSpreadsheetId(env, target)
+    spreadsheetId
   });
+  invalidateSpreadsheetReadCache(env, spreadsheetId);
+  return result;
 }
 
 export async function appendGoogleSheetValues(env, range, values, target = {}) {
-  return callGoogleSheetsValuesApi(env, range, {
+  const spreadsheetId = getGoogleSpreadsheetId(env, target);
+  const result = await callGoogleSheetsValuesApi(env, range, {
     method: "POST",
     action: "append",
     query: {
@@ -114,8 +185,10 @@ export async function appendGoogleSheetValues(env, range, values, target = {}) {
       majorDimension: "ROWS",
       values
     },
-    spreadsheetId: getGoogleSpreadsheetId(env, target)
+    spreadsheetId
   });
+  invalidateSpreadsheetReadCache(env, spreadsheetId);
+  return result;
 }
 
 export async function batchUpdateGoogleSheetValues(env, data, target = {}) {
@@ -143,7 +216,9 @@ export async function batchUpdateGoogleSheetValues(env, data, target = {}) {
     })
   });
 
-  return parseGoogleSheetsResponse(response);
+  const result = await parseGoogleSheetsResponse(response);
+  invalidateSpreadsheetReadCache(env, spreadsheetId);
+  return result;
 }
 
 export async function readGoogleSpreadsheetSheetProperties(env, target = {}) {
@@ -189,7 +264,32 @@ export async function batchUpdateGoogleSpreadsheet(env, requests, target = {}) {
     },
     body: JSON.stringify({ requests })
   });
-  return parseGoogleSheetsResponse(response);
+  const result = await parseGoogleSheetsResponse(response);
+  invalidateSpreadsheetReadCache(env, spreadsheetId);
+  return result;
+}
+
+function normalizeReadRangeKey(range) {
+  return String(range ?? "").trim();
+}
+
+function getSpreadsheetReadCache(readContext, spreadsheetId) {
+  let cache = readContext.get(spreadsheetId);
+  if (!cache) {
+    cache = new Map();
+    readContext.set(spreadsheetId, cache);
+  }
+  return cache;
+}
+
+function invalidateSpreadsheetReadCache(env, spreadsheetId) {
+  const readContext = getRequestSheetsReadContext(env);
+  if (readContext) readContext.delete(spreadsheetId);
+}
+
+function copyGoogleSheetRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(row => (Array.isArray(row) ? [...row] : []));
 }
 
 function getGoogleSpreadsheetId(env, target = {}) {

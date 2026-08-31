@@ -1,4 +1,4 @@
-/* M4L V104.4 - Program batch-read optimisation on the V103.1 Central Identity foundation.
+/* M4L V104.3 - Request-scoped Google Sheets read deduplication on the V104.2 batch-read foundation.
    Wrangler bundles this entry point and its imported modules into one Worker.
 */
 import { corsResponse, json } from "./lib/http.js";
@@ -17,7 +17,7 @@ export default {
         return json({
           success: true,
           service: "rebootworker",
-          version: "104.4"
+          version: "104.3"
         });
       }
 

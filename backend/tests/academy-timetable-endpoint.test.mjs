@@ -3,7 +3,6 @@ import { createSaltedPinHash, createSessionToken } from "../src/lib/auth.js";
 import { PLATFORM_SHEET_HEADERS } from "../src/lib/platform-schema.js";
 import { PUBLISHED_TIMETABLE_SESSION_HEADERS, TIMETABLE_PUBLICATION_HEADERS, TIMETABLE_STATE_HEADERS } from "../src/lib/timetable-publication.js";
 import worker from "../src/worker.js";
-import { assertSheetsReadBudget, createSheetsReadMetrics } from "./helpers/sheets-read-metrics.mjs";
 
 const pinSecret = "academy-pin-secret";
 const sessionSecret = "academy-session-secret";
@@ -148,14 +147,12 @@ const studentToken = await createSessionToken({
 
 const originalFetch = globalThis.fetch;
 const sheetsRequests = [];
-const sheetsReadMetrics = createSheetsReadMetrics();
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input));
   if (url.hostname === "oauth2.googleapis.com") {
     return response({ access_token: "academy-oauth", expires_in: 3600 });
   }
   if (url.hostname !== "sheets.googleapis.com") throw new Error(`Unexpected fetch ${url}`);
-  sheetsReadMetrics.record(url, init);
   sheetsRequests.push(url);
   assert.equal(init.headers.Authorization, "Bearer academy-oauth");
   const spreadsheet = /spreadsheets\/([^/]+)/.exec(url.pathname)?.[1] || "";
@@ -176,7 +173,6 @@ globalThis.fetch = async (input, init = {}) => {
 };
 
 try {
-  const firstRequestMetricMark = sheetsReadMetrics.mark();
   const result = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
     headers: {
@@ -188,7 +184,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "104.4");
+  assert.equal(body.version, "104.3");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -227,7 +223,7 @@ try {
   const firstRequestPlatformCalls = firstRequestSheetsCalls.filter(url => url.pathname.includes("/spreadsheets/platform-sheet/"));
   const firstRequestCourseCalls = firstRequestSheetsCalls.filter(url => url.pathname.includes("/spreadsheets/course-sheet-one/"));
   assert.equal(firstRequestPlatformCalls.length, 2, "Platform-scope Academy Home should use one credential-row read plus one Platform batchGet");
-  assert.equal(firstRequestCourseCalls.length, 2, "V104.4 budget should retain one Program profile/config batch plus one live timetable-source batch");
+  assert.equal(firstRequestCourseCalls.length, 2, "V104.2 should use one Program profile/config batch plus one live timetable-source batch");
   const platformBatch = firstRequestPlatformCalls.find(url => url.pathname.endsWith("/values:batchGet"));
   assert.ok(platformBatch, "Academy Home must use Platform batchGet");
   assert.equal(platformBatch.searchParams.getAll("ranges").length, 13, "Academy Home Platform state should be fetched in one 13-range batch");
@@ -247,18 +243,7 @@ try {
     ],
     "Published Program timetable state should be fetched in one batch"
   );
-  const firstRequestBudget = assertSheetsReadBudget(sheetsReadMetrics, firstRequestMetricMark, {
-    totalRequests: 4,
-    batchGets: 3,
-    directReads: 1,
-    rangeCount: 18,
-    spreadsheets: {
-      "platform-sheet": 2,
-      "course-sheet-one": 2
-    }
-  }, "Academy timetable one-Program request");
 
-  const sevenDayMetricMark = sheetsReadMetrics.mark();
   const sevenDayResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
     headers: {
@@ -274,17 +259,6 @@ try {
   assert.equal(sevenDayBody.viewDays, 7);
   assert.equal(sevenDayBody.weekStart, "2026-08-24");
   assert.equal(sevenDayBody.weekEnd, "2026-09-06", "rolling seven-day loads may span two timetable weeks");
-  const sevenDayBudget = assertSheetsReadBudget(sheetsReadMetrics, sevenDayMetricMark, {
-    totalRequests: 4,
-    batchGets: 3,
-    directReads: 1,
-    rangeCount: 18,
-    spreadsheets: {
-      "platform-sheet": 2,
-      "course-sheet-one": 2
-    }
-  }, "Academy timetable rolling seven-day request");
-  assert.deepEqual(sevenDayBudget, firstRequestBudget, "Seven-day loading must not multiply Sheets reads compared with the normal Academy request shape");
 
   const studentRequestStart = sheetsRequests.length;
   const studentResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
@@ -347,7 +321,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V104.4 Academy timetable read-budget + rolling timetable integration test passed.");
+console.log("V104.2 Platform + Program batched rolling Academy timetable integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {

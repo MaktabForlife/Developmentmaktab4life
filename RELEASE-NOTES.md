@@ -1,34 +1,36 @@
-# V104.4 Release Notes — Read Metrics & Full Regression
+# V104.3 Release Notes — Request-Level Read Deduplication
 
-V104.4 turns the V104 Google Sheets reductions into enforced regression budgets without changing application behaviour or data ownership.
+V104.3 prevents the same Google Sheet range from being fetched more than once inside one Worker request, without adding any cross-request or persistent data cache.
 
-## Read budgets now enforced
+## Request-local read context
 
-- Academy timetable, one published Program: **4 Sheets requests**.
-- Academy rolling seven-day load: **4 Sheets requests** — seven-day loading must not multiply backend Sheet reads.
-- Attendance report: **1 batch request** for 2 ranges.
-- Progress student/report/detail reads: **1 batch request** per operation for 4 ranges.
-- TeacherAssign timetable with configured Global Zoom: **2 requests**.
-- Compatibility path with the optional legacy Zoom fallback: **3 requests**.
+The router creates a new private environment wrapper for every routed request. Its Google Sheets read map is inherited by authenticated Course environment wrappers but is never attached to the shared Cloudflare Worker `env` object.
 
-V104.4 also freezes the current source inventory at no more than 23 direct read call sites across 17 source files, while retaining at least 15 batch-read call sites.
+Exact reads are cached by SpreadsheetID and normalized A1 range. Repeated and concurrent calls reuse the same promise/result. This applies across single reads and overlapping `batchGet` calls.
 
-## Full regression gate
+## Batch interoperability
 
-A canonical `npm test` runner now executes every backend `*.test.mjs` file in isolation. The V104.4 build passes **62/62 backend test files**.
+If a batch asks for ranges already loaded earlier in the request, only the missing ranges are sent to Google. Likewise, a later single-range read can reuse a range returned by an earlier batch. Duplicate ranges supplied inside one batch are fetched once.
 
-## Google transient-read retries
+## Write invalidation
 
-The Sheets client now follows the originally agreed V104 failure policy: one retry maximum for retryable Google read failures. A persistent transient failure therefore stops after two total attempts rather than allowing a second retry.
+Successful value updates, appends, value batch updates, and spreadsheet batch updates invalidate cached reads for the affected spreadsheet. This protects read-after-write behaviour within the same request.
 
-## No user-facing metrics
+## Isolation and compatibility
 
-The read counters are test-only instrumentation. No diagnostic fields, Sheet counts or internal read information are added to normal API responses.
+- No cache is shared between Worker requests.
+- No TTL/KV/D1/Redis cache is introduced.
+- Cached arrays are copied before being returned to callers.
+- Different spreadsheets never share cached ranges.
+- Different A1 ranges are not treated as equivalent.
+- No Sheet schema or business/access rules change.
 
-## V104.3 boundary
+## Regression coverage
 
-This V104.4 overlay is built on V104.2. V104.3 request-level read deduplication is not included and remains a separate pending optimisation; no cross-request data cache has been introduced.
+A dedicated V104.3 test verifies repeated reads, concurrent in-flight reuse, batch/single overlap, spreadsheet separation, Course-environment inheritance, request isolation, defensive copies, and mutation invalidation.
 
-## Migration
+## Verification
 
-No Google Sheet migration is required. Keep `PlatformConfig!B3 = 102.0.9` and the existing 19 required Platform tabs.
+- Full backend regression: **62/62 test files passed**.
+- Node syntax verification: **140/140 backend/src, backend/tests and app JS/MJS files passed**.
+- No files are deleted by the V104.3 overlay.

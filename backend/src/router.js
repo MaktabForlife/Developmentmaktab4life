@@ -152,6 +152,7 @@ import {
   shouldLogBackendRouting
 } from "./lib/backend-routing.js";
 import { json } from "./lib/http.js";
+import { createRequestEnvironment } from "./lib/request-context.js";
 
 const ROUTES = new Map([
   ["/api/account/check", workerRoute("account-auth", checkAccountEndpoint)],
@@ -331,10 +332,14 @@ async function executeRoute(route, request, env, pathname) {
     });
   }
 
-  let requestEnv = env;
+  // Every routed request receives its own environment wrapper. V104.3 stores
+  // Google Sheets read promises on this wrapper, and Course environments
+  // inherit from it, so duplicate ranges can be reused only within this
+  // request. The original Cloudflare env object is never mutated.
+  let requestEnv = createRequestEnvironment(env);
   let course = null;
   if (route.courseScoped) {
-    const routed = await resolveCourseScopedRequest(request, env);
+    const routed = await resolveCourseScopedRequest(request, requestEnv);
     if (!routed.ok) return withBackendHeaders(routed.response, selection, routed.course);
     requestEnv = routed.env;
     course = routed.course;
