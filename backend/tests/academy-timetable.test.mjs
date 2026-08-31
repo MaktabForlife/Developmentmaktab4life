@@ -108,6 +108,16 @@ assert.equal(freeEvents[0].relevant, true);
 assert.equal(freeEvents[0].canOpenZoom, true);
 assert.equal(freeEvents[0].zoomLink, "https://zoom.test/global");
 
+const derivedPlatform = makeDerivedGlobalPlatform();
+const derivedEvents = buildGlobalCourseEvents(derivedPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-24", currentMinutes: 9 * 60 + 30 });
+assert.equal(derivedEvents.length, 1, "Academy must derive a published Course occurrence without a normal snapshot row");
+assert.equal(derivedEvents[0].date, "2026-08-24");
+assert.equal(derivedEvents[0].subjectName, "Derived Course Subject");
+assert.equal(derivedEvents[0].moduleName, "Derived Module");
+assert.equal(derivedEvents[0].teacherName, "Derived Teacher");
+assert.equal(derivedEvents[0].canOpenZoom, true);
+assert.equal(derivedPlatform.PublishedGlobalTimetableSessions.length, 0, "Derived Academy delivery must not require materialised normal session snapshots");
+
 const paidPlatform = makeGlobalPlatform("SUBSCRIPTION", false);
 const paidLabel = buildGlobalCourseEvents(paidPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
 assert.equal(paidLabel[0].visibilityLevel, "LABEL");
@@ -201,6 +211,34 @@ assert.deepEqual(
 );
 
 console.log("V103.1.0.5 Academy timetable Course FREE/PAID access, personalisation and current-session Zoom tests passed.");
+
+
+function makeDerivedGlobalPlatform() {
+  const scheduleDefinition = JSON.stringify([{
+    rulekey: "RULE-MON", days: ["MON"], starttime: "09:00", endtime: "10:00",
+    moduleid: "GMOD-DERIVED", teacheraccountid: "ACCOUNT1", zoomlink: "https://zoom.test/derived",
+    modulename: "Derived Module", teachername: "Derived Teacher"
+  }]);
+  return {
+    subjects: [{ SubjectID: "GSUBJ-DERIVED", SubjectName: "Derived Course Subject", Active: true }],
+    policies: [{ SubjectPolicyID: "GSPOL-DERIVED", SubjectID: "GSUBJ-DERIVED", AccessModel: "FREE", Active: true }],
+    matrix: [],
+    runs: [{
+      RunID: "GSRUN-DERIVED", SubjectID: "GSUBJ-DERIVED", RunName: "Derived Course Run",
+      StartDate: "2026-08-24", EndDate: "2026-08-30", Timezone: "Africa/Johannesburg", Active: true,
+      AccessModel: "FREE", ScheduleMode: "DERIVED", ScheduleDefinition: scheduleDefinition
+    }],
+    GlobalTimetableRunState: [{ RunID: "GSRUN-DERIVED", Stage: "PUBLISHED", CurrentPublicationID: "GTPUB-DERIVED" }],
+    GlobalTimetablePublications: [{
+      PublicationID: "GTPUB-DERIVED", RunID: "GSRUN-DERIVED", SubjectID: "GSUBJ-DERIVED", VersionNo: 1,
+      PublishedDate: "2026-08-23T00:00:00Z", PublishedByAccountID: "ADMIN", PublishedByAccountName: "Admin",
+      SessionCount: 1, ScheduleMode: "DERIVED", PublishStartDate: "2026-08-24", PublishEndDate: "2026-08-30",
+      ScheduleDefinition: scheduleDefinition, RunName: "Derived Course Run", SubjectName: "Derived Course Subject", Timezone: "Africa/Johannesburg"
+    }],
+    GlobalTimetableSessionLifecycle: [],
+    PublishedGlobalTimetableSessions: []
+  };
+}
 
 function makeGlobalPlatform(accessModel, subscribed, teacherAccountId = "TEACHER1", status = "SCHEDULED", courseAccessModel = "") {
   return {

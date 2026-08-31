@@ -8,7 +8,7 @@ const sessionSecret = "delivery-session-secret";
 const credentialHash = await createSaltedPinHash("2468", pinSecret);
 const tables = Object.fromEntries(Object.entries(PLATFORM_SHEET_HEADERS).map(([name, headers]) => [name, [headers]]));
 // Start deliberately on the deployed V103.1.0.4 / PlatformSchema 102.0.8 shape.
-tables.GlobalSubjectRuns = [PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, -1)];
+tables.GlobalSubjectRuns = [PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, 13)];
 tables.UserAccounts.push([
   "ACCOUNT1", "Global Admin", "GLOBAL-LINK", true, credentialHash, true, "", "2026-08-17T00:00:00.000Z",
   "", "", "", "", "", "GLOBAL_ADMIN"
@@ -112,6 +112,23 @@ try {
   assert.equal(tables.PlatformConfig[1][1], "102.0.9");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "MIGRATE_GLOBAL_COURSE_ACCESS_MODEL");
 
+  const schedulePreview = await post("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, token);
+  assert.equal(schedulePreview.response.status, 200, JSON.stringify(schedulePreview.data));
+  assert.equal(schedulePreview.data.canCommit, true);
+  assert.equal(schedulePreview.data.targetPlatformSchemaVersion, "102.0.10");
+  assert.equal(schedulePreview.data.existingCoursesPreservedAs, "EXPLICIT");
+  assert.equal(schedulePreview.data.newCourseDefault, "DERIVED");
+
+  const scheduleMigrated = await post("/api/admin/platform/global/courses/migrate-scheduling", {
+    commit: true, confirmation: "MIGRATE COURSE SCHEDULING"
+  }, token);
+  assert.equal(scheduleMigrated.response.status, 200, JSON.stringify(scheduleMigrated.data));
+  assert.equal(tables.GlobalSubjectRuns[0].at(-2), "ScheduleMode");
+  assert.equal(tables.GlobalSubjectRuns[0].at(-1), "ScheduleDefinition");
+  assert.equal(tables.GlobalSubjectRuns[1][14], "EXPLICIT");
+  assert.equal(tables.PlatformConfig[1][1], "102.0.10");
+  assert.equal(tables.PlatformAuditLog.at(-1)[6], "MIGRATE_GLOBAL_COURSE_SCHEDULING");
+
   // Subject FREE/PAID and Course FREE/PAID are separate concerns.
   const freeSubject = await post("/api/admin/platform/global/policy/save", { subjectId: "GSUBJ1", accessModel: "FREE" }, token);
   assert.equal(freeSubject.response.status, 200, JSON.stringify(freeSubject.data));
@@ -130,6 +147,7 @@ try {
   assert.equal(created.response.status, 200, JSON.stringify(created.data));
   assert.match(created.data.run.runid, /^GSRUN-/);
   assert.equal(created.data.run.accessmodel, "FREE");
+  assert.equal(created.data.run.schedulemode, "DERIVED", "New Courses default to derived scheduling after V104.5 migration");
   const createdRunId = created.data.run.runid;
 
   // A completed fixed Course is reusable. Existing historical sessions do not block a new delivery period.
@@ -186,7 +204,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V103.1.0.5 Course FREE/PAID migration, reusable fixed Courses, ongoing Courses and explicit archive tests passed.");
+console.log("V104.5 Course access + derived scheduling migrations, defaults and reusable Course tests passed.");
 
 async function post(path, body, bearer) {
   const responseValue = await worker.fetch(new Request(`https://worker.test${path}`, {
@@ -201,6 +219,13 @@ function applyWrite(write) {
   const wholeTable = /^'([^']+)'!A1:[A-Z]+(\d+)$/.exec(write.range);
   if (wholeTable) {
     tables[wholeTable[1]] = write.values.map(row => [...row]);
+    return;
+  }
+  const multiRow = /^'([^']+)'!A(\d+):[A-Z]+(\d+)$/.exec(write.range);
+  if (multiRow && Number(multiRow[3]) > Number(multiRow[2])) {
+    const sheetName = multiRow[1];
+    const startRow = Number(multiRow[2]);
+    write.values.forEach((values, offset) => { tables[sheetName][startRow + offset - 1] = [...values]; });
     return;
   }
   const fullRow = /^'([^']+)'!A(\d+):[A-Z]+\2$/.exec(write.range);

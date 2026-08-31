@@ -1,14 +1,24 @@
-# V104.4 Changes — Read Metrics & Full Regression
+# V104.5 Changes — Derived Course Scheduling
 
-- Rebuilt V104.4 on the completed V104.3 request-deduplicated Development baseline.
-- Preserved the V104.3 private request read context, single/batch overlap reuse, in-flight deduplication and write invalidation.
-- Added test-only Google Sheets HTTP read metrics and explicit request budgets for Academy timetable, Attendance, Progress and TeacherAssign timetable reads.
-- Added a source-level V104 read-path guardrail: 23 direct read call sites across 17 source files and at least 15 batch-read call sites.
-- Added canonical `cd backend && npm test` full-suite runner.
-- Added `test:v104.4-read-audit` npm script while retaining the V104.3 `test:request-read-dedup` script.
-- Aligned retryable Google Sheets GET failures to one retry maximum (two total attempts).
-- Added a regression proving persistent transient Google failures stop after the second attempt and remain failures.
-- Added `docs/V104.4-READ-METRICS-AND-REGRESSION.md`.
-- No Sheet schema, identity, permission, timetable, Attendance, Progress, Library, Planner, publication or data-ownership rules changed.
-- Worker/app version advanced to 104.4.
-- Final verification: 63/63 backend test files passed; 154/154 repository JS/MJS files passed Node syntax checking.
+- Added `DERIVED` and `EXPLICIT` Course scheduling modes, independent of FIXED/ONGOING Course Type.
+- New Courses default to DERIVED after the V104.5 schema migration.
+- Existing Courses are preserved as EXPLICIT by the migration so published behaviour is unchanged.
+- Added canonical JSON recurring `ScheduleDefinition` storage on `GlobalSubjectRuns`.
+- Added immutable ScheduleMode/publish-window/ScheduleDefinition/Course display snapshots to `GlobalTimetablePublications`.
+- Added `SessionKind`, `ScheduleRuleKey` and `OccurrenceDate` to source and published session tables.
+- DERIVED publication now materialises no normal recurring session rows; only `EXCEPTION` rows are stored/snapshotted.
+- Added stable virtual occurrence IDs (`GDERIVED:<RuleKey>:<YYYY-MM-DD>`).
+- Added `/api/admin/platform/global/timetable/session/materialize` for derived occurrence exceptions and one-off exact sessions.
+- Added `/api/admin/platform/global/courses/migrate-scheduling` controlled GLOBAL_ADMIN migration endpoint.
+- DERIVED Courses reject the explicit session-generation endpoint.
+- Derived exception edits are conflict-checked against virtual occurrences as well as stored exceptions.
+- Derived exceptions are blocked from the old reschedule endpoint; moved exceptions are edited in place against their stable occurrence anchor.
+- Academy timetable derives published Course occurrences directly from the immutable publication rule snapshot.
+- Fixed DERIVED Courses retain Academic Calendar/public-holiday context with zero normal source sessions.
+- Admin Courses UI adds Scheduling (`DERIVED` / `EXPLICIT sessions`), a one-time **Prepare Scheduling** migration banner and derived **Exceptions** editing.
+- EXPLICIT workflow remains available and regression-proven with a four-session workshop.
+- Platform schema advances `102.0.9 → 102.0.10`; required Platform tab count remains 19.
+- Added `docs/V104.5-DERIVED-COURSE-SCHEDULING.md` and schema header templates.
+- Worker/app version advanced to 104.5.
+- V104.1–V104.4 Google Sheets read optimisation/deduplication/metrics remain active and regression-protected.
+- Final verification: 64/64 backend test files passed; 156/156 repository JS/MJS files passed Node syntax checking.

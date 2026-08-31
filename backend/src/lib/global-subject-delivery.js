@@ -1,9 +1,14 @@
-/* M4L V103.1.0.5 - Global subject delivery plus per-Course FREE/PAID access metadata. */
+/* M4L V104.5 - Global subject delivery plus Course access and scheduling metadata. */
 
 import {
   isActivePlatformValue,
   normalizePlatformIdentifier
 } from "./platform-schema.js";
+import {
+  COURSE_SCHEDULE_MODE_EXPLICIT,
+  normalizeCourseScheduleMode,
+  parseCourseScheduleDefinition
+} from "./global-course-scheduling.js";
 
 export const GLOBAL_SUBJECT_ACCESS_MODELS = Object.freeze(["FREE", "SUBSCRIPTION"]);
 export const GLOBAL_SUBJECT_RUN_STATUSES = Object.freeze(["INACTIVE", "UPCOMING", "CURRENT", "ENDED"]);
@@ -225,6 +230,8 @@ export function mapGlobalSubjectRun(run, now = new Date()) {
     enddate: String(run?.EndDate || "").trim(),
     timezone: String(run?.Timezone || "").trim(),
     accessmodel: normalizePlatformIdentifier(run?.AccessModel),
+    schedulemode: normalizeCourseScheduleMode(run?.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT),
+    scheduledefinition: parseCourseScheduleDefinition(run?.ScheduleDefinition || "[]"),
     active: isActivePlatformValue(run?.Active),
     ongoing: isOngoingGlobalSubjectRun(run),
     status: deriveGlobalSubjectRunStatus(run, now)

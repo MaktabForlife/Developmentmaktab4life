@@ -298,7 +298,7 @@
 .global-course-grid-head,
 .global-course-grid-row {
   display:grid;
-  grid-template-columns:minmax(175px,1.45fr) minmax(145px,1.15fr) minmax(105px,.7fr) minmax(128px,.86fr) minmax(128px,.86fr) minmax(94px,.62fr) minmax(110px,.7fr) minmax(250px,1.6fr);
+  grid-template-columns:minmax(170px,1.35fr) minmax(140px,1.08fr) minmax(98px,.65fr) minmax(122px,.8fr) minmax(122px,.8fr) minmax(88px,.58fr) minmax(122px,.78fr) minmax(104px,.66fr) minmax(235px,1.5fr);
   gap:9px;
   align-items:center;
 }

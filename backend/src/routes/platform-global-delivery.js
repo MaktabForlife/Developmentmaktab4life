@@ -1,4 +1,4 @@
-/* M4L V103.1.0.5 - Global Courses metadata, FREE/PAID access and staged course-access schema migration. */
+/* M4L V104.5 - Global Courses metadata, access, derived scheduling and staged schema migrations. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -12,6 +12,15 @@ import {
   validateIsoDate
 } from "../lib/global-subject-delivery.js";
 import { batchUpdateGoogleSheetValues } from "../lib/google-sheets.js";
+import {
+  COURSE_SCHEDULE_MODE_DERIVED,
+  COURSE_SCHEDULE_MODE_EXPLICIT,
+  COURSE_SCHEDULE_MODES,
+  normalizeCourseScheduleMode,
+  parseCourseScheduleDefinition,
+  serializeCourseScheduleDefinition,
+  validateCourseScheduleRuleConflicts
+} from "../lib/global-course-scheduling.js";
 import { json } from "../lib/http.js";
 import {
   getPlatformSpreadsheetId,
@@ -29,6 +38,10 @@ const PLATFORM_TIMEZONE_CONFIG_KEY = "PLATFORMTIMEZONE";
 const COURSE_ACCESS_SCHEMA_VERSION = "102.0.9";
 const LEGACY_COURSE_ACCESS_SCHEMA_VERSION = "102.0.8";
 const COURSE_ACCESS_MODELS = new Set(["FREE", "PAID"]);
+const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.10";
+const LEGACY_COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.9";
+const COURSE_SCHEDULE_MODE_SET = new Set(COURSE_SCHEDULE_MODES);
+const HTTPS_URL_PATTERN = /^https:\/\//i;
 
 export async function getPlatformGlobalDeliveryEndpoint(request, env) {
   const permission = await requireDeliveryAdmin(request, env);
@@ -44,6 +57,7 @@ export async function getPlatformGlobalDeliveryEndpoint(request, env) {
       platformTimezone: readPlatformTimezone(tables.PlatformConfig),
       platformSchemaVersion: readPlatformSchemaVersion(tables.PlatformConfig).value,
       courseAccessSchemaReady: tables.GlobalSubjectRuns._courseAccessSchemaReady === true,
+      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION,
       subjects: tables.GlobalSubjectList.map(subject => mapDeliverySubject(subject, tables, now)),
       policies: tables.GlobalSubjectAccessPolicy.map(mapPolicy),
       runs: tables.GlobalSubjectRuns.map(run => mapCourseRun(run, tables, now))
@@ -143,6 +157,9 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const requestedTimezone = clean(body.timezone);
     const requestedActive = readBoolean(body.active, runId ? null : true);
     const requestedAccessModel = normalizePlatformIdentifier(body.accessModel || body.accessmodel);
+    const requestedScheduleMode = normalizePlatformIdentifier(body.scheduleMode || body.schedulemode);
+    const hasScheduleDefinition = Object.prototype.hasOwnProperty.call(body, "scheduleDefinition") || Object.prototype.hasOwnProperty.call(body, "scheduledefinition");
+    const requestedScheduleDefinition = body.scheduleDefinition ?? body.scheduledefinition;
     const requestedOngoing = body.ongoing === undefined
       ? (!startDate && !endDate)
       : readBoolean(body.ongoing, false);
@@ -163,8 +180,12 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const tables = await readDeliveryTables(env);
     const platformTimezone = readPlatformTimezone(tables.PlatformConfig);
     const courseAccessSchemaReady = tables.GlobalSubjectRuns._courseAccessSchemaReady === true;
+    const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION;
     if (!courseAccessSchemaReady) {
       throw clientError("Run the V103.1.0.5 Course access migration before saving Courses", 409);
+    }
+    if (!courseScheduleSchemaReady) {
+      throw clientError("Run the V104.5 Course scheduling migration before saving Courses", 409);
     }
     const timezone = existingTimezoneCandidate(runId, tables.GlobalSubjectRuns) || requestedTimezone || platformTimezone;
     if (!isValidIanaTimezone(timezone)) throw clientError("Platform timezone is invalid", 409);
@@ -179,6 +200,18 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     if (!COURSE_ACCESS_MODELS.has(accessModel)) {
       throw clientError("Course AccessModel must be FREE or PAID", 400);
     }
+    const scheduleMode = requestedScheduleMode
+      ? normalizeCourseScheduleMode(requestedScheduleMode, "")
+      : normalizeCourseScheduleMode(existing?.ScheduleMode, runId ? COURSE_SCHEDULE_MODE_EXPLICIT : COURSE_SCHEDULE_MODE_DERIVED);
+    if (!COURSE_SCHEDULE_MODE_SET.has(scheduleMode) || (requestedScheduleMode && scheduleMode !== requestedScheduleMode)) {
+      throw clientError("Course ScheduleMode must be DERIVED or EXPLICIT", 400);
+    }
+    let scheduleDefinition = clean(existing?.ScheduleDefinition) || "[]";
+    if (hasScheduleDefinition) {
+      scheduleDefinition = normalizeCourseScheduleDefinitionForSave(requestedScheduleDefinition, tables, subject);
+    } else if (!existing) {
+      scheduleDefinition = "[]";
+    }
     if (existing) {
       const timetableState = tables.GlobalTimetableRunState.find(row => (
         normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(existing.RunID)
@@ -187,6 +220,8 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
         const wouldChange = [
           [existing.RunName, runName], [existing.StartDate, startDate], [existing.EndDate, endDate],
           [normalizePlatformIdentifier(existing.AccessModel), accessModel],
+          [normalizeCourseScheduleMode(existing.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT), scheduleMode],
+          [clean(existing.ScheduleDefinition) || "[]", scheduleDefinition],
           [String(isActivePlatformValue(existing.Active)), String(requestedActive)]
         ].some(([left, right]) => String(left ?? "") !== String(right ?? ""));
         if (wouldChange) throw clientError("Revise timetable before modifying a published course", 409);
@@ -213,7 +248,9 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       ModifiedByAccountID: permission.user.accountid,
       ModifiedByAccountName: permission.user.username,
       ModifiedDate: timestamp,
-      AccessModel: courseAccessSchemaReady ? accessModel : clean(existing.AccessModel)
+      AccessModel: courseAccessSchemaReady ? accessModel : clean(existing.AccessModel),
+      ScheduleMode: scheduleMode,
+      ScheduleDefinition: scheduleDefinition
     } : {
       RunID: createPlatformId("GSRUN"),
       SubjectID: clean(subject.SubjectID),
@@ -228,12 +265,14 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       ModifiedByAccountID: "",
       ModifiedByAccountName: "",
       ModifiedDate: "",
-      AccessModel: courseAccessSchemaReady ? accessModel : ""
+      AccessModel: courseAccessSchemaReady ? accessModel : "",
+      ScheduleMode: scheduleMode,
+      ScheduleDefinition: scheduleDefinition
     };
 
     const changedFields = existing
-      ? changedRecordFields(existing, record, ["RunName", "StartDate", "EndDate", "Timezone", "Active", "AccessModel"])
-      : ["SubjectID", "RunName", "StartDate", "EndDate", "Timezone", "Active", ...(courseAccessSchemaReady ? ["AccessModel"] : [])];
+      ? changedRecordFields(existing, record, ["RunName", "StartDate", "EndDate", "Timezone", "Active", "AccessModel", "ScheduleMode", "ScheduleDefinition"])
+      : ["SubjectID", "RunName", "StartDate", "EndDate", "Timezone", "Active", "AccessModel", "ScheduleMode", "ScheduleDefinition"];
     if (existing && changedFields.length === 0) {
       return json({
         success: true,
@@ -251,7 +290,8 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       recordType: "GLOBAL_SUBJECT_RUN",
       recordId: record.RunID,
       changedFields,
-      timestamp
+      timestamp,
+      timetableStateDirty: changedFields.some(field => ["ScheduleMode", "ScheduleDefinition", "StartDate", "EndDate"].includes(field))
     });
 
     return json({
@@ -305,7 +345,9 @@ export async function migratePlatformGlobalCourseAccessEndpoint(request, env) {
       throw clientError(`Course access migration supports PlatformSchemaVersion ${LEGACY_COURSE_ACCESS_SCHEMA_VERSION} or ${COURSE_ACCESS_SCHEMA_VERSION}`, 409);
     }
     const timestamp = new Date().toISOString();
-    const runHeaders = PLATFORM_SHEET_HEADERS.GlobalSubjectRuns;
+    // Keep the V103.1 Course-access migration at its historical 14-column boundary.
+    // V104.5 adds ScheduleMode/ScheduleDefinition only in the separate scheduling migration.
+    const runHeaders = PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, 14);
     const runRows = tables.GlobalSubjectRuns.map(run => ({ ...run, AccessModel: resolveCourseAccessModel(run, tables) }));
     const writes = [{
       range: `'GlobalSubjectRuns'!A1:${columnName(runHeaders.length)}${Math.max(1, runRows.length + 1)}`,
@@ -333,6 +375,155 @@ export async function migratePlatformGlobalCourseAccessEndpoint(request, env) {
   }
 }
 
+export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env) {
+  const permission = await requireDeliveryAdmin(request, env);
+  if (!permission.ok) return permission.response;
+  if (permission.user.role !== "GLOBAL_ADMIN") {
+    return json({ success: false, error: "GLOBAL_ADMIN authority is required for the V104.5 Course scheduling migration" }, 403);
+  }
+  try {
+    const body = await request.json();
+    const commit = body.commit === true;
+    const tables = await readDeliveryTables(env);
+    const [publications, publishedSessions] = await Promise.all([
+      readPlatformSheet(env, "GlobalTimetablePublications"),
+      readPlatformSheet(env, "PublishedGlobalTimetableSessions")
+    ]);
+    const schema = readPlatformSchemaVersion(tables.PlatformConfig);
+    const ready = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true &&
+      tables.GlobalTimetableSessions._courseScheduleSchemaReady === true &&
+      publications._courseScheduleSchemaReady === true &&
+      publishedSessions._courseScheduleSchemaReady === true &&
+      schema.value === COURSE_SCHEDULE_SCHEMA_VERSION;
+    const proposed = tables.GlobalSubjectRuns.map(run => ({
+      runid: clean(run.RunID),
+      runname: clean(run.RunName),
+      schedulemode: normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT),
+      existingSourceSessions: tables.GlobalTimetableSessions.filter(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(run.RunID)).length
+    }));
+
+    if (!commit) {
+      return json({
+        success: true,
+        canCommit: !ready,
+        courseScheduleSchemaReady: ready,
+        platformSchemaVersion: schema.value,
+        targetPlatformSchemaVersion: COURSE_SCHEDULE_SCHEMA_VERSION,
+        courseCount: proposed.length,
+        courses: proposed,
+        existingCoursesPreservedAs: COURSE_SCHEDULE_MODE_EXPLICIT,
+        newCourseDefault: COURSE_SCHEDULE_MODE_DERIVED,
+        confirmationText: "MIGRATE COURSE SCHEDULING"
+      });
+    }
+    if (normalizePlatformIdentifier(body.confirmation) !== "MIGRATE COURSE SCHEDULING") {
+      throw clientError("Enter MIGRATE COURSE SCHEDULING to confirm the V104.5 Course scheduling migration", 400);
+    }
+    if (ready) {
+      return json({
+        success: true,
+        message: "V104.5 Course scheduling schema is already current",
+        courseScheduleSchemaReady: true,
+        platformSchemaVersion: schema.value
+      });
+    }
+    if (schema.value !== LEGACY_COURSE_SCHEDULE_SCHEMA_VERSION) {
+      throw clientError(`V104.5 Course scheduling migration requires PlatformSchemaVersion ${LEGACY_COURSE_SCHEDULE_SCHEMA_VERSION}`, 409);
+    }
+    if (tables.GlobalSubjectRuns._courseAccessSchemaReady !== true) {
+      throw clientError("Complete the Course FREE/PAID migration before V104.5 Course scheduling", 409);
+    }
+
+    const timestamp = new Date().toISOString();
+    const runRows = tables.GlobalSubjectRuns.map(run => ({
+      ...run,
+      ScheduleMode: normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT),
+      ScheduleDefinition: clean(run.ScheduleDefinition) || "[]"
+    }));
+    const sourceRows = tables.GlobalTimetableSessions.map(session => ({
+      ...session,
+      SessionKind: normalizePlatformIdentifier(session.SessionKind) || "EXPLICIT",
+      ScheduleRuleKey: clean(session.ScheduleRuleKey),
+      OccurrenceDate: clean(session.OccurrenceDate)
+    }));
+    const snapshotByPublication = new Map();
+    for (const snapshot of publishedSessions) {
+      const key = normalizePlatformIdentifier(snapshot.PublicationID);
+      if (!key) continue;
+      if (!snapshotByPublication.has(key)) snapshotByPublication.set(key, []);
+      snapshotByPublication.get(key).push(snapshot);
+    }
+    const runById = new Map(runRows.map(run => [normalizePlatformIdentifier(run.RunID), run]));
+    const subjectById = new Map(tables.GlobalSubjectList.map(subject => [normalizePlatformIdentifier(subject.SubjectID), subject]));
+    const publicationRows = publications.map(publication => {
+      const snapshots = snapshotByPublication.get(normalizePlatformIdentifier(publication.PublicationID)) || [];
+      const dates = snapshots.map(row => clean(row.SessionDate)).filter(validateIsoDate).sort();
+      const first = snapshots[0] || {};
+      const run = runById.get(normalizePlatformIdentifier(publication.RunID));
+      const subject = subjectById.get(normalizePlatformIdentifier(publication.SubjectID));
+      return {
+        ...publication,
+        ScheduleMode: normalizeCourseScheduleMode(publication.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT),
+        PublishStartDate: clean(publication.PublishStartDate) || dates[0] || clean(run?.StartDate),
+        PublishEndDate: clean(publication.PublishEndDate) || dates.at(-1) || clean(run?.EndDate),
+        ScheduleDefinition: clean(publication.ScheduleDefinition) || "[]",
+        RunName: clean(publication.RunName) || clean(first.RunName) || clean(run?.RunName),
+        SubjectName: clean(publication.SubjectName) || clean(first.SubjectName) || clean(subject?.SubjectName),
+        Timezone: clean(publication.Timezone) || clean(first.Timezone) || clean(run?.Timezone)
+      };
+    });
+    const publishedRows = publishedSessions.map(snapshot => ({
+      ...snapshot,
+      SessionKind: normalizePlatformIdentifier(snapshot.SessionKind) || "EXPLICIT",
+      ScheduleRuleKey: clean(snapshot.ScheduleRuleKey),
+      OccurrenceDate: clean(snapshot.OccurrenceDate)
+    }));
+
+    const writes = [
+      fullTableWrite("GlobalSubjectRuns", runRows),
+      fullTableWrite("GlobalTimetableSessions", sourceRows),
+      fullTableWrite("GlobalTimetablePublications", publicationRows),
+      fullTableWrite("PublishedGlobalTimetableSessions", publishedRows),
+      {
+        range: `'PlatformConfig'!B${schema.rowNumber}:E${schema.rowNumber}`,
+        majorDimension: "ROWS",
+        values: [[COURSE_SCHEDULE_SCHEMA_VERSION, timestamp, permission.user.accountid, permission.user.username]]
+      },
+      valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), [
+        createPlatformId("AUDIT"), timestamp, permission.user.accountid, permission.user.username,
+        permission.user.role, "", "MIGRATE_GLOBAL_COURSE_SCHEDULING", "PLATFORM_SCHEMA",
+        COURSE_SCHEDULE_SCHEMA_VERSION,
+        JSON.stringify([
+          "GlobalSubjectRuns.ScheduleMode", "GlobalSubjectRuns.ScheduleDefinition",
+          "GlobalTimetableSessions.SessionKind", "GlobalTimetableSessions.ScheduleRuleKey", "GlobalTimetableSessions.OccurrenceDate",
+          "GlobalTimetablePublications.ScheduleMode", "GlobalTimetablePublications.PublishStartDate", "GlobalTimetablePublications.PublishEndDate", "GlobalTimetablePublications.ScheduleDefinition",
+          "PublishedGlobalTimetableSessions.SessionKind", "PublishedGlobalTimetableSessions.ScheduleRuleKey", "PublishedGlobalTimetableSessions.OccurrenceDate",
+          "PlatformSchemaVersion"
+        ])
+      ])
+    ];
+    await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+    return json({
+      success: true,
+      message: `${runRows.length} existing Course${runRows.length === 1 ? "" : "s"} preserved as EXPLICIT; new Courses now default to DERIVED`,
+      courseScheduleSchemaReady: true,
+      platformSchemaVersion: COURSE_SCHEDULE_SCHEMA_VERSION,
+      migrated: runRows.length
+    });
+  } catch (error) {
+    return deliveryMutationError(error, env);
+  }
+}
+
+function fullTableWrite(sheetName, records) {
+  const headers = PLATFORM_SHEET_HEADERS[sheetName];
+  return {
+    range: `'${sheetName}'!A1:${columnName(headers.length)}${Math.max(1, records.length + 1)}`,
+    majorDimension: "ROWS",
+    values: [headers, ...records.map(record => recordToRow(record, headers))]
+  };
+}
+
 async function requireDeliveryAdmin(request, env) {
   const user = await getAuthUser(request, env);
   if (!user) return { ok: false, response: json({ success: false, error: "Unauthorized" }, 401) };
@@ -358,6 +549,7 @@ async function readDeliveryTables(env) {
   const names = [
     "GlobalSubjectList",
     "GlobalModuleList",
+    "UserAccounts",
     "GlobalSubjectAccessPolicy",
     "GlobalSubjectRuns",
     "GlobalSubjectAccessMatrix",
@@ -387,15 +579,78 @@ async function writeDeliveryMutation(env, user, tables, mutation) {
     mutation.recordId,
     JSON.stringify(mutation.changedFields)
   ];
-  await batchUpdateGoogleSheetValues(env, [
+  const writes = [
     valueWrite(mutation.sheetName, mutation.rowNumber, recordToRow(mutation.record, headers)),
     {
       range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
       majorDimension: "ROWS",
       values: [[nextVersion, mutation.timestamp, user.accountid, user.username]]
-    },
-    valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow)
-  ], { spreadsheetId: getPlatformSpreadsheetId(env) });
+    }
+  ];
+  const audits = [auditRow];
+  if (mutation.timetableStateDirty && mutation.record?.RunID) {
+    const stateMutation = buildCourseDevelopmentStateMutation(tables, mutation.record.RunID, user, mutation.timestamp);
+    if (stateMutation) {
+      writes.push(stateMutation.write);
+      audits.push(stateMutation.audit);
+    }
+  }
+  writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
+  await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+}
+
+function normalizeCourseScheduleDefinitionForSave(value, tables, subject) {
+  let rules;
+  try {
+    rules = parseCourseScheduleDefinition(value || [], {
+      createRuleKey: () => createPlatformId("GCRULE")
+    });
+    validateCourseScheduleRuleConflicts(rules);
+  } catch (error) {
+    throw clientError(error.message || "Course schedule definition is invalid", 400);
+  }
+  for (const rule of rules) {
+    if (rule.moduleid) {
+      const matches = tables.GlobalModuleList.filter(row => normalizePlatformIdentifier(row.ModuleID) === normalizePlatformIdentifier(rule.moduleid));
+      if (matches.length !== 1 || normalizePlatformIdentifier(matches[0].SubjectID) !== normalizePlatformIdentifier(subject.SubjectID) || !isActivePlatformValue(matches[0].Active)) {
+        throw clientError("Every derived Course module must be active and belong to the selected Global Subject", 409);
+      }
+    }
+    if (rule.teacheraccountid) {
+      const matches = tables.UserAccounts.filter(row => normalizePlatformIdentifier(row.AccountID) === normalizePlatformIdentifier(rule.teacheraccountid));
+      if (matches.length !== 1 || !isActivePlatformValue(matches[0].Active)) {
+        throw clientError("Every derived Course teacher must be an active central account", 409);
+      }
+    }
+    if (rule.zoomlink && !HTTPS_URL_PATTERN.test(rule.zoomlink)) {
+      throw clientError("Course schedule Zoom links must be blank or HTTPS URLs", 400);
+    }
+  }
+  return serializeCourseScheduleDefinition(rules);
+}
+
+function buildCourseDevelopmentStateMutation(tables, runId, user, timestamp) {
+  const matches = (tables.GlobalTimetableRunState || []).filter(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId));
+  if (matches.length > 1) throw clientError("Course has duplicate timetable-state rows", 409);
+  const existing = matches[0] || null;
+  if (existing && normalizePlatformIdentifier(existing.Stage) === "DEVELOPMENT") return null;
+  const record = existing ? {
+    ...existing,
+    Stage: "DEVELOPMENT",
+    CurrentPublicationID: clean(existing.CurrentPublicationID),
+    ModifiedByAccountID: user.accountid,
+    ModifiedByAccountName: user.username,
+    ModifiedDate: timestamp
+  } : {
+    RunID: clean(runId), Stage: "DEVELOPMENT", CurrentPublicationID: "",
+    CreatedDate: timestamp, CreatedByAccountID: user.accountid, CreatedByAccountName: user.username,
+    ModifiedByAccountID: "", ModifiedByAccountName: "", ModifiedDate: ""
+  };
+  return {
+    write: valueWrite("GlobalTimetableRunState", existing?._rowNumber || nextRowNumber(tables.GlobalTimetableRunState), recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableRunState)),
+    audit: [createPlatformId("AUDIT"), timestamp, user.accountid, user.username, user.role, user.role === "GLOBAL_ADMIN" ? "" : user.courseid,
+      existing ? "UPDATE_GLOBAL_TIMETABLE_STATE" : "CREATE_GLOBAL_TIMETABLE_STATE", "GLOBAL_TIMETABLE_RUN_STATE", clean(runId), JSON.stringify(["Stage", "CurrentPublicationID"])]
+  };
 }
 
 function readPlatformSchemaVersion(configRows) {
@@ -416,7 +671,9 @@ function resolveCourseAccessModel(run, tables) {
 function mapCourseRun(run, tables, now = new Date()) {
   return Object.freeze({
     ...mapGlobalSubjectRun(run, now),
-    accessmodel: resolveCourseAccessModel(run, tables)
+    accessmodel: resolveCourseAccessModel(run, tables),
+    schedulemode: normalizeCourseScheduleMode(run?.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT),
+    scheduledefinition: parseCourseScheduleDefinition(run?.ScheduleDefinition || "[]")
   });
 }
 
@@ -501,6 +758,16 @@ function valueWrite(sheetName, rowNumber, row) {
     range: `'${sheetName}'!A${rowNumber}:${columnName(row.length)}${rowNumber}`,
     majorDimension: "ROWS",
     values: [row]
+  };
+}
+
+function rangeWrite(sheetName, startRow, rows) {
+  const width = rows[0]?.length || PLATFORM_SHEET_HEADERS[sheetName]?.length || 1;
+  const endRow = startRow + rows.length - 1;
+  return {
+    range: `'${sheetName}'!A${startRow}:${columnName(width)}${endRow}`,
+    majorDimension: "ROWS",
+    values: rows
   };
 }
 

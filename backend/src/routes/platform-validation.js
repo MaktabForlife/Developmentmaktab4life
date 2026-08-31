@@ -1,4 +1,4 @@
-/* M4L V103.1.0.5 - Platform validation with staged Global Course FREE/PAID AccessModel support. */
+/* M4L V104.5 - Platform validation with staged Course access and derived scheduling support. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { isHiddenIslamicEvent, validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
@@ -26,9 +26,18 @@ import {
   GLOBAL_SESSION_STATUSES,
   normalizeGlobalSessionStatus
 } from "../lib/global-timetable-lifecycle.js";
+import {
+  COURSE_SCHEDULE_MODE_DERIVED,
+  COURSE_SCHEDULE_MODE_EXPLICIT,
+  normalizeCourseScheduleMode,
+  normalizeGlobalSessionKind,
+  parseCourseScheduleDefinition,
+  validateCourseScheduleRuleConflicts
+} from "../lib/global-course-scheduling.js";
 
-const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9"]);
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9", "102.0.10"]);
 const COURSE_ACCESS_SCHEMA_VERSION = "102.0.9";
+const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.10";
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
 const DRIVE_FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/;
@@ -110,14 +119,24 @@ export function validatePlatformTables(tables) {
     throw new Error("PlatformConfig AccountLoginBaseUrl must be an HTTPS /account/ URL");
   }
   if (!SUPPORTED_PLATFORM_SCHEMA_VERSIONS.has(schemaVersion)) {
-    throw new Error("PlatformConfig PlatformSchemaVersion must be 102.0.8 or 102.0.9");
+    throw new Error("PlatformConfig PlatformSchemaVersion must be 102.0.8, 102.0.9 or 102.0.10");
   }
   const courseAccessSchemaReady = tables.GlobalSubjectRuns._courseAccessSchemaReady === true;
-  if (schemaVersion === COURSE_ACCESS_SCHEMA_VERSION && !courseAccessSchemaReady) {
-    throw new Error("PlatformSchemaVersion 102.0.9 requires GlobalSubjectRuns.AccessModel");
+  const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true &&
+    tables.GlobalTimetableSessions._courseScheduleSchemaReady === true &&
+    tables.GlobalTimetablePublications._courseScheduleSchemaReady === true &&
+    tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true;
+  if ([COURSE_ACCESS_SCHEMA_VERSION, COURSE_SCHEDULE_SCHEMA_VERSION].includes(schemaVersion) && !courseAccessSchemaReady) {
+    throw new Error(`PlatformSchemaVersion ${schemaVersion} requires GlobalSubjectRuns.AccessModel`);
+  }
+  if (schemaVersion === COURSE_SCHEDULE_SCHEMA_VERSION && !courseScheduleSchemaReady) {
+    throw new Error("PlatformSchemaVersion 102.0.10 requires the V104.5 Course scheduling columns");
+  }
+  if (["102.0.8", "102.0.9"].includes(schemaVersion) && courseScheduleSchemaReady) {
+    throw new Error("V104.5 Course scheduling columns require PlatformSchemaVersion 102.0.10");
   }
   if (schemaVersion === "102.0.8" && courseAccessSchemaReady) {
-    throw new Error("GlobalSubjectRuns.AccessModel requires PlatformSchemaVersion 102.0.9");
+    throw new Error("GlobalSubjectRuns.AccessModel requires PlatformSchemaVersion 102.0.9 or later");
   }
   if (!Number.isInteger(curriculumVersion) || curriculumVersion < 1) {
     throw new Error("PlatformConfig GlobalCurriculumVersion must be a positive integer");
@@ -187,7 +206,10 @@ export function validatePlatformTables(tables) {
   }
 
   const globalCurriculum = validateGlobalCurriculum(tables);
-  const globalDelivery = validateGlobalSubjectDelivery(tables, globalCurriculum.subjectIds, globalCurriculum.activeSubjectIds, { courseAccessRequired: courseAccessSchemaReady });
+  const globalDelivery = validateGlobalSubjectDelivery(tables, globalCurriculum.subjectIds, globalCurriculum.activeSubjectIds, {
+    courseAccessRequired: courseAccessSchemaReady,
+    courseScheduleRequired: courseScheduleSchemaReady
+  });
   const subjectAccessIds = new Set();
   const subjectAccessKeys = new Set();
   let legacyActiveGlobalSubjectAccessCount = 0;
@@ -231,6 +253,7 @@ export function validatePlatformTables(tables) {
   return Object.freeze({
     platformSchemaVersion: schemaVersion,
     courseAccessSchemaReady,
+    courseScheduleSchemaReady,
     globalCurriculumVersion: curriculumVersion,
     globalTimetableVersion,
     tabCount: Object.keys(PLATFORM_SHEET_HEADERS).length,
@@ -485,6 +508,21 @@ function validateGlobalSubjectDelivery(tables, subjectIds, activeSubjectIds, opt
     if (options.courseAccessRequired && !["FREE", "PAID"].includes(courseAccessModel)) {
       throw new Error(`GlobalSubjectRuns row ${run._rowNumber} AccessModel must be FREE or PAID`);
     }
+    if (options.courseScheduleRequired) {
+      const rawMode = normalizePlatformIdentifier(run.ScheduleMode);
+      if (![COURSE_SCHEDULE_MODE_DERIVED, COURSE_SCHEDULE_MODE_EXPLICIT].includes(rawMode)) {
+        throw new Error(`GlobalSubjectRuns row ${run._rowNumber} ScheduleMode must be DERIVED or EXPLICIT`);
+      }
+      try {
+        const rules = parseCourseScheduleDefinition(run.ScheduleDefinition || "[]");
+        validateCourseScheduleRuleConflicts(rules);
+        if (rawMode === COURSE_SCHEDULE_MODE_DERIVED && isActivePlatformValue(run.Active) && rules.length === 0) {
+          // Empty derived Courses are valid while being configured; publication is what requires rules.
+        }
+      } catch (error) {
+        throw new Error(`GlobalSubjectRuns row ${run._rowNumber} has an invalid ScheduleDefinition: ${error.message}`);
+      }
+    }
     if (!runId || runIds.has(runId)) {
       throw new Error(`GlobalSubjectRuns row ${run._rowNumber} has a blank or duplicate RunID`);
     }
@@ -568,6 +606,22 @@ function validateGlobalTimetable(tables, context) {
     const subjectId = normalizePlatformIdentifier(session.SubjectID);
     const moduleId = normalizePlatformIdentifier(session.ModuleID);
     const teacherAccountId = normalizePlatformIdentifier(session.TeacherAccountID);
+    if (tables.GlobalTimetableSessions._courseScheduleSchemaReady === true) {
+      const kind = normalizePlatformIdentifier(session.SessionKind);
+      if (!["EXPLICIT", "EXCEPTION"].includes(kind)) {
+        throw new Error(`GlobalTimetableSessions row ${session._rowNumber} SessionKind must be EXPLICIT or EXCEPTION`);
+      }
+      if (kind === "EXPLICIT" && (String(session.ScheduleRuleKey || "").trim() || String(session.OccurrenceDate || "").trim())) {
+        throw new Error(`GlobalTimetableSessions row ${session._rowNumber} EXPLICIT sessions cannot carry a derived occurrence anchor`);
+      }
+      if (kind === "EXCEPTION") {
+        const hasRule = Boolean(String(session.ScheduleRuleKey || "").trim());
+        const hasOccurrence = Boolean(String(session.OccurrenceDate || "").trim());
+        if (hasRule !== hasOccurrence || (hasOccurrence && !validateIsoDate(String(session.OccurrenceDate || "").trim()))) {
+          throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has an invalid derived exception anchor`);
+        }
+      }
+    }
     if (!sessionId || sourceSessionIds.has(sessionId)) {
       throw new Error(`GlobalTimetableSessions row ${session._rowNumber} has a blank or duplicate SessionID`);
     }
@@ -652,6 +706,26 @@ function validateGlobalTimetable(tables, context) {
     if (!publishedDate || !accountIds.has(publishedByAccountId) || !publishedByAccountName) {
       throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has incomplete publication audit data`);
     }
+    const scheduleMode = normalizeCourseScheduleMode(publication.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT);
+    if (tables.GlobalTimetablePublications._courseScheduleSchemaReady === true) {
+      if (![COURSE_SCHEDULE_MODE_DERIVED, COURSE_SCHEDULE_MODE_EXPLICIT].includes(normalizePlatformIdentifier(publication.ScheduleMode))) {
+        throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has an invalid ScheduleMode`);
+      }
+      if (!validateIsoDate(String(publication.PublishStartDate || "").trim()) || !validateIsoDate(String(publication.PublishEndDate || "").trim()) || String(publication.PublishEndDate) < String(publication.PublishStartDate)) {
+        throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has an invalid publish window`);
+      }
+      if (scheduleMode === COURSE_SCHEDULE_MODE_DERIVED) {
+        try {
+          const rules = parseCourseScheduleDefinition(publication.ScheduleDefinition || "[]", { includeDisplayValues: true });
+          if (!rules.length) throw new Error("ScheduleDefinition is empty");
+        } catch (error) {
+          throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} has an invalid derived ScheduleDefinition: ${error.message}`);
+        }
+        if (!String(publication.RunName || "").trim() || !String(publication.SubjectName || "").trim() || !String(publication.Timezone || "").trim()) {
+          throw new Error(`GlobalTimetablePublications row ${publication._rowNumber} is missing immutable derived display values`);
+        }
+      }
+    }
     publicationIds.add(publicationId);
     publicationVersions.add(`${runId}|${versionNo}`);
     publicationById.set(publicationId, {
@@ -661,7 +735,8 @@ function validateGlobalTimetable(tables, context) {
       sessionCount,
       publishedDate,
       publishedByAccountId,
-      publishedByAccountName
+      publishedByAccountName,
+      scheduleMode
     });
   }
 
@@ -677,6 +752,13 @@ function validateGlobalTimetable(tables, context) {
     const moduleId = normalizePlatformIdentifier(snapshot.ModuleID);
     const teacherAccountId = normalizePlatformIdentifier(snapshot.TeacherAccountID);
     const publication = publicationById.get(publicationId);
+    if (tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true) {
+      const snapshotKind = normalizePlatformIdentifier(snapshot.SessionKind);
+      const expectedKind = publication?.scheduleMode === COURSE_SCHEDULE_MODE_DERIVED ? "EXCEPTION" : "EXPLICIT";
+      if (snapshotKind !== expectedKind) {
+        throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} SessionKind does not match its publication mode`);
+      }
+    }
     if (!publishedSessionId || publishedSessionIds.has(publishedSessionId)) {
       throw new Error(`PublishedGlobalTimetableSessions row ${snapshot._rowNumber} has a blank or duplicate PublishedSessionID`);
     }
@@ -735,7 +817,12 @@ function validateGlobalTimetable(tables, context) {
   }
 
   for (const publication of publicationById.values()) {
-    if ((snapshotCounts.get(publication.publicationId) || 0) !== publication.sessionCount) {
+    const snapshotCount = snapshotCounts.get(publication.publicationId) || 0;
+    if (publication.scheduleMode === COURSE_SCHEDULE_MODE_DERIVED) {
+      if (snapshotCount > publication.sessionCount) {
+        throw new Error(`Derived global timetable publication ${publication.publicationId} has more exception snapshots than effective occurrences`);
+      }
+    } else if (snapshotCount !== publication.sessionCount) {
       throw new Error(`Global timetable publication ${publication.publicationId} SessionCount does not match its snapshot rows`);
     }
   }

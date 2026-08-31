@@ -89,7 +89,7 @@ try {
 
   const initial = await post("/api/admin/platform/global/timetable/get", {}, token);
   assert.equal(initial.response.status, 200, JSON.stringify(initial.data));
-  assert.equal(initial.data.version, "104.4");
+  assert.equal(initial.data.version, "104.5");
   assert.equal(initial.data.globalTimetableVersion, 1);
   assert.equal(initial.data.runs.length, 1);
   assert.equal(initial.data.teachers.some(item => item.accountid === "TEACHER1"), true);

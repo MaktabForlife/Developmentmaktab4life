@@ -59,31 +59,41 @@ assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalSubjectAccessPolicy, [
   "SubjectPolicyID", "SubjectID", "AccessModel", "Active", "CreatedDate",
   "CreatedByAccountID", "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
 ]);
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.length, 14);
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.at(-1), "AccessModel");
-const legacyRunHeaders = PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, -1);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.length, 16);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.at(-1), "ScheduleDefinition");
+const legacyRunHeaders = PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, 13);
 const legacyRunRecords = validatePlatformSheetRows("GlobalSubjectRuns", [
   legacyRunHeaders,
   ["GSRUN-LEGACY", "GSUBJ1", "Legacy Course", "2026-09-01", "2026-09-30", "Africa/Johannesburg", true, "", "", "", "", "", ""]
 ]);
 assert.equal(legacyRunRecords._courseAccessSchemaReady, false);
+assert.equal(legacyRunRecords._courseScheduleSchemaReady, false);
 assert.equal(legacyRunRecords[0].AccessModel, "");
+const accessRunHeaders = PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, 14);
+const accessRunRecords = validatePlatformSheetRows("GlobalSubjectRuns", [
+  accessRunHeaders,
+  ["GSRUN-ACCESS", "GSUBJ1", "Access Course", "", "", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID"]
+]);
+assert.equal(accessRunRecords._courseAccessSchemaReady, true);
+assert.equal(accessRunRecords._courseScheduleSchemaReady, false);
 const currentRunRecords = validatePlatformSheetRows("GlobalSubjectRuns", [
   PLATFORM_SHEET_HEADERS.GlobalSubjectRuns,
-  ["GSRUN-CURRENT", "GSUBJ1", "Current Course", "", "", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID"]
+  ["GSRUN-CURRENT", "GSUBJ1", "Current Course", "", "", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID", "DERIVED", "[]"]
 ]);
 assert.equal(currentRunRecords._courseAccessSchemaReady, true);
+assert.equal(currentRunRecords._courseScheduleSchemaReady, true);
 assert.equal(currentRunRecords[0].AccessModel, "PAID");
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.length, 16);
+assert.equal(currentRunRecords[0].ScheduleMode, "DERIVED");
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.length, 19);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.length, 9);
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.length, 8);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.length, 15);
 assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle, [
   "SessionLifecycleID", "SessionID", "PublicationID", "Status",
   "RescheduledFromSessionID", "RescheduledToSessionID",
   "CreatedDate", "CreatedByAccountID", "CreatedByAccountName",
   "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
 ]);
-assert.equal(PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.length, 19);
+assert.equal(PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.length, 22);
 assert.deepEqual(PLATFORM_SHEET_HEADERS.AcademyCalendar, [
   "CalendarEventID", "EventType", "Description", "StartDate", "EndDate", "AlternateDate",
   "TeachingImpact", "Active", "CreatedDate", "CreatedByAccountID", "CreatedByAccountName",
@@ -111,7 +121,7 @@ const courseRows = [
 ];
 const platformConfigRows = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
-  ["PlatformSchemaVersion", "102.0.9", "", "", ""]
+  ["PlatformSchemaVersion", "102.0.10", "", "", ""]
 ];
 assert.deepEqual(validatePlatformSheetRows("CourseRegistry", courseRows)[0], {
   _rowNumber: 2,

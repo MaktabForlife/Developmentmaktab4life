@@ -150,3 +150,52 @@ The final architecture release must not be declared Production-ready until a com
 - V106 — Reboot migration into the generic Program architecture.
 
 The final Production migration gate therefore moves with the roadmap: a complete **V101.1 Production clone → final V106 state** rehearsal must succeed before live Production promotion.
+
+## V104.5 — Derived-by-default Global Course Scheduling
+
+**Data/schema migration:** yes — controlled Platform migration `102.0.9 → 102.0.10`.
+
+**Platform tab count:** unchanged at 19.
+
+V104.5 extends four existing tabs:
+
+- `GlobalSubjectRuns` adds `ScheduleMode`, `ScheduleDefinition`.
+- `GlobalTimetableSessions` adds `SessionKind`, `ScheduleRuleKey`, `OccurrenceDate`.
+- `GlobalTimetablePublications` adds `ScheduleMode`, `PublishStartDate`, `PublishEndDate`, `ScheduleDefinition`, `RunName`, `SubjectName`, `Timezone`.
+- `PublishedGlobalTimetableSessions` adds `SessionKind`, `ScheduleRuleKey`, `OccurrenceDate`.
+
+Controlled migration path:
+
+1. Start from the final V104.4 code + Platform schema `102.0.9`.
+2. Create a rollback copy of the Platform workbook.
+3. Deploy V104.5 code while the workbook is still `102.0.9`.
+4. GLOBAL_ADMIN opens Global Curriculum → Courses → **Prepare Scheduling**.
+5. Preview the migration.
+6. Confirm every existing Course is proposed as `EXPLICIT` and the new-Course default is `DERIVED`.
+7. Commit using `MIGRATE COURSE SCHEDULING`.
+8. Confirm `PlatformSchemaVersion = 102.0.10` and run Platform validation.
+9. Confirm existing published Courses resolve unchanged.
+10. Test one new DERIVED Course, one materialised exception and one EXPLICIT short workshop before Production acceptance.
+
+Backfill/preservation rules:
+
+- every existing Course remains `EXPLICIT`;
+- every existing source session becomes `SessionKind=EXPLICIT`;
+- every existing published session snapshot becomes `SessionKind=EXPLICIT`;
+- existing publication windows/display values are retained or inferred from the immutable snapshot/run data;
+- no existing Course is automatically converted to DERIVED;
+- no new Platform tab is added.
+
+Rollback boundary:
+
+- before migration commit: code rollback to V104.4 only;
+- after migration commit: restore both V104.4 code **and** the pre-migration `102.0.9` Platform-workbook copy. Do not run V104.4 against the migrated `102.0.10` workbook.
+
+V104.5 does not introduce Program Builder schema or migrate Program data. Those remain V105/V106 work.
+
+## Roadmap after V104.5
+
+- V105 — generic Program Builder.
+- V106 — Reboot migration into the generic Program architecture.
+
+The final Production migration gate remains a complete **V101.1 Production clone → final V106 state** rehearsal before live Production promotion.

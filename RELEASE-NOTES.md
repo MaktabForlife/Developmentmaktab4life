@@ -1,38 +1,66 @@
-# V104.4 Release Notes — Google Sheets Read Metrics & Full Regression
+# V104.5 Release Notes — Derived-by-default Global Courses
 
-V104.4 is the final verification stage of the V104 Google Sheets read-optimisation phase. It is built on V104.3, so request-level read deduplication remains fully active.
+V104.5 aligns Global Course timetable delivery with the rule-driven Program model while preserving an intentional exact-session option for workshops and similar offerings.
 
-## Measured guardrails
+## DERIVED is the new default
 
-The regression suite now asserts real mocked Google Sheets HTTP request budgets rather than relying only on code inspection:
+After the one-time V104.5 scheduling migration, newly created Courses default to `DERIVED`.
 
-- Academy timetable, one published Program: **4** Sheets requests.
-- Academy rolling seven-day load: **4** Sheets requests.
-- Attendance report: **1** batch request.
-- Student Progress task list: **1** batch request.
-- Progress report: **1** batch request.
-- Progress detail: **1** batch request.
-- TeacherAssign timetable with configured Global Zoom: **2** Sheets requests.
-- TeacherAssign timetable with tolerant legacy Zoom fallback: **3** Sheets requests.
+A DERIVED Course stores recurring rules in `GlobalSubjectRuns.ScheduleDefinition`. Normal dated occurrences are calculated only for the date range being requested or published. They are not pre-created in `GlobalTimetableSessions` and are not stored as normal publication snapshot rows.
 
-The seven-day Academy guardrail proves that expanding the returned timetable window does not multiply underlying Google reads.
+This avoids filling Google Sheets with months or years of predictable recurring occurrences, especially for ONGOING Courses.
 
-## V104.3 retained
+## Materialised exceptions
 
-The final V104.4 tree still deduplicates exact SpreadsheetID + A1-range reads inside one Worker request, including overlapping batches and concurrent requests from helpers. Successful Sheet writes invalidate the affected request-local spreadsheet cache. No Sheet-data cache persists across Worker requests.
+A derived occurrence receives a stored row only when that occurrence needs individual treatment. V104.5 introduces `SessionKind=EXCEPTION` with a stable `ScheduleRuleKey + OccurrenceDate` anchor.
 
-## Read-path audit
+Examples include:
 
-The current source boundary is 23 operational direct-read call sites across 17 source files and 15 operational batch-read call sites. V104.4 fails regression if direct-read usage grows above this boundary or batch-read usage drops below it.
+- CANCELLED occurrence;
+- moved occurrence;
+- different teacher/time/Zoom;
+- one-off exact session.
 
-## Google failure policy
+Editing an existing exception is validated against both materialised rows and the still-virtual recurring occurrences. The legacy reschedule endpoint is deliberately blocked for derived exceptions so one occurrence cannot accidentally acquire duplicate exception rows.
 
-Retryable Google read failures now allow one retry after the original attempt. Persistent 429/5xx failures stop after two total attempts and remain authoritative failures; they are never converted to empty rows.
+## EXPLICIT sessions remain supported
 
-## Full regression
+`EXPLICIT` retains the exact-session workflow. It is intended for offerings where the exact dates themselves are part of the product/marketing promise, such as a four-session workshop or short intensive.
 
-V104.4 adds a canonical `npm test` runner that executes every backend `*.test.mjs` file in isolation. The final tree contains 63 backend test files, including the V104.3 request-deduplication regression and the V104.4 read-audit regression. Final verification also passed Node syntax checking for all 154 JS/MJS files in the repository tree.
+Regression coverage proves an EXPLICIT September Friday workshop creates exactly four dated source sessions and publishes exactly four immutable session snapshots.
+
+## Publication integrity
+
+DERIVED publications store an immutable recurring-rule snapshot plus immutable Course display metadata and only exception snapshots. `SessionCount` remains the count of effective dated occurrences in the publication window.
+
+Academy can therefore reconstruct a DERIVED publication with zero normal session snapshot rows while historical publication meaning remains fixed.
+
+## Academy Calendar
+
+Fixed DERIVED Courses continue to receive Academic Calendar/public-holiday context even if they have no materialised sessions. This keeps exception editing and holiday awareness available under the new virtual-occurrence model.
+
+## Controlled schema migration
+
+Platform schema advances from `102.0.9` to `102.0.10`. Required Platform tab count remains 19.
+
+The migration extends:
+
+- `GlobalSubjectRuns`
+- `GlobalTimetableSessions`
+- `GlobalTimetablePublications`
+- `PublishedGlobalTimetableSessions`
+
+Existing Courses and existing publication/session rows are backfilled as `EXPLICIT`. Existing publication dates and immutable display values are preserved/inferred from their current snapshots. Nothing existing is automatically converted to DERIVED.
 
 ## Compatibility
 
-No Google Sheet migration is required. `PlatformConfig!B3` remains `102.0.9` with 19 required Platform tabs. No business, access, identity, publication or data-ownership rule changes are included.
+V104.5 does not change Program timetable rules, central identity, Course access (`FREE`/`PAID`), Academy access decisions, Attendance, Progress, Library, Planner or data ownership.
+
+V104.1–V104.4 batching, request-local read deduplication, metrics and retry guardrails remain active.
+
+## Final verification
+
+- Full backend regression: **64/64 test files passed**.
+- Repository JavaScript/ES module syntax: **156/156 files passed**.
+- V104.4 read-path audit retained: **23 direct-read call sites across 17 source files; 15 batch-read call sites**.
+- V104.3 request-level read-deduplication regression retained.

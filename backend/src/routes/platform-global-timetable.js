@@ -1,7 +1,21 @@
-/* M4L V103.1.0.5 - Courses: reusable fixed delivery windows, ongoing publication ranges and direct per-Course publishing. */
+/* M4L V104.5 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents, noTeachingEventsOnDates } from "../lib/academy-calendar.js";
+import {
+  COURSE_SCHEDULE_MODE_DERIVED,
+  COURSE_SCHEDULE_MODE_EXPLICIT,
+  deriveCourseScheduleOccurrences,
+  derivedOccurrenceAnchor,
+  GLOBAL_SESSION_KIND_EXCEPTION,
+  GLOBAL_SESSION_KIND_EXPLICIT,
+  normalizeCourseScheduleMode,
+  normalizeGlobalSessionKind,
+  parseCourseScheduleDefinition,
+  ruleOccursOnDate,
+  serializeCourseScheduleDefinition,
+  validateCourseScheduleRuleConflicts
+} from "../lib/global-course-scheduling.js";
 import {
   activeGlobalTimetableSessionsForRun,
   generateSessionDates,
@@ -37,7 +51,7 @@ import {
 
 const MAX_ZOOM_LINK_LENGTH = 1000;
 const HTTPS_URL_PATTERN = /^https:\/\//i;
-const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9"]);
+const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9", "102.0.10"]);
 
 export async function getPlatformGlobalTimetableEndpoint(request, env) {
   const permission = await requireGlobalTimetableAdmin(request, env);
@@ -49,7 +63,8 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "104.4",
+      version: "104.5",
+      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetablePublications._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true,
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -97,6 +112,9 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
 
     const tables = await readGlobalTimetableTables(env);
     const run = activeRun(tables, runId);
+    if (normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT) !== COURSE_SCHEDULE_MODE_EXPLICIT) {
+      throw clientError("DERIVED Courses store recurring rules and materialise only exceptions; switch to EXPLICIT to generate exact sessions", 409);
+    }
     requireEditableGlobalTimetable(tables, run.RunID);
     const subject = activeSubject(tables, run.SubjectID);
     const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: true });
@@ -155,7 +173,10 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
       CreatedByAccountName: permission.user.username,
       ModifiedByAccountID: "",
       ModifiedByAccountName: "",
-      ModifiedDate: ""
+      ModifiedDate: "",
+      SessionKind: GLOBAL_SESSION_KIND_EXPLICIT,
+      ScheduleRuleKey: "",
+      OccurrenceDate: ""
     }));
 
     const calendarWarnings = noTeachingEventsOnDates(tables.AcademyCalendar, datesToCreate);
@@ -169,6 +190,120 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
       sessions: records.map(row => enrichSession(mapGlobalTimetableSession(row, publishedSourceIds), tables)),
       calendarWarnings,
       state: developmentStateForResponse(tables, run.RunID)
+    });
+  } catch (error) {
+    return globalTimetableMutationError(error, env);
+  }
+}
+
+export async function materializePlatformGlobalTimetableExceptionEndpoint(request, env) {
+  const permission = await requireGlobalTimetableAdmin(request, env);
+  if (!permission.ok) return permission.response;
+
+  try {
+    const body = await request.json();
+    const runId = clean(body.runId || body.runid);
+    const scheduleRuleKey = clean(body.scheduleRuleKey || body.schedulerulekey || body.ruleKey || body.rulekey);
+    const occurrenceDate = clean(body.occurrenceDate || body.occurrencedate);
+    if (!runId) throw clientError("RunID is required", 400);
+
+    const tables = await readGlobalTimetableTables(env);
+    const run = activeRun(tables, runId);
+    if (normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT) !== COURSE_SCHEDULE_MODE_DERIVED) {
+      throw clientError("Session exceptions can only be materialised for a DERIVED Course", 409);
+    }
+    requireEditableGlobalTimetable(tables, run.RunID);
+    const subject = activeSubject(tables, run.SubjectID);
+    const rules = parseRunScheduleRules(run);
+    let baseRule = null;
+    if (scheduleRuleKey) {
+      const matches = rules.filter(rule => normalizePlatformIdentifier(rule.rulekey) === normalizePlatformIdentifier(scheduleRuleKey));
+      if (matches.length !== 1) throw clientError("ScheduleRuleKey does not resolve to exactly one recurring rule", 409);
+      baseRule = matches[0];
+      if (!validateIsoDate(occurrenceDate) || !ruleOccursOnDate(baseRule, occurrenceDate) || !sessionWithinRun({ SessionDate: occurrenceDate }, run)) {
+        throw clientError("OccurrenceDate must identify a real derived occurrence for this Course", 400);
+      }
+      const duplicate = tables.GlobalTimetableSessions.some(row => (
+        isActivePlatformValue(row.Active) &&
+        normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(run.RunID) &&
+        normalizeGlobalSessionKind(row.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION &&
+        derivedOccurrenceAnchor(row.ScheduleRuleKey, row.OccurrenceDate) === derivedOccurrenceAnchor(scheduleRuleKey, occurrenceDate)
+      ));
+      if (duplicate) throw clientError("This derived occurrence already has a materialised exception", 409);
+    }
+
+    const sessionDate = clean(body.sessionDate || body.sessiondate) || occurrenceDate;
+    const startTime = normalizeSubmittedTime(body.startTime || body.starttime || baseRule?.starttime);
+    const endTime = normalizeSubmittedTime(body.endTime || body.endtime || baseRule?.endtime);
+    const moduleId = clean(body.moduleId ?? body.moduleid ?? baseRule?.moduleid);
+    const teacherAccountId = clean(body.teacherAccountId ?? body.teacheraccountid ?? baseRule?.teacheraccountid);
+    const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? baseRule?.zoomlink);
+    const status = normalizeGlobalSessionStatus(body.status || GLOBAL_SESSION_STATUS_SCHEDULED);
+    if (![GLOBAL_SESSION_STATUS_SCHEDULED, GLOBAL_SESSION_STATUS_CANCELLED].includes(status)) {
+      throw clientError("Derived exceptions must be SCHEDULED or CANCELLED", 400);
+    }
+    if (!baseRule && status === GLOBAL_SESSION_STATUS_CANCELLED) {
+      throw clientError("A CANCELLED exception must be linked to a derived occurrence", 400);
+    }
+    if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
+      throw clientError("Exception SessionDate must be within the selected Course", 400);
+    }
+    if (!validateTimeRange(startTime, endTime)) throw clientError("Exception requires a valid increasing HH:MM time range", 400);
+    validateZoomLink(zoomLink);
+    const module = resolveModule(tables, moduleId, subject.SubjectID, { requireActive: false });
+    const teacher = optionalActiveTeacher(tables, teacherAccountId);
+    const timestamp = new Date().toISOString();
+    const record = {
+      SessionID: createPlatformId("GTS"),
+      RunID: clean(run.RunID),
+      SubjectID: clean(subject.SubjectID),
+      ModuleID: clean(module?.ModuleID),
+      SessionDate: sessionDate,
+      StartTime: startTime,
+      EndTime: endTime,
+      TeacherAccountID: clean(teacher?.AccountID),
+      ZoomLink: zoomLink,
+      Active: true,
+      CreatedDate: timestamp,
+      CreatedByAccountID: permission.user.accountid,
+      CreatedByAccountName: permission.user.username,
+      ModifiedByAccountID: "",
+      ModifiedByAccountName: "",
+      ModifiedDate: "",
+      SessionKind: GLOBAL_SESSION_KIND_EXCEPTION,
+      ScheduleRuleKey: scheduleRuleKey,
+      OccurrenceDate: baseRule ? occurrenceDate : ""
+    };
+    const lifecycleMutation = buildCurrentLifecycleMutation(tables, record.SessionID, { status }, permission.user, timestamp, { force: status !== GLOBAL_SESSION_STATUS_SCHEDULED });
+    const stagedTables = {
+      ...tables,
+      GlobalTimetableSessions: [...tables.GlobalTimetableSessions, record],
+      GlobalTimetableSessionLifecycle: lifecycleMutation ? [...tables.GlobalTimetableSessionLifecycle, lifecycleMutation.record] : tables.GlobalTimetableSessionLifecycle
+    };
+    const validationStart = baseRule && occurrenceDate < sessionDate ? occurrenceDate : sessionDate;
+    const validationEnd = baseRule && occurrenceDate > sessionDate ? occurrenceDate : sessionDate;
+    const effective = buildDerivedSourceOccurrences(stagedTables, run, validationStart, validationEnd);
+    validateEffectiveDerivedConflicts(effective);
+
+    const writes = [
+      valueWrite("GlobalTimetableSessions", nextRowNumber(tables.GlobalTimetableSessions), recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessions))
+    ];
+    if (lifecycleMutation) writes.push(lifecycleMutation.write);
+    const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, permission.user, timestamp);
+    if (stateMutation) writes.push(stateMutation.write);
+    const audits = [auditRow(permission.user, timestamp, "MATERIALIZE_GLOBAL_COURSE_EXCEPTION", "GLOBAL_TIMETABLE_SESSION", record.SessionID,
+      ["RunID", "SessionKind", "ScheduleRuleKey", "OccurrenceDate", "SessionDate", "StartTime", "EndTime", "ModuleID", "TeacherAccountID", "ZoomLink", "Status"] )];
+    if (lifecycleMutation) audits.push(lifecycleMutation.audit);
+    if (stateMutation) audits.push(stateMutation.audit);
+    writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
+    await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
+
+    return json({
+      success: true,
+      message: baseRule ? "Derived occurrence exception created" : "One-off Course session created",
+      session: enrichSession(mapGlobalTimetableSession(record, publishedSourceIdSet(tables.PublishedGlobalTimetableSessions)), tables),
+      lifecycle: lifecycleMutation ? mapGlobalTimetableSessionLifecycle(lifecycleMutation.record) : resolveCurrentSessionLifecycle([], record.SessionID),
+      calendarWarnings: noTeachingEventsOnDates(tables.AcademyCalendar, [sessionDate])
     });
   } catch (error) {
     return globalTimetableMutationError(error, env);
@@ -243,6 +378,16 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
       rescheduledFromSessionId: existingLifecycle.rescheduledfromsessionid,
       rescheduledToSessionId: existingLifecycle.rescheduledtosessionid
     }, permission.user, timestamp);
+
+    if (normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT) === COURSE_SCHEDULE_MODE_DERIVED) {
+      const stagedSessions = tables.GlobalTimetableSessions.map(row => (
+        normalizePlatformIdentifier(row.SessionID) === normalizePlatformIdentifier(existing.SessionID) ? { ...record } : { ...row }
+      ));
+      const stagedLifecycles = stageLifecycleMutation(tables.GlobalTimetableSessionLifecycle, lifecycleMutation);
+      validateDerivedMutationConflicts({ ...tables, GlobalTimetableSessions: stagedSessions, GlobalTimetableSessionLifecycle: stagedLifecycles }, run, [
+        existing.OccurrenceDate, existing.SessionDate, record.OccurrenceDate, record.SessionDate
+      ]);
+    }
 
     if (!changedFields.length && !lifecycleMutation) {
       return json({
@@ -385,6 +530,15 @@ export async function savePlatformGlobalTimetableSessionBatchEndpoint(request, e
       }
     }
 
+    if (normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT) === COURSE_SCHEDULE_MODE_DERIVED) {
+      validateDerivedMutationConflicts({ ...tables, GlobalTimetableSessions: stagedSessions, GlobalTimetableSessionLifecycle: stagedLifecycles }, run,
+        mutations.flatMap(mutation => [
+          mutation.existing.OccurrenceDate, mutation.existing.SessionDate,
+          mutation.record.OccurrenceDate, mutation.record.SessionDate
+        ])
+      );
+    }
+
     const writes = [];
     const audits = [];
     for (const mutation of mutations) {
@@ -472,6 +626,9 @@ export async function reschedulePlatformGlobalTimetableSessionEndpoint(request, 
     if (!sourceSessionId) throw clientError("SessionID is required", 400);
     const tables = await readGlobalTimetableTables(env);
     const source = uniqueRecord(tables.GlobalTimetableSessions, "SessionID", sourceSessionId, "Global timetable session");
+    if (normalizeGlobalSessionKind(source.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION) {
+      throw clientError("Derived Course exceptions are moved by editing the materialised exception, not by creating a rescheduled replacement", 409);
+    }
     const sourceLifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, source.SessionID);
     if (sourceLifecycle.status === GLOBAL_SESSION_STATUS_RESCHEDULED || sourceLifecycle.rescheduledtosessionid) {
       throw clientError("This session is already rescheduled", 409);
@@ -503,7 +660,10 @@ export async function reschedulePlatformGlobalTimetableSessionEndpoint(request, 
       ModuleID: module ? clean(module.ModuleID) : "", SessionDate: sessionDate, StartTime: startTime, EndTime: endTime,
       TeacherAccountID: clean(teacher?.AccountID), ZoomLink: zoomLink, Active: true,
       CreatedDate: timestamp, CreatedByAccountID: permission.user.accountid, CreatedByAccountName: permission.user.username,
-      ModifiedByAccountID: "", ModifiedByAccountName: "", ModifiedDate: ""
+      ModifiedByAccountID: "", ModifiedByAccountName: "", ModifiedDate: "",
+      SessionKind: normalizeGlobalSessionKind(source.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT),
+      ScheduleRuleKey: normalizeGlobalSessionKind(source.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION ? clean(source.ScheduleRuleKey) : "",
+      OccurrenceDate: normalizeGlobalSessionKind(source.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION ? clean(source.OccurrenceDate) : ""
     };
     const sourceLifecycleMutation = buildCurrentLifecycleMutation(tables, source.SessionID, {
       status: GLOBAL_SESSION_STATUS_RESCHEDULED,
@@ -535,28 +695,53 @@ export async function publishPlatformGlobalTimetableEndpoint(request, env) {
   try {
     const body = await request.json();
     const runId = clean(body.runId || body.runid);
-    const publishStartDate = clean(body.publishStartDate || body.publishstartdate);
-    const publishEndDate = clean(body.publishEndDate || body.publishenddate);
+    const requestedPublishStart = clean(body.publishStartDate || body.publishstartdate);
+    const requestedPublishEnd = clean(body.publishEndDate || body.publishenddate);
     if (!runId) throw clientError("RunID is required", 400);
 
     const tables = await readGlobalTimetableTables(env);
     const run = activeRun(tables, runId);
     const subject = activeSubject(tables, run.SubjectID);
-    const allActiveSessions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID);
+    const scheduleMode = normalizeCourseScheduleMode(run.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT);
     const ongoing = !clean(run.StartDate) && !clean(run.EndDate);
-    let sessions;
+    let publishStartDate = clean(run.StartDate);
+    let publishEndDate = clean(run.EndDate);
     if (ongoing) {
+      publishStartDate = requestedPublishStart;
+      publishEndDate = requestedPublishEnd;
       if (!validateIsoDate(publishStartDate) || !validateIsoDate(publishEndDate) || publishEndDate < publishStartDate) {
         throw clientError("Ongoing Course publication requires valid Publish From and Publish Through dates", 400);
       }
-      sessions = allActiveSessions.filter(session => (
-        clean(session.SessionDate) >= publishStartDate && clean(session.SessionDate) <= publishEndDate
-      ));
-    } else {
-      sessions = allActiveSessions.filter(session => sessionWithinRun(session, run));
+    } else if (!validateIsoDate(publishStartDate) || !validateIsoDate(publishEndDate) || publishEndDate < publishStartDate) {
+      throw clientError("FIXED Course publication requires valid Course Start and End dates", 409);
     }
-    if (!sessions.length) throw clientError("Publish requires at least one active session in the selected Course publication window", 409);
-    const sessionLifecycles = validateSessionsForPublication(tables, run, subject, sessions);
+
+    let sessions = [];
+    let sourceSessionsForSnapshot = [];
+    let sessionLifecycles = new Map();
+    let scheduleDefinitionSnapshot = "[]";
+
+    if (scheduleMode === COURSE_SCHEDULE_MODE_DERIVED) {
+      const rules = parseRunScheduleRules(run);
+      if (!rules.length) throw clientError("A DERIVED Course requires at least one recurring schedule rule before publication", 409);
+      validateDerivedExceptionWindow(tables, run, publishStartDate, publishEndDate);
+      const effective = buildDerivedSourceOccurrences(tables, run, publishStartDate, publishEndDate);
+      validateEffectiveDerivedPublication(tables, run, subject, effective);
+      sessions = effective.map(item => item.session);
+      sessionLifecycles = new Map(effective.map(item => [normalizePlatformIdentifier(item.session.SessionID), item.lifecycle]));
+      sourceSessionsForSnapshot = derivedExceptionRowsForPublication(tables, run, publishStartDate, publishEndDate);
+      scheduleDefinitionSnapshot = buildPublishedScheduleDefinition(tables, run, subject, rules);
+    } else {
+      const allActiveSessions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID)
+        .filter(session => normalizeGlobalSessionKind(session.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXPLICIT);
+      sessions = allActiveSessions.filter(session => (
+        clean(session.SessionDate) >= publishStartDate && clean(session.SessionDate) <= publishEndDate && sessionWithinRun(session, run)
+      ));
+      if (!sessions.length) throw clientError("Publish requires at least one active explicit session in the selected Course publication window", 409);
+      sessionLifecycles = validateSessionsForPublication(tables, run, subject, sessions);
+      sourceSessionsForSnapshot = sessions;
+    }
+    if (!sessions.length) throw clientError("Publish requires at least one Course occurrence in the selected publication window", 409);
 
     const timestamp = new Date().toISOString();
     const versionNo = Math.max(0, ...tables.GlobalTimetablePublications
@@ -571,18 +756,26 @@ export async function publishPlatformGlobalTimetableEndpoint(request, env) {
       PublishedDate: timestamp,
       PublishedByAccountID: permission.user.accountid,
       PublishedByAccountName: permission.user.username,
-      SessionCount: sessions.length
+      SessionCount: sessions.length,
+      ScheduleMode: scheduleMode,
+      PublishStartDate: publishStartDate,
+      PublishEndDate: publishEndDate,
+      ScheduleDefinition: scheduleDefinitionSnapshot,
+      RunName: clean(run.RunName),
+      SubjectName: clean(subject.SubjectName),
+      Timezone: clean(run.Timezone)
     };
     const { snapshots, lifecycleSnapshots } = buildSnapshotRows(
-      tables, publication, run, subject, sessions, sessionLifecycles, permission.user, timestamp
+      tables, publication, run, subject, sourceSessionsForSnapshot, sessionLifecycles, permission.user, timestamp
     );
 
     await writePublication(env, permission.user, tables, run, publication, snapshots, lifecycleSnapshots, timestamp);
     return json({
       success: true,
-      message: `Global timetable publication ${versionNo} created`,
+      message: `${scheduleMode === COURSE_SCHEDULE_MODE_DERIVED ? "Derived" : "Explicit"} Course publication ${versionNo} created (${sessions.length} occurrence${sessions.length === 1 ? "" : "s"})`,
       publication: mapGlobalTimetablePublication(publication),
-      sessions: snapshots.map(mapPublishedGlobalTimetableSession),
+      sessions: scheduleMode === COURSE_SCHEDULE_MODE_EXPLICIT ? snapshots.map(mapPublishedGlobalTimetableSession) : [],
+      exceptionSnapshots: scheduleMode === COURSE_SCHEDULE_MODE_DERIVED ? snapshots.map(mapPublishedGlobalTimetableSession) : [],
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value + 1
     });
   } catch (error) {
@@ -638,7 +831,7 @@ function requireGlobalTimetableSchema(configRows) {
   ));
   const version = clean(matches[0]?.ConfigValue);
   if (matches.length !== 1 || !TIMETABLE_SCHEMA_VERSIONS.has(version)) {
-    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8 or 102.0.9");
+    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8, 102.0.9 or 102.0.10");
   }
 }
 
@@ -705,9 +898,15 @@ async function writePublication(env, user, tables, run, publication, snapshots, 
   const nextVersion = version.value + 1;
   const stateWrite = buildPublishedStateWrite(tables, run.RunID, publication.PublicationID, user, timestamp);
   const writes = [
-    valueWrite("GlobalTimetablePublications", nextRowNumber(tables.GlobalTimetablePublications), recordToRow(publication, PLATFORM_SHEET_HEADERS.GlobalTimetablePublications)),
-    rangeWrite("PublishedGlobalTimetableSessions", nextRowNumber(tables.PublishedGlobalTimetableSessions), snapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions))),
-    rangeWrite("GlobalTimetableSessionLifecycle", nextRowNumber(tables.GlobalTimetableSessionLifecycle), lifecycleSnapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle))),
+    valueWrite("GlobalTimetablePublications", nextRowNumber(tables.GlobalTimetablePublications), recordToRow(publication, PLATFORM_SHEET_HEADERS.GlobalTimetablePublications))
+  ];
+  if (snapshots.length) {
+    writes.push(rangeWrite("PublishedGlobalTimetableSessions", nextRowNumber(tables.PublishedGlobalTimetableSessions), snapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions))));
+  }
+  if (lifecycleSnapshots.length) {
+    writes.push(rangeWrite("GlobalTimetableSessionLifecycle", nextRowNumber(tables.GlobalTimetableSessionLifecycle), lifecycleSnapshots.map(record => recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle))));
+  }
+  writes.push(
     stateWrite.write,
     {
       range: `'PlatformConfig'!B${version.rowNumber}:E${version.rowNumber}`,
@@ -716,9 +915,9 @@ async function writePublication(env, user, tables, run, publication, snapshots, 
     },
     valueWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRow(
       user, timestamp, "PUBLISH_GLOBAL_TIMETABLE", "GLOBAL_TIMETABLE_PUBLICATION", publication.PublicationID,
-      ["RunID", "SubjectID", "VersionNo", "PublishedDate", "SessionCount"]
+      ["RunID", "SubjectID", "VersionNo", "PublishedDate", "SessionCount", "ScheduleMode", "PublishStartDate", "PublishEndDate", "ScheduleDefinition"]
     ))
-  ];
+  );
   await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
 }
 
@@ -748,7 +947,10 @@ function buildSnapshotRows(tables, publication, run, subject, sessions, sessionL
       SubjectName: clean(subject.SubjectName),
       ModuleName: module ? clean(module.ModuleName) : "",
       TeacherName: clean(teacher?.DisplayName) || "TBA",
-      Timezone: clean(run.Timezone)
+      Timezone: clean(run.Timezone),
+      SessionKind: normalizeGlobalSessionKind(session.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT),
+      ScheduleRuleKey: clean(session.ScheduleRuleKey),
+      OccurrenceDate: clean(session.OccurrenceDate)
     });
     lifecycleSnapshots.push({
       SessionLifecycleID: createPlatformId("GTLIFE"),
@@ -845,6 +1047,199 @@ function buildPublishedStateWrite(tables, runId, publicationId, user, timestamp)
   };
 }
 
+function parseRunScheduleRules(run) {
+  let rules;
+  try {
+    rules = parseCourseScheduleDefinition(run.ScheduleDefinition || "[]");
+    validateCourseScheduleRuleConflicts(rules);
+  } catch (error) {
+    throw clientError(clean(error?.message) || "Course recurring schedule definition is invalid", 409);
+  }
+  return rules;
+}
+
+function buildDerivedSourceOccurrences(tables, run, startDate, endDate) {
+  const rules = parseRunScheduleRules(run);
+  const subjectId = clean(run.SubjectID);
+  const runId = clean(run.RunID);
+  const base = deriveCourseScheduleOccurrences(rules, startDate, endDate, { runid: runId, subjectid: subjectId });
+  const exceptions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, runId)
+    .filter(row => normalizeGlobalSessionKind(row.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION);
+
+  const anchored = new Map();
+  const extras = [];
+  for (const exception of exceptions) {
+    const anchor = derivedOccurrenceAnchor(exception.ScheduleRuleKey, exception.OccurrenceDate);
+    if (anchor) {
+      if (anchored.has(anchor)) throw clientError("A derived Course contains duplicate exceptions for one occurrence", 409);
+      anchored.set(anchor, exception);
+    } else {
+      extras.push(exception);
+    }
+  }
+
+  const output = [];
+  const addedExact = new Set();
+  for (const occurrence of base) {
+    const anchor = derivedOccurrenceAnchor(occurrence.schedulerulekey, occurrence.occurrencedate);
+    const exception = anchored.get(anchor);
+    if (exception) {
+      if (clean(exception.SessionDate) >= startDate && clean(exception.SessionDate) <= endDate) {
+        const lifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, exception.SessionID);
+        output.push({ session: exception, lifecycle });
+        addedExact.add(normalizePlatformIdentifier(exception.SessionID));
+      }
+      continue;
+    }
+    const raw = derivedOccurrenceRaw(occurrence);
+    output.push({ session: raw, lifecycle: resolveCurrentSessionLifecycle([], raw.SessionID) });
+  }
+
+  for (const exception of [...extras, ...anchored.values()]) {
+    const key = normalizePlatformIdentifier(exception.SessionID);
+    if (addedExact.has(key)) continue;
+    if (clean(exception.SessionDate) < startDate || clean(exception.SessionDate) > endDate) continue;
+    output.push({ session: exception, lifecycle: resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, exception.SessionID) });
+    addedExact.add(key);
+  }
+  return output.sort((a, b) => `${clean(a.session.SessionDate)} ${normalizeSubmittedTime(a.session.StartTime)} ${clean(a.session.SessionID)}`
+    .localeCompare(`${clean(b.session.SessionDate)} ${normalizeSubmittedTime(b.session.StartTime)} ${clean(b.session.SessionID)}`));
+}
+
+function derivedOccurrenceRaw(occurrence) {
+  return {
+    SessionID: clean(occurrence.sessionid),
+    RunID: clean(occurrence.runid),
+    SubjectID: clean(occurrence.subjectid),
+    ModuleID: clean(occurrence.moduleid),
+    SessionDate: clean(occurrence.sessiondate),
+    StartTime: normalizeSubmittedTime(occurrence.starttime),
+    EndTime: normalizeSubmittedTime(occurrence.endtime),
+    TeacherAccountID: clean(occurrence.teacheraccountid),
+    ZoomLink: clean(occurrence.zoomlink),
+    Active: true,
+    CreatedDate: "",
+    CreatedByAccountID: "",
+    CreatedByAccountName: "",
+    ModifiedByAccountID: "",
+    ModifiedByAccountName: "",
+    ModifiedDate: "",
+    SessionKind: "DERIVED",
+    ScheduleRuleKey: clean(occurrence.schedulerulekey),
+    OccurrenceDate: clean(occurrence.occurrencedate)
+  };
+}
+
+function stageLifecycleMutation(rows, mutation) {
+  const staged = (rows || []).map(row => ({ ...row }));
+  if (!mutation) return staged;
+  const rowNumber = mutation.existingRowNumber || nextRowNumber(staged);
+  const record = { ...mutation.record, _rowNumber: rowNumber };
+  const index = staged.findIndex(row => Number(row._rowNumber) === Number(rowNumber));
+  if (index >= 0) staged[index] = record;
+  else staged.push(record);
+  return staged;
+}
+
+function validateDerivedMutationConflicts(tables, run, dates) {
+  const validDates = [...new Set((dates || []).map(clean).filter(validateIsoDate))].sort();
+  if (!validDates.length) return true;
+  const effective = buildDerivedSourceOccurrences(tables, run, validDates[0], validDates[validDates.length - 1]);
+  return validateEffectiveDerivedConflicts(effective);
+}
+
+function validateEffectiveDerivedConflicts(effective) {
+  const scheduled = effective.filter(item => normalizeGlobalSessionStatus(item.lifecycle?.status) === GLOBAL_SESSION_STATUS_SCHEDULED);
+  for (let leftIndex = 0; leftIndex < scheduled.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < scheduled.length; rightIndex += 1) {
+      const left = scheduled[leftIndex].session;
+      const right = scheduled[rightIndex].session;
+      if (clean(left.SessionDate) !== clean(right.SessionDate)) continue;
+      const leftStart = normalizeSubmittedTime(left.StartTime);
+      const leftEnd = normalizeSubmittedTime(left.EndTime);
+      const rightStart = normalizeSubmittedTime(right.StartTime);
+      const rightEnd = normalizeSubmittedTime(right.EndTime);
+      if (leftStart < rightEnd && rightStart < leftEnd) {
+        throw clientError(`Derived Course sessions overlap on ${clean(left.SessionDate)}`, 409);
+      }
+    }
+  }
+  return true;
+}
+
+function validateEffectiveDerivedPublication(tables, run, subject, effective) {
+  validateEffectiveDerivedConflicts(effective);
+  const sourceIds = new Set();
+  for (const item of effective) {
+    const session = item.session;
+    const sourceId = normalizePlatformIdentifier(session.SessionID);
+    if (!sourceId || sourceIds.has(sourceId)) throw clientError("Derived Course contains duplicate occurrence IDs", 409);
+    sourceIds.add(sourceId);
+    if (normalizePlatformIdentifier(session.RunID) !== normalizePlatformIdentifier(run.RunID) ||
+        normalizePlatformIdentifier(session.SubjectID) !== normalizePlatformIdentifier(subject.SubjectID)) {
+      throw clientError("Derived Course occurrence has an invalid run/subject relationship", 409);
+    }
+    if (!sessionWithinRun(session, run)) throw clientError("Derived Course occurrence falls outside its Course dates", 409);
+    if (!validateTimeRange(session.StartTime, session.EndTime)) throw clientError("Derived Course occurrence has an invalid time range", 409);
+    resolveModule(tables, session.ModuleID, subject.SubjectID, { requireActive: false });
+    if (lifecycleNeedsTeacher(item.lifecycle)) optionalActiveTeacher(tables, session.TeacherAccountID);
+    validateZoomLink(session.ZoomLink);
+  }
+  return true;
+}
+
+function validateDerivedExceptionWindow(tables, run, startDate, endDate) {
+  const rules = parseRunScheduleRules(run);
+  const rulesByKey = new Map(rules.map(rule => [normalizePlatformIdentifier(rule.rulekey), rule]));
+  const exceptions = activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID)
+    .filter(row => normalizeGlobalSessionKind(row.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION);
+  const anchors = new Set();
+  for (const exception of exceptions) {
+    const ruleKey = normalizePlatformIdentifier(exception.ScheduleRuleKey);
+    const occurrenceDate = clean(exception.OccurrenceDate);
+    if (!ruleKey && !occurrenceDate) continue;
+    const rule = rulesByKey.get(ruleKey);
+    if (!rule || !validateIsoDate(occurrenceDate) || !ruleOccursOnDate(rule, occurrenceDate) || !sessionWithinRun({ SessionDate: occurrenceDate }, run)) {
+      throw clientError("A materialised Course exception no longer resolves to a valid recurring occurrence", 409);
+    }
+    const anchor = derivedOccurrenceAnchor(ruleKey, occurrenceDate);
+    if (anchors.has(anchor)) throw clientError("A derived Course contains duplicate exceptions for one occurrence", 409);
+    anchors.add(anchor);
+    if (occurrenceDate >= startDate && occurrenceDate <= endDate) {
+      const actualDate = clean(exception.SessionDate);
+      if (actualDate < startDate || actualDate > endDate) {
+        throw clientError("A Course exception moves an occurrence outside the selected publication window; widen the publication window", 409);
+      }
+    }
+  }
+  return true;
+}
+
+function derivedExceptionRowsForPublication(tables, run, startDate, endDate) {
+  return activeGlobalTimetableSessionsForRun(tables.GlobalTimetableSessions, run.RunID)
+    .filter(row => normalizeGlobalSessionKind(row.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT) === GLOBAL_SESSION_KIND_EXCEPTION)
+    .filter(row => {
+      const occurrenceDate = clean(row.OccurrenceDate);
+      const actualDate = clean(row.SessionDate);
+      return (occurrenceDate && occurrenceDate >= startDate && occurrenceDate <= endDate) ||
+        (actualDate >= startDate && actualDate <= endDate);
+    });
+}
+
+function buildPublishedScheduleDefinition(tables, run, subject, rules) {
+  const enriched = rules.map(rule => {
+    const module = resolveModule(tables, rule.moduleid, subject.SubjectID, { requireActive: false });
+    const teacher = optionalActiveTeacher(tables, rule.teacheraccountid);
+    validateZoomLink(rule.zoomlink);
+    return {
+      ...rule,
+      modulename: clean(module?.ModuleName),
+      teachername: clean(teacher?.DisplayName) || "TBA"
+    };
+  });
+  return serializeCourseScheduleDefinition(enriched, { includeDisplayValues: true });
+}
+
 function validateSessionsForPublication(tables, run, subject, sessions) {
   const sourceIds = new Set();
   const slots = new Set();
@@ -888,7 +1283,11 @@ function validateSessionsForPublication(tables, run, subject, sessions) {
 }
 
 function timetableCalendarEvents(tables) {
-  const dates = (tables.GlobalTimetableSessions || []).map(row => clean(row.SessionDate)).filter(validateIsoDate).sort();
+  const dates = [
+    ...(tables.GlobalTimetableSessions || []).flatMap(row => [clean(row.SessionDate), clean(row.OccurrenceDate)]),
+    ...(tables.GlobalSubjectRuns || []).flatMap(run => [clean(run.StartDate), clean(run.EndDate)]),
+    ...(tables.AcademyCalendar || []).flatMap(row => [clean(row.StartDate), clean(row.EndDate)])
+  ].filter(validateIsoDate).sort();
   if (!dates.length) return [];
   return buildAcademyCalendarEvents(tables.AcademyCalendar || [], dates[0], dates[dates.length - 1]);
 }

@@ -10,9 +10,9 @@ const [adminHtml, js, css, styles] = await Promise.all([
 
 assert.match(adminHtml, /data-gcm-course-action="show">Courses</);
 assert.doesNotMatch(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=103\.1\.0\.5/);
-assert.match(adminHtml, /styles\.css\?v=103\.1\.0\.5/);
-assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=103\.1\.0\.5/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5/);
+assert.match(adminHtml, /styles\.css\?v=104\.5/);
+assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5/);
 
 assert.match(js, /<h3>Courses<\/h3>/);
 assert.match(js, /Course Name/);
@@ -23,6 +23,8 @@ assert.match(js, /<option value="FREE"/);
 assert.match(js, /<option value="PAID"/);
 assert.match(js, /<option value="FIXED"/);
 assert.match(js, /<option value="ONGOING"/);
+assert.match(js, /<option value="DERIVED"/);
+assert.match(js, /<option value="EXPLICIT"/);
 assert.match(js, /<option value="INACTIVE"/);
 assert.match(js, />Archived<\/option>/);
 assert.match(js, /\+ Add Course/);
@@ -30,6 +32,9 @@ assert.match(js, /View\/Edit Sessions/);
 assert.match(js, /data-gcm-course-action="publish-course"/);
 assert.match(js, /Publish range/);
 assert.match(js, /Prepare Course FREE\/PAID access/);
+assert.match(js, /Prepare Scheduling/);
+assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-scheduling/);
+assert.match(js, /New Courses default to DERIVED/);
 assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-access/);
 assert.match(js, /global-course-screen-save/);
 assert.match(js, /dirtyCourses\(\)/);
@@ -48,4 +53,4 @@ assert.match(css, /\.global-course-schedule-editor/);
 assert.match(css, /\.global-course-publish-inline/);
 assert.match(css, /@media \(max-width:900px\)/);
 
-console.log("V103.1.0.5 Courses inline metadata, FREE/PAID, schedule and direct-publish UI checks passed.");
+console.log("V104.5 Courses inline metadata, DERIVED/EXPLICIT scheduling and direct-publish UI checks passed.");

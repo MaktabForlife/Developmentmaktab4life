@@ -106,6 +106,8 @@ assert.deepEqual(mapGlobalSubjectRun(baseRun, now), {
   active: true,
   ongoing: false,
   accessmodel: "",
+  schedulemode: "EXPLICIT",
+  scheduledefinition: [],
   status: "CURRENT"
 });
 assert.deepEqual(mapGlobalSubjectRun(ongoingRun, now), {
@@ -118,7 +120,9 @@ assert.deepEqual(mapGlobalSubjectRun(ongoingRun, now), {
   active: true,
   ongoing: true,
   accessmodel: "",
+  schedulemode: "EXPLICIT",
+  scheduledefinition: [],
   status: "CURRENT"
 });
 
-console.log("V103.1.0.5 global-subject policy, fixed/ongoing Course and Course-access mapping helper tests passed.");
+console.log("V104.5 global-subject policy, Course access and derived/explicit scheduling mapping helper tests passed.");

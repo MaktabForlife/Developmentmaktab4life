@@ -1,4 +1,4 @@
-/* M4L V104.4 - Platform + Program batched rolling Academy timetable with request-local read reuse. */
+/* M4L V104.5 - Academy timetable resolves explicit and derived Global Course publications. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "104.4",
+      version: "104.5",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,
@@ -443,29 +443,20 @@ function canAccountAccessGlobalCourse({ account, run, subject, policyRows, acces
 
 export function buildGlobalCourseEvents(platform, account, options) {
   const subjectMap = new Map(platform.subjects.map(subject => [normalizePlatformIdentifier(subject.SubjectID), subject]));
-  const runMap = new Map(platform.runs.map(run => [normalizePlatformIdentifier(run.RunID), run]));
-  const currentPublicationIds = new Map();
-  for (const state of platform.GlobalTimetableRunState) {
-    if (normalizePlatformIdentifier(state.Stage) !== "PUBLISHED" || !String(state.CurrentPublicationID || "").trim()) continue;
-    currentPublicationIds.set(normalizePlatformIdentifier(state.RunID), normalizePlatformIdentifier(state.CurrentPublicationID));
-  }
   const output = [];
-  const grouped = new Map();
-  for (const snapshot of platform.PublishedGlobalTimetableSessions) {
-    const runId = normalizePlatformIdentifier(snapshot.RunID);
-    const publicationId = normalizePlatformIdentifier(snapshot.PublicationID);
-    if (!runId || currentPublicationIds.get(runId) !== publicationId) continue;
-    if (String(snapshot.SessionDate || "") < options.week.start || String(snapshot.SessionDate || "") > options.week.end) continue;
-    if (!grouped.has(runId)) grouped.set(runId, []);
-    grouped.get(runId).push(snapshot);
-  }
 
-  for (const [runId, snapshots] of grouped) {
-    const run = runMap.get(runId);
-    const subject = subjectMap.get(normalizePlatformIdentifier(run?.SubjectID || snapshots[0]?.SubjectID));
-    if (!run || !subject || !isActivePlatformValue(run.Active) || !isActivePlatformValue(subject.Active)) continue;
-    const resolved = resolveCurrentPublishedGlobalTimetable(platform, runId);
+  for (const run of platform.runs) {
+    const runId = normalizePlatformIdentifier(run?.RunID);
+    if (!runId || !isActivePlatformValue(run.Active)) continue;
+    const subject = subjectMap.get(normalizePlatformIdentifier(run.SubjectID));
+    if (!subject || !isActivePlatformValue(subject.Active)) continue;
+
+    const resolved = resolveCurrentPublishedGlobalTimetable(platform, runId, {
+      startDate: options.week.start,
+      endDate: options.week.end
+    });
     if (!resolved.ok) continue;
+
     const policyAccess = canAccountAccessGlobalCourse({
       account,
       run,

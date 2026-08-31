@@ -1,9 +1,10 @@
-/* M4L V103.1.0.5 - Courses: inline Course metadata, recurring schedules, direct publication and optional session editor. */
+/* M4L V104.5 - Courses: derived-by-default schedules with explicit-session mode and materialised exceptions. */
 (function () {
   "use strict";
 
   const COURSE_TYPES = Object.freeze(["FIXED", "ONGOING"]);
   const COURSE_ACCESS = Object.freeze(["FREE", "PAID"]);
+  const COURSE_SCHEDULE_MODES = Object.freeze(["DERIVED", "EXPLICIT"]);
   const COURSE_STATUS = Object.freeze(["ACTIVE", "INACTIVE"]);
   const DAY_ORDER = Object.freeze(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
   const DAY_LABELS = Object.freeze({ MON: "Mon", TUE: "Tue", WED: "Wed", THU: "Thu", FRI: "Fri", SAT: "Sat", SUN: "Sun" });
@@ -28,6 +29,7 @@
       platformTimezone: "Africa/Johannesburg",
       platformSchemaVersion: "",
       courseAccessSchemaReady: false,
+      courseScheduleSchemaReady: false,
       subjects: [], policies: [], runs: []
     };
   }
@@ -93,6 +95,8 @@
     if (action === "save-courses") return saveCourses(target);
     if (action === "preview-course-access-migration") return previewCourseAccessMigration(target);
     if (action === "migrate-course-access") return migrateCourseAccess(target);
+    if (action === "preview-course-schedule-migration") return previewCourseScheduleMigration(target);
+    if (action === "migrate-course-scheduling") return migrateCourseScheduling(target);
     if (action === "publish-course") return publishCourseFromRow(target.dataset.courseKey || "", target);
     if (action === "view-sessions") return openSessionEditor(target.dataset.courseKey || "");
     if (action === "close-sessions") return closeSessionEditor();
@@ -112,7 +116,7 @@
     }
     if (target.matches("[data-course-field]")) {
       syncCourseField(target, true);
-      if (target.dataset.courseField === "type") render();
+      if (["type", "schedulemode"].includes(target.dataset.courseField)) render();
       return;
     }
     if (target.matches("[data-course-schedule-field], [data-course-schedule-day]")) {
@@ -166,6 +170,7 @@
         platformTimezone: String(delivery.platformTimezone || "Africa/Johannesburg"),
         platformSchemaVersion: String(delivery.platformSchemaVersion || ""),
         courseAccessSchemaReady: delivery.courseAccessSchemaReady === true,
+        courseScheduleSchemaReady: delivery.courseScheduleSchemaReady === true,
         subjects: array(delivery.subjects), policies: array(delivery.policies), runs: array(delivery.runs)
       };
       model.timetable = {
@@ -203,13 +208,14 @@
       publishstart: "",
       publishend: "",
       accessmodel: COURSE_ACCESS.includes(String(run.accessmodel || "").toUpperCase()) ? String(run.accessmodel).toUpperCase() : fallbackCourseAccess(run.subjectid),
+      schedulemode: COURSE_SCHEDULE_MODES.includes(String(run.schedulemode || "").toUpperCase()) ? String(run.schedulemode).toUpperCase() : "EXPLICIT",
       active: run.active !== false,
       isNew: false,
       dirty: false,
       scheduleDirty: false,
       windowDirty: false,
       removedSessionIds: [],
-      scheduleRows: scheduleRowsFromSessions(run),
+      scheduleRows: scheduleRowsForRun(run),
       original: null
     };
     draft.original = courseSnapshot(draft);
@@ -221,7 +227,7 @@
     const draft = {
       key: nextLocalKey("course"), runid: "", subjectid: subjectId, runname: "", type: "FIXED",
       startdate: "", enddate: "", publishstart: "", publishend: "",
-      accessmodel: fallbackCourseAccess(subjectId), active: true, isNew: true, dirty: true,
+      accessmodel: fallbackCourseAccess(subjectId), schedulemode: "DERIVED", active: true, isNew: true, dirty: true,
       scheduleDirty: false, windowDirty: false, removedSessionIds: [], scheduleRows: [blankScheduleRow()], original: null
     };
     draft.original = courseSnapshot(draft);
@@ -230,9 +236,26 @@
 
   function blankScheduleRow() {
     return {
-      key: nextLocalKey("schedule"), days: [], start: "", end: "", moduleid: "", teacherid: "", zoom: "",
+      key: nextLocalKey("schedule"), rulekey: "", days: [], start: "", end: "", moduleid: "", teacherid: "", zoom: "",
       sessionIds: [], original: null, isNew: true, dirty: false
     };
+  }
+
+  function scheduleRowsForRun(run) {
+    const mode = String(run.schedulemode || "EXPLICIT").toUpperCase();
+    if (mode === "DERIVED" && array(run.scheduledefinition).length) {
+      return array(run.scheduledefinition).map(rule => {
+        const row = {
+          key: nextLocalKey("schedule"), rulekey: String(rule.rulekey || ""), days: array(rule.days).map(value => String(value).toUpperCase()),
+          start: formatUiTime(rule.starttime), end: formatUiTime(rule.endtime), moduleid: String(rule.moduleid || ""),
+          teacherid: String(rule.teacheraccountid || ""), zoom: String(rule.zoomlink || ""), sessionIds: [], original: null,
+          isNew: false, dirty: false
+        };
+        row.original = scheduleSnapshot(row);
+        return row;
+      });
+    }
+    return scheduleRowsFromSessions(run);
   }
 
   function scheduleRowsFromSessions(run) {
@@ -250,7 +273,7 @@
     return [...grouped.values()].map(group => {
       const first = group[0];
       const row = {
-        key: nextLocalKey("schedule"),
+        key: nextLocalKey("schedule"), rulekey: "",
         days: DAY_ORDER.filter(day => group.some(session => weekdayCode(session.sessiondate) === day)),
         start: formatUiTime(first.starttime), end: formatUiTime(first.endtime), moduleid: first.moduleid || "",
         teacherid: first.teacheraccountid || "", zoom: first.zoomlink || "", sessionIds: group.map(session => session.sessionid),
@@ -268,15 +291,16 @@
     setContent(`
       <div class="global-course-scheduler-shell global-courses-shell">
         ${courseAccessMigrationBanner()}
+        ${courseScheduleMigrationBanner()}
         <section class="global-curriculum-panel global-courses-panel">
           <div class="global-curriculum-panel-heading global-courses-heading">
-            <div><h3>Courses</h3><p class="helper-text">Define each Course, its access model and recurring schedule. Save first; publishing is separate.</p></div>
+            <div><h3>Courses</h3><p class="helper-text">Define each Course, its access model and scheduling mode. DERIVED is the default; EXPLICIT creates exact dated sessions for workshops and similar offerings.</p></div>
             <div class="global-courses-heading-actions">
               <label class="global-course-filter"><span>Show</span><select data-course-filter><option value="ACTIVE" ${model.courseFilter === "ACTIVE" ? "selected" : ""}>Active</option><option value="INACTIVE" ${model.courseFilter === "INACTIVE" ? "selected" : ""}>Archived</option><option value="ALL" ${model.courseFilter === "ALL" ? "selected" : ""}>All</option></select></label>
               ${courseSaveButton(dirty)}
             </div>
           </div>
-          <div class="global-course-grid-head" role="row"><span>Course Name</span><span>Global Subject</span><span>Type</span><span>Start / Publish From</span><span>End / Publish Through</span><span>Access</span><span>Status</span><span>Schedule / Publish</span></div>
+          <div class="global-course-grid-head" role="row"><span>Course Name</span><span>Global Subject</span><span>Type</span><span>Start / Publish From</span><span>End / Publish Through</span><span>Access</span><span>Scheduling</span><span>Status</span><span>Schedule / Publish</span></div>
           <div class="global-course-grid-body">${visibleCourses().map(courseCard).join("") || '<p class="global-curriculum-empty-list">No Courses in this view.</p>'}</div>
           <button type="button" class="global-course-add-button" data-gcm-course-action="add-course">+ Add Course</button>
         </section>
@@ -297,17 +321,20 @@
 
   function courseCard(course) {
     const state = stateForRun(course.runid);
-    const sessionCount = currentWindowSessions(course.runid, course).filter(item => item.active && currentLifecycleStatus(item.sessionid) === "SCHEDULED").length;
+    const effectiveSessions = currentWindowSessions(course.runid, course);
+    const sessionCount = effectiveSessions.filter(item => item.active !== false && lifecycleForDisplay(item).status === "SCHEDULED").length;
+    const hasSchedule = course.schedulemode === "DERIVED" ? course.scheduleRows.some(scheduleHasContent) : sessionCount > 0;
     const publication = currentPublication(course.runid);
     const publicationLabel = state?.stage === "PUBLISHED"
       ? `Published${publication?.versionno ? ` v${publication.versionno}` : ""}`
-      : state?.currentpublicationid ? "Changes not published" : (sessionCount ? "Draft" : "Not scheduled");
+      : state?.currentpublicationid ? "Changes not published" : (hasSchedule ? "Draft" : "Not scheduled");
     const scheduleOpen = model.scheduleOpenKey === course.key;
     const courseClasses = ["global-course-record", course.dirty || course.scheduleDirty || course.windowDirty ? "is-dirty" : "", course.isNew ? "is-new" : ""].filter(Boolean).join(" ");
     const fixed = course.type === "FIXED";
     const date1 = fixed ? course.startdate : course.publishstart;
     const date2 = fixed ? course.enddate : course.publishend;
     const accessDisabled = !model.delivery.courseAccessSchemaReady ? "disabled" : "";
+    const schedulingDisabled = !model.delivery.courseScheduleSchemaReady ? "disabled" : "";
     return `<article class="${courseClasses}" data-course-key="${attr(course.key)}">
       <div class="global-course-grid-row" role="row">
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">Course Name</span><input data-course-field="runname" data-course-key="${attr(course.key)}" type="text" maxlength="160" value="${attr(course.runname)}" placeholder="Course name" /></label>
@@ -316,29 +343,30 @@
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">${fixed ? "Start Date" : "Publish From"}</span><input data-course-field="date1" data-course-key="${attr(course.key)}" type="date" value="${attr(date1)}" /></label>
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">${fixed ? "End Date" : "Publish Through"}</span><input data-course-field="date2" data-course-key="${attr(course.key)}" type="date" value="${attr(date2)}" /></label>
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">Access</span><select data-course-field="accessmodel" data-course-key="${attr(course.key)}" ${accessDisabled}><option value="FREE" ${course.accessmodel === "FREE" ? "selected" : ""}>FREE</option><option value="PAID" ${course.accessmodel === "PAID" ? "selected" : ""}>PAID</option></select></label>
+        <label class="global-course-grid-cell"><span class="global-course-mobile-label">Scheduling</span><select data-course-field="schedulemode" data-course-key="${attr(course.key)}" ${schedulingDisabled}><option value="DERIVED" ${course.schedulemode === "DERIVED" ? "selected" : ""}>DERIVED</option><option value="EXPLICIT" ${course.schedulemode === "EXPLICIT" ? "selected" : ""}>EXPLICIT sessions</option></select></label>
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">Status</span><select data-course-field="active" data-course-key="${attr(course.key)}"><option value="ACTIVE" ${course.active ? "selected" : ""}>ACTIVE</option><option value="INACTIVE" ${!course.active ? "selected" : ""}>INACTIVE</option></select></label>
         <div class="global-course-grid-cell global-course-actions-cell">
           <span class="global-course-mobile-label">Schedule / Publish</span>
           <div class="global-course-row-actions">
             <button type="button" class="global-course-inline-action" data-gcm-course-action="toggle-schedule" data-course-key="${attr(course.key)}" aria-expanded="${scheduleOpen ? "true" : "false"}">Schedule ${scheduleOpen ? "▴" : "▾"}</button>
-            ${course.runid ? `<button type="button" class="global-course-inline-action" data-gcm-course-action="view-sessions" data-course-key="${attr(course.key)}">View/Edit Sessions</button>` : ""}
-            ${publishRowButton(course, state, sessionCount)}
+            ${course.runid ? `<button type="button" class="global-course-inline-action" data-gcm-course-action="view-sessions" data-course-key="${attr(course.key)}">${course.schedulemode === "DERIVED" ? "Exceptions" : "View/Edit Sessions"}</button>` : ""}
+            ${publishRowButton(course, state, hasSchedule)}
             ${course.isNew ? `<button type="button" class="global-course-draft-remove" data-gcm-course-action="discard-course" data-course-key="${attr(course.key)}" aria-label="Discard new Course" title="Discard new Course">×</button>` : ""}
           </div>
-          <span class="global-course-publication-state">${html(publicationLabel)} · ${sessionCount} session${sessionCount === 1 ? "" : "s"}</span>
+          <span class="global-course-publication-state">${html(publicationLabel)} · ${course.schedulemode === "DERIVED" ? `${sessionCount} derived occurrence${sessionCount === 1 ? "" : "s"}` : `${sessionCount} session${sessionCount === 1 ? "" : "s"}`}</span>
         </div>
       </div>
       ${scheduleOpen ? scheduleEditor(course) : ""}
     </article>`;
   }
 
-  function publishRowButton(course, state, sessionCount) {
+  function publishRowButton(course, state, hasSchedule) {
     if (!course.runid || !course.active) return "";
     const published = state?.stage === "PUBLISHED";
     if (published && course.type === "FIXED") {
       return '<button type="button" class="global-course-publish-inline is-published" disabled>Published</button>';
     }
-    const blocked = course.dirty || course.scheduleDirty || course.windowDirty || !sessionCount || (course.type === "ONGOING" && !validPublishWindow(course));
+    const blocked = course.dirty || course.scheduleDirty || course.windowDirty || !hasSchedule || (course.type === "ONGOING" && !validPublishWindow(course));
     const label = published && course.type === "ONGOING" ? "Publish range" : "Publish";
     return `<button type="button" class="global-course-publish-inline" data-gcm-course-action="publish-course" data-course-key="${attr(course.key)}" ${blocked ? "disabled" : ""}>${label}</button>`;
   }
@@ -346,7 +374,7 @@
   function scheduleEditor(course) {
     const rows = course.scheduleRows.length ? course.scheduleRows : [blankScheduleRow()];
     return `<div class="global-course-schedule-editor ${course.scheduleDirty ? "is-dirty" : ""}">
-      <div class="global-course-schedule-heading"><div><h4>Recurring schedule</h4><p class="helper-text">${course.type === "ONGOING" ? "Publish From / Through controls which exact dated sessions are prepared and published." : "Start / End dates define this fixed delivery period."}</p></div><button type="button" class="global-course-compact-action" data-gcm-course-action="add-schedule-row" data-course-key="${attr(course.key)}">+ Another Time Slot</button></div>
+      <div class="global-course-schedule-heading"><div><h4>Recurring schedule</h4><p class="helper-text">${course.schedulemode === "DERIVED" ? "These rules are stored and dated occurrences are derived only when needed. Use Exceptions to materialise a cancellation, moved occurrence or other one-off change." : (course.type === "ONGOING" ? "EXPLICIT mode creates exact dated sessions inside the selected Publish From / Through window." : "EXPLICIT mode creates and stores the exact dated sessions for this fixed delivery period.")}</p></div><button type="button" class="global-course-compact-action" data-gcm-course-action="add-schedule-row" data-course-key="${attr(course.key)}">+ Another Time Slot</button></div>
       <div class="global-course-schedule-rows">${rows.map((row, index) => scheduleRow(course, row, index)).join("")}</div>
       <p class="global-course-save-hint">Use the main Courses Save icon to store Course and schedule changes without publishing.</p>
     </div>`;
@@ -404,6 +432,41 @@
     });
   }
 
+  function courseScheduleMigrationBanner() {
+    if (!model.delivery.courseAccessSchemaReady || model.delivery.courseScheduleSchemaReady) return "";
+    const globalAdmin = isGlobalAdmin();
+    return `<section class="global-course-migration-banner">
+      <div><strong>Prepare derived Course scheduling</strong><p>This one-time migration preserves every existing Course as EXPLICIT so current publications remain unchanged. New Courses then default to DERIVED.</p></div>
+      ${globalAdmin ? `<button type="button" class="global-course-compact-action" data-gcm-course-action="preview-course-schedule-migration">Prepare Scheduling</button>` : '<span class="helper-text">A GLOBAL_ADMIN must run this one-time migration.</span>'}
+    </section>`;
+  }
+
+  async function previewCourseScheduleMigration(button) {
+    await withBusy(button, "Checking…", async () => {
+      const result = await apiPost("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, appState()?.token || "");
+      if (!result.success) throw new Error(result.error || result.detail || "Unable to preview Course scheduling migration");
+      if (!result.canCommit) {
+        setMessage("Derived Course scheduling is already prepared.", "success");
+        await load(true);
+        return;
+      }
+      if (!window.confirm(`Prepare derived scheduling for ${Number(result.courseCount || 0)} existing Course${Number(result.courseCount || 0) === 1 ? "" : "s"}?\n\nExisting Courses remain EXPLICIT. New Courses default to DERIVED.\n\nContinue?`)) return;
+      await migrateCourseScheduling(button);
+    });
+  }
+
+  async function migrateCourseScheduling(button) {
+    await withBusy(button, "Migrating…", async () => {
+      const result = await apiPost("/api/admin/platform/global/courses/migrate-scheduling", {
+        commit: true,
+        confirmation: "MIGRATE COURSE SCHEDULING"
+      }, appState()?.token || "");
+      if (!result.success) throw new Error(result.error || result.detail || "Unable to prepare derived Course scheduling");
+      await load(true);
+      setMessage(result.message || "Derived Course scheduling prepared.", "success");
+    });
+  }
+
   function syncCourseField(target, fromChange) {
     const course = findCourse(target.dataset.courseKey || "");
     if (!course) return;
@@ -440,6 +503,14 @@
       else { course.publishend = value; course.windowDirty = true; }
     }
     if (fieldName === "accessmodel" && COURSE_ACCESS.includes(value.toUpperCase())) course.accessmodel = value.toUpperCase();
+    if (fieldName === "schedulemode" && COURSE_SCHEDULE_MODES.includes(value.toUpperCase())) {
+      const nextMode = value.toUpperCase();
+      if (nextMode !== course.schedulemode) {
+        course.schedulemode = nextMode;
+        course.scheduleRows.forEach(row => { if (scheduleHasContent(row)) row.dirty = true; });
+        course.scheduleDirty = course.scheduleRows.some(row => row.dirty);
+      }
+    }
     if (fieldName === "active") course.active = value.toUpperCase() === "ACTIVE";
     refreshCourseDirty(course);
     if (fromChange) refreshCourseSaveState();
@@ -530,6 +601,10 @@
       setMessage("Prepare Course FREE/PAID access before saving Courses.", "error");
       return false;
     }
+    if (!model.delivery.courseScheduleSchemaReady) {
+      setMessage("Prepare derived Course scheduling before saving Courses.", "error");
+      return false;
+    }
     const dirty = dirtyCourses();
     if (!dirty.length) return true;
     if (!validateCourseDrafts(dirty)) return false;
@@ -541,7 +616,7 @@
       for (const course of dirty) {
         const priorRunId = course.runid;
         const timetableWork = course.scheduleDirty || course.windowDirty || deliveryWindowChanged(course);
-        const metadataWork = course.dirty || course.isNew;
+        const metadataWork = course.dirty || course.isNew || (course.schedulemode === "DERIVED" && course.scheduleDirty);
         if (priorRunId && stateForRun(priorRunId)?.stage === "PUBLISHED" && (metadataWork || timetableWork)) {
           const revised = await apiPost("/api/admin/platform/global/timetable/revise", { runId: priorRunId }, token);
           if (!revised.success) throw new Error(revised.error || revised.detail || `Unable to open a revision for ${course.runname}`);
@@ -556,6 +631,8 @@
             endDate: course.type === "FIXED" ? course.enddate : "",
             ongoing: course.type === "ONGOING",
             accessModel: course.accessmodel,
+            scheduleMode: course.schedulemode,
+            scheduleDefinition: courseScheduleDefinition(course),
             active: course.active
           }, token);
           if (!saved.success) throw new Error(saved.error || saved.detail || `Unable to save ${course.runname || "Course"}`);
@@ -588,6 +665,7 @@
   }
 
   async function saveCourseSchedule(course, priorRunId, token) {
+    if (course.schedulemode === "DERIVED") return;
     const sourceRunId = priorRunId || course.runid;
     const sourceSessions = sourceRunId ? sessionsForRun(sourceRunId) : [];
     const changesById = new Map();
@@ -694,14 +772,15 @@
       if (!course.runname.trim()) { setMessage("Every Course requires a Course Name.", "error"); return false; }
       if (!COURSE_TYPES.includes(course.type)) { setMessage("Course Type must be FIXED or ONGOING.", "error"); return false; }
       if (!COURSE_ACCESS.includes(course.accessmodel)) { setMessage("Course Access must be FREE or PAID.", "error"); return false; }
+      if (!COURSE_SCHEDULE_MODES.includes(course.schedulemode)) { setMessage("Course Scheduling must be DERIVED or EXPLICIT.", "error"); return false; }
       if (course.type === "FIXED") {
         if (!isIsoDate(course.startdate) || !isIsoDate(course.enddate) || course.enddate < course.startdate) {
           setMessage(`${course.runname || "Course"}: FIXED Courses require valid Start and End dates.`, "error"); return false;
         }
       }
-      if (course.type === "ONGOING" && (course.scheduleDirty || course.windowDirty)) {
+      if (course.type === "ONGOING" && course.schedulemode === "EXPLICIT" && (course.scheduleDirty || course.windowDirty)) {
         if (!validPublishWindow(course)) {
-          setMessage(`${course.runname || "Course"}: ONGOING schedule work requires Publish From and Publish Through dates.`, "error"); return false;
+          setMessage(`${course.runname || "Course"}: ONGOING EXPLICIT schedule work requires Publish From and Publish Through dates.`, "error"); return false;
         }
         if (!course.scheduleRows.some(scheduleHasContent)) {
           setMessage(`${course.runname || "Course"}: add at least one recurring time slot before preparing an ONGOING publication window.`, "error"); return false;
@@ -751,6 +830,10 @@
       setMessage("Save the Course, schedule and publication window before opening its sessions.", "error");
       return;
     }
+    if (course.schedulemode === "DERIVED" && course.type === "ONGOING" && !validPublishWindow(course)) {
+      setMessage(`${course.runname}: enter Publish From and Publish Through to view and materialise exceptions for an ONGOING derived Course.`, "error");
+      return;
+    }
     if (model.sessionDrafts.size && !discardSessionDraftsConfirmed()) return;
     model.sessionOpenRunId = course.runid;
     render();
@@ -773,7 +856,7 @@
     const pending = model.sessionDrafts.size;
     return `<section class="global-curriculum-panel global-course-sessions-panel">
       <div class="global-curriculum-panel-heading global-course-session-heading">
-        <div class="global-course-session-title"><button type="button" class="global-course-session-close" data-gcm-course-action="close-sessions" aria-label="Close session editor" title="Close">×</button><div><h3>${html(course.runname)} — Sessions</h3><p class="helper-text">${sessions.length} session${sessions.length === 1 ? "" : "s"}${pending ? ` · ${pending} unsaved change${pending === 1 ? "" : "s"}` : ""}</p></div></div>
+        <div class="global-course-session-title"><button type="button" class="global-course-session-close" data-gcm-course-action="close-sessions" aria-label="Close session editor" title="Close">×</button><div><h3>${html(course.runname)} — ${course.schedulemode === "DERIVED" ? "Derived Occurrences & Exceptions" : "Sessions"}</h3><p class="helper-text">${course.schedulemode === "DERIVED" ? "Normal occurrences are virtual. Editing one materialises only that exception. · " : ""}${sessions.length} occurrence${sessions.length === 1 ? "" : "s"}${pending ? ` · ${pending} unsaved change${pending === 1 ? "" : "s"}` : ""}</p></div></div>
         ${stage === "PUBLISHED" ? `<button type="button" class="global-course-compact-action" data-gcm-course-action="revise" data-run-id="${attr(course.runid)}">Revise timetable</button>` : ""}
       </div>
       <div class="global-session-inline-scroll">
@@ -789,7 +872,7 @@
   }
 
   function sessionInlineRow(session, stage) {
-    const lifecycle = lifecycleForSession(session.sessionid);
+    const lifecycle = lifecycleForDisplay(session);
     const readOnly = stage === "PUBLISHED" || lifecycle.status === "RESCHEDULED";
     const draft = model.sessionDrafts.get(session.sessionid) || null;
     const values = draft || {
@@ -826,9 +909,10 @@
   function captureSessionDraft(row) {
     if (!row || !model.sessionOpenRunId) return;
     const sessionId = String(row.dataset.sessionRowId || "");
-    const session = sessionsForRun(model.sessionOpenRunId).find(item => item.sessionid === sessionId);
+    const course = model.courses.find(item => item.runid === model.sessionOpenRunId);
+    const session = currentWindowSessions(model.sessionOpenRunId, course).find(item => item.sessionid === sessionId);
     if (!session) return;
-    const lifecycle = lifecycleForSession(sessionId);
+    const lifecycle = lifecycleForDisplay(session);
     if ((stateForRun(model.sessionOpenRunId)?.stage || "DEVELOPMENT") !== "DEVELOPMENT" || lifecycle.status === "RESCHEDULED") return;
     const current = {
       date: String(row.querySelector('[data-inline-session-field="date"]')?.value || ""),
@@ -855,21 +939,43 @@
     const course = model.courses.find(item => item.runid === model.sessionOpenRunId);
     if (!course) return false;
     if (model.sessionDrafts.size) {
-      const changes = [];
+      const exactChanges = [];
+      const materialiseChanges = [];
+      const visibleSessions = currentWindowSessions(course.runid, course);
       for (const [sessionId, draft] of model.sessionDrafts) {
-        const session = sessionsForRun(course.runid).find(item => item.sessionid === sessionId);
+        const session = visibleSessions.find(item => item.sessionid === sessionId);
         if (!session) continue;
         const startTime = parseUiTime(draft.start); const endTime = parseUiTime(draft.end);
-        if (!isIsoDate(draft.date)) { setMessage("Every changed session requires a valid date.", "error"); return false; }
+        if (!isIsoDate(draft.date)) { setMessage("Every changed occurrence requires a valid date.", "error"); return false; }
         if (!startTime || !endTime || endTime <= startTime) { setMessage("Use increasing 24-hour times such as 13h00–14h00.", "error"); return false; }
-        changes.push({
-          sessionId, sessionDate: draft.date, startTime, endTime, moduleId: draft.moduleid,
-          teacherAccountId: draft.teacherid, zoomLink: draft.zoom, active: session.active !== false, status: draft.status
-        });
+        const change = {
+          sessionDate: draft.date, startTime, endTime, moduleId: draft.moduleid,
+          teacherAccountId: draft.teacherid, zoomLink: draft.zoom, status: draft.status
+        };
+        if (session.virtual === true) {
+          materialiseChanges.push({
+            ...change,
+            runId: course.runid,
+            scheduleRuleKey: session.schedulerulekey,
+            occurrenceDate: session.occurrencedate
+          });
+        } else {
+          exactChanges.push({
+            ...change,
+            sessionId,
+            active: session.active !== false
+          });
+        }
       }
       const savedOk = await withBusy(button, "Saving…", async () => {
-        const result = await apiPost("/api/admin/platform/global/timetable/session/batch-save", { runId: course.runid, changes }, appState()?.token || "");
-        if (!result.success) throw new Error(result.error || result.detail || "Unable to save session changes");
+        if (exactChanges.length) {
+          const result = await apiPost("/api/admin/platform/global/timetable/session/batch-save", { runId: course.runid, changes: exactChanges }, appState()?.token || "");
+          if (!result.success) throw new Error(result.error || result.detail || "Unable to save session changes");
+        }
+        for (const change of materialiseChanges) {
+          const result = await apiPost("/api/admin/platform/global/timetable/session/materialize", change, appState()?.token || "");
+          if (!result.success) throw new Error(result.error || result.detail || "Unable to materialise Course exception");
+        }
         model.sessionDrafts.clear();
       });
       if (!savedOk) return false;
@@ -886,11 +992,16 @@
       if (!result.success) { setMessage(result.error || result.detail || "Unable to publish Course", "error"); return false; }
       setMessage(result.message || "Course published.", "success");
     } else {
-      setMessage("Session changes saved without publishing.", "success");
+      setMessage(course.schedulemode === "DERIVED" ? "Course exceptions saved without publishing." : "Session changes saved without publishing.", "success");
     }
     invalidateAll();
     await load(true);
     model.sessionOpenRunId = course.runid;
+    const reloaded = model.courses.find(item => item.runid === course.runid);
+    if (reloaded && course.type === "ONGOING" && validPublishWindow(course)) {
+      reloaded.publishstart = course.publishstart;
+      reloaded.publishend = course.publishend;
+    }
     render();
     return true;
   }
@@ -935,18 +1046,86 @@
   }
 
   function currentWindowSessions(runId, courseLike) {
-    const sessions = sessionsForRun(runId);
-    const type = courseLike?.type || ((!courseLike?.startdate && !courseLike?.enddate) ? "ONGOING" : "FIXED");
+    const course = courseLike || model.courses.find(item => item.runid === runId) || runById(runId);
+    if (String(course?.schedulemode || "EXPLICIT").toUpperCase() === "DERIVED") {
+      return derivedWindowSessions(course);
+    }
+    const sessions = sessionsForRun(runId).filter(item => String(item.sessionkind || "EXPLICIT").toUpperCase() !== "EXCEPTION");
+    const type = course?.type || ((!course?.startdate && !course?.enddate) ? "ONGOING" : "FIXED");
     if (type === "ONGOING") {
-      const start = courseLike?.publishstart || "";
-      const end = courseLike?.publishend || "";
+      const start = course?.publishstart || "";
+      const end = course?.publishend || "";
       return isIsoDate(start) && isIsoDate(end) && end >= start
         ? sessions.filter(item => item.sessiondate >= start && item.sessiondate <= end)
         : sessions;
     }
-    const start = courseLike?.startdate || ""; const end = courseLike?.enddate || "";
+    const start = course?.startdate || ""; const end = course?.enddate || "";
     if (!start || !end) return sessions;
     return sessions.filter(item => item.sessiondate >= start && item.sessiondate <= end);
+  }
+
+  function derivedWindowSessions(course) {
+    if (!course) return [];
+    const start = course.type === "ONGOING" ? course.publishstart : course.startdate;
+    const end = course.type === "ONGOING" ? course.publishend : course.enddate;
+    if (!isIsoDate(start) || !isIsoDate(end) || end < start) return [];
+    const base = [];
+    for (const row of course.scheduleRows.filter(scheduleHasContent)) {
+      const ruleKey = row.rulekey || row.key;
+      const selected = new Set(row.days);
+      for (let date = start; date <= end; date = addIsoDays(date, 1)) {
+        if (!selected.has(weekdayCode(date))) continue;
+        const module = model.timetable.modules.find(item => item.moduleid === row.moduleid);
+        const teacher = model.timetable.teachers.find(item => item.accountid === row.teacherid);
+        base.push({
+          sessionid: `GDERIVED:${ruleKey}:${date}`,
+          runid: course.runid,
+          subjectid: course.subjectid,
+          moduleid: row.moduleid || "",
+          sessiondate: date,
+          starttime: normalizeTime(row.start),
+          endtime: normalizeTime(row.end),
+          teacheraccountid: row.teacherid || "",
+          zoomlink: row.zoom || "",
+          active: true,
+          virtual: true,
+          sessionkind: "DERIVED",
+          schedulerulekey: ruleKey,
+          occurrencedate: date,
+          runname: course.runname,
+          subjectname: subjectById(course.subjectid)?.subjectname || "",
+          modulename: module?.modulename || "",
+          teachername: teacher?.displayname || "TBA"
+        });
+      }
+    }
+    const exceptions = sessionsForRun(course.runid).filter(item => item.active !== false && String(item.sessionkind || "").toUpperCase() === "EXCEPTION");
+    const anchored = new Map();
+    const extras = [];
+    for (const item of exceptions) {
+      const anchor = item.schedulerulekey && item.occurrencedate ? `${String(item.schedulerulekey).toUpperCase()}|${item.occurrencedate}` : "";
+      if (anchor) anchored.set(anchor, item); else extras.push(item);
+    }
+    const output = [];
+    const added = new Set();
+    for (const item of base) {
+      const anchor = `${String(item.schedulerulekey).toUpperCase()}|${item.occurrencedate}`;
+      const exception = anchored.get(anchor);
+      if (exception) {
+        if (exception.sessiondate >= start && exception.sessiondate <= end) { output.push(exception); added.add(exception.sessionid); }
+      } else output.push(item);
+    }
+    for (const item of [...extras, ...anchored.values()]) {
+      if (added.has(item.sessionid)) continue;
+      if (item.sessiondate >= start && item.sessiondate <= end) output.push(item);
+    }
+    return output.sort((a, b) => `${a.sessiondate} ${normalizeTime(a.starttime)} ${a.sessionid}`.localeCompare(`${b.sessiondate} ${normalizeTime(b.starttime)} ${b.sessionid}`));
+  }
+
+  function addIsoDays(dateText, days) {
+    const date = new Date(`${dateText}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + Number(days || 0));
+    return date.toISOString().slice(0, 10);
   }
 
   function courseSnapshot(course) {
@@ -954,9 +1133,21 @@
       subjectid: course.subjectid, runname: course.runname, type: course.type,
       startdate: course.type === "FIXED" ? course.startdate : "",
       enddate: course.type === "FIXED" ? course.enddate : "",
-      accessmodel: course.accessmodel, active: course.active
+      accessmodel: course.accessmodel, schedulemode: course.schedulemode, active: course.active
     };
   }
+  function courseScheduleDefinition(course) {
+    return course.scheduleRows.filter(scheduleHasContent).map(row => ({
+      ...(row.rulekey ? { ruleKey: row.rulekey } : {}),
+      days: DAY_ORDER.filter(day => row.days.includes(day)),
+      startTime: parseUiTime(row.start) || normalizeTime(row.start),
+      endTime: parseUiTime(row.end) || normalizeTime(row.end),
+      moduleId: row.moduleid || "",
+      teacherAccountId: row.teacherid || "",
+      zoomLink: String(row.zoom || "").trim()
+    }));
+  }
+
   function deliveryWindowChanged(course) {
     if (!course || course.isNew || course.type !== "FIXED") return false;
     const original = course.original || {};
@@ -1014,6 +1205,7 @@
   }
   function sessionsForRun(id) { return model.timetable.sessions.filter(item => item.runid === id).sort((a, b) => `${a.sessiondate} ${normalizeTime(a.starttime)}`.localeCompare(`${b.sessiondate} ${normalizeTime(b.starttime)}`)); }
   function lifecycleForSession(id) { return model.timetable.lifecycles.find(item => item.sessionid === id) || { status: "SCHEDULED" }; }
+  function lifecycleForDisplay(session) { return session?.virtual ? { status: "SCHEDULED" } : lifecycleForSession(session?.sessionid); }
   function currentLifecycleStatus(id) { return String(lifecycleForSession(id).status || "SCHEDULED").toUpperCase(); }
   function moduleOptions(subjectId, selectedId) { return model.timetable.modules.filter(item => item.subjectid === subjectId).map(item => `<option value="${attr(item.moduleid)}" ${item.moduleid === selectedId ? "selected" : ""}>${html(item.modulename)}${item.active ? "" : " — inactive"}</option>`).join(""); }
   function teacherOptions(selectedId) { return `<option value="" ${selectedId ? "" : "selected"}>TBA</option>${model.timetable.teachers.filter(item => item.active).map(item => `<option value="${attr(item.accountid)}" ${item.accountid === selectedId ? "selected" : ""}>${html(item.displayname || item.accountid)}</option>`).join("")}`; }

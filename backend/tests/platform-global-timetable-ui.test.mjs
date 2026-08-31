@@ -10,15 +10,21 @@ const [adminHtml, js, css] = await Promise.all([
 assert.match(adminHtml, />Courses<\/button>/);
 assert.match(adminHtml, /Program Timetables/);
 assert.match(js, /Recurring schedule/);
+assert.match(js, /Normal occurrences are virtual/);
+assert.match(js, /Derived Occurrences & Exceptions/);
+assert.match(js, /EXPLICIT sessions/);
+assert.match(js, /Prepare Scheduling/);
+assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-scheduling/);
 assert.match(js, /\+ Another Time Slot/);
 assert.match(js, /data-course-schedule-day/);
 assert.match(js, /placeholder="04h00"/);
 assert.match(js, /<option value=""[^>]*>TBA<\/option>/);
-assert.match(js, /Publish From \/ Through controls which exact dated sessions are prepared and published/);
+assert.match(js, /DERIVED is the default; EXPLICIT creates exact dated sessions/);
 assert.match(js, /generationStartDate/);
 assert.match(js, /generationEndDate/);
 assert.match(js, /skipExistingEquivalent/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/generate/);
+assert.match(js, /\/api\/admin\/platform\/global\/timetable\/session\/materialize/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/session\/batch-save/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/revise/);
 assert.match(js, /\/api\/admin\/platform\/global\/timetable\/publish/);
@@ -45,4 +51,4 @@ assert.match(css, /\.global-session-inline-row\.is-dirty/);
 assert.match(css, /\.global-session-inline-row\.is-cancelled/);
 assert.doesNotMatch(css, /min-width:1320px/);
 
-console.log("V103.1.0.5 Courses recurring schedule, session editor and publication UI checks passed.");
+console.log("V104.5 derived-by-default Course scheduling, explicit-session and exception UI checks passed.");

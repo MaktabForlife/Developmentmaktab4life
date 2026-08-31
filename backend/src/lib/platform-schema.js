@@ -1,4 +1,4 @@
-/* M4L V103.1.0.5 - Central schema with optional V102.0.9 Global Course AccessModel extension. */
+/* M4L V104.5 - Central schema with derived/explicit Global Course scheduling extension. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -95,12 +95,15 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "ModifiedByAccountID",
     "ModifiedByAccountName",
     "ModifiedDate",
-    "AccessModel"
+    "AccessModel",
+    "ScheduleMode",
+    "ScheduleDefinition"
   ]),
   GlobalTimetableSessions: Object.freeze([
     "SessionID", "RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime",
     "TeacherAccountID", "ZoomLink", "Active", "CreatedDate", "CreatedByAccountID",
-    "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+    "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate",
+    "SessionKind", "ScheduleRuleKey", "OccurrenceDate"
   ]),
   GlobalTimetableRunState: Object.freeze([
     "RunID", "Stage", "CurrentPublicationID", "CreatedDate", "CreatedByAccountID",
@@ -108,7 +111,9 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
   ]),
   GlobalTimetablePublications: Object.freeze([
     "PublicationID", "RunID", "SubjectID", "VersionNo", "PublishedDate",
-    "PublishedByAccountID", "PublishedByAccountName", "SessionCount"
+    "PublishedByAccountID", "PublishedByAccountName", "SessionCount",
+    "ScheduleMode", "PublishStartDate", "PublishEndDate", "ScheduleDefinition",
+    "RunName", "SubjectName", "Timezone"
   ]),
   GlobalTimetableSessionLifecycle: Object.freeze([
     "SessionLifecycleID", "SessionID", "PublicationID", "Status",
@@ -120,7 +125,7 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "PublishedSessionID", "PublicationID", "SourceSessionID", "RunID", "SubjectID", "ModuleID",
     "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "PublishedDate",
     "PublishedByAccountID", "PublishedByAccountName", "RunName", "SubjectName", "ModuleName",
-    "TeacherName", "Timezone"
+    "TeacherName", "Timezone", "SessionKind", "ScheduleRuleKey", "OccurrenceDate"
   ]),
   AcademyCalendar: Object.freeze([
     "CalendarEventID",
@@ -238,6 +243,9 @@ export function validatePlatformSheetRows(sheetName, rows) {
   if (sheetName === "GlobalSubjectRuns") {
     return validateGlobalSubjectRunRows(rows, expectedHeaders);
   }
+  if (["GlobalTimetableSessions", "GlobalTimetablePublications", "PublishedGlobalTimetableSessions"].includes(sheetName)) {
+    return validateCourseSchedulingEvolutionRows(sheetName, rows, expectedHeaders);
+  }
 
   const actualHeaders = expectedHeaders.map((unused, index) => String(rows[0]?.[index] || "").trim());
   const mismatch = expectedHeaders.findIndex((header, index) => actualHeaders[index] !== header);
@@ -265,36 +273,95 @@ export function validatePlatformSheetRows(sheetName, rows) {
 }
 
 function validateGlobalSubjectRunRows(rows, expectedHeaders) {
-  const requiredHeaders = expectedHeaders.slice(0, -1);
+  const legacyHeaders = expectedHeaders.slice(0, 13);
   const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
-  const actualRequired = requiredHeaders.map((unused, index) => String(headerRow[index] || "").trim());
-  const mismatch = requiredHeaders.findIndex((header, index) => actualRequired[index] !== header);
-  if (mismatch !== -1) {
-    const actual = actualRequired[mismatch] || "(blank)";
-    throw new Error(`GlobalSubjectRuns header ${columnName(mismatch + 1)}1 must be ${requiredHeaders[mismatch]}; found ${actual}`);
-  }
-  const accessHeader = String(headerRow[requiredHeaders.length] || "").trim();
+  assertHeaderPrefix("GlobalSubjectRuns", headerRow, legacyHeaders);
+
+  const accessHeader = String(headerRow[13] || "").trim();
+  const scheduleModeHeader = String(headerRow[14] || "").trim();
+  const scheduleDefinitionHeader = String(headerRow[15] || "").trim();
   if (accessHeader && accessHeader !== "AccessModel") {
-    throw new Error(`GlobalSubjectRuns header ${columnName(requiredHeaders.length + 1)}1 must be AccessModel when present; found ${accessHeader}`);
+    throw new Error(`GlobalSubjectRuns header N1 must be AccessModel when present; found ${accessHeader}`);
   }
+  if (scheduleModeHeader && scheduleModeHeader !== "ScheduleMode") {
+    throw new Error(`GlobalSubjectRuns header O1 must be ScheduleMode when present; found ${scheduleModeHeader}`);
+  }
+  if (scheduleDefinitionHeader && scheduleDefinitionHeader !== "ScheduleDefinition") {
+    throw new Error(`GlobalSubjectRuns header P1 must be ScheduleDefinition when present; found ${scheduleDefinitionHeader}`);
+  }
+  if ((scheduleModeHeader || scheduleDefinitionHeader) && accessHeader !== "AccessModel") {
+    throw new Error("GlobalSubjectRuns scheduling columns require AccessModel first");
+  }
+  if (Boolean(scheduleModeHeader) !== Boolean(scheduleDefinitionHeader)) {
+    throw new Error("GlobalSubjectRuns ScheduleMode and ScheduleDefinition must be added together");
+  }
+  assertNoUnexpectedHeaders("GlobalSubjectRuns", headerRow, expectedHeaders.length);
+
+  const records = rowsToRecords(rows, expectedHeaders);
+  Object.defineProperty(records, "_courseAccessSchemaReady", {
+    value: accessHeader === "AccessModel",
+    enumerable: false
+  });
+  Object.defineProperty(records, "_courseScheduleSchemaReady", {
+    value: scheduleModeHeader === "ScheduleMode" && scheduleDefinitionHeader === "ScheduleDefinition",
+    enumerable: false
+  });
+  return records;
+}
+
+function validateCourseSchedulingEvolutionRows(sheetName, rows, expectedHeaders) {
+  const legacyLengths = {
+    GlobalTimetableSessions: 16,
+    GlobalTimetablePublications: 8,
+    PublishedGlobalTimetableSessions: 19
+  };
+  const legacyLength = legacyLengths[sheetName];
+  const legacyHeaders = expectedHeaders.slice(0, legacyLength);
+  const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
+  assertHeaderPrefix(sheetName, headerRow, legacyHeaders);
+
+  const optionalHeaders = expectedHeaders.slice(legacyLength);
+  const actualOptional = optionalHeaders.map((unused, index) => String(headerRow[legacyLength + index] || "").trim());
+  const anyOptional = actualOptional.some(Boolean);
+  const allOptional = actualOptional.every((value, index) => value === optionalHeaders[index]);
+  if (anyOptional && !allOptional) {
+    const mismatch = actualOptional.findIndex((value, index) => value !== optionalHeaders[index]);
+    throw new Error(`${sheetName} header ${columnName(legacyLength + mismatch + 1)}1 must be ${optionalHeaders[mismatch]}; found ${actualOptional[mismatch] || "(blank)"}`);
+  }
+  assertNoUnexpectedHeaders(sheetName, headerRow, expectedHeaders.length);
+  const records = rowsToRecords(rows, expectedHeaders);
+  Object.defineProperty(records, "_courseScheduleSchemaReady", {
+    value: allOptional,
+    enumerable: false
+  });
+  return records;
+}
+
+function assertHeaderPrefix(sheetName, headerRow, expectedHeaders) {
+  const actual = expectedHeaders.map((unused, index) => String(headerRow[index] || "").trim());
+  const mismatch = expectedHeaders.findIndex((header, index) => actual[index] !== header);
+  if (mismatch !== -1) {
+    throw new Error(`${sheetName} header ${columnName(mismatch + 1)}1 must be ${expectedHeaders[mismatch]}; found ${actual[mismatch] || "(blank)"}`);
+  }
+}
+
+function assertNoUnexpectedHeaders(sheetName, headerRow, expectedLength) {
   const extraHeaderIndex = headerRow.findIndex((value, index) => (
-    index >= expectedHeaders.length && String(value ?? "").trim() !== ""
+    index >= expectedLength && String(value ?? "").trim() !== ""
   ));
   if (extraHeaderIndex !== -1) {
-    throw new Error(`GlobalSubjectRuns has an unexpected header in ${columnName(extraHeaderIndex + 1)}1`);
+    throw new Error(`${sheetName} has an unexpected header in ${columnName(extraHeaderIndex + 1)}1`);
   }
-  const records = rows.slice(1).filter(row => rowHasValue(row)).map((row, rowIndex) => {
+}
+
+function rowsToRecords(rows, expectedHeaders) {
+  return rows.slice(1).filter(row => rowHasValue(row)).map((row, rowIndex) => {
     const record = { _rowNumber: rowIndex + 2 };
     expectedHeaders.forEach((header, columnIndex) => {
       record[header] = row?.[columnIndex] ?? "";
     });
     return record;
   });
-  Object.defineProperty(records, "_courseAccessSchemaReady", {
-    value: accessHeader === "AccessModel",
-    enumerable: false
-  });
-  return records;
 }
 
 function validateGlobalSubjectAccessMatrixRows(rows) {
