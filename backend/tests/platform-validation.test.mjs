@@ -36,7 +36,7 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.10"],
+  ["PlatformSchemaVersion", "102.0.11"],
   ["GlobalCurriculumVersion", 1],
   ["GlobalTimetableVersion", 1],
   ["PlatformTimezone", "Africa/Johannesburg"]
@@ -92,9 +92,10 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.10",
+    platformSchemaVersion: "102.0.11",
     courseAccessSchemaReady: true,
     courseScheduleSchemaReady: true,
+    sessionDescriptionSchemaReady: true,
     globalCurriculumVersion: 1,
     globalTimetableVersion: 1,
     tabCount: 19,
@@ -150,8 +151,8 @@ try {
   assert.equal(serialized.includes("central-platform-sheet"), false);
   assert.equal(serialized.includes("reboot-course-sheet"), false);
 
-  // Migration compatibility: 102.0.8 and 102.0.9 remain valid only with
-  // their historical Course headers. V104.5 scheduling columns belong only to 102.0.10.
+  // Migration compatibility: 102.0.8 and 102.0.9 remain valid with historical Course headers;
+  // 102.0.10 is the pre-description V104.5 scheduling schema; 102.0.11 is current.
   tables = structuredClone(baseTables);
   tables.PlatformConfig[2][1] = "102.0.8";
   useLegacyCourseSchedulingHeaders(tables, { includeAccessModel: false });
@@ -171,6 +172,16 @@ try {
   assert.equal(accessResult.platformSchemaVersion, "102.0.9");
   assert.equal(accessResult.courseAccessSchemaReady, true);
   assert.equal(accessResult.courseScheduleSchemaReady, false);
+
+  tables = structuredClone(baseTables);
+  tables.PlatformConfig[2][1] = "102.0.10";
+  usePreDescriptionSchedulingHeaders(tables);
+  const preDescriptionReady = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(preDescriptionReady.status, 200);
+  const preDescriptionResult = await preDescriptionReady.json();
+  assert.equal(preDescriptionResult.platformSchemaVersion, "102.0.10");
+  assert.equal(preDescriptionResult.courseScheduleSchemaReady, true);
+  assert.equal(preDescriptionResult.sessionDescriptionSchemaReady, false);
 
   tables = structuredClone(baseTables);
   tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", "GLOBAL_ROOT_FOLDER_123"]);
@@ -331,6 +342,11 @@ function useLegacyCourseSchedulingHeaders(target, { includeAccessModel }) {
   target.GlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.slice(0, 16)];
   target.GlobalTimetablePublications = [PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.slice(0, 8)];
   target.PublishedGlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.slice(0, 19)];
+}
+
+function usePreDescriptionSchedulingHeaders(target) {
+  target.GlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.slice(0, -1)];
+  target.PublishedGlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.slice(0, -1)];
 }
 
 function validationRequest(token) {

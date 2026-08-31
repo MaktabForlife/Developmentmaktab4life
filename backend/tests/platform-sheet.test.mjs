@@ -84,7 +84,8 @@ assert.equal(currentRunRecords._courseAccessSchemaReady, true);
 assert.equal(currentRunRecords._courseScheduleSchemaReady, true);
 assert.equal(currentRunRecords[0].AccessModel, "PAID");
 assert.equal(currentRunRecords[0].ScheduleMode, "DERIVED");
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.length, 19);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.length, 20);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.at(-1), "SessionDescription");
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.length, 9);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.length, 15);
 assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle, [
@@ -93,7 +94,8 @@ assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle, [
   "CreatedDate", "CreatedByAccountID", "CreatedByAccountName",
   "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
 ]);
-assert.equal(PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.length, 22);
+assert.equal(PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.length, 23);
+assert.equal(PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.at(-1), "SessionDescription");
 assert.deepEqual(PLATFORM_SHEET_HEADERS.AcademyCalendar, [
   "CalendarEventID", "EventType", "Description", "StartDate", "EndDate", "AlternateDate",
   "TeachingImpact", "Active", "CreatedDate", "CreatedByAccountID", "CreatedByAccountName",
@@ -121,7 +123,7 @@ const courseRows = [
 ];
 const platformConfigRows = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
-  ["PlatformSchemaVersion", "102.0.10", "", "", ""]
+  ["PlatformSchemaVersion", "102.0.11", "", "", ""]
 ];
 assert.deepEqual(validatePlatformSheetRows("CourseRegistry", courseRows)[0], {
   _rowNumber: 2,

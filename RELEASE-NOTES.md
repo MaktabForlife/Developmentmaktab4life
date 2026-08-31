@@ -1,66 +1,81 @@
-# V104.5 Release Notes — Derived-by-default Global Courses
+# V104.5.1 Release Notes — Course Publish & Session UI Refinement
 
-V104.5 aligns Global Course timetable delivery with the rule-driven Program model while preserving an intentional exact-session option for workshops and similar offerings.
+V104.5.1 is a focused refinement of the completed V104.5 DERIVED/EXPLICIT Global Course architecture. It does not change the Course scheduling model; it clarifies how Courses are edited, prepared and published.
 
-## DERIVED is the new default
+## Course table presentation
 
-After the one-time V104.5 scheduling migration, newly created Courses default to `DERIVED`.
+Course Name remains inline-editable but is presented as a soft lavender pill so the Course identity is visually distinct from metadata fields.
 
-A DERIVED Course stores recurring rules in `GlobalSubjectRuns.ScheduleDefinition`. Normal dated occurrences are calculated only for the date range being requested or published. They are not pre-created in `GlobalTimetableSessions` and are not stored as normal publication snapshot rows.
+The action area now follows one consistent hierarchy:
 
-This avoids filling Google Sheets with months or years of predictable recurring occurrences, especially for ONGOING Courses.
+```text
+[ ✎ Schedule ]   [  PUBLISH  ]
+[ ✎ Sessions ]
+```
 
-## Materialised exceptions
+DERIVED Courses use `Exceptions` instead of `Sessions`. Schedule/Sessions/Exceptions use a muted teal treatment; Publish uses a stronger deep-berry treatment.
 
-A derived occurrence receives a stored row only when that occurrence needs individual treatment. V104.5 introduces `SessionKind=EXCEPTION` with a stable `ScheduleRuleKey + OccurrenceDate` anchor.
+## Publish only when eligible
 
-Examples include:
+The inline Course row is the only publishing surface.
 
-- CANCELLED occurrence;
-- moved occurrence;
-- different teacher/time/Zoom;
-- one-off exact session.
+Publish is shown only when the Course:
 
-Editing an existing exception is validated against both materialised rows and the still-virtual recurring occurrences. The legacy reschedule endpoint is deliberately blocked for derived exceptions so one occurrence cannot accidentally acquire duplicate exception rows.
+- has been saved and has a RunID;
+- is ACTIVE;
+- has a publishable schedule;
+- has no unsaved Course/schedule/window changes;
+- is currently unpublished or is in a saved DEVELOPMENT revision;
+- has a valid Publish From/Publish Through window when ONGOING.
 
-## EXPLICIT sessions remain supported
+A clean already-published Course shows no Publish action. An inactive Course shows none. Unsaved edits show none; after the main Course Save completes, the existing revision workflow leaves the Course in DEVELOPMENT and Publish becomes available again.
 
-`EXPLICIT` retains the exact-session workflow. It is intended for offerings where the exact dates themselves are part of the product/marketing promise, such as a four-session workshop or short intensive.
+## Session workspace
 
-Regression coverage proves an EXPLICIT September Friday workshop creates exactly four dated source sessions and publishes exactly four immutable session snapshots.
+Publishing has been removed from the Sessions/Exceptions workspace. The workspace is preparation-only and now has two edit actions:
 
-## Publication integrity
+- **Cancel** — discard unsaved session changes;
+- **Save** — persist session changes without publishing.
 
-DERIVED publications store an immutable recurring-rule snapshot plus immutable Course display metadata and only exception snapshots. `SessionCount` remains the count of effective dated occurrences in the publication window.
+Both use icon + text controls, and the full session workspace now has a clear rounded border so it reads as a distinct editing card.
 
-Academy can therefore reconstruct a DERIVED publication with zero normal session snapshot rows while historical publication meaning remains fixed.
+## Optional EXPLICIT session description
 
-## Academy Calendar
+EXPLICIT dated sessions now support an optional `SessionDescription` up to 400 characters.
 
-Fixed DERIVED Courses continue to receive Academic Calendar/public-holiday context even if they have no materialised sessions. This keeps exception editing and holiday awareness available under the new virtual-occurrence model.
+The description:
 
-## Controlled schema migration
+- is edited on the exact session;
+- is not part of DERIVED recurring rules;
+- survives normal exact-session edits and rescheduling;
+- is copied into `PublishedGlobalTimetableSessions` as part of the immutable publication snapshot;
+- is returned in detailed Academy Global Course session data for downstream display/marketing use.
 
-Platform schema advances from `102.0.9` to `102.0.10`. Required Platform tab count remains 19.
+## Schema migration
 
-The migration extends:
+Platform schema is now `102.0.11`. No new Platform tabs are created; the required tab count remains 19.
 
-- `GlobalSubjectRuns`
-- `GlobalTimetableSessions`
-- `GlobalTimetablePublications`
-- `PublishedGlobalTimetableSessions`
+Two existing session tables gain one final column:
 
-Existing Courses and existing publication/session rows are backfilled as `EXPLICIT`. Existing publication dates and immutable display values are preserved/inferred from their current snapshots. Nothing existing is automatically converted to DERIVED.
+- `GlobalTimetableSessions.SessionDescription`
+- `PublishedGlobalTimetableSessions.SessionDescription`
+
+The controlled migration supports both cases:
+
+- `102.0.9 → 102.0.11`: performs the V104.5 scheduling migration and preserves all pre-V104.5 Courses as EXPLICIT;
+- `102.0.10 → 102.0.11`: adds SessionDescription storage while preserving the existing DERIVED/EXPLICIT modes and publications.
 
 ## Compatibility
 
-V104.5 does not change Program timetable rules, central identity, Course access (`FREE`/`PAID`), Academy access decisions, Attendance, Progress, Library, Planner or data ownership.
+V104.5.1 does not change Program timetable rules, Course access, Central Identity, Attendance, Progress, Library, Planner, Academy access decisions or data ownership.
 
-V104.1–V104.4 batching, request-local read deduplication, metrics and retry guardrails remain active.
+The V104.3 request-level read cache/deduplication and V104.4 Sheets read-budget guardrails remain regression-protected.
 
 ## Final verification
 
-- Full backend regression: **64/64 test files passed**.
-- Repository JavaScript/ES module syntax: **156/156 files passed**.
-- V104.4 read-path audit retained: **23 direct-read call sites across 17 source files; 15 batch-read call sites**.
-- V104.3 request-level read-deduplication regression retained.
+- Full backend regression: **65/65 test files passed**.
+- Repository JavaScript/ES module syntax: **157/157 files passed**.
+- V104.5.1 Publish-eligibility/session-UI regression passed.
+- V104.5 DERIVED/EXPLICIT workshop + per-session-description regression passed.
+- V104.4 read audit retained: **23 direct-read call sites across 17 files; 15 batch-read call sites**.
+- V104.3 request-level Google Sheets read deduplication regression passed.

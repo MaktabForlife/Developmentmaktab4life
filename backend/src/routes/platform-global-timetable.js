@@ -1,4 +1,4 @@
-/* M4L V104.5 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
+/* M4L V104.5.1 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents, noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -50,8 +50,9 @@ import {
 } from "../lib/platform-schema.js";
 
 const MAX_ZOOM_LINK_LENGTH = 1000;
+const MAX_SESSION_DESCRIPTION_LENGTH = 400;
 const HTTPS_URL_PATTERN = /^https:\/\//i;
-const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9", "102.0.10"]);
+const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9", "102.0.10", "102.0.11"]);
 
 export async function getPlatformGlobalTimetableEndpoint(request, env) {
   const permission = await requireGlobalTimetableAdmin(request, env);
@@ -63,8 +64,8 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "104.5",
-      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetablePublications._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true,
+      version: "104.5.1",
+      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && tables.GlobalTimetablePublications._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._sessionDescriptionSchemaReady === true,
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -101,6 +102,7 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
     const startTime = normalizeSubmittedTime(body.startTime || body.starttime);
     const endTime = normalizeSubmittedTime(body.endTime || body.endtime);
     const zoomLink = clean(body.zoomLink || body.zoomlink);
+    const sessionDescription = normalizeSessionDescription(body.sessionDescription ?? body.sessiondescription);
     const weekdays = Array.isArray(body.weekdays) ? body.weekdays : [];
     const requestedGenerationStart = clean(body.generationStartDate || body.generationstartdate || body.scheduleStartDate || body.schedulestartdate);
     const requestedGenerationEnd = clean(body.generationEndDate || body.generationenddate || body.scheduleEndDate || body.scheduleenddate);
@@ -167,6 +169,7 @@ export async function generatePlatformGlobalTimetableSessionsEndpoint(request, e
       EndTime: endTime,
       TeacherAccountID: clean(teacher?.AccountID),
       ZoomLink: zoomLink,
+      SessionDescription: sessionDescription,
       Active: true,
       CreatedDate: timestamp,
       CreatedByAccountID: permission.user.accountid,
@@ -238,6 +241,7 @@ export async function materializePlatformGlobalTimetableExceptionEndpoint(reques
     const moduleId = clean(body.moduleId ?? body.moduleid ?? baseRule?.moduleid);
     const teacherAccountId = clean(body.teacherAccountId ?? body.teacheraccountid ?? baseRule?.teacheraccountid);
     const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? baseRule?.zoomlink);
+    const sessionDescription = normalizeSessionDescription(body.sessionDescription ?? body.sessiondescription);
     const status = normalizeGlobalSessionStatus(body.status || GLOBAL_SESSION_STATUS_SCHEDULED);
     if (![GLOBAL_SESSION_STATUS_SCHEDULED, GLOBAL_SESSION_STATUS_CANCELLED].includes(status)) {
       throw clientError("Derived exceptions must be SCHEDULED or CANCELLED", 400);
@@ -263,6 +267,7 @@ export async function materializePlatformGlobalTimetableExceptionEndpoint(reques
       EndTime: endTime,
       TeacherAccountID: clean(teacher?.AccountID),
       ZoomLink: zoomLink,
+      SessionDescription: sessionDescription,
       Active: true,
       CreatedDate: timestamp,
       CreatedByAccountID: permission.user.accountid,
@@ -292,7 +297,7 @@ export async function materializePlatformGlobalTimetableExceptionEndpoint(reques
     const stateMutation = buildDevelopmentStateMutation(tables, run.RunID, permission.user, timestamp);
     if (stateMutation) writes.push(stateMutation.write);
     const audits = [auditRow(permission.user, timestamp, "MATERIALIZE_GLOBAL_COURSE_EXCEPTION", "GLOBAL_TIMETABLE_SESSION", record.SessionID,
-      ["RunID", "SessionKind", "ScheduleRuleKey", "OccurrenceDate", "SessionDate", "StartTime", "EndTime", "ModuleID", "TeacherAccountID", "ZoomLink", "Status"] )];
+      ["RunID", "SessionKind", "ScheduleRuleKey", "OccurrenceDate", "SessionDate", "StartTime", "EndTime", "ModuleID", "TeacherAccountID", "ZoomLink", "SessionDescription", "Status"] )];
     if (lifecycleMutation) audits.push(lifecycleMutation.audit);
     if (stateMutation) audits.push(stateMutation.audit);
     writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
@@ -330,6 +335,7 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
     const endTime = normalizeSubmittedTime(body.endTime || body.endtime || existing.EndTime);
     const teacherAccountId = clean(body.teacherAccountId ?? body.teacheraccountid ?? existing.TeacherAccountID);
     const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? existing.ZoomLink);
+    const sessionDescription = normalizeSessionDescription(body.sessionDescription ?? body.sessiondescription ?? existing.SessionDescription);
     const active = readBoolean(body.active, isActivePlatformValue(existing.Active));
     const existingLifecycle = resolveCurrentSessionLifecycle(tables.GlobalTimetableSessionLifecycle, existing.SessionID);
     const requestedStatus = normalizeGlobalSessionStatus(body.status || existingLifecycle.status);
@@ -365,13 +371,14 @@ export async function savePlatformGlobalTimetableSessionEndpoint(request, env) {
       EndTime: endTime,
       TeacherAccountID: clean(teacher?.AccountID),
       ZoomLink: zoomLink,
+      SessionDescription: sessionDescription,
       Active: active,
       ModifiedByAccountID: permission.user.accountid,
       ModifiedByAccountName: permission.user.username,
       ModifiedDate: timestamp
     };
     const changedFields = changedRecordFields(existing, record, [
-      "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"
+      "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "SessionDescription", "Active"
     ]);
     const lifecycleMutation = buildCurrentLifecycleMutation(tables, existing.SessionID, {
       status: requestedStatus,
@@ -463,6 +470,7 @@ export async function savePlatformGlobalTimetableSessionBatchEndpoint(request, e
       const endTime = normalizeSubmittedTime(change.endTime ?? change.endtime ?? existing.EndTime);
       const teacherAccountId = clean(change.teacherAccountId ?? change.teacheraccountid ?? existing.TeacherAccountID);
       const zoomLink = clean(change.zoomLink ?? change.zoomlink ?? existing.ZoomLink);
+      const sessionDescription = normalizeSessionDescription(change.sessionDescription ?? change.sessiondescription ?? existing.SessionDescription);
       const active = readBoolean(change.active, isActivePlatformValue(existing.Active));
 
       if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
@@ -481,13 +489,14 @@ export async function savePlatformGlobalTimetableSessionBatchEndpoint(request, e
         EndTime: endTime,
         TeacherAccountID: clean(teacher?.AccountID),
         ZoomLink: zoomLink,
+        SessionDescription: sessionDescription,
         Active: active,
         ModifiedByAccountID: permission.user.accountid,
         ModifiedByAccountName: permission.user.username,
         ModifiedDate: timestamp
       };
       const changedFields = changedRecordFields(existing, record, [
-        "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"
+        "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "SessionDescription", "Active"
       ]);
       const stagedTables = { ...tables, GlobalTimetableSessionLifecycle: stagedLifecycles };
       const lifecycleMutation = buildCurrentLifecycleMutation(stagedTables, existing.SessionID, {
@@ -642,6 +651,7 @@ export async function reschedulePlatformGlobalTimetableSessionEndpoint(request, 
     const moduleId = clean(body.moduleId ?? body.moduleid ?? source.ModuleID);
     const teacherAccountId = clean(body.teacherAccountId ?? body.teacheraccountid ?? source.TeacherAccountID);
     const zoomLink = clean(body.zoomLink ?? body.zoomlink ?? source.ZoomLink);
+    const sessionDescription = normalizeSessionDescription(body.sessionDescription ?? body.sessiondescription ?? source.SessionDescription);
     if (!validateIsoDate(sessionDate) || !sessionWithinRun({ SessionDate: sessionDate }, run)) {
       throw clientError("Replacement date must be within the course dates", 400);
     }
@@ -658,7 +668,7 @@ export async function reschedulePlatformGlobalTimetableSessionEndpoint(request, 
     const replacement = {
       SessionID: createPlatformId("GTS"), RunID: clean(run.RunID), SubjectID: clean(subject.SubjectID),
       ModuleID: module ? clean(module.ModuleID) : "", SessionDate: sessionDate, StartTime: startTime, EndTime: endTime,
-      TeacherAccountID: clean(teacher?.AccountID), ZoomLink: zoomLink, Active: true,
+      TeacherAccountID: clean(teacher?.AccountID), ZoomLink: zoomLink, SessionDescription: sessionDescription, Active: true,
       CreatedDate: timestamp, CreatedByAccountID: permission.user.accountid, CreatedByAccountName: permission.user.username,
       ModifiedByAccountID: "", ModifiedByAccountName: "", ModifiedDate: "",
       SessionKind: normalizeGlobalSessionKind(source.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT),
@@ -831,7 +841,7 @@ function requireGlobalTimetableSchema(configRows) {
   ));
   const version = clean(matches[0]?.ConfigValue);
   if (matches.length !== 1 || !TIMETABLE_SCHEMA_VERSIONS.has(version)) {
-    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8, 102.0.9 or 102.0.10");
+    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8, 102.0.9, 102.0.10 or 102.0.11");
   }
 }
 
@@ -845,7 +855,7 @@ async function writeGeneratedSessions(env, user, tables, run, records, timestamp
   if (stateMutation) writes.push(stateMutation.write);
 
   const auditRows = records.map(record => auditRow(user, timestamp, "GENERATE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", record.SessionID,
-    ["RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active"]));
+    ["RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "SessionDescription", "Active"]));
   if (stateMutation) auditRows.push(stateMutation.audit);
   if (auditRows.length) writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), auditRows));
   await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
@@ -886,7 +896,7 @@ async function writeRescheduledSession(env, user, tables, run, source, replaceme
     auditRow(user, timestamp, "RESCHEDULE_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", source.SessionID,
       ["Status", "RescheduledToSessionID"]),
     auditRow(user, timestamp, "CREATE_RESCHEDULED_GLOBAL_TIMETABLE_SESSION", "GLOBAL_TIMETABLE_SESSION", replacement.SessionID,
-      ["RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "Active", "RescheduledFromSessionID"])
+      ["RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "SessionDescription", "Active", "RescheduledFromSessionID"])
   ];
   if (stateMutation) audits.push(stateMutation.audit);
   writes.push(rangeWrite("PlatformAuditLog", nextRowNumber(tables.PlatformAuditLog), audits));
@@ -950,7 +960,8 @@ function buildSnapshotRows(tables, publication, run, subject, sessions, sessionL
       Timezone: clean(run.Timezone),
       SessionKind: normalizeGlobalSessionKind(session.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT),
       ScheduleRuleKey: clean(session.ScheduleRuleKey),
-      OccurrenceDate: clean(session.OccurrenceDate)
+      OccurrenceDate: clean(session.OccurrenceDate),
+      SessionDescription: clean(session.SessionDescription)
     });
     lifecycleSnapshots.push({
       SessionLifecycleID: createPlatformId("GTLIFE"),
@@ -1507,6 +1518,13 @@ function validateZoomLink(value) {
   if (link.length > MAX_ZOOM_LINK_LENGTH || !HTTPS_URL_PATTERN.test(link)) {
     throw clientError("ZoomLink must be blank or a valid HTTPS URL", 400);
   }
+}
+function normalizeSessionDescription(value) {
+  const description = clean(value);
+  if (description.length > MAX_SESSION_DESCRIPTION_LENGTH) {
+    throw clientError(`SessionDescription must be ${MAX_SESSION_DESCRIPTION_LENGTH} characters or fewer`, 400);
+  }
+  return description;
 }
 function normalizeSubmittedTime(value) {
   const text = clean(value);

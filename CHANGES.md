@@ -1,24 +1,23 @@
-# V104.5 Changes — Derived Course Scheduling
+# V104.5.1 Changes — Course Publish & Session UI Refinement
 
-- Added `DERIVED` and `EXPLICIT` Course scheduling modes, independent of FIXED/ONGOING Course Type.
-- New Courses default to DERIVED after the V104.5 schema migration.
-- Existing Courses are preserved as EXPLICIT by the migration so published behaviour is unchanged.
-- Added canonical JSON recurring `ScheduleDefinition` storage on `GlobalSubjectRuns`.
-- Added immutable ScheduleMode/publish-window/ScheduleDefinition/Course display snapshots to `GlobalTimetablePublications`.
-- Added `SessionKind`, `ScheduleRuleKey` and `OccurrenceDate` to source and published session tables.
-- DERIVED publication now materialises no normal recurring session rows; only `EXCEPTION` rows are stored/snapshotted.
-- Added stable virtual occurrence IDs (`GDERIVED:<RuleKey>:<YYYY-MM-DD>`).
-- Added `/api/admin/platform/global/timetable/session/materialize` for derived occurrence exceptions and one-off exact sessions.
-- Added `/api/admin/platform/global/courses/migrate-scheduling` controlled GLOBAL_ADMIN migration endpoint.
-- DERIVED Courses reject the explicit session-generation endpoint.
-- Derived exception edits are conflict-checked against virtual occurrences as well as stored exceptions.
-- Derived exceptions are blocked from the old reschedule endpoint; moved exceptions are edited in place against their stable occurrence anchor.
-- Academy timetable derives published Course occurrences directly from the immutable publication rule snapshot.
-- Fixed DERIVED Courses retain Academic Calendar/public-holiday context with zero normal source sessions.
-- Admin Courses UI adds Scheduling (`DERIVED` / `EXPLICIT sessions`), a one-time **Prepare Scheduling** migration banner and derived **Exceptions** editing.
-- EXPLICIT workflow remains available and regression-proven with a four-session workshop.
-- Platform schema advances `102.0.9 → 102.0.10`; required Platform tab count remains 19.
-- Added `docs/V104.5-DERIVED-COURSE-SCHEDULING.md` and schema header templates.
-- Worker/app version advanced to 104.5.
-- V104.1–V104.4 Google Sheets read optimisation/deduplication/metrics remain active and regression-protected.
-- Final verification: 64/64 backend test files passed; 156/156 repository JS/MJS files passed Node syntax checking.
+Built on the completed V104.5 DERIVED/EXPLICIT Course scheduling model.
+
+- Course Name remains inline-editable but now renders as a modern lavender pill.
+- Reworked Course-row actions into the requested visual hierarchy:
+  - teal pencil + text `Schedule`;
+  - teal pencil + text `Sessions` for EXPLICIT Courses or `Exceptions` for DERIVED Courses;
+  - separate deep-berry `Publish` action.
+- Tightened Publish visibility. The inline Publish control is now rendered only for saved, active, publishable Courses whose timetable is unpublished or in a saved revision state.
+- Unsaved dirty Course/schedule/window rows no longer show a disabled Publish button; they show no Publish control until Save completes.
+- Clean already-published Courses, inactive Courses, unsaved new Courses and non-publishable Courses show no Publish control.
+- The Course row remains the **only** publishing surface.
+- Removed the former session-workspace publish flow completely. Session editing now exposes only icon + text `Cancel` and `Save` actions.
+- Added a stronger bordered/rounded Sessions/Exceptions card treatment.
+- Added optional `SessionDescription` for EXPLICIT exact sessions, maximum 400 characters.
+- `SessionDescription` is preserved through exact-session edits/reschedules and copied into immutable published session snapshots.
+- Platform schema advances to `102.0.11` by adding `SessionDescription` to `GlobalTimetableSessions` and `PublishedGlobalTimetableSessions`.
+- Controlled migration supports both `102.0.9 → 102.0.11` and an incremental `102.0.10 → 102.0.11` upgrade without changing current Course modes/publications.
+- Added `docs/V104.5.1-IMPLEMENTATION-CHECKLIST.md` and a dedicated V104.5.1 UI regression gate.
+- Worker/app version advanced to `104.5.1`.
+- V104.3 request-local read deduplication and V104.4 read-budget guardrails remain unchanged.
+- Final verification: **65/65 backend test files** and **157/157 repository JS/MJS syntax checks** passed.

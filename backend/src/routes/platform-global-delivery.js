@@ -1,4 +1,4 @@
-/* M4L V104.5 - Global Courses metadata, access, derived scheduling and staged schema migrations. */
+/* M4L V104.5.1 - Global Courses metadata, access, derived scheduling and staged schema migrations. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -38,8 +38,8 @@ const PLATFORM_TIMEZONE_CONFIG_KEY = "PLATFORMTIMEZONE";
 const COURSE_ACCESS_SCHEMA_VERSION = "102.0.9";
 const LEGACY_COURSE_ACCESS_SCHEMA_VERSION = "102.0.8";
 const COURSE_ACCESS_MODELS = new Set(["FREE", "PAID"]);
-const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.10";
-const LEGACY_COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.9";
+const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.11";
+const LEGACY_COURSE_SCHEDULE_SCHEMA_VERSIONS = new Set(["102.0.9", "102.0.10"]);
 const COURSE_SCHEDULE_MODE_SET = new Set(COURSE_SCHEDULE_MODES);
 const HTTPS_URL_PATTERN = /^https:\/\//i;
 
@@ -57,7 +57,7 @@ export async function getPlatformGlobalDeliveryEndpoint(request, env) {
       platformTimezone: readPlatformTimezone(tables.PlatformConfig),
       platformSchemaVersion: readPlatformSchemaVersion(tables.PlatformConfig).value,
       courseAccessSchemaReady: tables.GlobalSubjectRuns._courseAccessSchemaReady === true,
-      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION,
+      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION,
       subjects: tables.GlobalSubjectList.map(subject => mapDeliverySubject(subject, tables, now)),
       policies: tables.GlobalSubjectAccessPolicy.map(mapPolicy),
       runs: tables.GlobalSubjectRuns.map(run => mapCourseRun(run, tables, now))
@@ -180,7 +180,7 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const tables = await readDeliveryTables(env);
     const platformTimezone = readPlatformTimezone(tables.PlatformConfig);
     const courseAccessSchemaReady = tables.GlobalSubjectRuns._courseAccessSchemaReady === true;
-    const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION;
+    const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION;
     if (!courseAccessSchemaReady) {
       throw clientError("Run the V103.1.0.5 Course access migration before saving Courses", 409);
     }
@@ -392,8 +392,10 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
     const schema = readPlatformSchemaVersion(tables.PlatformConfig);
     const ready = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true &&
       tables.GlobalTimetableSessions._courseScheduleSchemaReady === true &&
+      tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true &&
       publications._courseScheduleSchemaReady === true &&
       publishedSessions._courseScheduleSchemaReady === true &&
+      publishedSessions._sessionDescriptionSchemaReady === true &&
       schema.value === COURSE_SCHEDULE_SCHEMA_VERSION;
     const proposed = tables.GlobalSubjectRuns.map(run => ({
       runid: clean(run.RunID),
@@ -411,7 +413,8 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
         targetPlatformSchemaVersion: COURSE_SCHEDULE_SCHEMA_VERSION,
         courseCount: proposed.length,
         courses: proposed,
-        existingCoursesPreservedAs: COURSE_SCHEDULE_MODE_EXPLICIT,
+        existingCourseModesPreserved: true,
+        existingCoursesPreservedAs: schema.value === "102.0.9" ? COURSE_SCHEDULE_MODE_EXPLICIT : "CURRENT",
         newCourseDefault: COURSE_SCHEDULE_MODE_DERIVED,
         confirmationText: "MIGRATE COURSE SCHEDULING"
       });
@@ -422,13 +425,13 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
     if (ready) {
       return json({
         success: true,
-        message: "V104.5 Course scheduling schema is already current",
+        message: "V104.5.1 Course scheduling schema is already current",
         courseScheduleSchemaReady: true,
         platformSchemaVersion: schema.value
       });
     }
-    if (schema.value !== LEGACY_COURSE_SCHEDULE_SCHEMA_VERSION) {
-      throw clientError(`V104.5 Course scheduling migration requires PlatformSchemaVersion ${LEGACY_COURSE_SCHEDULE_SCHEMA_VERSION}`, 409);
+    if (!LEGACY_COURSE_SCHEDULE_SCHEMA_VERSIONS.has(schema.value)) {
+      throw clientError("V104.5 Course scheduling migration requires PlatformSchemaVersion 102.0.9 or 102.0.10", 409);
     }
     if (tables.GlobalSubjectRuns._courseAccessSchemaReady !== true) {
       throw clientError("Complete the Course FREE/PAID migration before V104.5 Course scheduling", 409);
@@ -444,7 +447,8 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
       ...session,
       SessionKind: normalizePlatformIdentifier(session.SessionKind) || "EXPLICIT",
       ScheduleRuleKey: clean(session.ScheduleRuleKey),
-      OccurrenceDate: clean(session.OccurrenceDate)
+      OccurrenceDate: clean(session.OccurrenceDate),
+      SessionDescription: clean(session.SessionDescription)
     }));
     const snapshotByPublication = new Map();
     for (const snapshot of publishedSessions) {
@@ -476,7 +480,8 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
       ...snapshot,
       SessionKind: normalizePlatformIdentifier(snapshot.SessionKind) || "EXPLICIT",
       ScheduleRuleKey: clean(snapshot.ScheduleRuleKey),
-      OccurrenceDate: clean(snapshot.OccurrenceDate)
+      OccurrenceDate: clean(snapshot.OccurrenceDate),
+      SessionDescription: clean(snapshot.SessionDescription)
     }));
 
     const writes = [
@@ -495,9 +500,9 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
         COURSE_SCHEDULE_SCHEMA_VERSION,
         JSON.stringify([
           "GlobalSubjectRuns.ScheduleMode", "GlobalSubjectRuns.ScheduleDefinition",
-          "GlobalTimetableSessions.SessionKind", "GlobalTimetableSessions.ScheduleRuleKey", "GlobalTimetableSessions.OccurrenceDate",
+          "GlobalTimetableSessions.SessionKind", "GlobalTimetableSessions.ScheduleRuleKey", "GlobalTimetableSessions.OccurrenceDate", "GlobalTimetableSessions.SessionDescription",
           "GlobalTimetablePublications.ScheduleMode", "GlobalTimetablePublications.PublishStartDate", "GlobalTimetablePublications.PublishEndDate", "GlobalTimetablePublications.ScheduleDefinition",
-          "PublishedGlobalTimetableSessions.SessionKind", "PublishedGlobalTimetableSessions.ScheduleRuleKey", "PublishedGlobalTimetableSessions.OccurrenceDate",
+          "PublishedGlobalTimetableSessions.SessionKind", "PublishedGlobalTimetableSessions.ScheduleRuleKey", "PublishedGlobalTimetableSessions.OccurrenceDate", "PublishedGlobalTimetableSessions.SessionDescription",
           "PlatformSchemaVersion"
         ])
       ])
@@ -505,7 +510,9 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
     await batchUpdateGoogleSheetValues(env, writes, { spreadsheetId: getPlatformSpreadsheetId(env) });
     return json({
       success: true,
-      message: `${runRows.length} existing Course${runRows.length === 1 ? "" : "s"} preserved as EXPLICIT; new Courses now default to DERIVED`,
+      message: schema.value === "102.0.9"
+        ? `${runRows.length} existing Course${runRows.length === 1 ? "" : "s"} preserved as EXPLICIT; new Courses now default to DERIVED`
+        : "V104.5.1 Course scheduling updated with per-session descriptions; existing Course modes and publications were preserved",
       courseScheduleSchemaReady: true,
       platformSchemaVersion: COURSE_SCHEDULE_SCHEMA_VERSION,
       migrated: runRows.length

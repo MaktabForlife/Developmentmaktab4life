@@ -28,7 +28,7 @@ tables.GlobalSubjectRuns.push([
   "GSRUN-WORKSHOP", "GSUBJ1", "Four Session Workshop", "2026-09-01", "2026-09-30", "Africa/Johannesburg", true,
   "", "", "", "", "", "", "FREE", "EXPLICIT", "[]"
 ]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.10"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.11"]);
 tables.PlatformConfig.push(["GlobalTimetableVersion", 1]);
 tables.PlatformConfig.push(["GlobalCurriculumVersion", 1]);
 tables.PlatformConfig.push(["PlatformTimezone", "Africa/Johannesburg"]);
@@ -154,6 +154,22 @@ try {
   assert.deepEqual(workshop.data.sessions.map(item => item.sessiondate), ["2026-09-04", "2026-09-11", "2026-09-18", "2026-09-25"]);
   assert.equal(workshop.data.sessions.every(item => item.sessionkind === "EXPLICIT"), true);
 
+  const workshopDescriptions = [
+    "Foundations and workshop orientation",
+    "Building the core practice",
+    "Review, correction and consolidation",
+    "Final integration, next steps and Q&A"
+  ];
+  const describedWorkshop = await post("/api/admin/platform/global/timetable/session/batch-save", {
+    runId: "GSRUN-WORKSHOP",
+    changes: workshop.data.sessions.map((session, index) => ({
+      sessionId: session.sessionid,
+      sessionDescription: workshopDescriptions[index]
+    }))
+  });
+  assert.equal(describedWorkshop.response.status, 200, JSON.stringify(describedWorkshop.data));
+  assert.deepEqual(describedWorkshop.data.sessions.map(item => item.sessiondescription), workshopDescriptions);
+
   const workshopPublication = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN-WORKSHOP" });
   assert.equal(workshopPublication.response.status, 200, JSON.stringify(workshopPublication.data));
   assert.equal(workshopPublication.data.publication.schedulemode, "EXPLICIT");
@@ -161,11 +177,13 @@ try {
   const workshopPublicationId = workshopPublication.data.publication.publicationid;
   const workshopSnapshots = tables.PublishedGlobalTimetableSessions.slice(1).filter(row => row[pubIdIndex] === workshopPublicationId);
   assert.equal(workshopSnapshots.length, 4, "EXPLICIT workshop publication must retain all four exact dated session snapshots");
+  const descriptionIndex = PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.indexOf("SessionDescription");
+  assert.deepEqual(workshopSnapshots.map(row => row[descriptionIndex]), workshopDescriptions, "Published workshop snapshots must preserve each short session description");
 } finally {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V104.5 derived Course, one-row exception and four-session explicit workshop regressions passed.");
+console.log("V104.5 derived Course, one-row exception, explicit workshop and per-session description regressions passed.");
 
 function parsedTables() {
   return Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, validatePlatformSheetRows(name, rows)]));

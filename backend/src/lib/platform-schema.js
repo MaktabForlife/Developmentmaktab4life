@@ -1,4 +1,4 @@
-/* M4L V104.5 - Central schema with derived/explicit Global Course scheduling extension. */
+/* M4L V104.5.1 - Central schema with derived/explicit Global Course scheduling extension. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -103,7 +103,7 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "SessionID", "RunID", "SubjectID", "ModuleID", "SessionDate", "StartTime", "EndTime",
     "TeacherAccountID", "ZoomLink", "Active", "CreatedDate", "CreatedByAccountID",
     "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate",
-    "SessionKind", "ScheduleRuleKey", "OccurrenceDate"
+    "SessionKind", "ScheduleRuleKey", "OccurrenceDate", "SessionDescription"
   ]),
   GlobalTimetableRunState: Object.freeze([
     "RunID", "Stage", "CurrentPublicationID", "CreatedDate", "CreatedByAccountID",
@@ -125,7 +125,7 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
     "PublishedSessionID", "PublicationID", "SourceSessionID", "RunID", "SubjectID", "ModuleID",
     "SessionDate", "StartTime", "EndTime", "TeacherAccountID", "ZoomLink", "PublishedDate",
     "PublishedByAccountID", "PublishedByAccountName", "RunName", "SubjectName", "ModuleName",
-    "TeacherName", "Timezone", "SessionKind", "ScheduleRuleKey", "OccurrenceDate"
+    "TeacherName", "Timezone", "SessionKind", "ScheduleRuleKey", "OccurrenceDate", "SessionDescription"
   ]),
   AcademyCalendar: Object.freeze([
     "CalendarEventID",
@@ -321,19 +321,34 @@ function validateCourseSchedulingEvolutionRows(sheetName, rows, expectedHeaders)
   assertHeaderPrefix(sheetName, headerRow, legacyHeaders);
 
   const optionalHeaders = expectedHeaders.slice(legacyLength);
-  const actualOptional = optionalHeaders.map((unused, index) => String(headerRow[legacyLength + index] || "").trim());
-  const anyOptional = actualOptional.some(Boolean);
-  const allOptional = actualOptional.every((value, index) => value === optionalHeaders[index]);
-  if (anyOptional && !allOptional) {
-    const mismatch = actualOptional.findIndex((value, index) => value !== optionalHeaders[index]);
-    throw new Error(`${sheetName} header ${columnName(legacyLength + mismatch + 1)}1 must be ${optionalHeaders[mismatch]}; found ${actualOptional[mismatch] || "(blank)"}`);
+  const hasSessionDescription = ["GlobalTimetableSessions", "PublishedGlobalTimetableSessions"].includes(sheetName);
+  const scheduleHeaders = hasSessionDescription ? optionalHeaders.slice(0, -1) : optionalHeaders;
+  const descriptionHeader = hasSessionDescription ? optionalHeaders.at(-1) : "";
+  const actualSchedule = scheduleHeaders.map((unused, index) => String(headerRow[legacyLength + index] || "").trim());
+  const anySchedule = actualSchedule.some(Boolean);
+  const scheduleReady = actualSchedule.every((value, index) => value === scheduleHeaders[index]);
+  if (anySchedule && !scheduleReady) {
+    const mismatch = actualSchedule.findIndex((value, index) => value !== scheduleHeaders[index]);
+    throw new Error(`${sheetName} header ${columnName(legacyLength + mismatch + 1)}1 must be ${scheduleHeaders[mismatch]}; found ${actualSchedule[mismatch] || "(blank)"}`);
   }
+
+  let sessionDescriptionReady = !hasSessionDescription;
+  if (hasSessionDescription) {
+    const descriptionIndex = legacyLength + scheduleHeaders.length;
+    const actualDescription = String(headerRow[descriptionIndex] || "").trim();
+    if (actualDescription && actualDescription !== descriptionHeader) {
+      throw new Error(`${sheetName} header ${columnName(descriptionIndex + 1)}1 must be ${descriptionHeader}; found ${actualDescription}`);
+    }
+    if (actualDescription && !scheduleReady) {
+      throw new Error(`${sheetName} SessionDescription requires the V104.5 scheduling columns first`);
+    }
+    sessionDescriptionReady = scheduleReady && actualDescription === descriptionHeader;
+  }
+
   assertNoUnexpectedHeaders(sheetName, headerRow, expectedHeaders.length);
   const records = rowsToRecords(rows, expectedHeaders);
-  Object.defineProperty(records, "_courseScheduleSchemaReady", {
-    value: allOptional,
-    enumerable: false
-  });
+  Object.defineProperty(records, "_courseScheduleSchemaReady", { value: scheduleReady, enumerable: false });
+  Object.defineProperty(records, "_sessionDescriptionSchemaReady", { value: sessionDescriptionReady, enumerable: false });
   return records;
 }
 

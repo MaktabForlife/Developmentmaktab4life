@@ -10,9 +10,9 @@ const [adminHtml, js, css, styles] = await Promise.all([
 
 assert.match(adminHtml, /data-gcm-course-action="show">Courses</);
 assert.doesNotMatch(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5/);
-assert.match(adminHtml, /styles\.css\?v=104\.5/);
-assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.1/);
+assert.match(adminHtml, /styles\.css\?v=104\.5\.1/);
+assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5\.1/);
 
 assert.match(js, /<h3>Courses<\/h3>/);
 assert.match(js, /Course Name/);
@@ -28,11 +28,16 @@ assert.match(js, /<option value="EXPLICIT"/);
 assert.match(js, /<option value="INACTIVE"/);
 assert.match(js, />Archived<\/option>/);
 assert.match(js, /\+ Add Course/);
-assert.match(js, /View\/Edit Sessions/);
+assert.match(js, /course\.schedulemode === "DERIVED" \? "Exceptions" : "Sessions"/);
 assert.match(js, /data-gcm-course-action="publish-course"/);
-assert.match(js, /Publish range/);
+assert.equal((js.match(/data-gcm-course-action="publish-course"/g) || []).length, 1, "Publishing must exist only in the inline Course row");
+assert.doesNotMatch(js, /Publish range/);
+assert.match(js, /const unpublishedOrRevised = \(state\?\.stage \|\| "DEVELOPMENT"\) !== "PUBLISHED"/);
+assert.match(js, /if \(changed\) return "";/);
+assert.match(js, /if \(!unpublishedOrRevised\) return "";/);
 assert.match(js, /Prepare Course FREE\/PAID access/);
 assert.match(js, /Prepare Scheduling/);
+assert.match(js, /optional short descriptions to exact sessions/);
 assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-scheduling/);
 assert.match(js, /New Courses default to DERIVED/);
 assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-access/);
@@ -53,4 +58,4 @@ assert.match(css, /\.global-course-schedule-editor/);
 assert.match(css, /\.global-course-publish-inline/);
 assert.match(css, /@media \(max-width:900px\)/);
 
-console.log("V104.5 Courses inline metadata, DERIVED/EXPLICIT scheduling and direct-publish UI checks passed.");
+console.log("V104.5.1 Courses inline metadata, DERIVED/EXPLICIT scheduling and single inline-publish UI checks passed.");

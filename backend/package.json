@@ -1,6 +1,6 @@
 {
   "name": "rebootworker",
-  "version": "104.5.0",
+  "version": "104.5.1",
   "type": "module",
   "scripts": {
     "test": "node tests/run-all.mjs",
@@ -60,7 +60,8 @@
     "test:drive-library": "node tests/drive-library.test.mjs",
     "test:resource-management-ui": "node tests/resource-management-ui.test.mjs",
     "test:admin-menu-home": "node tests/admin-menu-home.test.mjs",
-    "test:group-zero-access": "node tests/group-zero-access.test.mjs"
+    "test:group-zero-access": "node tests/group-zero-access.test.mjs",
+    "test:v104.5.1-course-ui": "node tests/v1045-course-ui-refinement.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.36.0"

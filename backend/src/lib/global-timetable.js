@@ -1,4 +1,4 @@
-/* M4L V104.5 - Explicit and derived Global Course timetable/publication helpers. */
+/* M4L V104.5.1 - Explicit and derived Global Course timetable/publication helpers. */
 
 import {
   isActivePlatformValue,
@@ -46,7 +46,8 @@ export function mapGlobalTimetableSession(record, publishedSourceIds = new Set()
     modifieddate: clean(record?.ModifiedDate),
     sessionkind: normalizeGlobalSessionKind(record?.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT),
     schedulerulekey: clean(record?.ScheduleRuleKey),
-    occurrencedate: clean(record?.OccurrenceDate)
+    occurrencedate: clean(record?.OccurrenceDate),
+    sessiondescription: clean(record?.SessionDescription)
   });
 }
 
@@ -107,7 +108,8 @@ export function mapPublishedGlobalTimetableSession(record) {
     timezone: clean(record?.Timezone),
     sessionkind: normalizeGlobalSessionKind(record?.SessionKind, GLOBAL_SESSION_KIND_EXPLICIT),
     schedulerulekey: clean(record?.ScheduleRuleKey),
-    occurrencedate: clean(record?.OccurrenceDate)
+    occurrencedate: clean(record?.OccurrenceDate),
+    sessiondescription: clean(record?.SessionDescription)
   });
 }
 

@@ -1,56 +1,84 @@
-# V104.5 UPDATE TODO — Derived-by-default Global Courses
+# V104.5.1 UPDATE TODO — Course Publish & Session UI Refinement
 
 ## Apply/deploy
 
-1. Apply this changed-files-only V104.5 overlay to the **final completed V104.4 Development tree**.
-2. Before committing the schema migration, create a rollback copy of the current Platform workbook while it is still schema `102.0.9`.
-3. Deploy the V104.5 Worker and Pages/app files together.
-4. Confirm Worker health `/` reports `104.5` and the account page shows `V104.5`.
-5. At this point the existing `102.0.9` Platform sheet remains supported long enough to run the controlled migration. Do **not** manually add V104.5 scheduling columns.
+1. Apply this changed-files-only **V104.5.1 overlay to the completed V104.5 source tree**.
+2. Before any Platform schema migration, create a rollback copy of the current Platform workbook.
+3. Deploy the V104.5.1 Worker and Pages/app files together.
+4. Confirm Worker health `/` reports `104.5.1` and the account page shows `V104.5.1`.
+5. Confirm Global Curriculum → Courses loads without changing existing Course data.
 
-## Controlled Platform migration
+## Platform schema
 
-6. Sign in as `GLOBAL_ADMIN` and open **Global Curriculum → Courses**.
-7. Confirm the **Prepare derived Course scheduling** banner appears.
-8. Click **Prepare Scheduling** and review the preview. Existing Courses must be shown as preserved `EXPLICIT`; new Course default must be `DERIVED`.
-9. Commit only through the UI confirmation (`MIGRATE COURSE SCHEDULING`).
-10. Confirm `PlatformSchemaVersion` becomes `102.0.10` and the Platform workbook still contains the same **19 required tabs**.
-11. Run Platform validation. All four evolved Course/timetable tables must report the V104.5 scheduling schema ready.
+6. Check `PlatformSchemaVersion` before migration:
+   - `102.0.9`: V104.5.1 can perform the full scheduling migration directly to `102.0.11` and must preserve existing Courses as EXPLICIT.
+   - `102.0.10`: V104.5.1 performs the incremental description upgrade to `102.0.11` and must preserve existing DERIVED/EXPLICIT modes and publications.
+   - `102.0.11`: no migration is required.
+7. If migration is required, sign in as GLOBAL_ADMIN and open **Global Curriculum → Courses**.
+8. Click **Prepare Scheduling**, review the preview, and commit only with `MIGRATE COURSE SCHEDULING`.
+9. Confirm `PlatformSchemaVersion = 102.0.11` and the Platform workbook still has exactly **19 required tabs**.
+10. Confirm `GlobalTimetableSessions` and `PublishedGlobalTimetableSessions` each end with `SessionDescription`.
+11. Run Platform validation and confirm Course scheduling + session-description schema readiness.
 
-## Existing-Course preservation checks
+## Course-row UI acceptance
 
-12. Open each existing Course used in Development and confirm Scheduling = `EXPLICIT` immediately after migration.
-13. Confirm its current published timetable still resolves with the same exact dates/session count and Academy display as before migration.
-14. Do not convert an existing Course to DERIVED merely as part of migration. Conversion should be an intentional Course edit after its recurring rules have been reviewed/saved.
+12. Confirm Course Name is still inline-editable and now appears as a lavender rounded pill.
+13. Confirm action buttons use the intended layout and icon/text treatment:
 
-## DERIVED acceptance
+```text
+[ ✎ Schedule ]   [  PUBLISH  ]
+[ ✎ Sessions ]
+```
 
-15. Create a new test Course and confirm Scheduling defaults to `DERIVED`.
-16. Save one or more recurring schedule rows. Confirm saving the Course does **not** generate normal `GlobalTimetableSessions` rows.
-17. Publish the DERIVED Course and confirm Academy displays the expected dated occurrences even though normal `PublishedGlobalTimetableSessions` rows were not created.
-18. Revise the Course, open **Exceptions**, cancel or move one derived occurrence, and save it.
-19. Confirm exactly one `SessionKind=EXCEPTION` row is materialised for that changed occurrence and normal untouched occurrences remain virtual.
-20. Republish and confirm the exception is reflected in Academy while the effective publication `SessionCount` remains correct.
-21. Confirm a fixed DERIVED Course still shows relevant Academic Calendar/public-holiday warnings in the exception editor.
+14. Confirm DERIVED Courses show `Exceptions` instead of `Sessions`.
+15. Confirm Schedule/Sessions/Exceptions use muted teal and Publish uses the stronger deep-berry treatment.
 
-## EXPLICIT workshop acceptance
+## Publish eligibility acceptance
 
-22. Create a FIXED Course with Scheduling = `EXPLICIT sessions` for a short workshop.
-23. Configure a schedule/window that produces four exact sessions (for example four weekly workshop dates), save the Course, and confirm four dated session rows are created.
-24. Open **View/Edit Sessions** and verify the four exact dates can be prepared before publication/marketing.
-25. Publish and confirm all four exact sessions are stored in the immutable publication snapshot and appear in Academy.
+16. For a clean already-published active Course, confirm **no Publish button is visible**.
+17. For an inactive Course, confirm **no Publish button is visible**.
+18. Add a new Course but do not save it; confirm **no Publish button is visible**.
+19. Edit an already-published Course without saving; confirm **no Publish button is visible** while the row is dirty.
+20. Save those edits; confirm the existing revision workflow completes and **Publish now appears inline** once the Course is saved and publishable.
+21. For an active unpublished Course with a valid saved schedule, confirm Publish is visible inline.
+22. For an ONGOING Course without a valid Publish From/Publish Through window, confirm Publish is hidden.
+23. Confirm the Course-row control is the only `Publish` action in the Course scheduling UI.
+
+## Sessions/Exceptions acceptance
+
+24. Open an EXPLICIT Course `Sessions` workspace and confirm the whole session card has the stronger rounded border.
+25. Confirm the bottom actions read exactly **Cancel** and **Save** and use icon + text treatment.
+26. Confirm there is no `Save & Publish`, Publish button or other publication action inside Sessions/Exceptions.
+27. Edit one session and select Cancel; confirm the unsaved session edit is discarded without publishing.
+28. Edit one session and select Save; confirm it saves without publishing and the Course row becomes the place to publish the prepared revision.
+
+## EXPLICIT SessionDescription acceptance
+
+29. Open a short EXPLICIT workshop with exact dated sessions.
+30. Enter a different optional short description on at least two sessions; confirm the field enforces a maximum of 400 characters.
+31. Save the session changes and reopen Sessions; confirm descriptions are retained.
+32. Reschedule an exact session through the supported explicit-session flow and confirm its description is preserved.
+33. Publish from the Course row and confirm the descriptions are copied into immutable `PublishedGlobalTimetableSessions` snapshots.
+34. Confirm detailed Academy Global Course data includes `sessionDescription` while LABEL-only/unsubscribed visibility rules remain unchanged.
+
+## DERIVED preservation checks
+
+35. Confirm a DERIVED Course still saves recurring rules without generating normal source session rows.
+36. Confirm editing one derived occurrence materialises only one EXCEPTION row.
+37. Confirm DERIVED publication still creates no normal published-session rows and Academy derives normal occurrences from the immutable rule snapshot.
 
 ## Regression gates
 
-26. Run `cd backend && npm test`; all **64/64** backend test files must pass.
-27. Run `npm run test:v104.5-derived-courses`; confirm DERIVED zero-normal-row publication, one-row exception handling and four-session EXPLICIT workshop coverage passes.
-28. Run `npm run test:v104.4-read-audit`; V104 read-call guardrails must remain unchanged.
-29. Run `npm run test:request-read-dedup`; V104.3 request-local read deduplication/write invalidation must remain active.
-30. Smoke-test Academy timetable, Global Course access (FREE/PAID), Attendance, Progress, Library and one Program timetable path to confirm no unrelated behaviour changed.
+38. Run `cd backend && npm test`; all backend test files must pass.
+39. Run `npm run test:v104.5.1-course-ui`.
+40. Run `npm run test:v104.5-derived-courses`.
+41. Run `npm run test:v104.4-read-audit`; the V104 read-call guardrail must remain unchanged.
+42. Run `npm run test:request-read-dedup`; V104.3 request-local deduplication/write invalidation must remain active.
+43. Smoke-test Academy timetable, Global Course FREE/PAID access and one Program timetable path.
 
 ## Rollback boundary
 
-31. **Before migration:** code rollback to V104.4 is sufficient.
-32. **After migration to 102.0.10:** do not roll Worker code back to V104.4 against the migrated workbook. Restore the pre-migration `102.0.9` Platform-workbook backup together with the V104.4 code if rollback is required.
-33. V104.5 contains no new Platform tabs, Program Builder schema, KV/D1/Redis cache, Apps Script migration or Program data migration.
-34. After Development acceptance, proceed to V105 Program Builder on the V104.5 baseline.
+44. If the Platform workbook was not migrated, rollback is code-only to the prior V104.5 tree.
+45. If the workbook was upgraded from `102.0.10` to `102.0.11`, restore the pre-upgrade `102.0.10` workbook together with V104.5 code if rolling back.
+46. If V104.5.1 performed a direct `102.0.9 → 102.0.11` migration, restore the pre-migration `102.0.9` workbook and the appropriate pre-migration code together.
+47. V104.5.1 adds no Platform tabs, Program Builder schema, persistent cache or Program data migration.

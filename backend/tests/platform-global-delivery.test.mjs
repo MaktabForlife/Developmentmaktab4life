@@ -9,6 +9,9 @@ const credentialHash = await createSaltedPinHash("2468", pinSecret);
 const tables = Object.fromEntries(Object.entries(PLATFORM_SHEET_HEADERS).map(([name, headers]) => [name, [headers]]));
 // Start deliberately on the deployed V103.1.0.4 / PlatformSchema 102.0.8 shape.
 tables.GlobalSubjectRuns = [PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, 13)];
+tables.GlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.slice(0, 16)];
+tables.GlobalTimetablePublications = [PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.slice(0, 8)];
+tables.PublishedGlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.slice(0, 19)];
 tables.UserAccounts.push([
   "ACCOUNT1", "Global Admin", "GLOBAL-LINK", true, credentialHash, true, "", "2026-08-17T00:00:00.000Z",
   "", "", "", "", "", "GLOBAL_ADMIN"
@@ -115,7 +118,7 @@ try {
   const schedulePreview = await post("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, token);
   assert.equal(schedulePreview.response.status, 200, JSON.stringify(schedulePreview.data));
   assert.equal(schedulePreview.data.canCommit, true);
-  assert.equal(schedulePreview.data.targetPlatformSchemaVersion, "102.0.10");
+  assert.equal(schedulePreview.data.targetPlatformSchemaVersion, "102.0.11");
   assert.equal(schedulePreview.data.existingCoursesPreservedAs, "EXPLICIT");
   assert.equal(schedulePreview.data.newCourseDefault, "DERIVED");
 
@@ -126,7 +129,9 @@ try {
   assert.equal(tables.GlobalSubjectRuns[0].at(-2), "ScheduleMode");
   assert.equal(tables.GlobalSubjectRuns[0].at(-1), "ScheduleDefinition");
   assert.equal(tables.GlobalSubjectRuns[1][14], "EXPLICIT");
-  assert.equal(tables.PlatformConfig[1][1], "102.0.10");
+  assert.equal(tables.GlobalTimetableSessions[0].at(-1), "SessionDescription");
+  assert.equal(tables.PublishedGlobalTimetableSessions[0].at(-1), "SessionDescription");
+  assert.equal(tables.PlatformConfig[1][1], "102.0.11");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "MIGRATE_GLOBAL_COURSE_SCHEDULING");
 
   // Subject FREE/PAID and Course FREE/PAID are separate concerns.
@@ -200,6 +205,25 @@ try {
   }, token);
   assert.equal(invalidDates.response.status, 400);
   assert.match(invalidDates.data.error, /cannot precede/);
+
+  // A Development workbook that already ran the earlier 102.0.10 V104.5 migration
+  // can upgrade in place: retain Course modes/publications and add only SessionDescription storage.
+  tables.PlatformConfig[1][1] = "102.0.10";
+  tables.GlobalTimetableSessions = tables.GlobalTimetableSessions.map(row => row.slice(0, -1));
+  tables.PublishedGlobalTimetableSessions = tables.PublishedGlobalTimetableSessions.map(row => row.slice(0, -1));
+  const descriptionUpgradePreview = await post("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, token);
+  assert.equal(descriptionUpgradePreview.response.status, 200, JSON.stringify(descriptionUpgradePreview.data));
+  assert.equal(descriptionUpgradePreview.data.targetPlatformSchemaVersion, "102.0.11");
+  assert.equal(descriptionUpgradePreview.data.existingCoursesPreservedAs, "CURRENT");
+  const modesBeforeDescriptionUpgrade = tables.GlobalSubjectRuns.slice(1).map(row => row[14]);
+  const descriptionUpgrade = await post("/api/admin/platform/global/courses/migrate-scheduling", {
+    commit: true, confirmation: "MIGRATE COURSE SCHEDULING"
+  }, token);
+  assert.equal(descriptionUpgrade.response.status, 200, JSON.stringify(descriptionUpgrade.data));
+  assert.equal(tables.PlatformConfig[1][1], "102.0.11");
+  assert.equal(tables.GlobalTimetableSessions[0].at(-1), "SessionDescription");
+  assert.equal(tables.PublishedGlobalTimetableSessions[0].at(-1), "SessionDescription");
+  assert.deepEqual(tables.GlobalSubjectRuns.slice(1).map(row => row[14]), modesBeforeDescriptionUpgrade);
 } finally {
   globalThis.fetch = originalFetch;
 }

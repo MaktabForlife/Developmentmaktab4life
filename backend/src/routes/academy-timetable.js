@@ -1,4 +1,4 @@
-/* M4L V104.5 - Academy timetable resolves explicit and derived Global Course publications. */
+/* M4L V104.5.1 - Academy timetable resolves explicit and derived Global Course publications. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "104.5",
+      version: "104.5.1",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,
@@ -500,6 +500,7 @@ export function buildGlobalCourseEvents(platform, account, options) {
         subjectName: session.subjectname,
         moduleName: session.modulename,
         teacherName: session.teachername,
+        sessionDescription: session.sessiondescription || "",
         zoomLink: canOpenZoom ? session.zoomlink : ""
       });
     }

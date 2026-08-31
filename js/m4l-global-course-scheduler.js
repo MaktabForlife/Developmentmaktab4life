@@ -1,4 +1,4 @@
-/* M4L V104.5 - Courses: derived-by-default schedules with explicit-session mode and materialised exceptions. */
+/* M4L V104.5.1 - Courses: derived scheduling plus refined inline publication/session workflow. */
 (function () {
   "use strict";
 
@@ -101,8 +101,7 @@
     if (action === "view-sessions") return openSessionEditor(target.dataset.courseKey || "");
     if (action === "close-sessions") return closeSessionEditor();
     if (action === "revise") return reviseCourse(target, target.dataset.runId || model.sessionOpenRunId);
-    if (action === "save-session-batch") return saveSessionBatch(target, false);
-    if (action === "save-publish-sessions") return saveSessionBatch(target, true);
+    if (action === "save-session-batch") return saveSessionBatch(target);
     if (action === "discard-session-drafts") return discardSessionDrafts();
   }
 
@@ -170,7 +169,7 @@
         platformTimezone: String(delivery.platformTimezone || "Africa/Johannesburg"),
         platformSchemaVersion: String(delivery.platformSchemaVersion || ""),
         courseAccessSchemaReady: delivery.courseAccessSchemaReady === true,
-        courseScheduleSchemaReady: delivery.courseScheduleSchemaReady === true,
+        courseScheduleSchemaReady: delivery.courseScheduleSchemaReady === true && timetable.courseScheduleSchemaReady === true,
         subjects: array(delivery.subjects), policies: array(delivery.policies), runs: array(delivery.runs)
       };
       model.timetable = {
@@ -337,7 +336,7 @@
     const schedulingDisabled = !model.delivery.courseScheduleSchemaReady ? "disabled" : "";
     return `<article class="${courseClasses}" data-course-key="${attr(course.key)}">
       <div class="global-course-grid-row" role="row">
-        <label class="global-course-grid-cell"><span class="global-course-mobile-label">Course Name</span><input data-course-field="runname" data-course-key="${attr(course.key)}" type="text" maxlength="160" value="${attr(course.runname)}" placeholder="Course name" /></label>
+        <label class="global-course-grid-cell global-course-name-cell"><span class="global-course-mobile-label">Course Name</span><input class="global-course-name-pill" data-course-field="runname" data-course-key="${attr(course.key)}" type="text" maxlength="160" value="${attr(course.runname)}" placeholder="Course name" /></label>
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">Global Subject</span>${course.isNew ? `<select data-course-field="subjectid" data-course-key="${attr(course.key)}">${subjectOptions(course.subjectid)}</select>` : `<span class="global-course-subject-readonly">${html(subjectById(course.subjectid)?.subjectname || course.subjectid)}</span>`}</label>
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">Type</span><select data-course-field="type" data-course-key="${attr(course.key)}"><option value="FIXED" ${fixed ? "selected" : ""}>FIXED</option><option value="ONGOING" ${!fixed ? "selected" : ""}>ONGOING</option></select></label>
         <label class="global-course-grid-cell"><span class="global-course-mobile-label">${fixed ? "Start Date" : "Publish From"}</span><input data-course-field="date1" data-course-key="${attr(course.key)}" type="date" value="${attr(date1)}" /></label>
@@ -348,8 +347,8 @@
         <div class="global-course-grid-cell global-course-actions-cell">
           <span class="global-course-mobile-label">Schedule / Publish</span>
           <div class="global-course-row-actions">
-            <button type="button" class="global-course-inline-action" data-gcm-course-action="toggle-schedule" data-course-key="${attr(course.key)}" aria-expanded="${scheduleOpen ? "true" : "false"}">Schedule ${scheduleOpen ? "▴" : "▾"}</button>
-            ${course.runid ? `<button type="button" class="global-course-inline-action" data-gcm-course-action="view-sessions" data-course-key="${attr(course.key)}">${course.schedulemode === "DERIVED" ? "Exceptions" : "View/Edit Sessions"}</button>` : ""}
+            <button type="button" class="global-course-inline-action global-course-action-button is-schedule" data-gcm-course-action="toggle-schedule" data-course-key="${attr(course.key)}" aria-expanded="${scheduleOpen ? "true" : "false"}"><span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span><span>Schedule</span></button>
+            ${course.runid ? `<button type="button" class="global-course-inline-action global-course-action-button is-sessions" data-gcm-course-action="view-sessions" data-course-key="${attr(course.key)}"><span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span><span>${course.schedulemode === "DERIVED" ? "Exceptions" : "Sessions"}</span></button>` : ""}
             ${publishRowButton(course, state, hasSchedule)}
             ${course.isNew ? `<button type="button" class="global-course-draft-remove" data-gcm-course-action="discard-course" data-course-key="${attr(course.key)}" aria-label="Discard new Course" title="Discard new Course">×</button>` : ""}
           </div>
@@ -361,14 +360,13 @@
   }
 
   function publishRowButton(course, state, hasSchedule) {
-    if (!course.runid || !course.active) return "";
-    const published = state?.stage === "PUBLISHED";
-    if (published && course.type === "FIXED") {
-      return '<button type="button" class="global-course-publish-inline is-published" disabled>Published</button>';
-    }
-    const blocked = course.dirty || course.scheduleDirty || course.windowDirty || !hasSchedule || (course.type === "ONGOING" && !validPublishWindow(course));
-    const label = published && course.type === "ONGOING" ? "Publish range" : "Publish";
-    return `<button type="button" class="global-course-publish-inline" data-gcm-course-action="publish-course" data-course-key="${attr(course.key)}" ${blocked ? "disabled" : ""}>${label}</button>`;
+    if (!course.runid || !course.active || !hasSchedule) return "";
+    const changed = course.dirty || course.scheduleDirty || course.windowDirty;
+    if (changed) return "";
+    const unpublishedOrRevised = (state?.stage || "DEVELOPMENT") !== "PUBLISHED";
+    if (!unpublishedOrRevised) return "";
+    if (course.type === "ONGOING" && !validPublishWindow(course)) return "";
+    return `<button type="button" class="global-course-publish-inline" data-gcm-course-action="publish-course" data-course-key="${attr(course.key)}">Publish</button>`;
   }
 
   function scheduleEditor(course) {
@@ -436,7 +434,7 @@
     if (!model.delivery.courseAccessSchemaReady || model.delivery.courseScheduleSchemaReady) return "";
     const globalAdmin = isGlobalAdmin();
     return `<section class="global-course-migration-banner">
-      <div><strong>Prepare derived Course scheduling</strong><p>This one-time migration preserves every existing Course as EXPLICIT so current publications remain unchanged. New Courses then default to DERIVED.</p></div>
+      <div><strong>Prepare Course scheduling</strong><p>This controlled migration preserves existing Course delivery modes and publications, enables derived-by-default scheduling, and adds optional short descriptions to exact sessions.</p></div>
       ${globalAdmin ? `<button type="button" class="global-course-compact-action" data-gcm-course-action="preview-course-schedule-migration">Prepare Scheduling</button>` : '<span class="helper-text">A GLOBAL_ADMIN must run this one-time migration.</span>'}
     </section>`;
   }
@@ -852,6 +850,7 @@
     const state = stateForRun(course.runid) || { stage: "DEVELOPMENT" };
     const sessions = currentWindowSessions(course.runid, course);
     const stage = state.stage || "DEVELOPMENT";
+    const explicit = course.schedulemode === "EXPLICIT";
     const canEdit = stage === "DEVELOPMENT";
     const pending = model.sessionDrafts.size;
     return `<section class="global-curriculum-panel global-course-sessions-panel">
@@ -860,19 +859,20 @@
         ${stage === "PUBLISHED" ? `<button type="button" class="global-course-compact-action" data-gcm-course-action="revise" data-run-id="${attr(course.runid)}">Revise timetable</button>` : ""}
       </div>
       <div class="global-session-inline-scroll">
-        <div class="global-session-inline-table" role="table" aria-label="Course sessions">
-          <div class="global-session-inline-row global-session-inline-header" role="row"><span>Date</span><span>Start</span><span>End</span><span>Module</span><span>Teacher</span><span>Zoom link</span><span>Status</span></div>
-          ${sessions.length ? sessions.map(session => sessionInlineRow(session, stage)).join("") : '<p class="global-curriculum-empty-list">No sessions in this Course delivery window.</p>'}
+        <div class="global-session-inline-table ${explicit ? "has-session-description" : ""}" role="table" aria-label="Course sessions">
+          <div class="global-session-inline-row global-session-inline-header" role="row"><span>Date</span><span>Start</span><span>End</span><span>Module</span><span>Teacher</span><span>Zoom link</span>${explicit ? "<span>Description</span>" : ""}<span>Status</span></div>
+          ${sessions.length ? sessions.map(session => sessionInlineRow(session, stage, course)).join("") : '<p class="global-curriculum-empty-list">No sessions in this Course delivery window.</p>'}
         </div>
       </div>
       <div class="global-course-session-actions">
-        ${canEdit ? `<button type="button" class="global-course-secondary-action" data-gcm-course-action="discard-session-drafts" ${pending ? "" : "disabled"}>Cancel all changes</button><button type="button" class="global-course-secondary-action" data-gcm-course-action="save-session-batch" ${pending ? "" : "disabled"}>Save without publishing</button><button type="button" class="global-curriculum-primary global-course-compact-action" data-gcm-course-action="save-publish-sessions">Save &amp; Publish</button>` : ""}
+        ${canEdit ? `<button type="button" class="global-course-secondary-action global-course-session-button is-cancel" data-gcm-course-action="discard-session-drafts" ${pending ? "" : "disabled"} aria-label="Cancel session changes" title="Cancel session changes"><span class="app-icon app-icon-small app-icon-xclose" aria-hidden="true"></span><span>Cancel</span></button><button type="button" class="global-course-secondary-action global-course-session-button is-save" data-gcm-course-action="save-session-batch" ${pending ? "" : "disabled"} aria-label="Save session changes" title="Save session changes"><span class="app-icon app-icon-small save-mode-icon" aria-hidden="true"></span><span>Save</span></button>` : ""}
       </div>
     </section>`;
   }
 
-  function sessionInlineRow(session, stage) {
+  function sessionInlineRow(session, stage, course) {
     const lifecycle = lifecycleForDisplay(session);
+    const explicit = course?.schedulemode === "EXPLICIT";
     const readOnly = stage === "PUBLISHED" || lifecycle.status === "RESCHEDULED";
     const draft = model.sessionDrafts.get(session.sessionid) || null;
     const values = draft || {
@@ -882,6 +882,7 @@
       moduleid: session.moduleid || "",
       teacherid: session.teacheraccountid || "",
       zoom: session.zoomlink || "",
+      description: session.sessiondescription || "",
       status: lifecycle.status || "SCHEDULED"
     };
     const rowClasses = ["global-session-inline-row", values.status === "CANCELLED" ? "is-cancelled" : "", draft ? "is-dirty" : ""].filter(Boolean).join(" ");
@@ -892,6 +893,7 @@
           readOnlySessionCell("Start", formatUiTime(session.starttime)), readOnlySessionCell("End", formatUiTime(session.endtime)),
           readOnlySessionCell("Module", session.modulename || session.subjectname || "Session"),
           readOnlySessionCell("Teacher", session.teachername || "TBA"), readOnlySessionCell("Zoom link", session.zoomlink || "—", "global-session-zoom-display"),
+          ...(explicit ? [readOnlySessionCell("Description", session.sessiondescription || "—", "global-session-description-cell")] : []),
           readOnlySessionCell("Status", lifecycle.status || "SCHEDULED")
         ].join("")
       : [
@@ -901,6 +903,7 @@
           sessionCell("Module", `<select data-inline-session-field="moduleid" aria-label="Module"><option value="">No module</option>${moduleOptions(session.subjectid, values.moduleid)}</select>`),
           sessionCell("Teacher", `<select data-inline-session-field="teacherid" aria-label="Teacher">${teacherOptions(values.teacherid)}</select>`),
           sessionCell("Zoom link", `<input data-inline-session-field="zoom" type="url" value="${attr(values.zoom)}" aria-label="Zoom link" />`, "global-session-zoom-cell"),
+          ...(explicit ? [sessionCell("Description", `<textarea data-inline-session-field="description" maxlength="400" rows="2" aria-label="Short session description" placeholder="Optional short description">${html(values.description)}</textarea>`, "global-session-description-cell")] : []),
           sessionCell("Status", `<select data-inline-session-field="status" aria-label="Session status"><option value="SCHEDULED" ${values.status === "SCHEDULED" ? "selected" : ""}>SCHEDULED</option><option value="CANCELLED" ${values.status === "CANCELLED" ? "selected" : ""}>CANCELLED</option></select>`)
         ].join("");
     return `<div class="${rowClasses}" role="row" data-session-row-id="${attr(session.sessionid)}">${fields}</div>`;
@@ -921,20 +924,22 @@
       moduleid: String(row.querySelector('[data-inline-session-field="moduleid"]')?.value || ""),
       teacherid: String(row.querySelector('[data-inline-session-field="teacherid"]')?.value || ""),
       zoom: String(row.querySelector('[data-inline-session-field="zoom"]')?.value || "").trim(),
+      description: String(row.querySelector('[data-inline-session-field="description"]')?.value || "").trim(),
       status: String(row.querySelector('[data-inline-session-field="status"]')?.value || "SCHEDULED")
     };
     const changed = current.date !== String(session.sessiondate || "")
       || (parseUiTime(current.start) || current.start.trim()) !== normalizeTime(session.starttime)
       || (parseUiTime(current.end) || current.end.trim()) !== normalizeTime(session.endtime)
       || current.moduleid !== String(session.moduleid || "") || current.teacherid !== String(session.teacheraccountid || "")
-      || current.zoom !== String(session.zoomlink || "").trim() || current.status !== String(lifecycle.status || "SCHEDULED");
+      || current.zoom !== String(session.zoomlink || "").trim() || current.description !== String(session.sessiondescription || "").trim()
+      || current.status !== String(lifecycle.status || "SCHEDULED");
     if (changed) model.sessionDrafts.set(sessionId, current); else model.sessionDrafts.delete(sessionId);
     row.classList.toggle("is-dirty", changed);
     row.classList.toggle("is-cancelled", current.status === "CANCELLED");
     refreshSessionButtons();
   }
 
-  async function saveSessionBatch(button, publishAfter) {
+  async function saveSessionBatch(button) {
     captureAllSessionDrafts();
     const course = model.courses.find(item => item.runid === model.sessionOpenRunId);
     if (!course) return false;
@@ -950,7 +955,7 @@
         if (!startTime || !endTime || endTime <= startTime) { setMessage("Use increasing 24-hour times such as 13h00–14h00.", "error"); return false; }
         const change = {
           sessionDate: draft.date, startTime, endTime, moduleId: draft.moduleid,
-          teacherAccountId: draft.teacherid, zoomLink: draft.zoom, status: draft.status
+          teacherAccountId: draft.teacherid, zoomLink: draft.zoom, sessionDescription: draft.description, status: draft.status
         };
         if (session.virtual === true) {
           materialiseChanges.push({
@@ -980,20 +985,7 @@
       });
       if (!savedOk) return false;
     }
-    if (publishAfter) {
-      if (course.type === "ONGOING" && !validPublishWindow(course)) {
-        setMessage(`${course.runname}: enter Publish From and Publish Through in the Course row before publishing.`, "error");
-        return false;
-      }
-      const result = await apiPost("/api/admin/platform/global/timetable/publish", {
-        runId: course.runid,
-        ...(course.type === "ONGOING" ? { publishStartDate: course.publishstart, publishEndDate: course.publishend } : {})
-      }, appState()?.token || "");
-      if (!result.success) { setMessage(result.error || result.detail || "Unable to publish Course", "error"); return false; }
-      setMessage(result.message || "Course published.", "success");
-    } else {
-      setMessage(course.schedulemode === "DERIVED" ? "Course exceptions saved without publishing." : "Session changes saved without publishing.", "success");
-    }
+    setMessage(course.schedulemode === "DERIVED" ? "Course exceptions saved. Publish from the Course row when ready." : "Session changes saved. Publish from the Course row when ready.", "success");
     invalidateAll();
     await load(true);
     model.sessionOpenRunId = course.runid;

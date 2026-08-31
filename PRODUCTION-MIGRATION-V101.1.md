@@ -199,3 +199,27 @@ V104.5 does not introduce Program Builder schema or migrate Program data. Those 
 - V106 — Reboot migration into the generic Program architecture.
 
 The final Production migration gate remains a complete **V101.1 Production clone → final V106 state** rehearsal before live Production promotion.
+
+## V104.5.1 — Course publish/session UI refinement
+
+**Data/schema migration:** conditional. If V104.5 already migrated the Platform workbook to `102.0.10`, V104.5.1 upgrades it to `102.0.11` by adding optional `SessionDescription` to source and published exact-session tables. If the workbook is still `102.0.9`, V104.5.1 can perform the combined V104.5/V104.5.1 scheduling migration directly to `102.0.11`.
+
+**Platform tab count:** unchanged at 19.
+
+V104.5.1 changes the administrative workflow as follows:
+
+- Course Name remains inline-editable but is displayed as a coloured pill;
+- Schedule and Sessions/Exceptions use icon + text edit actions;
+- Publish is visible only for saved, active, publishable unpublished/revised Courses;
+- dirty, inactive, unsaved, clean-published and non-publishable Courses show no Publish action;
+- Course-row Publish is the only publishing surface;
+- Sessions/Exceptions contains only Cancel + Save actions and has a stronger outer card border;
+- EXPLICIT session rows may carry an optional `SessionDescription` up to 400 characters and publication snapshots retain it immutably.
+
+For Production rehearsal, verify both schema-start cases if they are relevant to the deployment path:
+
+1. `102.0.9 → 102.0.11`: existing Courses become EXPLICIT and existing publication meaning is preserved.
+2. `102.0.10 → 102.0.11`: existing Course modes/publications remain unchanged; only description storage is added.
+3. Confirm no new Platform tab is created.
+4. Confirm one EXPLICIT workshop can save descriptions, then publish those descriptions from the Course row only.
+5. Confirm one DERIVED Course still publishes normal virtual occurrences with only exceptions materialised.
