@@ -2,8 +2,8 @@
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import {
+  batchReadGoogleSheetValues,
   batchUpdateGoogleSheetValues,
-  readGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import {
@@ -94,14 +94,20 @@ export async function loadIdentityLinkSnapshot(env, actor) {
     throw new Error("Missing GOOGLE_SPREADSHEET_ID Worker variable");
   }
 
-  const [registry, accounts, accessRows, auditRows, adminRows, studentRows] = await Promise.all([
+  const [platformSets, programSets] = await Promise.all([
+    Promise.all([
     readPlatformSheet(env, "CourseRegistry"),
     readPlatformSheet(env, "UserAccounts"),
     readPlatformSheet(env, "UserCourseAccess"),
-    readPlatformSheet(env, "PlatformAuditLog"),
-    readGoogleSheetValues(env, "AdminRecords!A:ZZ", { spreadsheetId: courseSpreadsheetId }),
-    readGoogleSheetValues(env, "StudentRecords!A:ZZ", { spreadsheetId: courseSpreadsheetId })
+    readPlatformSheet(env, "PlatformAuditLog")
+    ]),
+    batchReadGoogleSheetValues(env, [
+      "AdminRecords!A:ZZ",
+      "StudentRecords!A:ZZ"
+    ], { spreadsheetId: courseSpreadsheetId })
   ]);
+  const [registry, accounts, accessRows, auditRows] = platformSets;
+  const [adminRows, studentRows] = programSets;
 
   const courseMatches = registry.filter(course => (
     isActivePlatformValue(course.Active) &&

@@ -1,5 +1,5 @@
 import { getAuthUser } from "../lib/auth.js";
-import { readGoogleSheetValues } from "../lib/google-sheets.js";
+import { batchReadGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 
 const FULL_SHEET_RANGE = "A:ZZ";
@@ -519,30 +519,18 @@ export function buildTaskProgressDetailResponse(options = {}) {
 }
 
 async function readRequiredProgressSheets(env, sheetNames) {
-  const results = await Promise.all(sheetNames.map(async sheetName => ({
-    sheetName,
-    rows: await readProgressSheet(env, sheetName)
-  })));
-  const missing = results.find(result => result.rows === null);
-
-  if (missing) {
-    return { ok: false, missingSheet: missing.sheetName, rows: {} };
-  }
-
-  return {
-    ok: true,
-    rows: Object.fromEntries(results.map(result => [result.sheetName, result.rows]))
-  };
-}
-
-async function readProgressSheet(env, sheetName) {
+  const ranges = sheetNames.map(sheetName => `${sheetName}!${FULL_SHEET_RANGE}`);
   try {
-    return await readGoogleSheetValues(env, `${sheetName}!${FULL_SHEET_RANGE}`);
+    const rowSets = await batchReadGoogleSheetValues(env, ranges);
+    return {
+      ok: true,
+      rows: Object.fromEntries(sheetNames.map((sheetName, index) => [sheetName, rowSets[index] || []]))
+    };
   } catch (error) {
-    if (isMissingSheetError(error, sheetName)) {
-      return null;
+    const missingSheet = sheetNames.find(sheetName => isMissingSheetError(error, sheetName));
+    if (missingSheet) {
+      return { ok: false, missingSheet, rows: {} };
     }
-
     throw error;
   }
 }

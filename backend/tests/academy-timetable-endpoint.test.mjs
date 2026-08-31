@@ -184,7 +184,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "104.1");
+  assert.equal(body.version, "104.2");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -223,10 +223,26 @@ try {
   const firstRequestPlatformCalls = firstRequestSheetsCalls.filter(url => url.pathname.includes("/spreadsheets/platform-sheet/"));
   const firstRequestCourseCalls = firstRequestSheetsCalls.filter(url => url.pathname.includes("/spreadsheets/course-sheet-one/"));
   assert.equal(firstRequestPlatformCalls.length, 2, "Platform-scope Academy Home should use one credential-row read plus one Platform batchGet");
-  assert.equal(firstRequestCourseCalls.length, 4, "V104.1 intentionally leaves per-Program batching for V104.2");
+  assert.equal(firstRequestCourseCalls.length, 2, "V104.2 should use one Program profile/config batch plus one live timetable-source batch");
   const platformBatch = firstRequestPlatformCalls.find(url => url.pathname.endsWith("/values:batchGet"));
   assert.ok(platformBatch, "Academy Home must use Platform batchGet");
   assert.equal(platformBatch.searchParams.getAll("ranges").length, 13, "Academy Home Platform state should be fetched in one 13-range batch");
+  const courseBatches = firstRequestCourseCalls.filter(url => url.pathname.endsWith("/values:batchGet"));
+  assert.equal(courseBatches.length, 2, "Both Program reads should use values:batchGet");
+  assert.deepEqual(
+    courseBatches[0].searchParams.getAll("ranges"),
+    ["SystemConfig!A:E"],
+    "Global Admin Program profile/config load should need only SystemConfig"
+  );
+  assert.deepEqual(
+    courseBatches[1].searchParams.getAll("ranges"),
+    [
+      "TimetableCourseState!A:ZZ",
+      "TimetablePublications!A:ZZ",
+      "PublishedTimetableSessions!A:ZZ"
+    ],
+    "Published Program timetable state should be fetched in one batch"
+  );
 
   const sevenDayResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
@@ -244,6 +260,7 @@ try {
   assert.equal(sevenDayBody.weekStart, "2026-08-24");
   assert.equal(sevenDayBody.weekEnd, "2026-09-06", "rolling seven-day loads may span two timetable weeks");
 
+  const studentRequestStart = sheetsRequests.length;
   const studentResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
     method: "POST",
     headers: {
@@ -256,6 +273,14 @@ try {
   assert.equal(studentResult.status, 200);
   const studentProgram = studentBody.sessions.find(item => item.kind === "PROGRAM");
   assert.equal(studentProgram.visibilityLevel, "DETAIL", "matching active local StudentRecords identity may receive Program detail");
+  const studentRequestCalls = sheetsRequests.slice(studentRequestStart);
+  const studentProgramCalls = studentRequestCalls.filter(url => url.pathname.includes("/spreadsheets/course-sheet-one/"));
+  assert.equal(studentProgramCalls.length, 2, "Student Academy loads should also use two Program batch requests");
+  assert.deepEqual(
+    studentProgramCalls[0].searchParams.getAll("ranges"),
+    ["SystemConfig!A:E", "StudentRecords!A:K"],
+    "Student Program identity and timetable source config should share one batch"
+  );
 
   tables.course.StudentRecords[1][3] = "DIFFERENT-LINK";
   const staleMembershipResult = await worker.fetch(new Request("https://worker.test/api/academy/timetable", {
@@ -296,7 +321,7 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log("V104.1 Platform-batched rolling Academy timetable integration test passed.");
+console.log("V104.2 Platform + Program batched rolling Academy timetable integration test passed.");
 
 function lookupRange(spreadsheet, range) {
   if (spreadsheet === "platform-sheet") {

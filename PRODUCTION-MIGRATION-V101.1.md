@@ -74,20 +74,20 @@ Backfill rule preserves the pre-migration effective Course-access starting point
 
 Do not manually add AccessModel in Production ahead of the final rehearsed upgrade unless the final Production runbook explicitly requires it.
 
-## V103.2+ / V104 / V105
+## V104+ / V105 / V106
 
 Append each future schema/data/config migration here as it is built. In particular, record:
 
-- unified Access model/matrix migration;
-- generic Program Builder schema;
-- Reboot migration into the generic Program architecture;
+- remaining V104 read-optimisation changes;
+- generic Program Builder schema in V105;
+- Reboot migration into the generic Program architecture in V106;
 - any Worker variables/secrets/bindings changes;
 - any Apps Script or Drive migration;
 - rollback checkpoints.
 
 ## Final migration gate
 
-V105 must not be declared Production-ready until a complete **V101.1 Production clone → final V105 state** migration rehearsal succeeds with no unresolved data, permissions or behaviour regressions.
+The final architecture release must not be declared Production-ready until a complete **V101.1 Production clone → final V106 state** migration rehearsal succeeds with no unresolved data, permissions or behaviour regressions.
 
 ## V104.1 — Platform Batch Reads
 
@@ -100,3 +100,27 @@ V105 must not be declared Production-ready until a complete **V101.1 Production 
 - GLOBAL session access tables: 3 reads → 1 batchGet, plus the existing credential-row revalidation.
 - No Program/Reboot batch-read conversion yet.
 - No rollback data action is required; code rollback restores the previous individual-read transport.
+
+## V104.2 — Program Batch Reads
+
+**Data/schema migration:** none.
+
+- Platform schema remains `102.0.9` with 19 required tabs.
+- Related Reboot/Program reads are grouped through Google Sheets `values:batchGet` where compatibility permits.
+- Academy Home Program layer: published Program fixture 4 Program calls → 2 Program batches.
+- Progress required-table reads: 4 → 1 batch.
+- Attendance report: 2 → 1 batch.
+- Library curriculum option/placement validation: 3 → 1 batch.
+- TeacherAssign reference reads: 4 → 1 batch.
+- Identity-link/account-migration AdminRecords + StudentRecords snapshots: 2 → 1 batch.
+- No data rollback action is required; code rollback restores the prior read transport.
+- Keep the V103.1 Identity Links and V103.1.0.5 Courses migrations already completed in Development; V104.2 does not rerun or alter them.
+
+## Roadmap after V104
+
+- V104.3 — request-level read deduplication.
+- V104.4 — read metrics/final optimisation regression gate.
+- V105 — generic Program Builder.
+- V106 — Reboot migration into the generic Program architecture.
+
+The final Production migration gate therefore moves with the roadmap: a complete **V101.1 Production clone → final V106 state** rehearsal must succeed before live Production promotion.

@@ -147,11 +147,11 @@ export async function getTimetableGoogleSheetsEndpoint(request, env) {
   let moduleRows;
 
   try {
-    [teacherRows, adminRows, subjectRows, moduleRows] = await Promise.all([
-      readGoogleSheetValues(env, TEACHER_TIMETABLE_SHEET_RANGE),
-      readGoogleSheetValues(env, ADMIN_RECORDS_SHEET_RANGE),
-      readGoogleSheetValues(env, SUBJECT_LIST_SHEET_RANGE),
-      readGoogleSheetValues(env, MODULE_LIST_SHEET_RANGE)
+    [teacherRows, adminRows, subjectRows, moduleRows] = await batchReadGoogleSheetValues(env, [
+      TEACHER_TIMETABLE_SHEET_RANGE,
+      ADMIN_RECORDS_SHEET_RANGE,
+      SUBJECT_LIST_SHEET_RANGE,
+      MODULE_LIST_SHEET_RANGE
     ]);
   } catch (error) {
     const missingSheet = getMissingRequiredSheetName(error);
@@ -471,13 +471,15 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
   let adminRows;
   let subjectRows;
   let moduleRows;
+  let systemConfigRows;
 
   try {
-    [teacherRows, adminRows, subjectRows, moduleRows] = await Promise.all([
-      readGoogleSheetValues(env, TEACHER_TIMETABLE_SHEET_RANGE),
-      readGoogleSheetValues(env, ADMIN_RECORDS_SHEET_RANGE),
-      readGoogleSheetValues(env, SUBJECT_LIST_SHEET_RANGE),
-      readGoogleSheetValues(env, MODULE_LIST_SHEET_RANGE)
+    [teacherRows, adminRows, subjectRows, moduleRows, systemConfigRows] = await batchReadGoogleSheetValues(env, [
+      TEACHER_TIMETABLE_SHEET_RANGE,
+      ADMIN_RECORDS_SHEET_RANGE,
+      SUBJECT_LIST_SHEET_RANGE,
+      MODULE_LIST_SHEET_RANGE,
+      "SystemConfig!A:E"
     ]);
   } catch (error) {
     const missingSheet = getMissingRequiredSheetName(error);
@@ -489,7 +491,6 @@ export async function updateTimetableZoomLinkGoogleSheetsEndpoint(request, env) 
     return json(missingTimetableSheetResponse(missingSheet));
   }
 
-  const systemConfigRows = await readSystemConfigRows(env);
   const audit = await prepareAdminAudit(env, auth.user);
 
   if (!audit.ok) {

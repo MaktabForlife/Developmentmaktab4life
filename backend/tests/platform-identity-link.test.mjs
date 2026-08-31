@@ -102,6 +102,24 @@ globalThis.fetch = async (input, init = {}) => {
     return response({ totalUpdatedRows: payload.data.length });
   }
 
+  if (url.pathname.endsWith("/values:batchGet")) {
+    const spreadsheetId = decodeURIComponent(url.pathname.split("/spreadsheets/")[1].split("/values:batchGet")[0]);
+    const ranges = url.searchParams.getAll("ranges");
+    if (spreadsheetId === "reboot-course-sheet") {
+      return response({
+        valueRanges: ranges.map(range => ({
+          range,
+          values: range === "AdminRecords!A:ZZ"
+            ? adminRows
+            : range === "StudentRecords!A:ZZ"
+              ? studentRows
+              : []
+        }))
+      });
+    }
+    throw new Error(`Unexpected batch spreadsheet: ${spreadsheetId}`);
+  }
+
   const match = /^\/v4\/spreadsheets\/([^/]+)\/values\/(.+)$/.exec(url.pathname);
   assert.ok(match, `Unexpected Sheets request: ${url.pathname}`);
   const spreadsheetId = decodeURIComponent(match[1]);

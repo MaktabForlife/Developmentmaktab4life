@@ -13,6 +13,7 @@ import {
 } from "../lib/admin-audit.js";
 import {
   appendGoogleSheetValues,
+  batchReadGoogleSheetValues,
   readGoogleSheetValues,
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
@@ -155,10 +156,10 @@ export async function getResourceManagementOptionsEndpoint(request, env) {
   const permission = await requireResourceCreator(request, env);
   if (!permission.ok) return permission.response;
 
-  const [subjectRows, moduleRows, taskRows] = await Promise.all([
-    readGoogleSheetValues(env, `${SUBJECT_LIST_SHEET}!${FULL_RANGE}`),
-    readGoogleSheetValues(env, `${MODULE_LIST_SHEET}!${FULL_RANGE}`),
-    readGoogleSheetValues(env, `${TASK_LIST_SHEET}!${FULL_RANGE}`)
+  const [subjectRows, moduleRows, taskRows] = await batchReadGoogleSheetValues(env, [
+    `${SUBJECT_LIST_SHEET}!${FULL_RANGE}`,
+    `${MODULE_LIST_SHEET}!${FULL_RANGE}`,
+    `${TASK_LIST_SHEET}!${FULL_RANGE}`
   ]);
 
   return json({
@@ -581,10 +582,10 @@ async function validateResourcePayload(env, payload, options = {}) {
   if (!payload.groupNo) return { ok: false, error: "Group is required" };
   if (options.requireFile && !payload.fileId) return { ok: false, error: "Select a Google Drive file" };
 
-  const [subjectRows, moduleRows, taskRows] = await Promise.all([
-    readGoogleSheetValues(env, `${SUBJECT_LIST_SHEET}!${FULL_RANGE}`),
-    readGoogleSheetValues(env, `${MODULE_LIST_SHEET}!${FULL_RANGE}`),
-    readGoogleSheetValues(env, `${TASK_LIST_SHEET}!${FULL_RANGE}`)
+  const [subjectRows, moduleRows, taskRows] = await batchReadGoogleSheetValues(env, [
+    `${SUBJECT_LIST_SHEET}!${FULL_RANGE}`,
+    `${MODULE_LIST_SHEET}!${FULL_RANGE}`,
+    `${TASK_LIST_SHEET}!${FULL_RANGE}`
   ]);
   const subjects = buildResourceOptions(subjectRows, moduleRows, taskRows);
   const subject = subjects.find(item => item.subjectid === payload.subjectId);

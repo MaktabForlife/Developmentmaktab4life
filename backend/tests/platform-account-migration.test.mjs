@@ -81,6 +81,24 @@ globalThis.fetch = async (input, init = {}) => {
     return response({ totalUpdatedRows: 9 });
   }
 
+  if (url.pathname.endsWith("/values:batchGet")) {
+    const spreadsheetId = decodeURIComponent(/^\/v4\/spreadsheets\/([^/]+)\//.exec(url.pathname)?.[1] || "");
+    const ranges = url.searchParams.getAll("ranges");
+    if (spreadsheetId === "legacy-course-sheet") {
+      return response({
+        valueRanges: ranges.map(range => ({
+          range,
+          values: range === "AdminRecords!A:ZZ"
+            ? adminRows
+            : range === "StudentRecords!A:ZZ"
+              ? studentRows
+              : []
+        }))
+      });
+    }
+    throw new Error(`Unexpected batch spreadsheet: ${spreadsheetId}`);
+  }
+
   const pathMatch = /^\/v4\/spreadsheets\/([^/]+)\/values\/(.+)$/.exec(url.pathname);
   assert.ok(pathMatch, `Unexpected Sheets request: ${url.pathname}`);
   const spreadsheetId = decodeURIComponent(pathMatch[1]);
@@ -260,8 +278,13 @@ try {
   });
   assert.equal(currentPreview.previewToken, "");
 
-  const courseReads = calls.filter(call => call.url.pathname.includes("legacy-course-sheet/values/"));
-  assert.equal(courseReads.length >= 6, true);
+  const courseReads = calls.filter(call => call.url.pathname.includes("legacy-course-sheet/values"));
+  assert.equal(courseReads.length >= 3, true);
+  assert.equal(
+    courseReads.every(call => call.url.pathname.endsWith("/values:batchGet")),
+    true,
+    "V104.2 should read AdminRecords + StudentRecords together for migration previews"
+  );
 } finally {
   globalThis.fetch = originalFetch;
 }

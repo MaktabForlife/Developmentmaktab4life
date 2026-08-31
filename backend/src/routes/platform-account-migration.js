@@ -2,8 +2,8 @@
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import {
+  batchReadGoogleSheetValues,
   batchUpdateGoogleSheetValues,
-  readGoogleSheetValues
 } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import { globalSubjectAccessMatrixColumns } from "../lib/global-subject-delivery.js";
@@ -113,10 +113,10 @@ export async function loadMigrationSnapshot(env, actor, grantGlobalAdmin) {
   }
   const course = courseMatches[0];
 
-  const [adminRows, studentRows] = await Promise.all([
-    readGoogleSheetValues(env, "AdminRecords!A:ZZ", { spreadsheetId: currentCourseSpreadsheetId }),
-    readGoogleSheetValues(env, "StudentRecords!A:ZZ", { spreadsheetId: currentCourseSpreadsheetId })
-  ]);
+  const [adminRows, studentRows] = await batchReadGoogleSheetValues(env, [
+    "AdminRecords!A:ZZ",
+    "StudentRecords!A:ZZ"
+  ], { spreadsheetId: currentCourseSpreadsheetId });
 
   return buildMigrationSnapshot({
     course,

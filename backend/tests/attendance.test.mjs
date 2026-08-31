@@ -91,6 +91,25 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-attendance-token");
+
+    if (url.pathname.endsWith("/values:batchGet")) {
+      const ranges = url.searchParams.getAll("ranges");
+      const missingRange = ranges.find(range => missingSheetName && range.startsWith(`${missingSheetName}!`));
+      if (missingRange) {
+        return response({ error: { message: `Unable to parse range: ${missingRange}` } }, 400);
+      }
+      return response({
+        valueRanges: ranges.map(range => ({
+          range,
+          values: range === "StudentRecords!A:ZZ"
+            ? studentRows
+            : range === "Attendance!A:ZZ"
+              ? attendanceRows
+              : []
+        }))
+      });
+    }
+
     const rawRange = decodeURIComponent(url.pathname.split("/values/")[1] || "");
     const range = rawRange.replace(/:append$/, "");
 

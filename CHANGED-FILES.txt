@@ -1,5 +1,5 @@
-Maktab4Life V104.1 — changed/new files from V103.1.0.5
-Count (including this manifest and DELETE-FILES.txt): 24
+Maktab4Life V104.2 — changed/new files from V104.1
+Count (including this manifest and DELETE-FILES.txt): 30
 
 CHANGED-FILES.txt
 DELETE-FILES.txt
@@ -10,18 +10,24 @@ RELEASE-NOTES.md
 UPDATE-TODO.md
 account/index.html
 backend/package.json
-backend/src/lib/auth.js
-backend/src/lib/platform-sheet.js
 backend/src/routes/academy-timetable.js
-backend/src/routes/account-auth.js
+backend/src/routes/attendance.js
+backend/src/routes/drive-library.js
+backend/src/routes/platform-account-migration.js
 backend/src/routes/platform-global-timetable.js
+backend/src/routes/platform-identity-link.js
+backend/src/routes/progress-read.js
+backend/src/routes/timetable.js
 backend/src/worker.js
 backend/tests/academy-timetable-endpoint.test.mjs
-backend/tests/account-auth.test.mjs
+backend/tests/attendance.test.mjs
+backend/tests/drive-library.test.mjs
+backend/tests/platform-account-migration.test.mjs
 backend/tests/platform-global-timetable.test.mjs
-backend/tests/platform-sheet.test.mjs
+backend/tests/platform-identity-link.test.mjs
+backend/tests/progress-read.test.mjs
 backend/tests/router.test.mjs
-docs/V104.1-GOOGLE-SHEETS-READ-AUDIT.md
-docs/V104.1-PLATFORM-BATCH-READS.md
+backend/tests/timetable.test.mjs
+docs/V104.2-PROGRAM-BATCH-READS.md
 js/version.json
 version.json

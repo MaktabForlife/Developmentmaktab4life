@@ -1,10 +1,10 @@
-/* M4L V104.1 - Platform-batched rolling Academy timetable plus per-Course FREE/PAID entitlement. */
+/* M4L V104.2 - Platform + Program batched rolling Academy timetable. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
 import { canAccountAccessGlobalSubject, dateInTimezone, hasActiveGlobalSubjectSubscription, isValidIanaTimezone } from "../lib/global-subject-delivery.js";
 import { resolveCurrentPublishedGlobalTimetable } from "../lib/global-timetable.js";
-import { readGoogleSheetValues } from "../lib/google-sheets.js";
+import { batchReadGoogleSheetValues } from "../lib/google-sheets.js";
 import { json } from "../lib/http.js";
 import {
   readPlatformSheets
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "104.1",
+      version: "104.2",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,
@@ -185,18 +185,29 @@ async function loadProgramEvents(env, course, memberships, options) {
   const courseMemberships = memberships.filter(row => (
     normalizePlatformIdentifier(row.CourseID) === normalizePlatformIdentifier(courseId)
   ));
-  const access = await resolveProgramAccess(env, spreadsheetId, courseMemberships, options);
-  const systemRows = await readGoogleSheetValues(env, "SystemConfig!A:E", { spreadsheetId });
+  const accessPlan = buildProgramAccessPlan(courseMemberships, options);
+  const profileRanges = ["SystemConfig!A:E"];
+  if (accessPlan.needsStudent) profileRanges.push("StudentRecords!A:K");
+  if (accessPlan.needsStaff) profileRanges.push("AdminRecords!A:ZZ");
+  const profileSets = await batchReadGoogleSheetValues(env, profileRanges, { spreadsheetId });
+  let profileIndex = 0;
+  const systemRows = profileSets[profileIndex++] || [];
+  const studentRows = accessPlan.needsStudent ? (profileSets[profileIndex++] || []) : [];
+  const accessAdminRows = accessPlan.needsStaff ? (profileSets[profileIndex++] || []) : [];
+  const access = resolveProgramAccess(courseMemberships, options, {
+    studentRows,
+    adminRows: accessAdminRows
+  });
   const liveSource = getTimetableLiveSource(systemRows);
   const globalZoomLink = getSystemConfigValue(systemRows, GLOBAL_ZOOM_LINK_KEY);
   let sessions = [];
 
   if (liveSource === TIMETABLE_SOURCE_PUBLISHED) {
-    const [stateRows, publicationRows, snapshotRows] = await Promise.all([
-      readGoogleSheetValues(env, `${TIMETABLE_STATE_SHEET}!${FULL_RANGE}`, { spreadsheetId }),
-      readGoogleSheetValues(env, `${TIMETABLE_PUBLICATION_SHEET}!${FULL_RANGE}`, { spreadsheetId }),
-      readGoogleSheetValues(env, `${PUBLISHED_TIMETABLE_SESSION_SHEET}!${FULL_RANGE}`, { spreadsheetId })
-    ]);
+    const [stateRows, publicationRows, snapshotRows] = await batchReadGoogleSheetValues(env, [
+      `${TIMETABLE_STATE_SHEET}!${FULL_RANGE}`,
+      `${TIMETABLE_PUBLICATION_SHEET}!${FULL_RANGE}`,
+      `${PUBLISHED_TIMETABLE_SESSION_SHEET}!${FULL_RANGE}`
+    ], { spreadsheetId });
     const current = resolveCurrentPublishedTimetable({ stateRows, publicationRows, publishedSessionRows: snapshotRows }, courseId, {
       requireCurrentHeaders: true,
       requireDisplayValues: true
@@ -214,12 +225,16 @@ async function loadProgramEvents(env, course, memberships, options) {
       zoomlink: item.zoomlink
     }));
   } else {
-    const [teacherRows, adminRows, subjectRows, moduleRows] = await Promise.all([
-      readGoogleSheetValues(env, "TeacherAssign!A:ZZ", { spreadsheetId }),
-      readGoogleSheetValues(env, "AdminRecords!A:ZZ", { spreadsheetId }),
-      readGoogleSheetValues(env, "SubjectList!A:ZZ", { spreadsheetId }),
-      readGoogleSheetValues(env, "ModuleList!A:ZZ", { spreadsheetId })
-    ]);
+    const legacyRanges = ["TeacherAssign!A:ZZ"];
+    const reuseAccessAdmins = accessPlan.needsStaff;
+    if (!reuseAccessAdmins) legacyRanges.push("AdminRecords!A:ZZ");
+    legacyRanges.push("SubjectList!A:ZZ", "ModuleList!A:ZZ");
+    const legacySets = await batchReadGoogleSheetValues(env, legacyRanges, { spreadsheetId });
+    let legacyIndex = 0;
+    const teacherRows = legacySets[legacyIndex++] || [];
+    const adminRows = reuseAccessAdmins ? accessAdminRows : (legacySets[legacyIndex++] || []);
+    const subjectRows = legacySets[legacyIndex++] || [];
+    const moduleRows = legacySets[legacyIndex++] || [];
     const transformed = buildTimetableResponse(teacherRows, {
       adminRows,
       subjectRows,
@@ -247,7 +262,20 @@ async function loadProgramEvents(env, course, memberships, options) {
   })).filter(Boolean));
 }
 
-async function resolveProgramAccess(env, spreadsheetId, memberships, options) {
+function buildProgramAccessPlan(memberships, options) {
+  if (options.isGlobalAdmin) {
+    return { needsStudent: false, needsStaff: false };
+  }
+
+  const candidates = (Array.isArray(memberships) ? memberships : [])
+    .filter(row => isActivePlatformValue(row.Active) && COURSE_ROLE_ORDER[normalizePlatformIdentifier(row.Role)]);
+  return {
+    needsStudent: candidates.some(row => normalizePlatformIdentifier(row.Role) === "STUDENT"),
+    needsStaff: candidates.some(row => ["ADMIN", "SENIOR", "TEACHER"].includes(normalizePlatformIdentifier(row.Role)))
+  };
+}
+
+function resolveProgramAccess(memberships, options, profiles = {}) {
   if (options.isGlobalAdmin) {
     return { level: "GLOBAL_ADMIN", roles: new Set(["GLOBAL_ADMIN"]), studentGroup: "", teacherIds: new Set() };
   }
@@ -260,10 +288,8 @@ async function resolveProgramAccess(env, spreadsheetId, memberships, options) {
 
   const needsStudent = candidates.some(row => normalizePlatformIdentifier(row.Role) === "STUDENT");
   const needsStaff = candidates.some(row => ["ADMIN", "SENIOR", "TEACHER"].includes(normalizePlatformIdentifier(row.Role)));
-  const [studentRows, adminRows] = await Promise.all([
-    needsStudent ? readGoogleSheetValues(env, "StudentRecords!A:K", { spreadsheetId }) : Promise.resolve([]),
-    needsStaff ? readGoogleSheetValues(env, "AdminRecords!A:J", { spreadsheetId }) : Promise.resolve([])
-  ]);
+  const studentRows = needsStudent ? (profiles.studentRows || []) : [];
+  const adminRows = needsStaff ? (profiles.adminRows || []) : [];
 
   if (needsStudent) {
     assertAcademyLegacyHeaders(studentRows?.[0], [

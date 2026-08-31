@@ -6,6 +6,7 @@ import {
 import { getAuthUser } from "../lib/auth.js";
 import {
   appendGoogleSheetValues,
+  batchReadGoogleSheetValues,
   readGoogleSheetValues,
   updateGoogleSheetValues
 } from "../lib/google-sheets.js";
@@ -239,30 +240,22 @@ export async function attendanceReportGoogleSheetsEndpoint(request, env) {
     return context.response;
   }
 
-  let studentRows;
-  let attendanceRows;
-
   try {
-    studentRows = await readGoogleSheetValues(env, STUDENT_RECORDS_SHEET_RANGE);
+    const [studentRows, rawAttendanceRows] = await batchReadGoogleSheetValues(env, [
+      STUDENT_RECORDS_SHEET_RANGE,
+      ATTENDANCE_SHEET_RANGE
+    ]);
+    const attendanceRows = await normalizeAttendanceRowsWithHeaders(env, rawAttendanceRows);
+    return json(buildAttendanceReportResponse(studentRows, attendanceRows, context));
   } catch (error) {
     if (isMissingSheetError(error, STUDENT_RECORDS_SHEET_NAME)) {
       return json({ success: false, error: "StudentRecords sheet not found" });
     }
-
-    throw error;
-  }
-
-  try {
-    attendanceRows = await readAttendanceRowsWithHeaders(env);
-  } catch (error) {
     if (isMissingSheetError(error, ATTENDANCE_SHEET_NAME)) {
       return json({ success: false, error: "Attendance sheet not found" });
     }
-
     throw error;
   }
-
-  return json(buildAttendanceReportResponse(studentRows, attendanceRows, context));
 }
 
 export function buildAttendanceStudentsResponse(rows = [], classgroup = "ALL") {
@@ -526,6 +519,10 @@ async function getAttendanceReportContext(request, env) {
 
 async function readAttendanceRowsWithHeaders(env) {
   const rows = await readGoogleSheetValues(env, ATTENDANCE_SHEET_RANGE);
+  return normalizeAttendanceRowsWithHeaders(env, rows);
+}
+
+async function normalizeAttendanceRowsWithHeaders(env, rows) {
   const firstRow = Array.isArray(rows[0]) ? rows[0] : [];
   const headerMap = buildAttendanceHeaderMap(firstRow);
   const hasDate = findAttendanceColumn(headerMap, ["AttendanceDate", "Date"]) !== -1;

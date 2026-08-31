@@ -122,6 +122,17 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-progress-token");
+    if (url.pathname.endsWith("/values:batchGet")) {
+      const ranges = url.searchParams.getAll("ranges");
+      requestedRanges.push(...ranges);
+      const missingRange = ranges.find(range => missingSheetName && range.startsWith(`${missingSheetName}!`));
+      if (missingRange) {
+        return response({ error: { message: `Unable to parse range: ${missingRange}` } }, 400);
+      }
+      return response({
+        valueRanges: ranges.map(range => ({ range, values: progressRowsForRange(range) }))
+      });
+    }
     const range = decodeURIComponent(url.pathname.split("/values/")[1] || "");
     requestedRanges.push(range);
 
@@ -129,17 +140,23 @@ globalThis.fetch = async (input, init = {}) => {
       return response({ error: { message: `Unable to parse range: ${range}` } }, 400);
     }
 
-    if (range === "StudentTasks!A:ZZ") return response({ values: studentTaskRows });
-    if (range === "TaskList!A:ZZ") return response({ values: taskRows });
-    if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
-    if (range === "TaskResources!A:ZZ") return response({ values: taskResourceRows });
-    if (range === "StudentRecords!A:ZZ") return response({ values: studentRows });
+    const rows = progressRowsForRange(range);
+    if (rows) return response({ values: rows });
 
     throw new Error(`Unexpected Progress range: ${range}`);
   }
 
   throw new Error(`Unexpected direct Progress fetch: ${url}`);
 };
+
+function progressRowsForRange(range) {
+  if (range === "StudentTasks!A:ZZ") return studentTaskRows;
+  if (range === "TaskList!A:ZZ") return taskRows;
+  if (range === "SubjectList!A:ZZ") return subjectRows;
+  if (range === "TaskResources!A:ZZ") return taskResourceRows;
+  if (range === "StudentRecords!A:ZZ") return studentRows;
+  return [];
+}
 
 try {
   const studentTasks = await post(

@@ -1,14 +1,14 @@
-# V104.1 UPDATE TODO — Platform Batch Reads
+# V104.2 UPDATE TODO — Program Batch Reads
 
-1. Apply this changed-files overlay to the current V103.1.0.5 Development repo.
-2. Deploy Pages and the Development Worker together.
-3. Confirm Worker health reports `104.1`.
-4. Confirm `PlatformConfig!B3` remains `102.0.9`; do **not** run a new Sheet migration.
-5. Login through the central account flow and verify context selection remains unchanged.
-6. Open Academy Home and swipe through the rolling seven-day timetable.
-7. Verify Reboot + Global Course/Subject session visibility matches V103.1.0.5.
-8. Verify FREE/PAID Course entitlement still behaves identically.
-9. Smoke-test one attendance read/write, Progress, Weekly Planner and Resources; V104.1 does not intentionally alter those paths.
-10. If Google API diagnostics/logging is available, confirm Academy Platform state is one `values:batchGet` rather than 13 individual Platform reads.
-
-No V103.1 UI refinements are included in this release.
+1. Apply the V104.2 changed-files overlay to the complete V104.1 tree.
+2. Deploy the Pages/app files and Worker together.
+3. Confirm Worker health reports `104.2`.
+4. No Google Sheet migration is required; keep `PlatformConfig!B3 = 102.0.9` and 19 Platform tabs.
+5. Open Academy Home and confirm the rolling 7-day timetable still loads/swipes correctly.
+6. Verify one participant Program timetable and one Admin/staff timetable context.
+7. Verify Attendance report and one Attendance save.
+8. Verify Progress student view and Admin/Teacher Progress view.
+9. Verify Global/Program Library resource options and one existing resource open/save workflow.
+10. Verify timetable read and Global Zoom configuration behaviour.
+11. The V103.1 Identity Links migration is already complete in Development; do not rerun it as part of V104.2.
+12. Keep pending V103.1.0.5 Courses UI refinements out of this optimisation release.

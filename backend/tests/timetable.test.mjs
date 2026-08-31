@@ -242,6 +242,19 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.hostname === "sheets.googleapis.com") {
     assert.equal(init.headers.Authorization, "Bearer mock-timetable-token");
+
+    if (url.pathname.endsWith("/values:batchGet")) {
+      const ranges = url.searchParams.getAll("ranges");
+      requestedRanges.push(...ranges);
+      const missingRange = ranges.find(range => missingSheetName && range.startsWith(`${missingSheetName}!`));
+      if (missingRange) {
+        return response({ error: { message: `Unable to parse range: ${missingRange}` } }, 400);
+      }
+      return response({
+        valueRanges: ranges.map(range => ({ range, values: rowsForRange(range) }))
+      });
+    }
+
     const rangeAndAction = decodeURIComponent(url.pathname.split("/values/")[1] || "");
     const isAppend = rangeAndAction.endsWith(":append");
     const range = isAppend ? rangeAndAction.slice(0, -":append".length) : rangeAndAction;
@@ -277,18 +290,24 @@ globalThis.fetch = async (input, init = {}) => {
       }, 400);
     }
 
-    if (range === "TeacherAssign!A:ZZ") return response({ values: teacherRows });
-    if (range === "AdminRecords!A:ZZ") return response({ values: adminRows });
-    if (range === "SubjectList!A:ZZ") return response({ values: subjectRows });
-    if (range === "ModuleList!A:ZZ") return response({ values: moduleRows });
-    if (range === "TimeTable!A:ZZ") return response({ values: directLegacyRows });
-    if (range === "SystemConfig!A:E") return response({ values: systemConfigRows });
+    const rows = rowsForRange(range);
+    if (rows) return response({ values: rows });
     if (range === "AdminAuditLog!A1:I1") return response({ values: [auditRows[0]] });
     throw new Error(`Unexpected Sheets range: ${range}`);
   }
 
   throw new Error(`Unexpected direct-timetable fetch: ${url}`);
 };
+
+function rowsForRange(range) {
+  if (range === "TeacherAssign!A:ZZ") return teacherRows;
+  if (range === "AdminRecords!A:ZZ") return adminRows;
+  if (range === "SubjectList!A:ZZ") return subjectRows;
+  if (range === "ModuleList!A:ZZ") return moduleRows;
+  if (range === "TimeTable!A:ZZ") return directLegacyRows;
+  if (range === "SystemConfig!A:E") return systemConfigRows;
+  return null;
+}
 
 try {
   const unauthorized = await worker.fetch(new Request(

@@ -381,6 +381,16 @@ async function post(path, body, token) {
 }
 
 function handleSheets(url, init) {
+  if (url.pathname.endsWith("/values:batchGet")) {
+    const ranges = url.searchParams.getAll("ranges");
+    return response({
+      valueRanges: ranges.map(range => ({
+        range,
+        values: sheets.get(range) || []
+      }))
+    });
+  }
+
   const rawRange = decodeURIComponent(url.pathname.split("/values/")[1] || "");
   const range = rawRange.replace(/:append$/, "");
 

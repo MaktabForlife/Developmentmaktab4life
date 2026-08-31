@@ -1,37 +1,35 @@
-# Maktab4Life V104.1
+# Maktab4Life V104.2
 
-V104.1 begins the Google Sheets read-optimisation phase on the completed V103.1 Central Identity foundation.
+V104.2 continues the Google Sheets query-reduction phase on the completed V103.1 Central Identity foundation.
 
-The release changes **how related Platform ranges are fetched**, not what the application is allowed to see or do.
+## Focus
 
-## Main change
+V104.1 batched high-volume Platform workbook reads. V104.2 now batches related **Program/Reboot workbook** reads where doing so preserves existing failure and compatibility behaviour.
 
-A new validated `readPlatformSheets()` helper retrieves related Platform tabs through one Google Sheets `values:batchGet` call and then applies the existing strict per-tab Platform schema validation.
+Key reductions include:
 
-V104.1 converts the highest-volume Platform startup paths:
+- Academy Home Program timetable: 4 Program requests → 2 for the published GLOBAL_ADMIN fixture, with student/staff identity verification folded into the Program profile/config batch.
+- Progress: four required Program table reads → one batch per view.
+- Attendance report: two Program reads → one batch.
+- Library curriculum options/validation: three Program reads → one batch.
+- TeacherAssign reference reads: four tables → one batch.
+- Central identity/account migration Program snapshot: AdminRecords + StudentRecords → one batch.
 
-- Academy Home's 13 Platform timetable/calendar/access tables now use one batch read.
-- Central account check/login/context state loads its related Platform tables in one batch.
-- GLOBAL account-session validation batches its three Global access/curriculum tables.
+The measured Academy fixture is now **4 total Sheets requests** (credential + Platform + two Program batches), compared with 6 in V104.1 and 18 before V104.1.
 
-The Academy timetable integration fixture falls from 18 Sheets API calls to 6 for the same one-Program Platform-admin request, before Program batching is introduced.
+## Unchanged
 
-## V104 boundary
+No Sheet migration is required. Keep `PlatformConfig!B3 = 102.0.9` with 19 required Platform tabs.
 
-V104.1 intentionally leaves Reboot/Program spreadsheet reads unchanged. Program batch reads are planned for V104.2, followed by request-level read deduplication in V104.3.
+V104.2 does not change access rules, timetable visibility, Course FREE/PAID behaviour, Attendance, Progress, Planner, resource permissions or publication semantics.
 
-No persistent cache, KV or D1 dependency is introduced.
+## Next
 
-## Schema
-
-No Sheet migration.
-
-- `PlatformConfig!B3 = 102.0.9`
-- 19 required Platform tabs
-- V103.1 Reboot AccountID identity links remain in place.
+V104.3 is intended to add **request-level read deduplication** only: if one helper already loaded a range during the same Worker request, another helper can reuse it. No persistent cross-request cache is planned at this stage.
 
 See:
 
 - `docs/V104.1-GOOGLE-SHEETS-READ-AUDIT.md`
 - `docs/V104.1-PLATFORM-BATCH-READS.md`
+- `docs/V104.2-PROGRAM-BATCH-READS.md`
 - `PRODUCTION-MIGRATION-V101.1.md`

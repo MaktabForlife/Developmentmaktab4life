@@ -1,29 +1,23 @@
-# V104.1 Release Notes — Platform Batch Reads
+# V104.2 Release Notes — Program Batch Reads
 
-V104.1 reduces Google Sheets API pressure by replacing groups of independent Platform Sheet reads with validated `values:batchGet` requests.
+V104.2 reduces Google Sheets API pressure in Program/Reboot data paths without changing user-visible business behaviour.
 
 ## Academy Home
 
-The Academy timetable previously loaded 13 Platform tabs with 13 separate Google API reads after authentication. V104.1 loads those same 13 ranges in one batch request.
+Each active Program now uses a batched profile/config read followed by one batch for the authoritative timetable source. In the integration fixture, the one-Program Academy request falls from **6 total Sheets requests in V104.1 to 4 in V104.2**, versus 18 before the V104 optimisation phase.
 
-The existing integration fixture now records 6 total Sheets API calls for a Platform-admin Academy timetable load with one published Program, down from 18 before V104.1. Program reads account for 4 of the remaining calls and are reserved for V104.2.
+The two-stage Program design is intentional: `SystemConfig.TimetableLiveSource` first determines whether Published Timetable or TeacherAssign is authoritative, so V104.2 does not load both full timetable sources blindly.
 
-## Central account loading
+## Other Program reductions
 
-Account check/login/context state now loads its 2–8 required Platform tables with one batchGet.
+- Progress required-table reads: 4 → 1 batch.
+- Attendance report: 2 → 1 batch.
+- Library curriculum options/validation: 3 → 1 batch.
+- TeacherAssign required reference tables: 4 → 1 batch.
+- V103.1 identity-link and legacy account-migration Reboot profile snapshots: 2 → 1 batch.
 
-GLOBAL central-token revalidation now batches the Access Matrix, access policy and Global Subject list into one request while retaining immediate credential-row validation.
+## Compatibility
 
-## Business behaviour
+No schema migration. `PlatformConfig!B3` stays `102.0.9` and the Platform workbook remains at 19 required tabs.
 
-Unchanged. V104.1 does not modify access rules, session visibility, publication logic, Course FREE/PAID behaviour, Reboot operational IDs, attendance, progress, planner or resource permission logic.
-
-## Schema
-
-No migration is required. Keep `PlatformConfig!B3 = 102.0.9` and 19 Platform tabs.
-
-## Next components
-
-- V104.2: Program/Reboot batch reads.
-- V104.3: request-level read deduplication.
-- V104.4: metrics and full read-budget regression.
+Existing optional/missing-Sheet safeguards remain fail-safe; notably the obsolete `TimeTable` Zoom fallback and optional resource-sheet scans are not forced into a batch that could make a missing legacy tab break current functionality.
