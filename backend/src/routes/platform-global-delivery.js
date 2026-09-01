@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Global Courses metadata, access, derived scheduling and staged schema migrations. */
+/* M4L V104.5.3 - Global Courses metadata, access, derived scheduling and staged schema migrations. */
 
 import { getAuthUser } from "../lib/auth.js";
 import {
@@ -38,8 +38,8 @@ const PLATFORM_TIMEZONE_CONFIG_KEY = "PLATFORMTIMEZONE";
 const COURSE_ACCESS_SCHEMA_VERSION = "102.0.9";
 const LEGACY_COURSE_ACCESS_SCHEMA_VERSION = "102.0.8";
 const COURSE_ACCESS_MODELS = new Set(["FREE", "PAID"]);
-const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.11";
-const LEGACY_COURSE_SCHEDULE_SCHEMA_VERSIONS = new Set(["102.0.9", "102.0.10"]);
+const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.12";
+const LEGACY_COURSE_SCHEDULE_SCHEMA_VERSIONS = new Set(["102.0.9", "102.0.10", "102.0.11"]);
 const COURSE_SCHEDULE_MODE_SET = new Set(COURSE_SCHEDULE_MODES);
 const HTTPS_URL_PATTERN = /^https:\/\//i;
 
@@ -57,7 +57,7 @@ export async function getPlatformGlobalDeliveryEndpoint(request, env) {
       platformTimezone: readPlatformTimezone(tables.PlatformConfig),
       platformSchemaVersion: readPlatformSchemaVersion(tables.PlatformConfig).value,
       courseAccessSchemaReady: tables.GlobalSubjectRuns._courseAccessSchemaReady === true,
-      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION,
+      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION,
       subjects: tables.GlobalSubjectList.map(subject => mapDeliverySubject(subject, tables, now)),
       policies: tables.GlobalSubjectAccessPolicy.map(mapPolicy),
       runs: tables.GlobalSubjectRuns.map(run => mapCourseRun(run, tables, now))
@@ -160,6 +160,10 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const requestedScheduleMode = normalizePlatformIdentifier(body.scheduleMode || body.schedulemode);
     const hasScheduleDefinition = Object.prototype.hasOwnProperty.call(body, "scheduleDefinition") || Object.prototype.hasOwnProperty.call(body, "scheduledefinition");
     const requestedScheduleDefinition = body.scheduleDefinition ?? body.scheduledefinition;
+    const hasDraftPublishStart = Object.prototype.hasOwnProperty.call(body, "draftPublishStartDate") || Object.prototype.hasOwnProperty.call(body, "draftpublishstartdate");
+    const hasDraftPublishEnd = Object.prototype.hasOwnProperty.call(body, "draftPublishEndDate") || Object.prototype.hasOwnProperty.call(body, "draftpublishenddate");
+    const requestedDraftPublishStart = clean(body.draftPublishStartDate ?? body.draftpublishstartdate);
+    const requestedDraftPublishEnd = clean(body.draftPublishEndDate ?? body.draftpublishenddate);
     const requestedOngoing = body.ongoing === undefined
       ? (!startDate && !endDate)
       : readBoolean(body.ongoing, false);
@@ -180,7 +184,7 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const tables = await readDeliveryTables(env);
     const platformTimezone = readPlatformTimezone(tables.PlatformConfig);
     const courseAccessSchemaReady = tables.GlobalSubjectRuns._courseAccessSchemaReady === true;
-    const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION;
+    const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true && readPlatformSchemaVersion(tables.PlatformConfig).value === COURSE_SCHEDULE_SCHEMA_VERSION;
     if (!courseAccessSchemaReady) {
       throw clientError("Run the V103.1.0.5 Course access migration before saving Courses", 409);
     }
@@ -196,6 +200,26 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const existing = runId
       ? uniqueRecord(tables.GlobalSubjectRuns, "RunID", runId, "Global subject run")
       : null;
+    const stateMatches = runId ? tables.GlobalTimetableRunState.filter(row => (
+      normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId)
+    )) : [];
+    if (stateMatches.length > 1) throw clientError("Course has duplicate timetable-state rows", 409);
+    const existingState = stateMatches[0] || null;
+    const draftWindowTouched = requestedOngoing
+      ? (hasDraftPublishStart || hasDraftPublishEnd)
+      : Boolean(clean(existingState?.DraftPublishStartDate) || clean(existingState?.DraftPublishEndDate));
+    const draftPublishStartDate = requestedOngoing
+      ? (hasDraftPublishStart ? requestedDraftPublishStart : clean(existingState?.DraftPublishStartDate))
+      : "";
+    const draftPublishEndDate = requestedOngoing
+      ? (hasDraftPublishEnd ? requestedDraftPublishEnd : clean(existingState?.DraftPublishEndDate))
+      : "";
+    if (draftWindowTouched && requestedOngoing) {
+      const hasDraftWindow = Boolean(draftPublishStartDate || draftPublishEndDate);
+      if (hasDraftWindow && (!validateIsoDate(draftPublishStartDate) || !validateIsoDate(draftPublishEndDate) || draftPublishEndDate < draftPublishStartDate)) {
+        throw clientError("ONGOING Course draft publication window requires both Publish From and Publish Through dates, or both blank", 400);
+      }
+    }
     const accessModel = requestedAccessModel || resolveCourseAccessModel(existing, tables);
     if (!COURSE_ACCESS_MODELS.has(accessModel)) {
       throw clientError("Course AccessModel must be FREE or PAID", 400);
@@ -213,15 +237,14 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       scheduleDefinition = "[]";
     }
     if (existing) {
-      const timetableState = tables.GlobalTimetableRunState.find(row => (
-        normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(existing.RunID)
-      ));
-      if (normalizePlatformIdentifier(timetableState?.Stage) === "PUBLISHED") {
+      if (normalizePlatformIdentifier(existingState?.Stage) === "PUBLISHED") {
         const wouldChange = [
           [existing.RunName, runName], [existing.StartDate, startDate], [existing.EndDate, endDate],
           [normalizePlatformIdentifier(existing.AccessModel), accessModel],
           [normalizeCourseScheduleMode(existing.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT), scheduleMode],
           [clean(existing.ScheduleDefinition) || "[]", scheduleDefinition],
+          [clean(existingState?.DraftPublishStartDate), draftPublishStartDate],
+          [clean(existingState?.DraftPublishEndDate), draftPublishEndDate],
           [String(isActivePlatformValue(existing.Active)), String(requestedActive)]
         ].some(([left, right]) => String(left ?? "") !== String(right ?? ""));
         if (wouldChange) throw clientError("Revise timetable before modifying a published course", 409);
@@ -273,7 +296,11 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
     const changedFields = existing
       ? changedRecordFields(existing, record, ["RunName", "StartDate", "EndDate", "Timezone", "Active", "AccessModel", "ScheduleMode", "ScheduleDefinition"])
       : ["SubjectID", "RunName", "StartDate", "EndDate", "Timezone", "Active", "AccessModel", "ScheduleMode", "ScheduleDefinition"];
-    if (existing && changedFields.length === 0) {
+    const draftWindowChanged = draftWindowTouched && (
+      clean(existingState?.DraftPublishStartDate) !== draftPublishStartDate ||
+      clean(existingState?.DraftPublishEndDate) !== draftPublishEndDate
+    );
+    if (existing && changedFields.length === 0 && !draftWindowChanged) {
       return json({
         success: true,
         message: "No global-subject run changes requested",
@@ -291,13 +318,21 @@ export async function savePlatformGlobalSubjectRunEndpoint(request, env) {
       recordId: record.RunID,
       changedFields,
       timestamp,
-      timetableStateDirty: changedFields.some(field => ["ScheduleMode", "ScheduleDefinition", "StartDate", "EndDate"].includes(field))
+      timetableStateDirty: changedFields.some(field => ["ScheduleMode", "ScheduleDefinition", "StartDate", "EndDate"].includes(field)) || draftWindowChanged,
+      draftWindowTouched,
+      draftPublishStartDate,
+      draftPublishEndDate
     });
 
+    const responseRun = mapCourseRun(record, tables);
     return json({
       success: true,
       message: existing ? "Global-subject run updated" : "Global-subject run created",
-      run: mapCourseRun(record, tables),
+      run: Object.freeze({
+        ...responseRun,
+        draftpublishstartdate: requestedOngoing ? draftPublishStartDate : "",
+        draftpublishenddate: requestedOngoing ? draftPublishEndDate : ""
+      }),
       dependencies: subjectDependencies(tables, subject.SubjectID)
     });
   } catch (error) {
@@ -396,6 +431,7 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
       publications._courseScheduleSchemaReady === true &&
       publishedSessions._courseScheduleSchemaReady === true &&
       publishedSessions._sessionDescriptionSchemaReady === true &&
+      tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true &&
       schema.value === COURSE_SCHEDULE_SCHEMA_VERSION;
     const proposed = tables.GlobalSubjectRuns.map(run => ({
       runid: clean(run.RunID),
@@ -425,13 +461,13 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
     if (ready) {
       return json({
         success: true,
-        message: "V104.5.1 Course scheduling schema is already current",
+        message: "V104.5.3 Course scheduling schema is already current",
         courseScheduleSchemaReady: true,
         platformSchemaVersion: schema.value
       });
     }
     if (!LEGACY_COURSE_SCHEDULE_SCHEMA_VERSIONS.has(schema.value)) {
-      throw clientError("V104.5 Course scheduling migration requires PlatformSchemaVersion 102.0.9 or 102.0.10", 409);
+      throw clientError("V104.5 Course scheduling migration requires PlatformSchemaVersion 102.0.9, 102.0.10 or 102.0.11", 409);
     }
     if (tables.GlobalSubjectRuns._courseAccessSchemaReady !== true) {
       throw clientError("Complete the Course FREE/PAID migration before V104.5 Course scheduling", 409);
@@ -483,10 +519,22 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
       OccurrenceDate: clean(snapshot.OccurrenceDate),
       SessionDescription: clean(snapshot.SessionDescription)
     }));
+    const publicationById = new Map(publicationRows.map(publication => [normalizePlatformIdentifier(publication.PublicationID), publication]));
+    const stateRows = tables.GlobalTimetableRunState.map(state => {
+      const run = runById.get(normalizePlatformIdentifier(state.RunID));
+      const ongoing = run && !clean(run.StartDate) && !clean(run.EndDate);
+      const publication = publicationById.get(normalizePlatformIdentifier(state.CurrentPublicationID));
+      return {
+        ...state,
+        DraftPublishStartDate: clean(state.DraftPublishStartDate) || (ongoing ? clean(publication?.PublishStartDate) : ""),
+        DraftPublishEndDate: clean(state.DraftPublishEndDate) || (ongoing ? clean(publication?.PublishEndDate) : "")
+      };
+    });
 
     const writes = [
       fullTableWrite("GlobalSubjectRuns", runRows),
       fullTableWrite("GlobalTimetableSessions", sourceRows),
+      fullTableWrite("GlobalTimetableRunState", stateRows),
       fullTableWrite("GlobalTimetablePublications", publicationRows),
       fullTableWrite("PublishedGlobalTimetableSessions", publishedRows),
       {
@@ -501,6 +549,7 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
         JSON.stringify([
           "GlobalSubjectRuns.ScheduleMode", "GlobalSubjectRuns.ScheduleDefinition",
           "GlobalTimetableSessions.SessionKind", "GlobalTimetableSessions.ScheduleRuleKey", "GlobalTimetableSessions.OccurrenceDate", "GlobalTimetableSessions.SessionDescription",
+          "GlobalTimetableRunState.DraftPublishStartDate", "GlobalTimetableRunState.DraftPublishEndDate",
           "GlobalTimetablePublications.ScheduleMode", "GlobalTimetablePublications.PublishStartDate", "GlobalTimetablePublications.PublishEndDate", "GlobalTimetablePublications.ScheduleDefinition",
           "PublishedGlobalTimetableSessions.SessionKind", "PublishedGlobalTimetableSessions.ScheduleRuleKey", "PublishedGlobalTimetableSessions.OccurrenceDate", "PublishedGlobalTimetableSessions.SessionDescription",
           "PlatformSchemaVersion"
@@ -512,7 +561,9 @@ export async function migratePlatformGlobalCourseSchedulingEndpoint(request, env
       success: true,
       message: schema.value === "102.0.9"
         ? `${runRows.length} existing Course${runRows.length === 1 ? "" : "s"} preserved as EXPLICIT; new Courses now default to DERIVED`
-        : "V104.5.1 Course scheduling updated with per-session descriptions; existing Course modes and publications were preserved",
+        : (schema.value === "102.0.11"
+          ? "V104.5.3 Course scheduling updated with authoritative ONGOING draft publication windows; existing publications were preserved"
+          : "V104.5 Course scheduling updated; existing Course modes and publications were preserved"),
       courseScheduleSchemaReady: true,
       platformSchemaVersion: COURSE_SCHEDULE_SCHEMA_VERSION,
       migrated: runRows.length
@@ -596,7 +647,11 @@ async function writeDeliveryMutation(env, user, tables, mutation) {
   ];
   const audits = [auditRow];
   if (mutation.timetableStateDirty && mutation.record?.RunID) {
-    const stateMutation = buildCourseDevelopmentStateMutation(tables, mutation.record.RunID, user, mutation.timestamp);
+    const stateMutation = buildCourseDevelopmentStateMutation(tables, mutation.record.RunID, user, mutation.timestamp, {
+      draftWindowTouched: mutation.draftWindowTouched === true,
+      draftPublishStartDate: clean(mutation.draftPublishStartDate),
+      draftPublishEndDate: clean(mutation.draftPublishEndDate)
+    });
     if (stateMutation) {
       writes.push(stateMutation.write);
       audits.push(stateMutation.audit);
@@ -636,27 +691,34 @@ function normalizeCourseScheduleDefinitionForSave(value, tables, subject) {
   return serializeCourseScheduleDefinition(rules);
 }
 
-function buildCourseDevelopmentStateMutation(tables, runId, user, timestamp) {
+function buildCourseDevelopmentStateMutation(tables, runId, user, timestamp, options = {}) {
   const matches = (tables.GlobalTimetableRunState || []).filter(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(runId));
   if (matches.length > 1) throw clientError("Course has duplicate timetable-state rows", 409);
   const existing = matches[0] || null;
-  if (existing && normalizePlatformIdentifier(existing.Stage) === "DEVELOPMENT") return null;
+  const nextDraftStart = options.draftWindowTouched ? clean(options.draftPublishStartDate) : clean(existing?.DraftPublishStartDate);
+  const nextDraftEnd = options.draftWindowTouched ? clean(options.draftPublishEndDate) : clean(existing?.DraftPublishEndDate);
+  const alreadyDevelopment = existing && normalizePlatformIdentifier(existing.Stage) === "DEVELOPMENT";
+  const sameWindow = clean(existing?.DraftPublishStartDate) === nextDraftStart && clean(existing?.DraftPublishEndDate) === nextDraftEnd;
+  if (alreadyDevelopment && sameWindow) return null;
   const record = existing ? {
     ...existing,
     Stage: "DEVELOPMENT",
     CurrentPublicationID: clean(existing.CurrentPublicationID),
+    DraftPublishStartDate: nextDraftStart,
+    DraftPublishEndDate: nextDraftEnd,
     ModifiedByAccountID: user.accountid,
     ModifiedByAccountName: user.username,
     ModifiedDate: timestamp
   } : {
     RunID: clean(runId), Stage: "DEVELOPMENT", CurrentPublicationID: "",
+    DraftPublishStartDate: nextDraftStart, DraftPublishEndDate: nextDraftEnd,
     CreatedDate: timestamp, CreatedByAccountID: user.accountid, CreatedByAccountName: user.username,
     ModifiedByAccountID: "", ModifiedByAccountName: "", ModifiedDate: ""
   };
   return {
     write: valueWrite("GlobalTimetableRunState", existing?._rowNumber || nextRowNumber(tables.GlobalTimetableRunState), recordToRow(record, PLATFORM_SHEET_HEADERS.GlobalTimetableRunState)),
     audit: [createPlatformId("AUDIT"), timestamp, user.accountid, user.username, user.role, user.role === "GLOBAL_ADMIN" ? "" : user.courseid,
-      existing ? "UPDATE_GLOBAL_TIMETABLE_STATE" : "CREATE_GLOBAL_TIMETABLE_STATE", "GLOBAL_TIMETABLE_RUN_STATE", clean(runId), JSON.stringify(["Stage", "CurrentPublicationID"])]
+      existing ? "UPDATE_GLOBAL_TIMETABLE_STATE" : "CREATE_GLOBAL_TIMETABLE_STATE", "GLOBAL_TIMETABLE_RUN_STATE", clean(runId), JSON.stringify(["Stage", "CurrentPublicationID", "DraftPublishStartDate", "DraftPublishEndDate"])]
   };
 }
 
@@ -676,11 +738,16 @@ function resolveCourseAccessModel(run, tables) {
 }
 
 function mapCourseRun(run, tables, now = new Date()) {
+  const state = (tables?.GlobalTimetableRunState || []).find(row => (
+    normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(run?.RunID)
+  ));
   return Object.freeze({
     ...mapGlobalSubjectRun(run, now),
     accessmodel: resolveCourseAccessModel(run, tables),
     schedulemode: normalizeCourseScheduleMode(run?.ScheduleMode, COURSE_SCHEDULE_MODE_EXPLICIT),
-    scheduledefinition: parseCourseScheduleDefinition(run?.ScheduleDefinition || "[]")
+    scheduledefinition: parseCourseScheduleDefinition(run?.ScheduleDefinition || "[]"),
+    draftpublishstartdate: clean(state?.DraftPublishStartDate),
+    draftpublishenddate: clean(state?.DraftPublishEndDate)
   });
 }
 

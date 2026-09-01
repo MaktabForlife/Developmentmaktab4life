@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
+/* M4L V104.5.3 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents, noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -52,7 +52,7 @@ import {
 const MAX_ZOOM_LINK_LENGTH = 1000;
 const MAX_SESSION_DESCRIPTION_LENGTH = 400;
 const HTTPS_URL_PATTERN = /^https:\/\//i;
-const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9", "102.0.10", "102.0.11"]);
+const TIMETABLE_SCHEMA_VERSIONS = new Set(["102.0.7", "102.0.8", "102.0.9", "102.0.10", "102.0.11", "102.0.12"]);
 
 export async function getPlatformGlobalTimetableEndpoint(request, env) {
   const permission = await requireGlobalTimetableAdmin(request, env);
@@ -65,7 +65,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
       success: true,
       service: "platform-global-timetable",
       version: "104.5.1",
-      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && tables.GlobalTimetablePublications._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._sessionDescriptionSchemaReady === true,
+      courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true && tables.GlobalTimetablePublications._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._sessionDescriptionSchemaReady === true,
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),
       modules: tables.GlobalModuleList.map(mapModule),
@@ -717,10 +717,15 @@ export async function publishPlatformGlobalTimetableEndpoint(request, env) {
     let publishStartDate = clean(run.StartDate);
     let publishEndDate = clean(run.EndDate);
     if (ongoing) {
-      publishStartDate = requestedPublishStart;
-      publishEndDate = requestedPublishEnd;
+      const stateMatches = tables.GlobalTimetableRunState.filter(row => normalizePlatformIdentifier(row.RunID) === normalizePlatformIdentifier(run.RunID));
+      if (stateMatches.length !== 1) throw clientError("ONGOING Course requires exactly one saved timetable draft state before publication", 409);
+      publishStartDate = clean(stateMatches[0].DraftPublishStartDate);
+      publishEndDate = clean(stateMatches[0].DraftPublishEndDate);
       if (!validateIsoDate(publishStartDate) || !validateIsoDate(publishEndDate) || publishEndDate < publishStartDate) {
-        throw clientError("Ongoing Course publication requires valid Publish From and Publish Through dates", 400);
+        throw clientError("Ongoing Course publication requires a saved Publish From and Publish Through window", 409);
+      }
+      if ((requestedPublishStart && requestedPublishStart !== publishStartDate) || (requestedPublishEnd && requestedPublishEnd !== publishEndDate)) {
+        throw clientError("Save the ONGOING Course publication window before publishing", 409);
       }
     } else if (!validateIsoDate(publishStartDate) || !validateIsoDate(publishEndDate) || publishEndDate < publishStartDate) {
       throw clientError("FIXED Course publication requires valid Course Start and End dates", 409);
@@ -841,7 +846,7 @@ function requireGlobalTimetableSchema(configRows) {
   ));
   const version = clean(matches[0]?.ConfigValue);
   if (matches.length !== 1 || !TIMETABLE_SCHEMA_VERSIONS.has(version)) {
-    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8, 102.0.9, 102.0.10 or 102.0.11");
+    throw new Error("Global timetable requires PlatformSchemaVersion 102.0.7, 102.0.8, 102.0.9, 102.0.10, 102.0.11 or 102.0.12");
   }
 }
 
@@ -1014,6 +1019,8 @@ function buildDevelopmentStateMutation(tables, runId, user, timestamp) {
     RunID: clean(runId),
     Stage: GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
     CurrentPublicationID: "",
+    DraftPublishStartDate: "",
+    DraftPublishEndDate: "",
     CreatedDate: timestamp,
     CreatedByAccountID: user.accountid,
     CreatedByAccountName: user.username,
@@ -1464,7 +1471,9 @@ function developmentStateForResponse(tables, runId) {
   return {
     runid: clean(runId),
     stage: GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
-    currentpublicationid: clean(existing?.CurrentPublicationID)
+    currentpublicationid: clean(existing?.CurrentPublicationID),
+    draftpublishstartdate: clean(existing?.DraftPublishStartDate),
+    draftpublishenddate: clean(existing?.DraftPublishEndDate)
   };
 }
 

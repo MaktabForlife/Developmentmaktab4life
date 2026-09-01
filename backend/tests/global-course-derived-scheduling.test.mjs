@@ -28,7 +28,7 @@ tables.GlobalSubjectRuns.push([
   "GSRUN-WORKSHOP", "GSUBJ1", "Four Session Workshop", "2026-09-01", "2026-09-30", "Africa/Johannesburg", true,
   "", "", "", "", "", "", "FREE", "EXPLICIT", "[]"
 ]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.11"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.12"]);
 tables.PlatformConfig.push(["GlobalTimetableVersion", 1]);
 tables.PlatformConfig.push(["GlobalCurriculumVersion", 1]);
 tables.PlatformConfig.push(["PlatformTimezone", "Africa/Johannesburg"]);

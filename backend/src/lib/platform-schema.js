@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Central schema with derived/explicit Global Course scheduling extension. */
+/* M4L V104.5.3 - Central schema with derived/explicit Global Course scheduling extension. */
 
 export const AUTHORITY_ORDER = Object.freeze([
   "GLOBAL_ADMIN",
@@ -107,7 +107,8 @@ export const PLATFORM_SHEET_HEADERS = Object.freeze({
   ]),
   GlobalTimetableRunState: Object.freeze([
     "RunID", "Stage", "CurrentPublicationID", "CreatedDate", "CreatedByAccountID",
-    "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate"
+    "CreatedByAccountName", "ModifiedByAccountID", "ModifiedByAccountName", "ModifiedDate",
+    "DraftPublishStartDate", "DraftPublishEndDate"
   ]),
   GlobalTimetablePublications: Object.freeze([
     "PublicationID", "RunID", "SubjectID", "VersionNo", "PublishedDate",
@@ -243,6 +244,9 @@ export function validatePlatformSheetRows(sheetName, rows) {
   if (sheetName === "GlobalSubjectRuns") {
     return validateGlobalSubjectRunRows(rows, expectedHeaders);
   }
+  if (sheetName === "GlobalTimetableRunState") {
+    return validateGlobalTimetableRunStateRows(rows, expectedHeaders);
+  }
   if (["GlobalTimetableSessions", "GlobalTimetablePublications", "PublishedGlobalTimetableSessions"].includes(sheetName)) {
     return validateCourseSchedulingEvolutionRows(sheetName, rows, expectedHeaders);
   }
@@ -304,6 +308,32 @@ function validateGlobalSubjectRunRows(rows, expectedHeaders) {
   });
   Object.defineProperty(records, "_courseScheduleSchemaReady", {
     value: scheduleModeHeader === "ScheduleMode" && scheduleDefinitionHeader === "ScheduleDefinition",
+    enumerable: false
+  });
+  return records;
+}
+
+function validateGlobalTimetableRunStateRows(rows, expectedHeaders) {
+  const legacyLength = 9;
+  const legacyHeaders = expectedHeaders.slice(0, legacyLength);
+  const headerRow = Array.isArray(rows[0]) ? rows[0] : [];
+  assertHeaderPrefix("GlobalTimetableRunState", headerRow, legacyHeaders);
+
+  const startHeader = String(headerRow[legacyLength] || "").trim();
+  const endHeader = String(headerRow[legacyLength + 1] || "").trim();
+  if (startHeader && startHeader !== "DraftPublishStartDate") {
+    throw new Error(`GlobalTimetableRunState header J1 must be DraftPublishStartDate when present; found ${startHeader}`);
+  }
+  if (endHeader && endHeader !== "DraftPublishEndDate") {
+    throw new Error(`GlobalTimetableRunState header K1 must be DraftPublishEndDate when present; found ${endHeader}`);
+  }
+  if (Boolean(startHeader) !== Boolean(endHeader)) {
+    throw new Error("GlobalTimetableRunState DraftPublishStartDate and DraftPublishEndDate must be added together");
+  }
+  assertNoUnexpectedHeaders("GlobalTimetableRunState", headerRow, expectedHeaders.length);
+  const records = rowsToRecords(rows, expectedHeaders);
+  Object.defineProperty(records, "_draftPublishWindowSchemaReady", {
+    value: startHeader === "DraftPublishStartDate" && endHeader === "DraftPublishEndDate",
     enumerable: false
   });
   return records;

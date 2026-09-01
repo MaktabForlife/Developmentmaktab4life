@@ -42,7 +42,7 @@ const platformTables = {
   GlobalSubjectRuns: [
     PLATFORM_SHEET_HEADERS.GlobalSubjectRuns,
     ["GSRUN1", "GSUBJ1", "Past subscription run", "2026-07-01", "2026-07-31", "Africa/Johannesburg", true, "", "", "", "", "", ""],
-    ["GSRUN2", "GSUBJ2", "Current free run", "2026-08-01", "2026-08-31", "Africa/Johannesburg", true, "", "", "", "", "", ""]
+    ["GSRUN2", "GSUBJ2", "Current free run", "", "", "Africa/Johannesburg", true, "", "", "", "", "", ""]
   ],
   GlobalSubjectList: [
     PLATFORM_SHEET_HEADERS.GlobalSubjectList,

@@ -1,4 +1,4 @@
-# V104.5.2 changed/new files (apply over completed V104.5.1)
+# V104.5.3 changed/new files (apply over completed V104.5.2)
 CHANGED-FILES.txt
 DELETE-FILES.txt
 CHANGES.md
@@ -8,15 +8,29 @@ UPDATE-TODO.md
 account/index.html
 admin/index.html
 backend/package.json
+backend/src/lib/global-timetable.js
+backend/src/lib/platform-schema.js
 backend/src/routes/account-auth.js
 backend/src/routes/platform-academy-calendar.js
 backend/src/routes/platform-account-migration.js
+backend/src/routes/platform-global-delivery.js
+backend/src/routes/platform-global-timetable.js
+backend/src/routes/platform-validation.js
 backend/src/worker.js
 backend/tests/academy-calendar-endpoint.test.mjs
 backend/tests/account-auth.test.mjs
+backend/tests/global-course-derived-scheduling.test.mjs
+backend/tests/library-catalogue.test.mjs
 backend/tests/platform-account-migration.test.mjs
 backend/tests/platform-global-delivery-ui.test.mjs
+backend/tests/platform-global-delivery.test.mjs
+backend/tests/platform-global-timetable.test.mjs
+backend/tests/platform-sheet.test.mjs
+backend/tests/platform-validation.test.mjs
 backend/tests/router.test.mjs
-docs/V104.5.2-SCHEMA-COMPATIBILITY-HOTFIX.md
+backend/tests/v10453-ongoing-derived-window-ui.test.mjs
+backend/tests/v10453-ongoing-derived-window.test.mjs
+docs/V104.5.3-ONGOING-DRAFT-PUBLICATION-WINDOW.md
+js/m4l-global-course-scheduler.js
 js/version.json
 version.json

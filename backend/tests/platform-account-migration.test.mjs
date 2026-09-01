@@ -279,11 +279,18 @@ try {
   assert.equal(currentPreview.previewToken, "");
 
   platformTables.PlatformConfig[2][1] = "102.0.11";
+  const v10451SchemaPreviewResponse = await worker.fetch(migrationRequest(adminToken, {
+    action: "PREVIEW",
+    grantGlobalAdmin: true
+  }), env);
+  assert.equal(v10451SchemaPreviewResponse.status, 200, "Central account migration preview must remain available after Platform schema 102.0.11");
+  assert.equal((await v10451SchemaPreviewResponse.json()).migrationCurrent, true);
+  platformTables.PlatformConfig[2][1] = "102.0.12";
   const currentSchemaPreviewResponse = await worker.fetch(migrationRequest(adminToken, {
     action: "PREVIEW",
     grantGlobalAdmin: true
   }), env);
-  assert.equal(currentSchemaPreviewResponse.status, 200, "Central account migration preview must remain available after Platform schema 102.0.11");
+  assert.equal(currentSchemaPreviewResponse.status, 200, "Central account migration preview must remain available after current Platform schema 102.0.12");
   assert.equal((await currentSchemaPreviewResponse.json()).migrationCurrent, true);
 
   const courseReads = calls.filter(call => call.url.pathname.includes("legacy-course-sheet/values"));

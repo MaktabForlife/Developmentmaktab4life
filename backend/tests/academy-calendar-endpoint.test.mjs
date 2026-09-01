@@ -12,7 +12,7 @@ tables.UserAccounts.push([
   "ACCOUNT1", "Global Admin", "CAL-LINK", true, credentialHash, true, "", "2026-08-29T00:00:00.000Z",
   "", "", "", "", "", "GLOBAL_ADMIN"
 ]);
-tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.11"]);
+tables.PlatformConfig.push(["PlatformSchemaVersion", "102.0.12"]);
 tables.AcademyCalendar.push([
   "ACEVT-TARAWEEH", "ISLAMIC_DAY", "First Taraweeh", "2026-02-18", "2026-02-18", "2026-02-19", "INFORMATION", true,
   "", "", "", "", "", ""

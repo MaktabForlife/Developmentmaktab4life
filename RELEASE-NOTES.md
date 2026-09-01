@@ -1,3 +1,44 @@
+# V104.5.3 Release Notes — ONGOING Draft Publication Window Fix
+
+V104.5.3 corrects the ONGOING Course draft-state defect exposed by a saved DERIVED Hifz Course that still showed `Draft · 0 derived occurrences` and no Publish button.
+
+## Root cause
+
+V104.5.1/5.2 displayed ONGOING Publish From/Through values on the Course row, but `courseDraftFromRun()` reloaded them as blank because no authoritative draft-window fields existed in the timetable state. The browser could preserve the values temporarily after Save, but a subsequent server reload had no persisted window to return.
+
+That meant the UI, derived-occurrence calculation and publication eligibility could disagree about what had actually been saved.
+
+## Fix
+
+Platform schema **102.0.12** adds two columns to `GlobalTimetableRunState`:
+
+- `DraftPublishStartDate`
+- `DraftPublishEndDate`
+
+The Courses Save writes those fields for ONGOING Courses. Delivery reload returns them. DERIVED occurrence calculation and inline Publish eligibility therefore consume the same authoritative state.
+
+The publish endpoint also reads the saved state and rejects a supplied ONGOING window that differs from it. This prevents publishing unsaved date changes.
+
+## Validation and migration
+
+The controlled Course scheduling migration supports `102.0.9`, `102.0.10` and `102.0.11` as source schemas and targets `102.0.12`. No tabs are added. Existing Course scheduling modes and publications are preserved.
+
+When migrating an existing published ONGOING Course, the current publication's Publish From/Through dates seed the new draft fields. Unpublished ONGOING dates from V104.5.2 were not persisted anywhere authoritative, so those dates must be entered and saved once after migration.
+
+Platform validation now requires draft dates to be either both blank or both valid/increasing for ONGOING Courses, and rejects draft-window values on FIXED Courses.
+
+## Regression protection
+
+The exact observed scenario is covered: an ONGOING DERIVED Hifz Course scheduled Mon–Thu from 04h00–05h00 with a one-day window of 1 September 2026 derives exactly one Tuesday occurrence after Save/reload and publishes from that saved window.
+
+V104.3 request-level Sheets read deduplication and V104.4 read-budget regression remain unchanged.
+
+See `docs/V104.5.3-ONGOING-DRAFT-PUBLICATION-WINDOW.md`.
+
+Final V104.5.3 verification: **67/67 backend test files passed**, **159/159 repository JS/MJS syntax checks passed**, V104.4 read audit unchanged, and V104.3 request-read deduplication passed.
+
+---
+
 # V104.5.2 Release Notes — Platform Schema Compatibility Hotfix
 
 V104.5.2 fixes a post-migration compatibility regression in V104.5.1. The Course scheduling migration correctly moves `PlatformSchemaVersion` to `102.0.11`, but older central-auth and Academic Calendar guards still rejected schemas above `102.0.9`.

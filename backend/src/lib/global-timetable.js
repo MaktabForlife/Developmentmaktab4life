@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Explicit and derived Global Course timetable/publication helpers. */
+/* M4L V104.5.3 - Explicit and derived Global Course timetable/publication helpers. */
 
 import {
   isActivePlatformValue,
@@ -59,6 +59,8 @@ export function mapGlobalTimetableRunState(record) {
       ? GLOBAL_TIMETABLE_PUBLISHED_STAGE
       : GLOBAL_TIMETABLE_DEVELOPMENT_STAGE,
     currentpublicationid: clean(record?.CurrentPublicationID),
+    draftpublishstartdate: clean(record?.DraftPublishStartDate),
+    draftpublishenddate: clean(record?.DraftPublishEndDate),
     createddate: clean(record?.CreatedDate),
     modifieddate: clean(record?.ModifiedDate)
   });

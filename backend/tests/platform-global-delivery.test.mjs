@@ -118,7 +118,7 @@ try {
   const schedulePreview = await post("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, token);
   assert.equal(schedulePreview.response.status, 200, JSON.stringify(schedulePreview.data));
   assert.equal(schedulePreview.data.canCommit, true);
-  assert.equal(schedulePreview.data.targetPlatformSchemaVersion, "102.0.11");
+  assert.equal(schedulePreview.data.targetPlatformSchemaVersion, "102.0.12");
   assert.equal(schedulePreview.data.existingCoursesPreservedAs, "EXPLICIT");
   assert.equal(schedulePreview.data.newCourseDefault, "DERIVED");
 
@@ -131,7 +131,8 @@ try {
   assert.equal(tables.GlobalSubjectRuns[1][14], "EXPLICIT");
   assert.equal(tables.GlobalTimetableSessions[0].at(-1), "SessionDescription");
   assert.equal(tables.PublishedGlobalTimetableSessions[0].at(-1), "SessionDescription");
-  assert.equal(tables.PlatformConfig[1][1], "102.0.11");
+  assert.deepEqual(tables.GlobalTimetableRunState[0].slice(-2), ["DraftPublishStartDate", "DraftPublishEndDate"]);
+  assert.equal(tables.PlatformConfig[1][1], "102.0.12");
   assert.equal(tables.PlatformAuditLog.at(-1)[6], "MIGRATE_GLOBAL_COURSE_SCHEDULING");
 
   // Subject FREE/PAID and Course FREE/PAID are separate concerns.
@@ -213,17 +214,31 @@ try {
   tables.PublishedGlobalTimetableSessions = tables.PublishedGlobalTimetableSessions.map(row => row.slice(0, -1));
   const descriptionUpgradePreview = await post("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, token);
   assert.equal(descriptionUpgradePreview.response.status, 200, JSON.stringify(descriptionUpgradePreview.data));
-  assert.equal(descriptionUpgradePreview.data.targetPlatformSchemaVersion, "102.0.11");
+  assert.equal(descriptionUpgradePreview.data.targetPlatformSchemaVersion, "102.0.12");
   assert.equal(descriptionUpgradePreview.data.existingCoursesPreservedAs, "CURRENT");
   const modesBeforeDescriptionUpgrade = tables.GlobalSubjectRuns.slice(1).map(row => row[14]);
   const descriptionUpgrade = await post("/api/admin/platform/global/courses/migrate-scheduling", {
     commit: true, confirmation: "MIGRATE COURSE SCHEDULING"
   }, token);
   assert.equal(descriptionUpgrade.response.status, 200, JSON.stringify(descriptionUpgrade.data));
-  assert.equal(tables.PlatformConfig[1][1], "102.0.11");
+  assert.equal(tables.PlatformConfig[1][1], "102.0.12");
   assert.equal(tables.GlobalTimetableSessions[0].at(-1), "SessionDescription");
   assert.equal(tables.PublishedGlobalTimetableSessions[0].at(-1), "SessionDescription");
   assert.deepEqual(tables.GlobalSubjectRuns.slice(1).map(row => row[14]), modesBeforeDescriptionUpgrade);
+
+  // A V104.5.1/5.2 Platform already at 102.0.11 upgrades only the draft-window state columns.
+  tables.PlatformConfig[1][1] = "102.0.11";
+  tables.GlobalTimetableRunState = tables.GlobalTimetableRunState.map(row => row.slice(0, 9));
+  const draftWindowUpgradePreview = await post("/api/admin/platform/global/courses/migrate-scheduling", { commit: false }, token);
+  assert.equal(draftWindowUpgradePreview.response.status, 200, JSON.stringify(draftWindowUpgradePreview.data));
+  assert.equal(draftWindowUpgradePreview.data.targetPlatformSchemaVersion, "102.0.12");
+  assert.equal(draftWindowUpgradePreview.data.canCommit, true);
+  const draftWindowUpgrade = await post("/api/admin/platform/global/courses/migrate-scheduling", {
+    commit: true, confirmation: "MIGRATE COURSE SCHEDULING"
+  }, token);
+  assert.equal(draftWindowUpgrade.response.status, 200, JSON.stringify(draftWindowUpgrade.data));
+  assert.equal(tables.PlatformConfig[1][1], "102.0.12");
+  assert.deepEqual(tables.GlobalTimetableRunState[0].slice(-2), ["DraftPublishStartDate", "DraftPublishEndDate"]);
 } finally {
   globalThis.fetch = originalFetch;
 }

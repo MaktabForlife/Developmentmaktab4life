@@ -86,7 +86,20 @@ assert.equal(currentRunRecords[0].AccessModel, "PAID");
 assert.equal(currentRunRecords[0].ScheduleMode, "DERIVED");
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.length, 20);
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.at(-1), "SessionDescription");
-assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.length, 9);
+assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.length, 11);
+assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.slice(-2), ["DraftPublishStartDate", "DraftPublishEndDate"]);
+const legacyStateHeaders = PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.slice(0, 9);
+const legacyStateRecords = validatePlatformSheetRows("GlobalTimetableRunState", [
+  legacyStateHeaders,
+  ["GSRUN-LEGACY", "DEVELOPMENT", "", "", "", "", "", "", ""]
+]);
+assert.equal(legacyStateRecords._draftPublishWindowSchemaReady, false);
+const currentStateRecords = validatePlatformSheetRows("GlobalTimetableRunState", [
+  PLATFORM_SHEET_HEADERS.GlobalTimetableRunState,
+  ["GSRUN-CURRENT", "DEVELOPMENT", "", "", "", "", "", "", "", "2026-09-01", "2026-09-30"]
+]);
+assert.equal(currentStateRecords._draftPublishWindowSchemaReady, true);
+assert.equal(currentStateRecords[0].DraftPublishStartDate, "2026-09-01");
 assert.equal(PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.length, 15);
 assert.deepEqual(PLATFORM_SHEET_HEADERS.GlobalTimetableSessionLifecycle, [
   "SessionLifecycleID", "SessionID", "PublicationID", "Status",
@@ -123,7 +136,7 @@ const courseRows = [
 ];
 const platformConfigRows = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
-  ["PlatformSchemaVersion", "102.0.11", "", "", ""]
+  ["PlatformSchemaVersion", "102.0.12", "", "", ""]
 ];
 assert.deepEqual(validatePlatformSheetRows("CourseRegistry", courseRows)[0], {
   _rowNumber: 2,

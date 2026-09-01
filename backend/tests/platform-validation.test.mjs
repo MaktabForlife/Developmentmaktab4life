@@ -36,7 +36,7 @@ baseTables.CourseRegistry = [
 baseTables.PlatformConfig = [
   PLATFORM_SHEET_HEADERS.PlatformConfig,
   ["AccountLoginBaseUrl", "https://development.example.test/account/"],
-  ["PlatformSchemaVersion", "102.0.11"],
+  ["PlatformSchemaVersion", "102.0.12"],
   ["GlobalCurriculumVersion", 1],
   ["GlobalTimetableVersion", 1],
   ["PlatformTimezone", "Africa/Johannesburg"]
@@ -92,10 +92,11 @@ try {
     success: true,
     service: "platform-validation",
     status: "ready",
-    platformSchemaVersion: "102.0.11",
+    platformSchemaVersion: "102.0.12",
     courseAccessSchemaReady: true,
     courseScheduleSchemaReady: true,
     sessionDescriptionSchemaReady: true,
+    draftPublishWindowSchemaReady: true,
     globalCurriculumVersion: 1,
     globalTimetableVersion: 1,
     tabCount: 19,
@@ -152,7 +153,7 @@ try {
   assert.equal(serialized.includes("reboot-course-sheet"), false);
 
   // Migration compatibility: 102.0.8 and 102.0.9 remain valid with historical Course headers;
-  // 102.0.10 is the pre-description V104.5 scheduling schema; 102.0.11 is current.
+  // 102.0.10 is pre-description; 102.0.11 has descriptions; 102.0.12 adds authoritative draft publication windows.
   tables = structuredClone(baseTables);
   tables.PlatformConfig[2][1] = "102.0.8";
   useLegacyCourseSchedulingHeaders(tables, { includeAccessModel: false });
@@ -182,6 +183,17 @@ try {
   assert.equal(preDescriptionResult.platformSchemaVersion, "102.0.10");
   assert.equal(preDescriptionResult.courseScheduleSchemaReady, true);
   assert.equal(preDescriptionResult.sessionDescriptionSchemaReady, false);
+  assert.equal(preDescriptionResult.draftPublishWindowSchemaReady, false);
+
+  tables = structuredClone(baseTables);
+  tables.PlatformConfig[2][1] = "102.0.11";
+  tables.GlobalTimetableRunState = tables.GlobalTimetableRunState.map(row => row.slice(0, 9));
+  const preDraftWindowReady = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(preDraftWindowReady.status, 200);
+  const preDraftWindowResult = await preDraftWindowReady.json();
+  assert.equal(preDraftWindowResult.platformSchemaVersion, "102.0.11");
+  assert.equal(preDraftWindowResult.sessionDescriptionSchemaReady, true);
+  assert.equal(preDraftWindowResult.draftPublishWindowSchemaReady, false);
 
   tables = structuredClone(baseTables);
   tables.PlatformConfig.push(["GlobalResourceDriveRootFolderID", "GLOBAL_ROOT_FOLDER_123"]);
@@ -313,6 +325,41 @@ try {
   const validOngoingRun = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(validOngoingRun.status, 200, await validOngoingRun.text());
 
+  tables.GlobalTimetableRunState.push([
+    "GSRUN1", "DEVELOPMENT", "", "2026-09-01T00:00:00.000Z", "ACCOUNT1", "Validator", "", "", "",
+    "2026-09-01", "2026-09-01"
+  ]);
+  const validOngoingDraftWindow = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(validOngoingDraftWindow.status, 200, await validOngoingDraftWindow.text());
+
+  tables.GlobalTimetableRunState[1][10] = "";
+  const partialDraftWindow = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(partialDraftWindow.status, 503);
+  assert.match((await partialDraftWindow.json()).detail, /requires both DraftPublishStartDate and DraftPublishEndDate/);
+
+  tables.GlobalTimetableRunState[1][10] = "2026-08-31";
+  const reversedDraftWindow = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(reversedDraftWindow.status, 503);
+  assert.match((await reversedDraftWindow.json()).detail, /invalid draft publication window/);
+
+  tables = structuredClone(baseTables);
+  tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Fixed run", "2026-09-01", "2026-09-30", "Africa/Johannesburg", true, "", "", "", "", "", "", "PAID", "DERIVED", "[]"]);
+  tables.GlobalTimetableRunState.push([
+    "GSRUN1", "DEVELOPMENT", "", "2026-09-01T00:00:00.000Z", "ACCOUNT1", "Validator", "", "", "",
+    "2026-09-01", "2026-09-30"
+  ]);
+  const fixedDraftWindow = await worker.fetch(validationRequest(adminToken), env);
+  assert.equal(fixedDraftWindow.status, 503);
+  assert.match((await fixedDraftWindow.json()).detail, /cannot store a draft publication window for a FIXED Course/);
+
+  tables = structuredClone(baseTables);
+  tables.GlobalSubjectList.push(["GSUBJ1", "Global Tajweed", true]);
+  tables.GlobalSubjectAccessMatrix = [["AccountID", "GSUBJ1"]];
+  tables.GlobalSubjectAccessPolicy.push(["GSPOL1", "GSUBJ1", "SUBSCRIPTION", true]);
+  tables.GlobalSubjectRuns.push(["GSRUN1", "GSUBJ1", "Ongoing run", "", "", "Africa/Johannesburg", true, "", "", "", "", "", "", "FREE", "DERIVED", "[]"]);
   tables.GlobalSubjectRuns[1][3] = "2026-08-01";
   const partialOngoingRun = await worker.fetch(validationRequest(adminToken), env);
   assert.equal(partialOngoingRun.status, 503);
@@ -340,12 +387,14 @@ console.log("V104.5 Platform validation accepts staged Course access/scheduling 
 function useLegacyCourseSchedulingHeaders(target, { includeAccessModel }) {
   target.GlobalSubjectRuns = [PLATFORM_SHEET_HEADERS.GlobalSubjectRuns.slice(0, includeAccessModel ? 14 : 13)];
   target.GlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.slice(0, 16)];
+  target.GlobalTimetableRunState = [PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.slice(0, 9)];
   target.GlobalTimetablePublications = [PLATFORM_SHEET_HEADERS.GlobalTimetablePublications.slice(0, 8)];
   target.PublishedGlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.slice(0, 19)];
 }
 
 function usePreDescriptionSchedulingHeaders(target) {
   target.GlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.GlobalTimetableSessions.slice(0, -1)];
+  target.GlobalTimetableRunState = [PLATFORM_SHEET_HEADERS.GlobalTimetableRunState.slice(0, 9)];
   target.PublishedGlobalTimetableSessions = [PLATFORM_SHEET_HEADERS.PublishedGlobalTimetableSessions.slice(0, -1)];
 }
 

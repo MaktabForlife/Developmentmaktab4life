@@ -16,7 +16,7 @@ import {
   normalizePlatformIdentifier
 } from "../lib/platform-schema.js";
 
-const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4", "102.0.5", "102.0.6", "102.0.7", "102.0.8", "102.0.9", "102.0.10", "102.0.11"]);
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.3", "102.0.4", "102.0.5", "102.0.6", "102.0.7", "102.0.8", "102.0.9", "102.0.10", "102.0.11", "102.0.12"]);
 const VALID_COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const LEGACY_PIN_HASH_PATTERN = /^[a-f0-9]{64}$/i;
 const SALTED_PIN_HASH_PATTERN = /^v2\$pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[a-f0-9]{64}$/i;

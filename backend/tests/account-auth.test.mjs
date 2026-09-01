@@ -414,7 +414,10 @@ try {
   assert.equal(v1045SchemaCheck.response.status, 200, "Central account login must accept Platform schema 102.0.10");
   tables.PlatformConfig[2][1] = "102.0.11";
   const v10451SchemaCheck = await post("/api/account/check", { uniqueid: "ADMIN-LINK" });
-  assert.equal(v10451SchemaCheck.response.status, 200, "Central account login/revalidation must accept current Platform schema 102.0.11");
+  assert.equal(v10451SchemaCheck.response.status, 200, "Central account login/revalidation must accept Platform schema 102.0.11");
+  tables.PlatformConfig[2][1] = "102.0.12";
+  const v10453SchemaCheck = await post("/api/account/check", { uniqueid: "ADMIN-LINK" });
+  assert.equal(v10453SchemaCheck.response.status, 200, "Central account login/revalidation must accept current Platform schema 102.0.12");
 } finally {
   globalThis.fetch = originalFetch;
 }

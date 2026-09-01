@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Courses: derived scheduling plus refined inline publication/session workflow. */
+/* M4L V104.5.3 - Courses: derived scheduling plus refined inline publication/session workflow. */
 (function () {
   "use strict";
 
@@ -204,8 +204,8 @@
       type: run.ongoing ? "ONGOING" : "FIXED",
       startdate: String(run.startdate || ""),
       enddate: String(run.enddate || ""),
-      publishstart: "",
-      publishend: "",
+      publishstart: String(run.draftpublishstartdate || ""),
+      publishend: String(run.draftpublishenddate || ""),
       accessmodel: COURSE_ACCESS.includes(String(run.accessmodel || "").toUpperCase()) ? String(run.accessmodel).toUpperCase() : fallbackCourseAccess(run.subjectid),
       schedulemode: COURSE_SCHEDULE_MODES.includes(String(run.schedulemode || "").toUpperCase()) ? String(run.schedulemode).toUpperCase() : "EXPLICIT",
       active: run.active !== false,
@@ -434,7 +434,7 @@
     if (!model.delivery.courseAccessSchemaReady || model.delivery.courseScheduleSchemaReady) return "";
     const globalAdmin = isGlobalAdmin();
     return `<section class="global-course-migration-banner">
-      <div><strong>Prepare Course scheduling</strong><p>This controlled migration preserves existing Course delivery modes and publications, enables derived-by-default scheduling, and adds optional short descriptions to exact sessions.</p></div>
+      <div><strong>Prepare Course scheduling</strong><p>This controlled migration preserves existing Course scheduling modes and publications, keeps derived-by-default scheduling, and adds authoritative saved publication windows for ONGOING Courses.</p></div>
       ${globalAdmin ? `<button type="button" class="global-course-compact-action" data-gcm-course-action="preview-course-schedule-migration">Prepare Scheduling</button>` : '<span class="helper-text">A GLOBAL_ADMIN must run this one-time migration.</span>'}
     </section>`;
   }
@@ -448,7 +448,10 @@
         await load(true);
         return;
       }
-      if (!window.confirm(`Prepare derived scheduling for ${Number(result.courseCount || 0)} existing Course${Number(result.courseCount || 0) === 1 ? "" : "s"}?\n\nExisting Courses remain EXPLICIT. New Courses default to DERIVED.\n\nContinue?`)) return;
+      const preservationNote = result.existingCoursesPreservedAs === "EXPLICIT"
+        ? "Existing Courses remain EXPLICIT. New Courses default to DERIVED."
+        : "Existing Course scheduling modes and publications are preserved. New Courses continue to default to DERIVED.";
+      if (!window.confirm(`Prepare Course scheduling for ${Number(result.courseCount || 0)} existing Course${Number(result.courseCount || 0) === 1 ? "" : "s"}?\n\n${preservationNote}\n\nONGOING draft Publish From/Through dates will now be saved authoritatively.\n\nContinue?`)) return;
       await migrateCourseScheduling(button);
     });
   }
@@ -607,14 +610,13 @@
     if (!dirty.length) return true;
     if (!validateCourseDrafts(dirty)) return false;
 
-    const preservedWindows = new Map();
     const ok = await withBusy(button, "…", async () => {
       const token = appState()?.token || "";
       let savedCount = 0;
       for (const course of dirty) {
         const priorRunId = course.runid;
         const timetableWork = course.scheduleDirty || course.windowDirty || deliveryWindowChanged(course);
-        const metadataWork = course.dirty || course.isNew || (course.schedulemode === "DERIVED" && course.scheduleDirty);
+        const metadataWork = course.dirty || course.isNew || course.windowDirty || (course.schedulemode === "DERIVED" && course.scheduleDirty);
         if (priorRunId && stateForRun(priorRunId)?.stage === "PUBLISHED" && (metadataWork || timetableWork)) {
           const revised = await apiPost("/api/admin/platform/global/timetable/revise", { runId: priorRunId }, token);
           if (!revised.success) throw new Error(revised.error || revised.detail || `Unable to open a revision for ${course.runname}`);
@@ -631,6 +633,8 @@
             accessModel: course.accessmodel,
             scheduleMode: course.schedulemode,
             scheduleDefinition: courseScheduleDefinition(course),
+            draftPublishStartDate: course.type === "ONGOING" ? course.publishstart : "",
+            draftPublishEndDate: course.type === "ONGOING" ? course.publishend : "",
             active: course.active
           }, token);
           if (!saved.success) throw new Error(saved.error || saved.detail || `Unable to save ${course.runname || "Course"}`);
@@ -641,21 +645,11 @@
         if (timetableWork || (course.isNew && course.scheduleRows.some(scheduleHasContent))) {
           await saveCourseSchedule(course, priorRunId, token);
         }
-        if (course.type === "ONGOING" && validPublishWindow(course)) {
-          preservedWindows.set(course.runid, { start: course.publishstart, end: course.publishend });
-        }
         savedCount += 1;
       }
       model.scheduleOpenKey = "";
       invalidateAll();
       await load(true);
-      for (const [runId, window] of preservedWindows) {
-        const reloaded = model.courses.find(item => item.runid === runId);
-        if (!reloaded) continue;
-        reloaded.publishstart = window.start;
-        reloaded.publishend = window.end;
-        reloaded.windowDirty = false;
-      }
       render();
       setMessage(`${savedCount} Course${savedCount === 1 ? "" : "s"} saved. Published timetables remain unchanged until Publish is used.`, "success");
     });
@@ -775,6 +769,9 @@
         if (!isIsoDate(course.startdate) || !isIsoDate(course.enddate) || course.enddate < course.startdate) {
           setMessage(`${course.runname || "Course"}: FIXED Courses require valid Start and End dates.`, "error"); return false;
         }
+      }
+      if (course.type === "ONGOING" && course.windowDirty && (course.publishstart || course.publishend) && !validPublishWindow(course)) {
+        setMessage(`${course.runname || "Course"}: enter both valid Publish From and Publish Through dates, or clear both.`, "error"); return false;
       }
       if (course.type === "ONGOING" && course.schedulemode === "EXPLICIT" && (course.scheduleDirty || course.windowDirty)) {
         if (!validPublishWindow(course)) {
@@ -989,11 +986,6 @@
     invalidateAll();
     await load(true);
     model.sessionOpenRunId = course.runid;
-    const reloaded = model.courses.find(item => item.runid === course.runid);
-    if (reloaded && course.type === "ONGOING" && validPublishWindow(course)) {
-      reloaded.publishstart = course.publishstart;
-      reloaded.publishend = course.publishend;
-    }
     render();
     return true;
   }

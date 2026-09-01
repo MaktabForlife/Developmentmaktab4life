@@ -1,3 +1,24 @@
+# V104.5.3 Changes — Authoritative ONGOING Draft Publication Windows
+
+Built directly on the verified V104.5.2 baseline.
+
+- Fixed saved ONGOING DERIVED Courses showing `Draft · 0 derived occurrences` and no inline Publish action after reload even when Publish From/Through had been saved in the UI.
+- Added authoritative `DraftPublishStartDate` and `DraftPublishEndDate` fields to `GlobalTimetableRunState`; the Platform schema advances from `102.0.11` to `102.0.12` while remaining at 19 tabs.
+- The main Courses Save now persists ONGOING draft publication windows server-side and reloads them from the authoritative timetable state.
+- DERIVED occurrence counting, Exceptions preparation and Publish eligibility now use the same saved window after reload.
+- ONGOING publishing now uses the saved draft window and rejects a browser-supplied publish window that differs from authoritative state.
+- Both ONGOING draft dates may be deliberately cleared together; partial, reversed or malformed windows are rejected.
+- Platform validation rejects partial/reversed ONGOING windows and prevents FIXED Courses from carrying ONGOING draft-window state.
+- Existing published ONGOING Courses are seeded from their current immutable publication window during the controlled `102.0.11 → 102.0.12` migration. Existing scheduling modes and publications are preserved.
+- Added an exact Hifz regression: ONGOING + DERIVED + Mon–Thu + `2026-09-01 → 2026-09-01` derives exactly one Tuesday occurrence and can publish from saved state.
+- Runtime schema compatibility for central auth, Academic Calendar, central-account migration and Global Timetable extends through `102.0.12`.
+- No Program Builder, access-rule, Course-mode, V104.3 request-deduplication or V104.4 read-budget changes.
+- Worker/app version advanced to `104.5.3`.
+
+Final V104.5.3 verification: **67/67 backend test files passed** and **159/159 repository JS/MJS syntax checks passed**.
+
+---
+
 # V104.5.2 Changes — Platform Schema Compatibility Hotfix
 
 Built directly on V104.5.1.

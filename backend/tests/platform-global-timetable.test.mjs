@@ -371,8 +371,14 @@ try {
   assert.equal(ongoingMoved.data.sessions.find(item => item.sessionid === ongoingFirst.sessionid)?.sessiondate, "2027-01-04");
 
   const missingOngoingPublishWindow = await post("/api/admin/platform/global/timetable/publish", { runId: "GSRUN-ONGOING" }, token);
-  assert.equal(missingOngoingPublishWindow.response.status, 400);
+  assert.equal(missingOngoingPublishWindow.response.status, 409);
   assert.match(missingOngoingPublishWindow.data.error, /Publish From and Publish Through/);
+
+  const runStateHeaders = PLATFORM_SHEET_HEADERS.GlobalTimetableRunState;
+  const ongoingState = tables.GlobalTimetableRunState.slice(1).find(row => row[runStateHeaders.indexOf("RunID")] === "GSRUN-ONGOING");
+  assert.ok(ongoingState, "ONGOING generation must create a timetable state row");
+  ongoingState[runStateHeaders.indexOf("DraftPublishStartDate")] = "2026-11-01";
+  ongoingState[runStateHeaders.indexOf("DraftPublishEndDate")] = "2026-11-07";
 
   const ongoingPublication = await post("/api/admin/platform/global/timetable/publish", {
     runId: "GSRUN-ONGOING", publishStartDate: "2026-11-01", publishEndDate: "2026-11-07"

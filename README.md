@@ -1,68 +1,63 @@
-# Maktab4Life V104.5.2
+# Maktab4Life V104.5.3
 
-V104.5.1 refines the V104.5 Global Course scheduling workflow without changing the underlying DERIVED/EXPLICIT architecture.
+V104.5.3 fixes the saved publication-window state for **ONGOING Global Courses**, especially DERIVED Courses.
 
-## V104.5.2 hotfix
+## Why this release exists
 
-V104.5.2 fixes post-migration HTTP 503 failures caused by older runtime schema guards rejecting the current `PlatformSchemaVersion 102.0.11`. Central account authentication/revalidation, Academic Calendar and central-account migration verification now accept the current schema. This is code-only; do not rerun the Course scheduling migration.
+In V104.5.2 an ONGOING Course could show Publish From/Through dates in the browser and be saved, while those dates were not stored authoritatively in the Platform workbook. After reload, a DERIVED Course could therefore show `Draft · 0 derived occurrences` and no Publish action even though its recurring rule and dates appeared valid.
 
-## What changed
+V104.5.3 moves that draft publication window into `GlobalTimetableRunState`, so the same saved state drives:
 
-- Course names are shown as inline-editable coloured pills.
-- Course actions use icon + text buttons: `Schedule`, `Sessions`/`Exceptions`, and a separate `Publish` action.
-- Publish is visible only for saved, active, publishable unpublished/revised Courses.
-- Clean published, inactive, unsaved-dirty and non-publishable Courses do not show Publish.
-- Publishing exists only on the inline Course row.
-- Sessions/Exceptions has a stronger outer card border and only `Cancel` + `Save` edit actions.
-- EXPLICIT exact sessions support an optional short description up to 400 characters.
-- Platform schema is `102.0.11`; tab count remains 19.
+- the Courses row after reload;
+- derived occurrence counting;
+- Exceptions;
+- inline Publish eligibility;
+- the actual publication request.
 
-## Scheduling model retained
+## Platform schema
 
-Course Type and Scheduling remain independent:
+Target schema: **102.0.12**. Platform tab count remains **19**.
 
-| Setting | Values |
-| --- | --- |
-| Course Type | `FIXED`, `ONGOING` |
-| Scheduling | `DERIVED` (default for new Courses), `EXPLICIT` |
+`GlobalTimetableRunState` gains:
 
-DERIVED normal occurrences remain virtual. Only occurrence-specific exceptions are materialised. EXPLICIT remains available for workshops/intensives where exact dated sessions should be prepared and published.
+- `DraftPublishStartDate`
+- `DraftPublishEndDate`
 
-## Migration
+Use **Global Curriculum → Courses → Prepare Scheduling** after deploying V104.5.3. Do not add the columns manually. The controlled migration accepts `102.0.9`, `102.0.10` or `102.0.11` and preserves existing scheduling modes/publications. For an already-current V104.5.2 workbook, this is an incremental `102.0.11 → 102.0.12` upgrade.
 
-V104.5.1 can migrate a Platform workbook directly from `102.0.9` to `102.0.11`, or upgrade an already-migrated V104.5 workbook from `102.0.10` to `102.0.11` without changing existing Course scheduling modes or publications.
+Published ONGOING Courses are seeded from their current publication window. A previously unpublished ONGOING Course whose dates existed only in V104.5.2 browser memory must have Publish From/Through entered once and saved after migration.
 
-Do not manually add the columns. Use **Global Curriculum → Courses → Prepare Scheduling**.
+## Exact regression case
 
-## Verification
+The release includes the observed Hifz scenario:
 
-Run:
+```text
+Course: Hifz
+Type: ONGOING
+Scheduling: DERIVED
+Rule: Mon–Thu, 04h00–05h00
+Draft window: 01-Sep-2026 → 01-Sep-2026
 
-```bash
-cd backend
-npm test
-npm run test:v104.5-derived-courses
-npm run test:v104.5.1-course-ui
-npm run test:v104.4-read-audit
-npm run test:request-read-dedup
+Expected after Save/reload:
+Draft · 1 derived occurrence
+Publish eligible
 ```
 
-See:
+Publishing uses the authoritative saved window; a mismatching unsaved browser window is rejected. Both dates may be cleared together.
 
-- `docs/V104.5-DERIVED-COURSE-SCHEDULING.md`
-- `docs/V104.5.1-IMPLEMENTATION-CHECKLIST.md`
-- `UPDATE-TODO.md`
+## Architecture retained
 
-## Roadmap
+- DERIVED remains the default for new Courses.
+- EXPLICIT remains available for exact workshop/intensive sessions.
+- V104.5.1 inline-only publishing and SessionDescription behaviour remain unchanged.
+- V104.5.2 schema-compatibility fix remains included.
+- V104.3 request-local read deduplication and V104.4 Sheets read guardrails remain protected.
 
-- V103 — Central Identity ✅
-- V104.1–V104.4 — Google Sheets Read Optimisation ✅
-- V104.5 — Derived-by-default Global Courses ✅
-- V104.5.1 — Course publish/session UI refinement
-- V105 — Program Builder
-- V106 — Reboot Migration
+See `docs/V104.5.3-ONGOING-DRAFT-PUBLICATION-WINDOW.md` and `UPDATE-TODO.md`.
+## Final verification
 
-V104.5.1 UI verification: **65/65 backend test files passed** and **157/157 repository JS/MJS files passed Node syntax checking**. V104.4 read budgets remain at 23 direct-read call sites across 17 files with 15 batch-read call sites.
+- Backend regression: **67/67 test files passed**.
+- Repository JS/MJS syntax: **159/159 files passed**.
+- V104.4 read audit: **23 direct-read call sites across 17 files; 15 batch-read call sites**.
+- V104.3 request-level read deduplication: passed.
 
-
-Final V104.5.2 verification: **65/65 backend test files passed** and **157/157 repository JS/MJS files passed Node syntax checking**.

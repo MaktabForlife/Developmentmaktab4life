@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Platform validation with staged Course access and derived scheduling support. */
+/* M4L V104.5.3 - Platform validation with staged Course access and derived scheduling support. */
 
 import { requireSystemAdmin } from "../lib/auth.js";
 import { isHiddenIslamicEvent, validateAcademyCalendarRecord } from "../lib/academy-calendar.js";
@@ -35,10 +35,11 @@ import {
   validateCourseScheduleRuleConflicts
 } from "../lib/global-course-scheduling.js";
 
-const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9", "102.0.10", "102.0.11"]);
+const SUPPORTED_PLATFORM_SCHEMA_VERSIONS = new Set(["102.0.8", "102.0.9", "102.0.10", "102.0.11", "102.0.12"]);
 const COURSE_ACCESS_SCHEMA_VERSION = "102.0.9";
 const COURSE_SCHEDULE_SCHEMA_VERSION = "102.0.10";
 const COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION = "102.0.11";
+const COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION = "102.0.12";
 const MAX_SESSION_DESCRIPTION_LENGTH = 400;
 const COURSE_ROLES = new Set(["ADMIN", "SENIOR", "TEACHER", "STUDENT"]);
 const GLOBAL_RESOURCE_TYPES = new Set(["EBOOK", "PRINTABLE", "AUDIO", "VIDEO", "OTHER"]);
@@ -121,7 +122,7 @@ export function validatePlatformTables(tables) {
     throw new Error("PlatformConfig AccountLoginBaseUrl must be an HTTPS /account/ URL");
   }
   if (!SUPPORTED_PLATFORM_SCHEMA_VERSIONS.has(schemaVersion)) {
-    throw new Error("PlatformConfig PlatformSchemaVersion must be 102.0.8, 102.0.9, 102.0.10 or 102.0.11");
+    throw new Error("PlatformConfig PlatformSchemaVersion must be 102.0.8, 102.0.9, 102.0.10, 102.0.11 or 102.0.12");
   }
   const courseAccessSchemaReady = tables.GlobalSubjectRuns._courseAccessSchemaReady === true;
   const courseScheduleSchemaReady = tables.GlobalSubjectRuns._courseScheduleSchemaReady === true &&
@@ -130,20 +131,27 @@ export function validatePlatformTables(tables) {
     tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true;
   const sessionDescriptionSchemaReady = tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true &&
     tables.PublishedGlobalTimetableSessions._sessionDescriptionSchemaReady === true;
-  if ([COURSE_ACCESS_SCHEMA_VERSION, COURSE_SCHEDULE_SCHEMA_VERSION, COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION].includes(schemaVersion) && !courseAccessSchemaReady) {
+  const draftPublishWindowSchemaReady = tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true;
+  if ([COURSE_ACCESS_SCHEMA_VERSION, COURSE_SCHEDULE_SCHEMA_VERSION, COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION, COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION].includes(schemaVersion) && !courseAccessSchemaReady) {
     throw new Error(`PlatformSchemaVersion ${schemaVersion} requires GlobalSubjectRuns.AccessModel`);
   }
-  if ([COURSE_SCHEDULE_SCHEMA_VERSION, COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION].includes(schemaVersion) && !courseScheduleSchemaReady) {
+  if ([COURSE_SCHEDULE_SCHEMA_VERSION, COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION, COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION].includes(schemaVersion) && !courseScheduleSchemaReady) {
     throw new Error(`PlatformSchemaVersion ${schemaVersion} requires the V104.5 Course scheduling columns`);
   }
-  if (schemaVersion === COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION && !sessionDescriptionSchemaReady) {
-    throw new Error("PlatformSchemaVersion 102.0.11 requires SessionDescription on source and published Course sessions");
+  if ([COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION, COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION].includes(schemaVersion) && !sessionDescriptionSchemaReady) {
+    throw new Error(`PlatformSchemaVersion ${schemaVersion} requires SessionDescription on source and published Course sessions`);
+  }
+  if (schemaVersion === COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION && !draftPublishWindowSchemaReady) {
+    throw new Error("PlatformSchemaVersion 102.0.12 requires DraftPublishStartDate and DraftPublishEndDate on GlobalTimetableRunState");
   }
   if (["102.0.8", "102.0.9"].includes(schemaVersion) && courseScheduleSchemaReady) {
     throw new Error("V104.5 Course scheduling columns require PlatformSchemaVersion 102.0.10 or later");
   }
-  if (schemaVersion !== COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION && sessionDescriptionSchemaReady) {
-    throw new Error("Course SessionDescription columns require PlatformSchemaVersion 102.0.11");
+  if (![COURSE_SESSION_DESCRIPTION_SCHEMA_VERSION, COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION].includes(schemaVersion) && sessionDescriptionSchemaReady) {
+    throw new Error("Course SessionDescription columns require PlatformSchemaVersion 102.0.11 or later");
+  }
+  if (schemaVersion !== COURSE_DRAFT_PUBLISH_WINDOW_SCHEMA_VERSION && draftPublishWindowSchemaReady) {
+    throw new Error("Course draft publication-window columns require PlatformSchemaVersion 102.0.12");
   }
   if (schemaVersion === "102.0.8" && courseAccessSchemaReady) {
     throw new Error("GlobalSubjectRuns.AccessModel requires PlatformSchemaVersion 102.0.9 or later");
@@ -265,6 +273,7 @@ export function validatePlatformTables(tables) {
     courseAccessSchemaReady,
     courseScheduleSchemaReady,
     sessionDescriptionSchemaReady,
+    draftPublishWindowSchemaReady,
     globalCurriculumVersion: curriculumVersion,
     globalTimetableVersion,
     tabCount: Object.keys(PLATFORM_SHEET_HEADERS).length,
@@ -683,6 +692,21 @@ function validateGlobalTimetable(tables, context) {
     }
     if (stage === GLOBAL_TIMETABLE_PUBLISHED_STAGE && !normalizePlatformIdentifier(state.CurrentPublicationID)) {
       throw new Error(`GlobalTimetableRunState row ${state._rowNumber} requires CurrentPublicationID when PUBLISHED`);
+    }
+    if (tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true) {
+      const draftStart = String(state.DraftPublishStartDate || "").trim();
+      const draftEnd = String(state.DraftPublishEndDate || "").trim();
+      const run = runById.get(runId);
+      const fixedRun = Boolean(String(run?.StartDate || "").trim() || String(run?.EndDate || "").trim());
+      if (fixedRun && (draftStart || draftEnd)) {
+        throw new Error(`GlobalTimetableRunState row ${state._rowNumber} cannot store a draft publication window for a FIXED Course`);
+      }
+      if (Boolean(draftStart) !== Boolean(draftEnd)) {
+        throw new Error(`GlobalTimetableRunState row ${state._rowNumber} requires both DraftPublishStartDate and DraftPublishEndDate, or both blank`);
+      }
+      if (draftStart && (!validateIsoDate(draftStart) || !validateIsoDate(draftEnd) || draftEnd < draftStart)) {
+        throw new Error(`GlobalTimetableRunState row ${state._rowNumber} has an invalid draft publication window`);
+      }
     }
     stateRuns.add(runId);
     stateByRun.set(runId, state);

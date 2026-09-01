@@ -10,8 +10,8 @@ const [adminHtml, js, css, styles] = await Promise.all([
 
 assert.match(adminHtml, /data-gcm-course-action="show">Courses</);
 assert.doesNotMatch(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.2/);
-assert.match(adminHtml, /styles\.css\?v=104\.5\.2/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.3/);
+assert.match(adminHtml, /styles\.css\?v=104\.5\.3/);
 assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5\.1/);
 
 assert.match(js, /<h3>Courses<\/h3>/);
@@ -37,7 +37,7 @@ assert.match(js, /if \(changed\) return "";/);
 assert.match(js, /if \(!unpublishedOrRevised\) return "";/);
 assert.match(js, /Prepare Course FREE\/PAID access/);
 assert.match(js, /Prepare Scheduling/);
-assert.match(js, /optional short descriptions to exact sessions/);
+assert.match(js, /authoritative saved publication windows for ONGOING Courses/);
 assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-scheduling/);
 assert.match(js, /New Courses default to DERIVED/);
 assert.match(js, /\/api\/admin\/platform\/global\/courses\/migrate-access/);
