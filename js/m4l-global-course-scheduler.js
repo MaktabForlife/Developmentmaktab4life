@@ -1,4 +1,4 @@
-/* M4L V104.5.3 - Courses: derived scheduling plus refined inline publication/session workflow. */
+/* M4L V104.5.4 - Courses: derived scheduling with refined publication and recurring-schedule UI. */
 (function () {
   "use strict";
 
@@ -348,7 +348,7 @@
           <span class="global-course-mobile-label">Schedule / Publish</span>
           <div class="global-course-row-actions">
             <button type="button" class="global-course-inline-action global-course-action-button is-schedule" data-gcm-course-action="toggle-schedule" data-course-key="${attr(course.key)}" aria-expanded="${scheduleOpen ? "true" : "false"}"><span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span><span>Schedule</span></button>
-            ${course.runid ? `<button type="button" class="global-course-inline-action global-course-action-button is-sessions" data-gcm-course-action="view-sessions" data-course-key="${attr(course.key)}"><span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span><span>${course.schedulemode === "DERIVED" ? "Exceptions" : "Sessions"}</span></button>` : ""}
+            ${course.runid ? `<button type="button" class="global-course-inline-action global-course-action-button is-sessions" data-gcm-course-action="view-sessions" data-course-key="${attr(course.key)}"><span class="app-icon app-icon-small edit-mode-icon" aria-hidden="true"></span><span>${course.schedulemode === "DERIVED" ? "Exception" : "Sessions"}</span></button>` : ""}
             ${publishRowButton(course, state, hasSchedule)}
             ${course.isNew ? `<button type="button" class="global-course-draft-remove" data-gcm-course-action="discard-course" data-course-key="${attr(course.key)}" aria-label="Discard new Course" title="Discard new Course">×</button>` : ""}
           </div>
@@ -360,20 +360,37 @@
   }
 
   function publishRowButton(course, state, hasSchedule) {
-    if (!course.runid || !course.active || !hasSchedule) return "";
-    const changed = course.dirty || course.scheduleDirty || course.windowDirty;
-    if (changed) return "";
-    const unpublishedOrRevised = (state?.stage || "DEVELOPMENT") !== "PUBLISHED";
-    if (!unpublishedOrRevised) return "";
-    if (course.type === "ONGOING" && !validPublishWindow(course)) return "";
-    return `<button type="button" class="global-course-publish-inline" data-gcm-course-action="publish-course" data-course-key="${attr(course.key)}">Publish</button>`;
+    // Unsaved local drafts are not yet Course records. Once a Course has a
+    // RunID, keep Publish visible at all times so the reason it cannot be used
+    // is clear instead of making the action disappear.
+    if (!course.runid) return "";
+    const eligibility = publishEligibility(course, state, hasSchedule);
+    const disabled = eligibility.enabled ? "" : ' disabled aria-disabled="true"';
+    const title = eligibility.enabled ? "Publish Course" : eligibility.reason;
+    return `<button type="button" class="global-course-publish-inline${eligibility.enabled ? "" : " is-disabled"}" data-gcm-course-action="publish-course" data-course-key="${attr(course.key)}"${disabled} title="${attr(title)}">Publish</button>`;
+  }
+
+  function publishEligibility(course, state, hasSchedule) {
+    if (!course.active) return { enabled: false, reason: "Activate this Course before publishing." };
+    if (!hasSchedule) return { enabled: false, reason: "Add a valid schedule before publishing." };
+    if (course.dirty || course.scheduleDirty || course.windowDirty) {
+      return { enabled: false, reason: "Save Course and schedule changes before publishing." };
+    }
+    if (course.type === "ONGOING" && !validPublishWindow(course)) {
+      return { enabled: false, reason: "Enter a valid Publish From and Publish Through window before publishing." };
+    }
+    if ((state?.stage || "DEVELOPMENT") === "PUBLISHED") {
+      return { enabled: false, reason: "This Course is already published with no saved revision waiting." };
+    }
+    return { enabled: true, reason: "" };
   }
 
   function scheduleEditor(course) {
     const rows = course.scheduleRows.length ? course.scheduleRows : [blankScheduleRow()];
     return `<div class="global-course-schedule-editor ${course.scheduleDirty ? "is-dirty" : ""}">
-      <div class="global-course-schedule-heading"><div><h4>Recurring schedule</h4><p class="helper-text">${course.schedulemode === "DERIVED" ? "These rules are stored and dated occurrences are derived only when needed. Use Exceptions to materialise a cancellation, moved occurrence or other one-off change." : (course.type === "ONGOING" ? "EXPLICIT mode creates exact dated sessions inside the selected Publish From / Through window." : "EXPLICIT mode creates and stores the exact dated sessions for this fixed delivery period.")}</p></div><button type="button" class="global-course-compact-action" data-gcm-course-action="add-schedule-row" data-course-key="${attr(course.key)}">+ Another Time Slot</button></div>
+      <div class="global-course-schedule-heading"><div><h4>Recurring schedule</h4><p class="helper-text">${course.schedulemode === "DERIVED" ? "These rules are stored and dated occurrences are derived only when needed. Use the Exception action to materialise a cancellation, moved occurrence or other one-off change." : (course.type === "ONGOING" ? "EXPLICIT mode creates exact dated sessions inside the selected Publish From / Through window." : "EXPLICIT mode creates and stores the exact dated sessions for this fixed delivery period.")}</p></div></div>
       <div class="global-course-schedule-rows">${rows.map((row, index) => scheduleRow(course, row, index)).join("")}</div>
+      <button type="button" class="global-course-add-timeslot" data-gcm-course-action="add-schedule-row" data-course-key="${attr(course.key)}"><span aria-hidden="true">+</span><span>Add another time slot</span></button>
       <p class="global-course-save-hint">Use the main Courses Save icon to store Course and schedule changes without publishing.</p>
     </div>`;
   }
@@ -382,12 +399,12 @@
     const selectedDays = new Set(array(row.days).map(value => String(value).toUpperCase()));
     return `<div class="global-course-schedule-row ${row.dirty ? "is-dirty" : ""}" data-course-key="${attr(course.key)}" data-schedule-row-key="${attr(row.key)}">
       ${field("Days", `<div class="global-course-day-pills">${dayPills(selectedDays, course.key, row.key)}</div>`)}
-      ${field("Start", `<input data-course-schedule-field="start" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(row.start))}" placeholder="04h00" />`)}
-      ${field("End", `<input data-course-schedule-field="end" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(row.end))}" placeholder="05h00" />`)}
+      ${field("Start", `<input data-course-schedule-field="start" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(row.start))}" placeholder="--h--" />`)}
+      ${field("End", `<input data-course-schedule-field="end" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" data-time24 type="text" inputmode="numeric" value="${attr(formatUiTime(row.end))}" placeholder="--h--" />`)}
       ${field("Module", `<select data-course-schedule-field="moduleid" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}"><option value="">No module</option>${moduleOptions(course.subjectid, row.moduleid)}</select>`)}
       ${field("Teacher", `<select data-course-schedule-field="teacherid" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}">${teacherOptions(row.teacherid)}</select>`)}
       ${field("Zoom link", `<input data-course-schedule-field="zoom" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" type="url" value="${attr(row.zoom)}" inputmode="url" placeholder="https://…" />`)}
-      <button type="button" class="global-course-remove-row" data-gcm-course-action="remove-schedule-row" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" ${rowsOnlyBlank(course, row, index) ? "disabled" : ""} aria-label="Remove time slot" title="Remove time slot">×</button>
+      <button type="button" class="global-course-remove-row" data-gcm-course-action="remove-schedule-row" data-course-key="${attr(course.key)}" data-row-key="${attr(row.key)}" ${rowsOnlyBlank(course, row, index) ? "disabled" : ""} aria-label="Delete time slot" title="Delete time slot"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2 global-course-trash-icon" aria-hidden="true" focusable="false"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
     </div>`;
   }
 

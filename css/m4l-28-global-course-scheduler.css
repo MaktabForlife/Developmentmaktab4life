@@ -119,6 +119,20 @@
 .global-course-day-pill input:checked + span { background:#7b3e83; border-color:#7b3e83; color:#fff; }
 .global-course-day-pill input:focus-visible + span { outline:2px solid currentColor; outline-offset:2px; }
 .global-course-remove-row { width:44px; min-width:44px; padding:0; align-self:end; font-size:1.3rem; }
+.global-course-remove-row {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #e5d9d2;
+  border-radius:11px;
+  background:#f3ede8;
+  color:#765647;
+  cursor:pointer;
+}
+.global-course-remove-row:hover:not(:disabled),
+.global-course-remove-row:focus-visible { border-color:#cfb9ac; background:#ebe0d9; color:#67483b; }
+.global-course-remove-row:disabled { opacity:.42; cursor:not-allowed; }
+.global-course-trash-icon { width:20px; height:20px; }
 
 /* Attendance-style save action: icon on transparent surface, no coloured tile or shadow. */
 .global-save-icon-button,
@@ -410,6 +424,28 @@
 .global-course-schedule-heading p { margin:4px 0 0; }
 .global-course-schedule-row.is-dirty { border-color:rgba(123,62,131,.42); box-shadow:0 0 0 2px rgba(123,62,131,.04); }
 .global-course-save-hint { margin:10px 0 0; color:var(--text-muted,#6e6570); font-size:.75rem; text-align:right; }
+.global-course-add-timeslot {
+  width:auto !important;
+  min-width:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:6px;
+  margin:7px 0 0;
+  padding:6px 3px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:#7b3e83;
+  box-shadow:none;
+  font:inherit;
+  font-size:.78rem;
+  font-weight:850;
+  cursor:pointer;
+}
+.global-course-add-timeslot:hover,
+.global-course-add-timeslot:focus-visible { color:#5e2e65; background:rgba(123,62,131,.055); }
+.global-course-add-timeslot > span:first-child { font-size:1rem; line-height:1; }
 
 .global-course-sessions-panel { scroll-margin-top:16px; }
 .global-course-session-title { align-items:flex-start; }
@@ -489,7 +525,7 @@
   .global-course-sessions-panel .global-session-inline-header { display:none; }
 }
 
-/* V104.5.1 — Course pills, action hierarchy and single inline publication workflow. */
+/* V104.5.4 — Course pills, persistent Publish state and recurring-schedule action refinements. */
 .global-course-name-pill {
   border:1px solid #c8a7d8 !important;
   border-radius:999px !important;
@@ -565,6 +601,15 @@
   background:#7d183d;
   color:#fff;
   box-shadow:0 4px 11px rgba(91,24,51,.18);
+}
+.global-course-publish-inline:disabled,
+.global-course-publish-inline.is-disabled {
+  border-color:#d5bcc6;
+  background:#e7d8de;
+  color:#8a6976;
+  box-shadow:none;
+  opacity:1;
+  cursor:not-allowed;
 }
 
 .global-course-sessions-panel {

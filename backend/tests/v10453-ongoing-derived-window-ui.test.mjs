@@ -6,7 +6,7 @@ const [adminHtml, scheduler] = await Promise.all([
   readFile(new URL("../../js/m4l-global-course-scheduler.js", import.meta.url), "utf8")
 ]);
 
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.3/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.4/);
 assert.match(scheduler, /publishstart: String\(run\.draftpublishstartdate \|\| ""\)/,
   "Course reload must use the authoritative saved ONGOING draft Publish From date");
 assert.match(scheduler, /publishend: String\(run\.draftpublishenddate \|\| ""\)/,
@@ -20,7 +20,9 @@ assert.match(scheduler, /const metadataWork = course\.dirty \|\| course\.isNew \
 assert.doesNotMatch(scheduler, /preservedWindows/,
   "V104.5.3 must not rely on browser-memory window preservation after reload");
 assert.match(scheduler, /const start = course\.type === "ONGOING" \? course\.publishstart : course\.startdate/);
-assert.match(scheduler, /if \(course\.type === "ONGOING" && !validPublishWindow\(course\)\) return "";/,
+assert.match(scheduler, /if \(course\.type === "ONGOING" && !validPublishWindow\(course\)\)/,
   "Inline Publish eligibility must use the reloaded authoritative draft window");
+assert.match(scheduler, /Enter a valid Publish From and Publish Through window before publishing/,
+  "An invalid saved window must leave the visible Publish control disabled");
 
 console.log("V104.5.3 ONGOING DERIVED persisted-window UI wiring regression passed.");

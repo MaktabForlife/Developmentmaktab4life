@@ -1,4 +1,4 @@
-/* M4L V104.5.3 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
+/* M4L V104.5.4 - Derived-by-default Courses with explicit sessions and materialised exceptions. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents, noTeachingEventsOnDates } from "../lib/academy-calendar.js";
@@ -64,7 +64,7 @@ export async function getPlatformGlobalTimetableEndpoint(request, env) {
     return json({
       success: true,
       service: "platform-global-timetable",
-      version: "104.5.1",
+      version: "104.5.4",
       courseScheduleSchemaReady: tables.GlobalSubjectRuns._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._courseScheduleSchemaReady === true && tables.GlobalTimetableSessions._sessionDescriptionSchemaReady === true && tables.GlobalTimetableRunState._draftPublishWindowSchemaReady === true && tables.GlobalTimetablePublications._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._courseScheduleSchemaReady === true && tables.PublishedGlobalTimetableSessions._sessionDescriptionSchemaReady === true,
       globalTimetableVersion: readGlobalTimetableVersion(tables.PlatformConfig).value,
       subjects: tables.GlobalSubjectList.map(mapSubject),

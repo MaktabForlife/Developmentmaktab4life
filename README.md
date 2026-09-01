@@ -1,63 +1,30 @@
-# Maktab4Life V104.5.3
+# Maktab4Life V104.5.4
 
-V104.5.3 fixes the saved publication-window state for **ONGOING Global Courses**, especially DERIVED Courses.
+V104.5.4 refines the Global Course and Academy timetable UI on top of the completed V104.5.3 derived/explicit scheduling model.
 
-## Why this release exists
+## What changed
 
-In V104.5.2 an ONGOING Course could show Publish From/Through dates in the browser and be saved, while those dates were not stored authoritatively in the Platform workbook. After reload, a DERIVED Course could therefore show `Draft · 0 derived occurrences` and no Publish action even though its recurring rule and dates appeared valid.
+- Academy Global Course pills use **Course Name** as the primary label for both DERIVED and EXPLICIT publications.
+- Published Hifz DERIVED occurrences remain regression-protected in the Academy day calendar.
+- Detailed/large timetable pills centre their content.
+- A current authorised Zoom session uses the full purple Zoom-colour pill, with the supplied link icon beside `Zoom`.
+- Saved Courses always show the inline Publish control; when ineligible it is visible but disabled with a reason tooltip.
+- DERIVED action label is `Exception` (singular).
+- New recurring Start/End fields are blank and show `--h--`.
+- `+ Add another time slot` moves beneath the schedule rows.
+- Time-slot deletion uses the supplied Lucide `trash-2` icon.
 
-V104.5.3 moves that draft publication window into `GlobalTimetableRunState`, so the same saved state drives:
+## Compatibility
 
-- the Courses row after reload;
-- derived occurrence counting;
-- Exceptions;
-- inline Publish eligibility;
-- the actual publication request.
+Platform schema remains **102.0.12** with **19 tabs**. **Do not run Prepare Scheduling again** for V104.5.4. There are no Sheet columns, access rules, Course modes, data ownership or Program Builder changes.
 
-## Platform schema
+V104.3 request-local read deduplication, V104.4 read budgets and V104.5.3 authoritative ONGOING draft publication windows remain intact.
 
-Target schema: **102.0.12**. Platform tab count remains **19**.
+See `docs/V104.5.4-IMPLEMENTATION-CHECKLIST.md`, `docs/V104.5.4-COURSE-ACADEMY-UI-REFINEMENT.md`, and `UPDATE-TODO.md`.
 
-`GlobalTimetableRunState` gains:
-
-- `DraftPublishStartDate`
-- `DraftPublishEndDate`
-
-Use **Global Curriculum → Courses → Prepare Scheduling** after deploying V104.5.3. Do not add the columns manually. The controlled migration accepts `102.0.9`, `102.0.10` or `102.0.11` and preserves existing scheduling modes/publications. For an already-current V104.5.2 workbook, this is an incremental `102.0.11 → 102.0.12` upgrade.
-
-Published ONGOING Courses are seeded from their current publication window. A previously unpublished ONGOING Course whose dates existed only in V104.5.2 browser memory must have Publish From/Through entered once and saved after migration.
-
-## Exact regression case
-
-The release includes the observed Hifz scenario:
-
-```text
-Course: Hifz
-Type: ONGOING
-Scheduling: DERIVED
-Rule: Mon–Thu, 04h00–05h00
-Draft window: 01-Sep-2026 → 01-Sep-2026
-
-Expected after Save/reload:
-Draft · 1 derived occurrence
-Publish eligible
-```
-
-Publishing uses the authoritative saved window; a mismatching unsaved browser window is rejected. Both dates may be cleared together.
-
-## Architecture retained
-
-- DERIVED remains the default for new Courses.
-- EXPLICIT remains available for exact workshop/intensive sessions.
-- V104.5.1 inline-only publishing and SessionDescription behaviour remain unchanged.
-- V104.5.2 schema-compatibility fix remains included.
-- V104.3 request-local read deduplication and V104.4 Sheets read guardrails remain protected.
-
-See `docs/V104.5.3-ONGOING-DRAFT-PUBLICATION-WINDOW.md` and `UPDATE-TODO.md`.
 ## Final verification
 
-- Backend regression: **67/67 test files passed**.
-- Repository JS/MJS syntax: **159/159 files passed**.
+- Backend regression: **68/68 test files passed**.
+- Repository JS/MJS syntax: **160/160 files passed**.
 - V104.4 read audit: **23 direct-read call sites across 17 files; 15 batch-read call sites**.
 - V104.3 request-level read deduplication: passed.
-

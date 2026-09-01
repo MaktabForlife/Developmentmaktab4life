@@ -1,4 +1,4 @@
-/* M4L V104.5.1 - Academy timetable resolves explicit and derived Global Course publications. */
+/* M4L V104.5.4 - Academy timetable resolves Course-labelled explicit and derived Global Course publications. */
 
 import { getAuthUser } from "../lib/auth.js";
 import { buildAcademyCalendarEvents } from "../lib/academy-calendar.js";
@@ -119,7 +119,7 @@ export async function getAcademyTimetableEndpoint(request, env) {
 
     return json({
       success: true,
-      version: "104.5.1",
+      version: "104.5.4",
       timezone,
       weekStart: week.start,
       weekEnd: weeks[weeks.length - 1].end,
@@ -465,6 +465,17 @@ export function buildGlobalCourseEvents(platform, account, options) {
       accessRows: platform.matrix
     });
     const lifecycleBySession = new Map((resolved.lifecycles || []).map(item => [normalizePlatformIdentifier(item?.sessionid), item]));
+    // Course identity is the primary Academy label. Prefer the immutable
+    // publication/snapshot display value so a later draft rename cannot rewrite
+    // an already-published timetable. Older explicit publications may not have
+    // RunName on the publication row, so fall back to the immutable session copy.
+    const publishedCourseName = String(
+      resolved.publication?.runname ||
+      resolved.sessions.find(item => String(item?.runname || "").trim())?.runname ||
+      run.RunName ||
+      subject.SubjectName ||
+      "Global Course"
+    ).trim();
     for (const session of resolved.sessions) {
       if (session.sessiondate < options.week.start || session.sessiondate > options.week.end) continue;
       const assignedTeacher = normalizePlatformIdentifier(session.teacheraccountid) === normalizePlatformIdentifier(account.AccountID);
@@ -489,7 +500,7 @@ export function buildGlobalCourseEvents(platform, account, options) {
         isCurrent,
         canOpenZoom,
         status,
-        title: session.subjectname || String(subject.SubjectName || "Global Course").trim()
+        title: publishedCourseName
       };
       if (!detail) {
         output.push(base);

@@ -1,3 +1,35 @@
+# V104.5.4 Release Notes — Course / Academy Timetable UI Refinement
+
+V104.5.4 is a code/UI-only refinement on V104.5.3. Platform schema remains `102.0.12`; **no migration is required**.
+
+## Academy timetable
+
+Global Course items now identify the **Course**, not merely the linked Global Subject. EXPLICIT `History of the Quran` therefore displays `History of the Quran` even when its linked Global Subject is `Tafseer & Tadabbur`. The published immutable RunName is preferred so later draft renames do not rewrite historical/current publication labels.
+
+The Hifz derived path is explicitly regression-protected across multiple Academy days. Large detailed pills are centred. When a current relevant session has an authorised Zoom link, the entire pill takes the Academy purple Zoom treatment and the `Zoom` label includes the supplied Lucide link icon.
+
+## Course publishing
+
+The inline Course row remains the single publication surface. For every persisted Course, Publish stays visible. It is enabled only when the saved Course is currently publishable; otherwise it remains visible but disabled and explains why through its tooltip. Unsaved local `+ Add Course` drafts still omit Publish until first Save creates a RunID.
+
+## Recurring schedule UI
+
+- `Exceptions` → `Exception`;
+- blank new Start/End values with `--h--` placeholders;
+- lower-left `+ Add another time slot` action;
+- supplied Lucide `trash-2` row-delete icon;
+- no large top-right Add Time Slot action.
+
+## Regression
+
+V104.3 request-level read deduplication and V104.4 Sheets read budgets remain unchanged, and V104.5.3 ONGOING draft-window behaviour remains green.
+
+Final verification: **68/68 backend test files passed**, **160/160 JS/MJS syntax checks passed**, and the V104.4 read audit remains **23 direct-read call sites across 17 files / 15 batch-read call sites**.
+
+See `docs/V104.5.4-IMPLEMENTATION-CHECKLIST.md`.
+
+---
+
 # V104.5.3 Release Notes — ONGOING Draft Publication Window Fix
 
 V104.5.3 corrects the ONGOING Course draft-state defect exposed by a saved DERIVED Hifz Course that still showed `Draft · 0 derived occurrences` and no Publish button.

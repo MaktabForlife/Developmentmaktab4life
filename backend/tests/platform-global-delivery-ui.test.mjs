@@ -10,9 +10,9 @@ const [adminHtml, js, css, styles] = await Promise.all([
 
 assert.match(adminHtml, /data-gcm-course-action="show">Courses</);
 assert.doesNotMatch(adminHtml, /data-gcm-course-action="show">Course Scheduler</);
-assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.3/);
-assert.match(adminHtml, /styles\.css\?v=104\.5\.3/);
-assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5\.1/);
+assert.match(adminHtml, /m4l-global-course-scheduler\.js\?v=104\.5\.4/);
+assert.match(adminHtml, /styles\.css\?v=104\.5\.4/);
+assert.match(styles, /m4l-28-global-course-scheduler\.css\?v=104\.5\.4/);
 
 assert.match(js, /<h3>Courses<\/h3>/);
 assert.match(js, /Course Name/);
@@ -28,13 +28,14 @@ assert.match(js, /<option value="EXPLICIT"/);
 assert.match(js, /<option value="INACTIVE"/);
 assert.match(js, />Archived<\/option>/);
 assert.match(js, /\+ Add Course/);
-assert.match(js, /course\.schedulemode === "DERIVED" \? "Exceptions" : "Sessions"/);
+assert.match(js, /course\.schedulemode === "DERIVED" \? "Exception" : "Sessions"/);
 assert.match(js, /data-gcm-course-action="publish-course"/);
 assert.equal((js.match(/data-gcm-course-action="publish-course"/g) || []).length, 1, "Publishing must exist only in the inline Course row");
 assert.doesNotMatch(js, /Publish range/);
-assert.match(js, /const unpublishedOrRevised = \(state\?\.stage \|\| "DEVELOPMENT"\) !== "PUBLISHED"/);
-assert.match(js, /if \(changed\) return "";/);
-assert.match(js, /if \(!unpublishedOrRevised\) return "";/);
+assert.match(js, /function publishEligibility/);
+assert.match(js, /Save Course and schedule changes before publishing/);
+assert.match(js, /already published with no saved revision waiting/);
+assert.match(css, /\.global-course-publish-inline:disabled/);
 assert.match(js, /Prepare Course FREE\/PAID access/);
 assert.match(js, /Prepare Scheduling/);
 assert.match(js, /authoritative saved publication windows for ONGOING Courses/);

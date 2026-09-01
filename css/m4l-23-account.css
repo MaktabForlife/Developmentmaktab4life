@@ -740,6 +740,20 @@ a.academy-session-pill.is-current {
 a.academy-session-pill.is-current:hover {
   background: #f1e4f3;
 }
+.academy-session-pill.has-active-zoom {
+  border-color:var(--account-brand-deep);
+  background:linear-gradient(135deg,var(--account-brand),var(--account-brand-deep));
+  color:#fff;
+  box-shadow:0 3px 10px rgba(98,45,105,.2);
+}
+a.academy-session-pill.has-active-zoom:hover {
+  border-color:var(--account-brand-deep);
+  background:linear-gradient(135deg,var(--account-brand-deep),#5e2e65);
+  color:#fff;
+}
+.academy-session-pill.has-active-zoom .academy-session-pill-title { color:#fff; }
+.academy-session-pill.has-active-zoom .academy-session-pill-context,
+.academy-session-pill.has-active-zoom .academy-session-pill-detail { color:rgba(255,255,255,.86); }
 .academy-session-pill.is-cancelled {
   opacity: .62;
 }
@@ -776,9 +790,16 @@ a.academy-session-pill.is-current:hover {
   background: #f4e7df;
 }
 .academy-session-pill-zoom {
-  color: #fff;
-  background: linear-gradient(135deg, var(--account-brand), var(--account-brand-deep));
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  justify-self:center;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.38);
+  background:rgba(255,255,255,.14);
 }
+.academy-session-pill-zoom svg { width:12px; height:12px; flex:0 0 auto; }
 
 .academy-program-rollup-wrap {
   display: grid;
@@ -1014,6 +1035,17 @@ button.academy-program-rollup:hover {
   min-width: 150px;
   max-width: 260px;
 }
+.academy-session-pill:not(.is-label-only) {
+  justify-items:center;
+  text-align:center;
+}
+.academy-session-pill:not(.is-label-only) .academy-session-pill-title,
+.academy-session-pill:not(.is-label-only) .academy-session-pill-context,
+.academy-session-pill:not(.is-label-only) .academy-session-pill-detail {
+  width:100%;
+  text-align:center;
+}
+.academy-session-pill:not(.is-label-only) .academy-session-pill-status { justify-self:center; }
 .academy-session-pill.is-label-only,
 .academy-program-rollup-wrap {
   flex: 0 1 118px;

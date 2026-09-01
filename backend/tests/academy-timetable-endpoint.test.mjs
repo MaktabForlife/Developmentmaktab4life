@@ -188,7 +188,7 @@ try {
   const body = await result.json();
   assert.equal(result.status, 200);
   assert.equal(body.success, true);
-  assert.equal(body.version, "104.5.1");
+  assert.equal(body.version, "104.5.4");
   assert.equal(body.weekStart, "2026-08-24");
   assert.equal(body.viewStart, "2026-08-27");
   assert.equal(body.viewEnd, "2026-08-28");
@@ -196,8 +196,8 @@ try {
   assert.equal(body.timezone, "Africa/Johannesburg");
   assert.equal(body.sessions.length, 3);
   const program = body.sessions.find(item => item.kind === "PROGRAM");
-  const global = body.sessions.find(item => item.kind === "GLOBAL" && item.title === "Steps to My Rabb");
-  const mothers = body.sessions.find(item => item.kind === "GLOBAL" && item.title === "Mothers of the Ummah");
+  const global = body.sessions.find(item => item.kind === "GLOBAL" && item.title === "Steps to My Rabb Term 3");
+  const mothers = body.sessions.find(item => item.kind === "GLOBAL" && item.title === "Mothers of the Ummah 2026");
   assert.equal(program.visibilityLevel, "DETAIL");
   assert.equal(program.relevant, false, "Global Admin receives expandable Program detail but not a directly relevant Home session");
   assert.equal(program.title, "Fiqh");
@@ -208,17 +208,17 @@ try {
   assert.equal(mothers.startTime, "09:30", "unpadded Global times must normalize and remain before later evening activity");
   assert.equal(mothers.date, "2026-08-27");
   assert.equal(global.visibilityLevel, "DETAIL");
-  assert.equal(global.title, "Steps to My Rabb");
+  assert.equal(global.title, "Steps to My Rabb Term 3");
   assert.equal(global.subjectName, "Steps to My Rabb");
   assert.equal(global.moduleName, "Hearts Connected");
   assert.equal(global.teacherName, "Global Admin");
-  assert.equal("globalCourseName" in global, false, "Global Course internal/run name must not be delivered to Academy Home");
+  assert.equal("globalCourseName" in global, false, "Course identity is carried by title without a duplicate internal globalCourseName field");
   assert.equal(global.date, "2026-08-27");
   assert.equal(global.canOpenZoom, false, "non-current Global sessions must not expose Zoom on Academy Home");
   assert.equal(global.zoomLink, "");
   assert.deepEqual(
     body.sessions.map(item => [item.startTime, item.title]),
-    [["09:00", "Fiqh"], ["09:30", "Mothers of the Ummah"], ["20:00", "Steps to My Rabb"]],
+    [["09:00", "Fiqh"], ["09:30", "Mothers of the Ummah 2026"], ["20:00", "Steps to My Rabb Term 3"]],
     "busy days must retain every Program/Global session in chronological order"
   );
   assert.deepEqual(body.sessions.map(item => item.eventKey), ["AE0001", "AE0002", "AE0003"]);

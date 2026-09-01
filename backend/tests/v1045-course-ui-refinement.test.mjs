@@ -13,10 +13,10 @@ assert.match(css, /\.global-course-name-pill\s*\{/);
 assert.match(css, /background:#ead9f3 !important/);
 assert.match(css, /border-radius:999px !important/);
 
-// Schedule and Sessions/Exceptions are icon + text edit actions; Publish stays visually separate.
+// Schedule and Sessions/Exception are icon + text edit actions; Publish stays visually separate.
 assert.match(js, /global-course-action-button is-schedule[^>]*>[\s\S]*?edit-mode-icon[\s\S]*?<span>Schedule<\/span>/);
 assert.match(js, /global-course-action-button is-sessions[^>]*>[\s\S]*?edit-mode-icon/);
-assert.match(js, /course\.schedulemode === "DERIVED" \? "Exceptions" : "Sessions"/);
+assert.match(js, /course\.schedulemode === "DERIVED" \? "Exception" : "Sessions"/);
 assert.match(css, /\.global-course-action-button\s*\{[\s\S]*?background:#8fc4bf/);
 assert.match(css, /\.global-course-publish-inline\s*\{[\s\S]*?background:#8f2149/);
 assert.match(css, /\.global-course-action-button\.is-schedule\s*\{\s*grid-column:1;\s*grid-row:1;/);
@@ -36,7 +36,7 @@ const publishSource = js.slice(publishStart, publishEnd).trim();
 const publishRowButton = new Function(
   "attr",
   "validPublishWindow",
-  `return (${publishSource});`
+  `${publishSource}; return publishRowButton;`
 )(
   value => String(value ?? ""),
   course => Boolean(course?.publishstart && course?.publishend && course.publishend >= course.publishstart)
@@ -47,14 +47,15 @@ const savedActiveFixed = {
   dirty: false, scheduleDirty: false, windowDirty: false
 };
 assert.match(publishRowButton(savedActiveFixed, { stage: "DEVELOPMENT" }, true), />Publish<\/button>/, "saved unpublished Course is publishable");
-assert.equal(publishRowButton(savedActiveFixed, { stage: "PUBLISHED" }, true), "", "clean published Course hides Publish");
-assert.equal(publishRowButton({ ...savedActiveFixed, dirty: true }, { stage: "DEVELOPMENT" }, true), "", "unsaved metadata hides Publish");
-assert.equal(publishRowButton({ ...savedActiveFixed, scheduleDirty: true }, { stage: "DEVELOPMENT" }, true), "", "unsaved schedule hides Publish");
-assert.equal(publishRowButton({ ...savedActiveFixed, active: false }, { stage: "DEVELOPMENT" }, true), "", "inactive Course hides Publish");
-assert.equal(publishRowButton({ ...savedActiveFixed, runid: "" }, { stage: "DEVELOPMENT" }, true), "", "unsaved new Course hides Publish");
-assert.equal(publishRowButton(savedActiveFixed, { stage: "DEVELOPMENT" }, false), "", "Course without schedule hides Publish");
-assert.equal(publishRowButton({ ...savedActiveFixed, type: "ONGOING", publishstart: "", publishend: "" }, { stage: "DEVELOPMENT" }, true), "", "ONGOING Course without window hides Publish");
+assert.match(publishRowButton(savedActiveFixed, { stage: "PUBLISHED" }, true), /disabled[^>]*>Publish<\/button>/, "clean published Course keeps a disabled Publish action visible");
+assert.match(publishRowButton({ ...savedActiveFixed, dirty: true }, { stage: "DEVELOPMENT" }, true), /disabled[^>]*>Publish<\/button>/, "unsaved metadata keeps Publish visible but disabled");
+assert.match(publishRowButton({ ...savedActiveFixed, scheduleDirty: true }, { stage: "DEVELOPMENT" }, true), /disabled[^>]*>Publish<\/button>/, "unsaved schedule keeps Publish visible but disabled");
+assert.match(publishRowButton({ ...savedActiveFixed, active: false }, { stage: "DEVELOPMENT" }, true), /disabled[^>]*>Publish<\/button>/, "inactive saved Course keeps Publish visible but disabled");
+assert.equal(publishRowButton({ ...savedActiveFixed, runid: "" }, { stage: "DEVELOPMENT" }, true), "", "unsaved local Course draft is not yet a publishable Course record");
+assert.match(publishRowButton(savedActiveFixed, { stage: "DEVELOPMENT" }, false), /disabled[^>]*>Publish<\/button>/, "saved Course without schedule keeps Publish visible but disabled");
+assert.match(publishRowButton({ ...savedActiveFixed, type: "ONGOING", publishstart: "", publishend: "" }, { stage: "DEVELOPMENT" }, true), /disabled[^>]*>Publish<\/button>/, "ONGOING Course without window keeps Publish visible but disabled");
 assert.match(publishRowButton({ ...savedActiveFixed, type: "ONGOING", publishstart: "2026-09-01", publishend: "2026-09-30" }, { stage: "DEVELOPMENT" }, true), />Publish<\/button>/, "ONGOING Course with valid window can publish");
+assert.match(css, /\.global-course-publish-inline:disabled,[\s\S]*?background:#e7d8de/, "disabled Publish must remain visible as a muted berry action");
 
 // Session workspace is preparation-only: a bordered card with exactly Cancel + Save edit actions.
 const sessionStart = js.indexOf("function sessionSectionForOpenCourse");

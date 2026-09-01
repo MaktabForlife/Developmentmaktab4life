@@ -112,16 +112,29 @@ const derivedPlatform = makeDerivedGlobalPlatform();
 const derivedEvents = buildGlobalCourseEvents(derivedPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-24", currentMinutes: 9 * 60 + 30 });
 assert.equal(derivedEvents.length, 1, "Academy must derive a published Course occurrence without a normal snapshot row");
 assert.equal(derivedEvents[0].date, "2026-08-24");
+assert.equal(derivedEvents[0].title, "Derived Course Run", "DERIVED Academy events must use the published Course name as the primary label");
 assert.equal(derivedEvents[0].subjectName, "Derived Course Subject");
 assert.equal(derivedEvents[0].moduleName, "Derived Module");
 assert.equal(derivedEvents[0].teacherName, "Derived Teacher");
 assert.equal(derivedEvents[0].canOpenZoom, true);
 assert.equal(derivedPlatform.PublishedGlobalTimetableSessions.length, 0, "Derived Academy delivery must not require materialised normal session snapshots");
 
+const hifzPlatform = makeHifzDerivedGlobalPlatform();
+const hifzEvents = buildGlobalCourseEvents(hifzPlatform, { AccountID: "ACCOUNT1", Active: true }, {
+  isGlobalAdmin: false,
+  week: { start: "2026-09-01", end: "2026-09-02" },
+  currentDate: "2026-09-01",
+  currentMinutes: 4 * 60 + 30
+});
+assert.deepEqual(hifzEvents.map(item => [item.date, item.title]), [
+  ["2026-09-01", "Hifz"],
+  ["2026-09-02", "Hifz"]
+], "Published DERIVED Hifz must remain visible in the Academy day calendar across its recurring weekdays");
+
 const paidPlatform = makeGlobalPlatform("SUBSCRIPTION", false);
 const paidLabel = buildGlobalCourseEvents(paidPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
 assert.equal(paidLabel[0].visibilityLevel, "LABEL");
-assert.equal(paidLabel[0].title, "Steps to My Rabb");
+assert.equal(paidLabel[0].title, "Steps to My Rabb Term 3", "Global Course LABEL responses must use Course Name rather than Global Subject");
 assert.equal("teacherName" in paidLabel[0], false);
 assert.equal("zoomLink" in paidLabel[0], false);
 assert.equal("globalCourseName" in paidLabel[0], false);
@@ -129,8 +142,9 @@ assert.equal("globalCourseName" in paidLabel[0], false);
 const subscriberPlatform = makeGlobalPlatform("SUBSCRIPTION", true);
 const subscriberEvents = buildGlobalCourseEvents(subscriberPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
 assert.equal(subscriberEvents[0].visibilityLevel, "DETAIL");
+assert.equal(subscriberEvents[0].title, "Steps to My Rabb Term 3", "Detailed explicit Course events must use the Course name as the primary label");
 assert.equal(subscriberEvents[0].canOpenZoom, true);
-assert.equal("globalCourseName" in subscriberEvents[0], false, "Global Course internal/run name must not be exposed in user-facing timetable detail");
+assert.equal("globalCourseName" in subscriberEvents[0], false, "Course identity is carried by title; no duplicate internal globalCourseName field is needed");
 assert.equal(subscriberEvents[0].subjectName, "Steps to My Rabb");
 assert.equal(subscriberEvents[0].moduleName, "Hearts Connected");
 assert.equal(subscriberEvents[0].teacherName, "Muallimah");
@@ -155,6 +169,7 @@ assert.equal(teacherEvents[0].canOpenZoom, true);
 const cancelledPlatform = makeGlobalPlatform("FREE", false, "TEACHER1", "CANCELLED");
 const cancelledEvents = buildGlobalCourseEvents(cancelledPlatform, { AccountID: "ACCOUNT1", Active: true }, { isGlobalAdmin: false, week, currentDate: "2026-08-27", currentMinutes: 20 * 60 + 30 });
 assert.equal(cancelledEvents[0].status, "CANCELLED");
+assert.equal(cancelledEvents[0].title, "Steps to My Rabb Term 3", "Cancelled explicit occurrences must retain Course identity");
 assert.equal(cancelledEvents[0].canOpenZoom, false, "Cancelled sessions must never expose an active Join Zoom action");
 assert.equal(cancelledEvents[0].zoomLink, "");
 
@@ -234,6 +249,32 @@ function makeDerivedGlobalPlatform() {
       PublishedDate: "2026-08-23T00:00:00Z", PublishedByAccountID: "ADMIN", PublishedByAccountName: "Admin",
       SessionCount: 1, ScheduleMode: "DERIVED", PublishStartDate: "2026-08-24", PublishEndDate: "2026-08-30",
       ScheduleDefinition: scheduleDefinition, RunName: "Derived Course Run", SubjectName: "Derived Course Subject", Timezone: "Africa/Johannesburg"
+    }],
+    GlobalTimetableSessionLifecycle: [],
+    PublishedGlobalTimetableSessions: []
+  };
+}
+
+function makeHifzDerivedGlobalPlatform() {
+  const scheduleDefinition = JSON.stringify([{
+    rulekey: "RULE-HIFZ", days: ["MON", "TUE", "WED", "THU"], starttime: "04:00", endtime: "05:00",
+    moduleid: "", teacheraccountid: "", zoomlink: "", modulename: "", teachername: "TBA"
+  }]);
+  return {
+    subjects: [{ SubjectID: "GSUBJ-HIFZ", SubjectName: "Hifz", Active: true }],
+    policies: [{ SubjectPolicyID: "GSPOL-HIFZ", SubjectID: "GSUBJ-HIFZ", AccessModel: "FREE", Active: true }],
+    matrix: [],
+    runs: [{
+      RunID: "GSRUN-HIFZ", SubjectID: "GSUBJ-HIFZ", RunName: "Hifz", StartDate: "", EndDate: "",
+      Timezone: "Africa/Johannesburg", Active: true, AccessModel: "FREE", ScheduleMode: "DERIVED",
+      ScheduleDefinition: scheduleDefinition
+    }],
+    GlobalTimetableRunState: [{ RunID: "GSRUN-HIFZ", Stage: "PUBLISHED", CurrentPublicationID: "GTPUB-HIFZ" }],
+    GlobalTimetablePublications: [{
+      PublicationID: "GTPUB-HIFZ", RunID: "GSRUN-HIFZ", SubjectID: "GSUBJ-HIFZ", VersionNo: 1,
+      PublishedDate: "2026-09-01T00:00:00Z", PublishedByAccountID: "ADMIN", PublishedByAccountName: "Admin",
+      SessionCount: 61, ScheduleMode: "DERIVED", PublishStartDate: "2026-09-01", PublishEndDate: "2026-12-15",
+      ScheduleDefinition: scheduleDefinition, RunName: "Hifz", SubjectName: "Hifz", Timezone: "Africa/Johannesburg"
     }],
     GlobalTimetableSessionLifecycle: [],
     PublishedGlobalTimetableSessions: []

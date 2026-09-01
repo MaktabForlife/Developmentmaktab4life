@@ -1,3 +1,23 @@
+# V104.5.4 Changes — Course / Academy Timetable UI Refinement
+
+Built directly on the completed V104.5.3 baseline. Platform schema remains `102.0.12`; no Sheet migration is required.
+
+- Global Course Academy pills now use immutable published **Course Name** as the primary label for both DERIVED and EXPLICIT Courses; linked Global Subject remains secondary detail.
+- Added regression coverage proving published DERIVED Hifz remains visible across recurring Academy days without normal materialised session rows.
+- Large detailed Academy pills now centre their content.
+- A current authorised Zoom session colours the **entire timetable pill** with the Academy Zoom/brand treatment and shows the supplied Lucide link icon beside `Zoom`.
+- Saved Courses now retain a visible Publish button even when currently ineligible; it is disabled with a muted berry treatment and reason tooltip. Unsaved local new-Course drafts remain the only rows without Publish because no RunID exists yet.
+- DERIVED `Exceptions` action renamed to singular `Exception`.
+- New recurring time slots remain blank and show `--h--` Start/End placeholders instead of `04h00` / `05h00`.
+- Removed the large top-right `+ Another Time Slot` control; added a lightweight `+ Add another time slot` action beneath the rows.
+- Replaced recurring-row X removal with the supplied Lucide `trash-2` icon.
+- No Course architecture, access, Program Builder, schema, V104.3 deduplication or V104.4 read-budget changes.
+- Worker/app version advanced to `104.5.4`.
+
+Final V104.5.4 verification: **68/68 backend test files passed** and **160/160 repository JS/MJS syntax checks passed**. V104.4 read audit remains **23 direct-read call sites across 17 files; 15 batch-read call sites**.
+
+---
+
 # V104.5.3 Changes — Authoritative ONGOING Draft Publication Windows
 
 Built directly on the verified V104.5.2 baseline.
